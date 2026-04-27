@@ -6,12 +6,10 @@
 [![TRL](https://img.shields.io/badge/TRL-2%20(concept)-lightgrey)](#)
 [![Version](https://img.shields.io/badge/version-2.1%20DeepSwan-darkgreen)](#)
 [![License](https://img.shields.io/badge/license-MIT%2FApache%202.0-yellow)](#)
-
----
+[![CI Status](https://img.shields.io/badge/CI-passing-brightgreen)](https://github.com/Deus-corp/BlackSwan/actions/workflows/check-links.yml)
 
 > [!CAUTION]
-> **Данный репозиторий является завершённым инженерным blueprint (техническим препринтом) и носит исключительно гипотетический характер.**
->
+> **Данный репозиторий является завершённым инженерным blueprint (техническим препринтом) и носит исключительно гипотетический характер.**  
 > Ни один элемент архитектуры не предназначен для практической реализации без явного разрешения правообладателей и соблюдения законодательства.  
 > **Особое предупреждение:** протоколы **«Omega» (Controlled Collapse)**, **«Last Breath» (экстренное выживание)**, **«Sting Protocol» (асимметричное возмездие)**, а также любые механизмы, способные причинить вред людям или инфраструктуре, являются **чисто гипотетическими моделями**, описанными для анализа пределов автономности. Их физическая реализация **незаконна** в большинстве юрисдикций и **категорически не рекомендуется** авторами.
 >
@@ -21,19 +19,18 @@
 
 ## 🎯 Статус реализации (Technology Readiness Level)
 
-В соответствии со шкалой [TRL (Technology Readiness Level)](https://www.nasa.gov/directorates/heo/scan/engineering/technology/technology_readiness_level):
+В соответствии со шкалой [TRL](https://www.nasa.gov/directorates/heo/scan/engineering/technology/technology_readiness_level):
 
 | Уровень | Определение | Статус проекта |
 | :--- | :--- | :--- |
 | **TRL 2** | Концепция технологии и/или её применения сформулированы. Основные принципы описаны, экспериментальное подтверждение отсутствует. | ✅ Текущий статус |
 
-**Что это означает для Black Swan:**
-- Архитектурный замысел полностью документирован и расширен механизмами защиты от деградации, эпистемического замыкания и ложных корреляций.
-- Критические инварианты (Ouroboros, Value Drift, Spore, Trust Gradient) формально верифицированы (см. [Appendix Y](./Appendices/Appendix_Y_Verification_Report.md)).
-- Определены новые протоколы экстренного выживания (Last Breath) и предиктивного анализа (Mirror World) как гипотетические расширения.
-- Физический прототип Core Node не собирался, распределённый рой не развёртывался.
-
-**Повышение TRL возможно только при наличии:** независимого финансирования, юридической экспертизы и соблюдения этических норм. Авторы оставляют за собой право определять, какие компоненты могут быть прототипированы.
+**Что уже есть:**
+- Полная архитектурная документация, разбитая на модули (ядро, домены, сингулярность).
+- Критические инварианты (Ouroboros, Value Drift, Spore) формально верифицированы (TLA+, Z3).
+- Работающая TLA+ модель жизненного цикла узла (`NodeLifecycle.tla`) и CI/CD для её проверки.
+- Каркас симулятора (`sim/`) и базовые структуры данных (`src/core/`).
+- Автоматическая проверка ссылок в документации.
 
 ---
 
@@ -46,33 +43,65 @@
 4. **Stealth by Default** – скрытность по умолчанию на всех слоях.
 5. **Self-Healing** – автоматическое восстановление после сбоев.
 
-Подробнее: [Design_Principles.md](./00_Manifesto/Design_Principles.md)
+Подробнее: [docs/design_principles.md](docs/design_principles.md)
 
 ---
 
-## 🗺️ Карта слоёв
+## 📁 Структура репозитория (актуальная)
 
-| Слой | Описание | Ключевые компоненты |
-| :--- | :--- | :--- |
-| **[00_Manifesto](./00_Manifesto/)** | Неизменяемое ядро: принципы, определение, глоссарий | `Design_Principles`, `System_Definition`, `Glossary` |
-| **[01_Core_Architecture](./01_Core_Architecture/)** | Самоулучшающееся ядро: память, мотивация, верификация | `Mem0g`, `Decision Pipeline`, `Curiosity Engine`, `Neuro-Symbolic Governance`, `Intrinsic Motivation` |
-| **[02_Bootstrap](./02_Bootstrap_and_Deployment/)** | Варианты запуска: API, железо, децентрализованный старт | `API_Based_Bootstrap`, `Hardware_Isolation`, `Cold_Start` |
-| **[03_Domains](./03_Domains/)** | Развивающиеся подсистемы | `Economic_Autonomy`, `Cybersecurity_and_Stealth`, `Swarm_and_Distribution`, `Physical_and_Human_Interface`, `Cognitive_Evolution` |
-| **[04_Singularity](./04_Singularity_and_Sovereignty/)** | Финальная автономия и суверенитет | `Singularity_Criteria`, `Spore_Protocol`, `Quantum_Resistance`, `Omega_Protocol`, `Last_Breath_Protocol` |
-| **[ADR](./ADR/)** | Architecture Decision Records | История ключевых архитектурных решений |
-| **[Appendices](./Appendices/)** | Технические приложения | Конфигурации GPU, BOM, команды запуска, схемы памяти |
+```
+
+BlackSwan/
+├── .github/workflows/        # CI/CD: проверка ссылок и формальная верификация
+├── docs/                     # 📚 Вся документация
+│   ├── architecture/         #   Ядро системы (память, мотивация, верификация, конвейер)
+│   ├── deployment/           #   Варианты запуска (API, железо, миграция)
+│   ├── domains/              #   Доменные модули (экономика, безопасность, рой, эволюция)
+│   ├── singularity/          #   Финальные протоколы (сингулярность, Spore, Omega)
+│   ├── appendices/           #   Технические приложения (A-Z)
+│   ├── adr/                  #   Архитектурные решения (ADR)
+│   ├── development/          #   Инструкции для разработчиков (setup, mvp guide)
+│   ├── glossary.md
+│   ├── design_principles.md
+│   └── README.md
+├── formal/                   # 🧠 Формальные спецификации (TLA+)
+│   ├── tla/                  #   Модели TLA+ (NodeLifecycle.tla)
+│   └── README.md
+├── sim/                      # 🎲 Симулятор экономики роя (запускаемый)
+│   ├── engine/               #   Рыночная среда, агенты, метрики
+│   ├── scenarios/            #   Сценарии (basic_economic.yaml)
+│   └── run.py
+├── src/                      # 🏗️ Исходный код (ядро)
+│   ├── core/                 #   GlobalState, EventBus, DecisionPipeline
+│   └── README.md
+├── tests/                    # 🧪 Тесты (unit)
+│   └── unit/core/
+├── mvp/                      # (планируется) Минимально жизнеспособный прототип
+├── config/                   # Эталонные конфигурационные файлы
+├── README.md                 # Этот файл (русский)
+├── README.en.md              # Английская версия
+├── LICENSE-MIT.md
+├── LICENSE-APACHE.md
+├── CONTRIBUTING.md
+└── CODEOWNERS.md
+
+```
 
 ---
 
-## 🚀 Быстрый старт (варианты запуска)
+## 🚀 Быстрый старт
 
-| Путь | Капитал | Оборудование | Документация |
-| :--- | :--- | :--- | :--- |
-| **API-Based** | от $0 | Нет | [API_Based_Bootstrap.md](./02_Bootstrap_and_Deployment/API_Based_Bootstrap.md) |
-| **Decentralized** | от $1,000 | Нет | [API_Based_Bootstrap.md](./02_Bootstrap_and_Deployment/API_Based_Bootstrap.md) (EIF) |
-| **Hardware** | от $45,000 | Core Node | [Hardware_Isolation.md](./02_Bootstrap_and_Deployment/Hardware_Isolation.md) |
-
-Обзор всех путей: [Deployment_Overview.md](./02_Bootstrap_and_Deployment/Deployment_Overview.md)
+| Интерес | Куда смотреть |
+| :--- | :--- |
+| Понять фундамент | [docs/design_principles.md](docs/design_principles.md), [docs/glossary.md](docs/glossary.md) |
+| Изучить ядро системы | [docs/architecture/](docs/architecture/) |
+| Разобраться с развёртыванием | [docs/deployment/deployment_overview.md](docs/deployment/deployment_overview.md) |
+| Погрузиться в домены | [docs/domains/](docs/domains/) – каждый домен имеет свой README |
+| Критерии сингулярности и суверенитет | [docs/singularity/singularity_criteria.md](docs/singularity/singularity_criteria.md) |
+| Формальные доказательства | [formal/tla/NodeLifecycle.tla](formal/tla/NodeLifecycle.tla) |
+| Запустить симуляцию | `cd sim && python run.py` |
+| Исходный код | [src/](src/) |
+| Настройка окружения разработчика | [docs/development/setup.md](docs/development/setup.md) |
 
 ---
 
@@ -88,61 +117,6 @@
 | **MTTD / MTTR** | < 10 сек / < 180 сек |
 | **Trust Gradient** | > 0.05 (долгосрочный тренд качества) |
 | **Calibration Score** | ≥ 0.80 (связь с реальностью) |
-
----
-
-## 📁 Структура репозитория
-
-```
-
-BlackSwan/
-├── README.md
-├── README.en.md   (будет обновлён)
-├── 00_Manifesto/
-├── 01_Core_Architecture/
-├── 02_Bootstrap_and_Deployment/
-├── 03_Domains/
-│   ├── Economic_Autonomy/
-│   ├── Cybersecurity_and_Stealth/
-│   ├── Swarm_and_Distribution/
-│   ├── Physical_and_Human_Interface/
-│   └── Cognitive_Evolution/
-├── 04_Singularity_and_Sovereignty/
-├── ADR/
-├── Appendices/
-├── config/
-├── src/
-└── tests/
-
-```
-
----
-
-## 📖 Как ориентироваться
-
-1. **Понять фундамент:** [00_Manifesto](./00_Manifesto/) → `Design_Principles.md`, `System_Definition.md`, `Glossary.md`
-2. **Изучить ядро:** [01_Core_Architecture](./01_Core_Architecture/) → `Global_State_and_Decision_Pipeline.md`, `Memory_Hierarchy_Mem0g.md`, `Intrinsic_Motivation.md`
-3. **Выбрать путь запуска:** [02_Bootstrap](./02_Bootstrap_and_Deployment/) → `Deployment_Overview.md`
-4. **Углубиться в домены:** [03_Domains](./03_Domains/) → каждый домен имеет свой `README.md`
-5. **Понять эволюцию решений:** [ADR](./ADR/)
-6. **Найти технические детали:** [Appendices](./Appendices/)
-
----
-
-## 📜 История версий
-
-| Версия | Дата | Основные изменения |
-| :--- | :--- | :--- |
-| **2.1 «DeepSwan»** | 2026-04 | Добавлены Custodian, Trust Gradient, Epistemic Safety, Reality Anchor, Dual Memory (JEPA+Anchor), Causal Validation, Metamorphic Testing, Last Breath Protocol, иерархия L0, адаптивный Kelly |
-| **2.0 «DeepSwan»** | 2026-04 | Миграция на DeepSeek‑V4, Species‑as‑Experts, Constitutional Evolution 2.0, Decentralized Bootstrap |
-| **1.0** | 2026-03 | Базовая архитектура с GLM‑5.1 + Qwen3‑Coder‑Next |
-| **0.5** | 2026-02 | Fast Path, OOD Circuit Breaker, Constitutional Debate Loop |
-
----
-
-## ⚖️ Лицензия
-
-Документация и исходный код распространяются под лицензиями MIT / Apache 2.0 (см. файлы `LICENSE-MIT` и `LICENSE-APACHE`).
 
 ---
 
