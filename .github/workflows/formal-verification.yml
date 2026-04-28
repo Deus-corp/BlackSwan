@@ -1,0 +1,37 @@
+name: Formal Verification (TLA+)
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'formal/tla/**'
+      - '.github/workflows/formal-verification.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'formal/tla/**'
+
+jobs:
+  tla-verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        spec:
+          - NodeLifecycle
+          - D2BFT
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Download TLA2Tools
+        run: |
+          curl -L -o tla2tools.jar https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
+
+      - name: Run TLC
+        run: |
+          java -cp tla2tools.jar tlc2.TLC formal/tla/${{ matrix.spec }}.tla -config formal/tla/${{ matrix.spec }}.cfg

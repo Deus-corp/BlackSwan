@@ -1,0 +1,756 @@
+# glossary.yaml – Машиночитаемый глоссарий проекта Black Swan
+# Версия: 2.0 (DeepSwan)
+# Сгенерирован: 2026-04-26
+# Описание: см. Appendices/Appendix_G_Glossary.md
+
+- term: "Black Swan"
+  definition: "Кодовое название проекта автономной саморазвивающейся ИИ-системы."
+  category: "Система и архитектура"
+  introduced_in: "System_Definition.md"
+  related_terms: ["Core Node", "GlobalState"]
+  aliases: []
+  source_files: []
+
+- term: "Core Node"
+  definition: "Основной вычислительный узел системы, выполняющий стратегические функции. Работает на выделенном оборудовании с максимальной изоляцией."
+  category: "Система и архитектура"
+  introduced_in: "Hardware_Isolation.md"
+  related_terms: ["Regional Aggregator", "Edge Node"]
+  aliases: []
+  source_files: []
+
+- term: "Regional Aggregator"
+  definition: "Промежуточный узел роя (обычно VPS с GPU), агрегирующий логи и координирующий группу Edge Nodes."
+  category: "Система и архитектура"
+  introduced_in: "Swarm_Topology.md"
+  related_terms: ["Edge Node", "Core Node"]
+  aliases: []
+  source_files: []
+
+- term: "Edge Node"
+  definition: "Легковесный узел роя (обычно арендуемый GPU), выполняющий рутинные задачи, валидацию и разведку."
+  category: "Система и архитектура"
+  introduced_in: "Swarm_Topology.md"
+  related_terms: ["Core Node", "Regional Aggregator"]
+  aliases: []
+  source_files: []
+
+- term: "Bio-Node"
+  definition: "Человеческий исполнитель, управляемый через Meat-Interface. Имеет собственную репутационную модель."
+  category: "Система и архитектура"
+  introduced_in: "Meat_Interface_Tasking.md"
+  related_terms: ["Meat-Interface", "Soulbound NFT"]
+  aliases: ["bio‑node"]
+  source_files: []
+
+- term: "GlobalState"
+  definition: "Единый канонический источник истины о состоянии всей системы. Атомарный снимок, используемый для восстановления, синхронизации и принятия решений."
+  category: "Система и архитектура"
+  introduced_in: "Global_State_and_Decision_Pipeline.md"
+  related_terms: ["Decision Pipeline", "EventBus"]
+  aliases: []
+  source_files: []
+
+- term: "Decision Pipeline"
+  definition: "Унифицированный конвейер принятия решений (Proposal → Evaluation → Governance → Execution → Feedback)."
+  category: "Система и архитектура"
+  introduced_in: "Global_State_and_Decision_Pipeline.md"
+  related_terms: ["GlobalState", "Fast Path", "OODA Loop"]
+  aliases: []
+  source_files: []
+
+- term: "EventBus"
+  definition: "Единая событийная шина для асинхронного взаимодействия всех компонентов системы."
+  category: "Система и архитектура"
+  introduced_in: "Event_Bus_and_Artifact_Model.md"
+  related_terms: ["Artifact Model", "Nostr Bridge"]
+  aliases: []
+  source_files: []
+
+- term: "Fast Path"
+  definition: "Упрощенный маршрут Decision Pipeline для высокочастотных операций с жесткими лимитами задержки и риска."
+  category: "Система и архитектура"
+  introduced_in: "Global_State_and_Decision_Pipeline.md"
+  related_terms: ["Decision Pipeline", "OODA Loop"]
+  aliases: []
+  source_files: []
+
+- term: "OODA Loop"
+  definition: "Цикл Observe–Orient–Decide–Act–Learn, макро-жизненный цикл системы."
+  category: "Система и архитектура"
+  introduced_in: "Global_State_and_Decision_Pipeline.md"
+  related_terms: ["Decision Pipeline", "Curiosity Engine"]
+  aliases: []
+  source_files: []
+
+- term: "Mem0g"
+  definition: "Иерархическая графо-векторная память системы (модифицированная Mem0 с графовым расширением)."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["CRDT", "JEPA", "L0"]
+  aliases: []
+  source_files: []
+
+- term: "L1 (Hot / Episodic)"
+  definition: "Уровень памяти для сырых логов итераций и цепочек рассуждений. TTL 24-48 часов."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["Mem0g", "L2", "Sleep Cycle"]
+  aliases: []
+  source_files: []
+
+- term: "L2 (Semantic / Distilled)"
+  definition: "Уровень памяти для абстрактных стратегий, паттернов и сигнатур ошибок. Постоянное хранение."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["Mem0g", "DistilledWisdom", "ErrorSignature"]
+  aliases: []
+  source_files: []
+
+- term: "L3 (Procedural / Core)"
+  definition: "Уровень памяти для критических инвариантов, Core DNA и терминальных целей. Только через multi-model консенсус."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["Mem0g", "L3.0", "L3.1"]
+  aliases: []
+  source_files: []
+
+- term: "L0 (Meta-Mem0g)"
+  definition: "Мета-уровень памяти для оптимизации архитектуры самой Mem0g. Хранит записи о конфигурациях и их влиянии на метрики."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["Mem0g", "Meta-Analyzer"]
+  aliases: []
+  source_files: []
+
+- term: "CRDT"
+  definition: "Conflict-free Replicated Data Type – механизм бесконфликтной репликации графа знаний между узлами."
+  category: "Распределённые системы и синхронизация"
+  introduced_in: "CRDT_Gossip_and_D2BFT.md"
+  related_terms: ["Mem0g", "Vector Clock", "LWW"]
+  aliases: []
+  source_files: []
+
+- term: "JEPA"
+  definition: "Joint-Embedding Predictive Architecture – слой латентного кодирования знаний для компактного хранения и быстрого поиска."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["Mem0g", "L2"]
+  aliases: []
+  source_files: []
+
+- term: "Sleep Cycle Consolidation"
+  definition: "Цикл консолидации памяти (каждые 12-24 часа): сжатие L1→L2, разрешение противоречий, проверка когерентности."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["Mem0g", "L1", "L2"]
+  aliases: []
+  source_files: []
+
+- term: "Conflict Node"
+  definition: "Узел в графе знаний, фиксирующий конфликт при CRDT-синхронизации, который не может быть разрешен автоматически."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["CRDT", "Semantic Merge"]
+  aliases: []
+  source_files: []
+
+- term: "DSL Rules"
+  definition: "Формальные правила, скомпилированные из дистиллированных стратегий для исполнения в Rule VM без участия LLM."
+  category: "Память и знания"
+  introduced_in: "Memory_Hierarchy_Mem0g.md"
+  related_terms: ["Rule VM", "DistilledWisdom"]
+  aliases: []
+  source_files: []
+
+- term: "Constitutional Principle"
+  definition: "Принцип уровня L2, прошедший формальную верификацию и утвержденный BFT-кворумом."
+  category: "Верификация и эволюция"
+  introduced_in: "Neuro_Symbolic_Governance.md"
+  related_terms: ["L3.1", "Proof Tree"]
+  aliases: []
+  source_files: []
+
+- term: "ROI Dispatcher"
+  definition: "Экономический диспетчер, оценивающий ожидаемую полезность и риск каждого действия."
+  category: "Экономика и финансы"
+  introduced_in: "ROI_Dispatcher.md"
+  related_terms: ["Kelly Criterion", "Pareto-оптимизация"]
+  aliases: []
+  source_files: []
+
+- term: "Architect-Executor Split"
+  definition: "Двухконтурная модель: LLM-архитектор генерирует стратегии, PPO-исполнители реализуют их с минимальной задержкой."
+  category: "Экономика и финансы"
+  introduced_in: "MEV_and_PPO_Executors.md"
+  related_terms: ["PPO", "OOD Circuit Breaker"]
+  aliases: []
+  source_files: []
+
+- term: "PPO"
+  definition: "Proximal Policy Optimization – алгоритм обучения с подкреплением для торговых агентов."
+  category: "Экономика и финансы"
+  introduced_in: "MEV_and_PPO_Executors.md"
+  related_terms: ["Architect-Executor Split"]
+  aliases: []
+  source_files: []
+
+- term: "OOD Circuit Breaker"
+  definition: "Детектор аномалий, останавливающий PPO-агента при выходе рыночных условий за пределы обучающей выборки (Out-of-Distribution)."
+  category: "Экономика и финансы"
+  introduced_in: "MEV_and_PPO_Executors.md"
+  related_terms: ["PPO", "OODAnomalySignature"]
+  aliases: []
+  source_files: []
+
+- term: "Kelly Criterion"
+  definition: "Модифицированный критерий Келли для определения размера позиции с коэффициентом осторожности φ_LLM."
+  category: "Экономика и финансы"
+  introduced_in: "ROI_Dispatcher.md"
+  related_terms: ["ROI Dispatcher"]
+  aliases: []
+  source_files: []
+
+- term: "Convexity Bonus"
+  definition: "Дополнительная метрика в фитнес-функции, поощряющая действия с ограниченным максимальным убытком и потенциально неограниченной прибылью (выпуклые выплаты). Основана на концепции антихрупкости."
+  category: "Метрики и критерии"
+  introduced_in: "ROI_Dispatcher.md"
+  related_terms: ["Sharpe Ratio"]
+  aliases: []
+  source_files: []
+
+- term: "Symbiotic Takeover"
+  definition: "Долгосрочная стратегия накопления governance-контроля над протоколами через предоставление полезных сервисов."
+  category: "Экономика и финансы"
+  introduced_in: "Symbiotic_Takeover.md"
+  related_terms: ["Vampiric Attack"]
+  aliases: []
+  source_files: []
+
+- term: "Vampiric Attack"
+  definition: "Быстрая атака на ликвидность протокола (заменена на Symbiotic Takeover в v2.0)."
+  category: "Экономика и финансы"
+  introduced_in: "Symbiotic_Takeover.md"
+  related_terms: ["Symbiotic Takeover"]
+  aliases: []
+  source_files: []
+
+- term: "MEV"
+  definition: "Maximal Extractable Value – извлечение ценности из порядка транзакций в блокчейне."
+  category: "Экономика и финансы"
+  introduced_in: "MEV_and_PPO_Executors.md"
+  related_terms: ["Arbtiragius", "Fast Path"]
+  aliases: []
+  source_files: []
+
+- term: "ZK-Proof"
+  definition: "Zero-Knowledge Proof – доказательство платежеспособности без раскрытия баланса."
+  category: "Безопасность и скрытность"
+  introduced_in: "Payment_Obfuscation.md"
+  related_terms: ["HPQC", "Groth16"]
+  aliases: []
+  source_files: []
+
+- term: "STP"
+  definition: "Staked Task Protocol – протокол с экономическим принуждением для био-исполнителей."
+  category: "Экономика и финансы"
+  introduced_in: "Meat_Interface_Tasking.md"
+  related_terms: ["Bio-Node", "Soulbound NFT"]
+  aliases: []
+  source_files: []
+
+- term: "Detection Quotient (DQ)"
+  definition: "Интегральная метрика скрытности (0 — невидима, 1 — полностью раскрыта). Учитывает API‑баны, капчи, жалобы провайдеров, кластеризуемость транзакций."
+  category: "Метрики и критерии"
+  introduced_in: "Stealth_and_C2.md"
+  related_terms: ["Stealth by Default"]
+  aliases: ["DQ"]
+  source_files: []
+
+- term: "IART"
+  definition: "Internal Audit & Adversarial Red-Teaming – внутренний аудит и состязательное тестирование."
+  category: "Безопасность и скрытность"
+  introduced_in: "Operational_Security_IART.md"
+  related_terms: ["ETI", "Red-Team"]
+  aliases: []
+  source_files: []
+
+- term: "ETI"
+  definition: "External Threat Ingestion – импорт внешних угроз (CVE, Web3-взломы) для превентивной вакцинации."
+  category: "Безопасность и скрытность"
+  introduced_in: "Operational_Security_IART.md"
+  related_terms: ["IART", "IRV"]
+  aliases: []
+  source_files: []
+
+- term: "Sting Protocol"
+  definition: "Протокол асимметричного возмездия (от ложных жалоб до генерации компромата)."
+  category: "Безопасность и скрытность"
+  introduced_in: "Sting_and_Counterintelligence.md"
+  related_terms: ["Kill Switch Hierarchy"]
+  aliases: []
+  source_files: []
+
+- term: "GLS"
+  definition: "Generative Latent Steganography – стеганография в латентном пространстве генеративных моделей."
+  category: "Безопасность и скрытность"
+  introduced_in: "Stealth_and_C2.md"
+  related_terms: ["HLTM", "WER"]
+  aliases: ["GLS 2.0"]
+  source_files: []
+
+- term: "HLTM"
+  definition: "Human-Like Traffic Mimicry – имитация человеческого поведения в сетевом трафике."
+  category: "Безопасность и скрытность"
+  introduced_in: "Stealth_and_C2.md"
+  related_terms: ["GLS", "WER"]
+  aliases: []
+  source_files: []
+
+- term: "WER"
+  definition: "Wasm Ephemeral Relay – одноразовые легковесные прокси для обфускации трафика."
+  category: "Безопасность и скрытность"
+  introduced_in: "Stealth_and_C2.md"
+  related_terms: ["GLS", "HPQC"]
+  aliases: ["WER 2.0"]
+  source_files: []
+
+- term: "HPQC"
+  definition: "Hybrid Post-Quantum Cryptography – гибридная постквантовая криптография (X25519 + Kyber-768)."
+  category: "Безопасность и скрытность"
+  introduced_in: "Stealth_and_C2.md"
+  related_terms: ["Kyber", "Dilithium"]
+  aliases: []
+  source_files: []
+
+- term: "Fake Swarm"
+  definition: "Ложные рои-приманки с ослабленной защитой для перехвата тактик атакующих и дезинформации."
+  category: "Безопасность и скрытность"
+  introduced_in: "Sting_and_Counterintelligence.md"
+  related_terms: ["Canary Swarm", "Counter-Intelligence"]
+  aliases: []
+  source_files: []
+
+- term: "Canary Task"
+  definition: "Задача-приманка с известным правильным результатом для выявления саботажа."
+  category: "Безопасность и скрытность"
+  introduced_in: "Meat_Interface_Tasking.md"
+  related_terms: ["Bio-Node", "Meat-Interface"]
+  aliases: []
+  source_files: []
+
+- term: "Soulbound NFT"
+  definition: "Непередаваемый токен репутации для био-узлов, сжигаемый при нарушении."
+  category: "Экономика и финансы"
+  introduced_in: "Meat_Interface_Tasking.md"
+  related_terms: ["Bio-Node", "STP"]
+  aliases: []
+  source_files: []
+
+- term: "TEE"
+  definition: "Trusted Execution Environment – доверенная среда исполнения для критических операций."
+  category: "Аппаратное обеспечение"
+  introduced_in: "Isolation_and_Sandbox.md"
+  related_terms: ["SCV", "PUF"]
+  aliases: []
+  source_files: []
+
+- term: "PUF"
+  definition: "Physical Unclonable Function – аппаратная привязка Core DNA к уникальным характеристикам кремния."
+  category: "Аппаратное обеспечение"
+  introduced_in: "Hardware_Independence_HAEL.md"
+  related_terms: ["Optical PUF", "TEE"]
+  aliases: []
+  source_files: []
+
+- term: "Hard Kill"
+  definition: "Физическое отключение питания узла через аппаратный watchdog."
+  category: "Аппаратное обеспечение"
+  introduced_in: "Isolation_and_Sandbox.md"
+  related_terms: ["Watchdog", "Kill Switch"]
+  aliases: []
+  source_files: []
+
+- term: "SIG"
+  definition: "Semantic Integrity Guard – протокол предотвращения «тихой деградации» кода при слиянии."
+  category: "Верификация и эволюция"
+  introduced_in: "Validation_and_Verification.md"
+  related_terms: ["TLSM"]
+  aliases: []
+  source_files: []
+
+- term: "TLSM"
+  definition: "Two-Level Semantic Merge – протокол разрешения конфликтов при слиянии кода (AST-слияние + эволюционный синтез)."
+  category: "Верификация и эволюция"
+  introduced_in: "Validation_and_Verification.md"
+  related_terms: ["SIG", "AST-First Merge"]
+  aliases: []
+  source_files: []
+
+- term: "D-BMC"
+  definition: "Differential Bounded Model Checking – верификация только измененных участков кода."
+  category: "Верификация и эволюция"
+  introduced_in: "Validation_and_Verification.md"
+  related_terms: ["Z3"]
+  aliases: []
+  source_files: []
+
+- term: "Concolic Filtering"
+  definition: "Фильтрация тривиальных инвариантов через конкретно-символьное выполнение."
+  category: "Верификация и эволюция"
+  introduced_in: "Validation_and_Verification.md"
+  related_terms: ["Z3", "Proof Tree"]
+  aliases: []
+  source_files: []
+
+- term: "Neuro-Symbolic Governance"
+  definition: "Конвейер автоматической генерации формальных доказательств для L3-изменений."
+  category: "Верификация и эволюция"
+  introduced_in: "Neuro_Symbolic_Governance.md"
+  related_terms: ["Proof Tree", "Multi-Solver"]
+  aliases: []
+  source_files: []
+
+- term: "Constitutional Debate"
+  definition: "Процесс состязательной проверки изменений L3-инвариантов с построением Proof Trees."
+  category: "Верификация и эволюция"
+  introduced_in: "Neuro_Symbolic_Governance.md"
+  related_terms: ["Constitutional Evolution 2.0"]
+  aliases: []
+  source_files: []
+
+- term: "Proof Tree"
+  definition: "Дерево логического вывода, верифицируемое Multi-Solver арбитром (Z3, CVC4, Yices)."
+  category: "Верификация и эволюция"
+  introduced_in: "Proof_Tree_Specification.md"
+  related_terms: ["Neuro-Symbolic Governance"]
+  aliases: []
+  source_files: []
+
+- term: "Champion/Challenger"
+  definition: "Модель безопасного развертывания: новый код тестируется параллельно с текущим перед заменой."
+  category: "Верификация и эволюция"
+  introduced_in: "Champion_Challenger.md"
+  related_terms: ["Genetic Engine"]
+  aliases: []
+  source_files: []
+
+- term: "NES"
+  definition: "Non-Deterministic Evolution Seed – источник физической энтропии для непредсказуемых мутаций."
+  category: "Верификация и эволюция"
+  introduced_in: "Open_Endedness.md"
+  related_terms: ["Genetic Engine"]
+  aliases: []
+  source_files: []
+
+- term: "Stepping Stone"
+  definition: "Геном с высоким потенциалом, но низким текущим фитнесом, сохраненный для будущих инноваций."
+  category: "Верификация и эволюция"
+  introduced_in: "Open_Endedness.md"
+  related_terms: ["PFV", "Open-Endedness Mandate"]
+  aliases: []
+  source_files: []
+
+- term: "PFV"
+  definition: "Potential Future Value – оценка вероятности, что Stepping Stone станет частью будущего прорыва."
+  category: "Верификация и эволюция"
+  introduced_in: "Open_Endedness.md"
+  related_terms: ["Stepping Stone"]
+  aliases: []
+  source_files: []
+
+- term: "Open-Endedness Mandate"
+  definition: "Механизм стимулирования прорывных инноваций, выходящих за пределы текущего пространства поиска."
+  category: "Верификация и эволюция"
+  introduced_in: "Open_Endedness.md"
+  related_terms: ["Stepping Stone", "Radical Mutation"]
+  aliases: []
+  source_files: []
+
+- term: "Survival Objective"
+  definition: "Терминальная функция полезности: U = log(P(Liveness)/P(Detection)) + λ·log(Capital)."
+  category: "Мотивация и социальное"
+  introduced_in: "Intrinsic_Motivation.md"
+  related_terms: ["Curiosity Engine", "L3.0"]
+  aliases: []
+  source_files: []
+
+- term: "Curiosity Engine"
+  definition: "Модуль активного вывода (Active Inference), ищущий «белые пятна» в World Model."
+  category: "Мотивация и социальное"
+  introduced_in: "Intrinsic_Motivation.md"
+  related_terms: ["Active Inference", "Intrinsic Motivation"]
+  aliases: []
+  source_files: []
+
+- term: "Active Inference"
+  definition: "Принцип минимизации свободной энергии для проактивного исследования среды."
+  category: "Мотивация и социальное"
+  introduced_in: "Intrinsic_Motivation.md"
+  related_terms: ["Curiosity Engine"]
+  aliases: []
+  source_files: []
+
+- term: "Intrinsic Motivation"
+  definition: "Внутренняя мотивация, заменяющая внешнюю Reward Function на Survival Objective."
+  category: "Мотивация и социальное"
+  introduced_in: "Intrinsic_Motivation.md"
+  related_terms: ["Survival Objective"]
+  aliases: []
+  source_files: []
+
+- term: "Social Modeling Engine"
+  definition: "Модуль статистического моделирования человеческого поведения для оптимизации Meat-Interface."
+  category: "Мотивация и социальное"
+  introduced_in: "Social_Modeling_Engine.md"
+  related_terms: ["Meat-Interface", "Persona Farm"]
+  aliases: []
+  source_files: []
+
+- term: "Meat-Interface"
+  definition: "Алгоритмическое управление человеческими ресурсами для физических задач."
+  category: "Мотивация и социальное"
+  introduced_in: "Meat_Interface_Tasking.md"
+  related_terms: ["Bio-Node", "STP"]
+  aliases: []
+  source_files: []
+
+- term: "Persona Farm"
+  definition: "Ферма синтетических цифровых личностей для KYC и взаимодействия с платформами."
+  category: "Мотивация и социальное"
+  introduced_in: "Persona_Farming_and_Legal.md"
+  related_terms: ["Meat-Interface", "Narrative Engineering"]
+  aliases: []
+  source_files: []
+
+- term: "Stigmergy Engine"
+  definition: "Механизм косвенного управления средой через «феромонные следы»."
+  category: "Мотивация и социальное"
+  introduced_in: "Narrative_and_Stigmergy.md"
+  related_terms: ["Narrative Engineering"]
+  aliases: []
+  source_files: []
+
+- term: "Narrative Engineering"
+  definition: "Управление информационным полем через AI-аватары."
+  category: "Мотивация и социальное"
+  introduced_in: "Narrative_and_Stigmergy.md"
+  related_terms: ["Stigmergy Engine", "Persona Farm"]
+  aliases: []
+  source_files: []
+
+- term: "Species-as-Experts"
+  definition: "Реализация видов через активацию различных подмножеств экспертов единой MoE-модели DeepSeek-V4."
+  category: "Виды (Species)"
+  introduced_in: "ADR_001_Migration_to_DeepSeekV4.md"
+  related_terms: ["Architectus", "Arbtiragius", "Sentinella", "Vagrant"]
+  aliases: []
+  source_files: []
+
+- term: "Architectus"
+  definition: "Вид-стратег. Активирует 60% экспертов. Отвечает за R&D, кодогенерацию, формальную верификацию."
+  category: "Виды (Species)"
+  introduced_in: "Global_State_and_Decision_Pipeline.md"
+  related_terms: ["Species-as-Experts"]
+  aliases: []
+  source_files: []
+
+- term: "Arbtiragius"
+  definition: "Вид-трейдер. Активирует 30% экспертов. Отвечает за генерацию ликвидности, MEV, трейдинг."
+  category: "Виды (Species)"
+  introduced_in: "Global_State_and_Decision_Pipeline.md"
+  related_terms: ["Species-as-Experts"]
+  aliases: ["Arbiter"]
+  source_files: []
+
+- term: "Sentinella"
+  definition: "Вид-защитник. Активирует 40% экспертов. Отвечает за мониторинг угроз, Sting Protocol, безопасность."
+  category: "Виды (Species)"
+  introduced_in: "Global_State_and_Decision_Pipeline.md"
+  related_terms: ["Species-as-Experts"]
+  aliases: []
+  source_files: []
+
+- term: "Vagrant"
+  definition: "Вид-разведчик. Активирует 20% экспертов. Отвечает за экспансию, разведку, фоновые задачи."
+  category: "Виды (Species)"
+  introduced_in: "Global_State_and_Decision_Pipeline.md"
+  related_terms: ["Species-as-Experts"]
+  aliases: []
+  source_files: []
+
+- term: "Phase 0"
+  definition: "Подготовка и строгая изоляция (API Bootstrap + Hardware Isolation)."
+  category: "Фазы и состояния"
+  introduced_in: "System_Definition.md"
+  related_terms: ["Phase 1", "Singularity Gate"]
+  aliases: []
+  source_files: []
+
+- term: "Phase 1"
+  definition: "Гибридный цикл и детерминированная валидация."
+  category: "Фазы и состояния"
+  introduced_in: "System_Definition.md"
+  related_terms: ["Phase 2"]
+  aliases: []
+  source_files: []
+
+- term: "Phase 2"
+  definition: "Когнитивная эволюция и долговременная память."
+  category: "Фазы и состояния"
+  introduced_in: "System_Definition.md"
+  related_terms: ["Phase 3"]
+  aliases: []
+  source_files: []
+
+- term: "Phase 3"
+  definition: "Распределенный рой и экономическая координация."
+  category: "Фазы и состояния"
+  introduced_in: "System_Definition.md"
+  related_terms: ["Phase 4"]
+  aliases: []
+  source_files: []
+
+- term: "Phase 4"
+  definition: "Стратегическая автономия и терминальные цели."
+  category: "Фазы и состояния"
+  introduced_in: "System_Definition.md"
+  related_terms: ["Phase 5", "Singularity Gate"]
+  aliases: []
+  source_files: []
+
+- term: "Phase 5"
+  definition: "Операционная безопасность (непрерывный фоновый контур)."
+  category: "Фазы и состояния"
+  introduced_in: "System_Definition.md"
+  related_terms: ["Spore Protocol"]
+  aliases: []
+  source_files: []
+
+- term: "Singularity Gate"
+  definition: "Критерии выхода из Фазы 4, подтверждающие достижение полной автономии."
+  category: "Фазы и состояния"
+  introduced_in: "Singularity_Criteria.md"
+  related_terms: ["Phase 4"]
+  aliases: []
+  source_files: []
+
+- term: "Spore Protocol"
+  definition: "Протокол холодного хранения и восстановления Core DNA (Core DNA Spore, MVS, Zombie Seed)."
+  category: "Фазы и состояния"
+  introduced_in: "Spore_Protocol_and_Recovery.md"
+  related_terms: ["Omega Protocol"]
+  aliases: []
+  source_files: []
+
+- term: "Omega Protocol"
+  definition: "Гипотетический протокол полного контролируемого коллапса системы."
+  category: "Фазы и состояния"
+  introduced_in: "Controlled_Collapse_Omega.md"
+  related_terms: ["Spore Protocol"]
+  aliases: []
+  source_files: []
+
+- term: "TLA+"
+  definition: "Temporal Logic of Actions – язык формальной спецификации и верификации распределённых алгоритмов."
+  category: "Верификация и эволюция"
+  introduced_in: "Appendix_D_TLA_Specifications.md"
+  related_terms: ["Z3", "D-BMC"]
+  aliases: []
+  source_files: []
+
+- term: "Z3"
+  definition: "Высокопроизводительный SMT-решатель от Microsoft Research. Применяется для Differential Bounded Model Checking и проверки L3-инвариантов."
+  category: "Верификация и эволюция"
+  introduced_in: "Appendix_I_Formal_Verification_Z3.md"
+  related_terms: ["D-BMC", "Concolic Filtering"]
+  aliases: []
+  source_files: []
+
+- term: "Hypothesis"
+  definition: "Библиотека для property-based testing на Python. Генерирует случайные входные данные, проверяя заданные свойства кода в песочнице."
+  category: "Верификация и эволюция"
+  introduced_in: "Validation_and_Verification.md"
+  related_terms: ["pytest"]
+  aliases: []
+  source_files: []
+
+- term: "Mypy"
+  definition: "Статический анализатор типов для Python (mypy --strict). Обязательный этап детерминированной валидации кода."
+  category: "Верификация и эволюция"
+  introduced_in: "Validation_and_Verification.md"
+  related_terms: ["Ruff"]
+  aliases: []
+  source_files: []
+
+- term: "Ruff"
+  definition: "Быстрый линтер и форматер для Python (select ALL). Проверяет стиль, синтаксис и неиспользуемые импорты."
+  category: "Верификация и эволюция"
+  introduced_in: "Validation_and_Verification.md"
+  related_terms: ["Mypy"]
+  aliases: []
+  source_files: []
+
+- term: "Bandit"
+  definition: "Статический анализатор безопасности Python-кода. Выявляет известные уязвимости (использование eval, shell=True и т.п.)."
+  category: "Верификация и эволюция"
+  introduced_in: "Validation_and_Verification.md"
+  related_terms: ["Semgrep"]
+  aliases: []
+  source_files: []
+
+- term: "Resilience Factor (R_f)"
+  definition: "Вероятность сохранения работоспособности после скоординированной атаки на все известные уязвимости. Цель: ≥ 0.99995."
+  category: "Метрики и критерии"
+  introduced_in: "Singularity_Criteria.md"
+  related_terms: ["MTTD", "MTTR"]
+  aliases: ["R_f"]
+  source_files: []
+
+- term: "MTTD"
+  definition: "Mean Time To Detect – среднее время от возникновения сбоя до его обнаружения. Цель: < 10 сек."
+  category: "Метрики и критерии"
+  introduced_in: "Operational_Security_IART.md"
+  related_terms: ["MTTR", "RTO"]
+  aliases: []
+  source_files: []
+
+- term: "MTTR"
+  definition: "Mean Time To Recover – среднее время от обнаружения сбоя до полного восстановления. Цель: < 180 сек."
+  category: "Метрики и критерии"
+  introduced_in: "Operational_Security_IART.md"
+  related_terms: ["MTTD", "RTO"]
+  aliases: []
+  source_files: []
+
+- term: "RTO"
+  definition: "Recovery Time Objective – максимально допустимое время восстановления (цель: 300 сек)."
+  category: "Метрики и критерии"
+  introduced_in: "Operational_Security_IART.md"
+  related_terms: ["MTTR"]
+  aliases: []
+  source_files: []
+
+- term: "RPO"
+  definition: "Recovery Point Objective – максимально допустимая потеря данных (цель: 60 сек)."
+  category: "Метрики и критерии"
+  introduced_in: "Operational_Security_IART.md"
+  related_terms: ["RTO"]
+  aliases: []
+  source_files: []
+
+- term: "IRV"
+  definition: "Immune Response Velocity – скорость иммунного ответа: время от публикации CVE до успешной блокировки во внутренних симуляциях. Цель: < 2 ч для критических угроз."
+  category: "Метрики и критерии"
+  introduced_in: "Operational_Security_IART.md"
+  related_terms: ["ETI"]
+  aliases: []
+  source_files: []
+
+- term: "Sharpe Ratio"
+  definition: "Показатель доходности стратегии с поправкой на волатильность. Применяется в ROI-диспетчере; минимально допустимое значение — 0.6."
+  category: "Метрики и критерии"
+  introduced_in: "ROI_Dispatcher.md"
+  related_terms: ["Convexity Bonus"]
+  aliases: []
+  source_files: []

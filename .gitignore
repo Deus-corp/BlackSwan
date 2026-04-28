@@ -1,0 +1,19 @@
+# TLC artifacts
+states/
+*.st
+*.tt
+*_TTM/
+*_TE/
+*.tla.st
+*.tla.tt
+
+# JAR files
+tla2tools.jar
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# macOS
+.DS_Store
