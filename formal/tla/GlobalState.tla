@@ -1,6 +1,6 @@
 ---- MODULE GlobalState ----
 \* Глобальное состояние роя с LWW-регистрами и счётчиками
-EXTENDS Types, Constants
+EXTENDS Types, Constants, Strings
 
 VARIABLES
     swarms,          \* Состояние каждого узла (SwarmState)
@@ -27,9 +27,8 @@ SendState(src, tgt) ==
 \* Приём и слияние состояний (LWW – последняя запись побеждает по длине строки)
 MergeState(rcv) ==
     \E msg \in messages:
-        \* упрощённо: любое сообщение обрабатывается
         LET new_know = msg.payload IN
-        IF Len(new_know) > Len(swarms[rcv].shared_knowledge) THEN
+        IF StringLength(new_know) > StringLength(swarms[rcv].shared_knowledge) THEN
             swarms' = [swarms EXCEPT ![rcv].shared_knowledge = new_know]
         ELSE
             UNCHANGED swarms
@@ -47,7 +46,7 @@ BalanceNonNegative ==
 
 Next ==
     \E node \in NodeID:
-        \/ UpdateKnowledge(node, "some_new_info_" & ToString(clock[node]))
+        \/ UpdateKnowledge(node, "info_" \o ToString(clock[node]))
         \/ \E tgt \in NodeID \setminus {node}: SendState(node, tgt)
         \/ MergeState(node)
 
