@@ -1,67 +1,55 @@
-# Black Swan
+# BlackSwan 🦢
 
-**Автономная, самоулучшающаяся ИИ-система с многоуровневой изоляцией, распределённым роем, экономической суверенностью и непрерывным контуром операционной безопасности.**
+**Автономный, самовосстанавливающийся ИИ-рой с многоуровневой защитой и экономическим суверенитетом.**
 
-[![Status](https://img.shields.io/badge/status-prototype%20(TRL--3)-yellow)](#)
-[![Version](https://img.shields.io/badge/version-2.3%20DarkSwan-darkgreen)](#)
-[![License](https://img.shields.io/badge/license-MIT%2FApache%202.0-yellow)](#)
-[![CI](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](#)
-[![TLA+](https://github.com/Deus-corp/BlackSwan/actions/workflows/formal-verification.yml/badge.svg)](#)
-
-> [!CAUTION]
-> Проект содержит гипотетические протоколы (Omega, Last Breath, Sting). Их физическая реализация незаконна и не рекомендуется.
+[![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#лицензия)
 
 ---
 
-## Статус проекта
+## 📌 Статус проекта: **TRL-4** (лабораторная валидация компонентов)
 
-| Уровень | Определение | Статус |
-| :--- | :--- | :--- |
-| **TRL-3** | Экспериментальная демонстрация ключевых функций | ✅ Текущий статус |
-
-**Что уже работает:**
-
--   **Замкнутый экономический цикл MVP** (`mvp/cycle_demo.py`) с изолированной песочницей (Docker).
--   **Байесовский `ROIDispatcher`** (критерий Келли) показал Sharpe > 0 и меньшую просадку, чем случайный агент.
--   **Формальная верификация:** модели жизненного цикла узла (`NodeLifecycle.tla`) и **консенсуса D2BFT** (`D2BFT.tla`) с автоматической проверкой через TLC в CI/CD.
--   **Юнит-тесты** для ядра (`GlobalState`, `EventBus`, `ROIDispatcher`, `IPFSClient`) и CI/CD (pytest в GitHub Actions).
--   **Симулятор экономики роя** (`sim/`) с конфигурируемыми сценариями.
+- ✅ Формальные спецификации на TLA+ (`NodeLifecycle`, `D2BFT`, `GlobalState`, `SporeProtocol`)
+- ✅ Экономический симулятор с многоагентным параметрическим свипом
+- ✅ Лабораторный Docker-рой (8 узлов, Redis pub/sub, авто-восстановление)
+- ✅ CI/CD: юнит-тесты, ночные прогоны симулятора
+- 📖 [Полный отчёт TRL-4](docs/TRL4_VALIDATION_REPORT.md)
+- 🗺 [Roadmap](ROADMAP.md)
 
 ---
 
-## Структура репозитория
+## 🧬 Ключевые особенности
 
-BlackSwan/
--   .github/workflows/ – CI/CD
--   docs/
-    -   architecture/ – ядро системы
-    -   deployment/ – запуск
-    -   domains/ – доменные модули
-    -   singularity/ – финальные протоколы
-    -   appendices/ – технические приложения
-    -   adr/ – архитектурные решения
-    -   development/ – инструкции для разработчиков
--   formal/ – формальные спецификации (TLA+)
--   sim/ – симулятор экономики роя
--   mvp/ – минимально жизнеспособный прототип (TRL-3)
--   src/ – исходный код (ядро)
--   tests/ – юнит-тесты
--   config/ – эталонные конфигурационные файлы
+- **Self‑Sovereign Economy** – встроенный рынок и диспетчер капитала на основе критерия Келли.
+- **Defense in Depth** – многоуровневая изоляция, обфускация трафика, формально верифицированные протоколы выживания.
+- **Swarm Resilience** – автоматическое обнаружение отказов и Spore Protocol (перерождение узлов).
+- **Formally Verified Core** – критические свойства доказаны в TLA+.
 
 ---
 
-## Быстрый старт
+## 🚀 Быстрый старт (локальное демо)
 
 ```bash
-# Установите зависимости
-pip install numpy requests
+git clone https://github.com/Deus-corp/BlackSwan.git
+cd BlackSwan
+pip install -r requirements.txt
+python mvp/cycle_demo.py          # один агент
+python sim/multi_agent_sim.py     # многоагентный прогон
+python sim/sweep.py               # поиск зон стабильности
+🐳 Docker-рой (TRL-4)
+bash
+docker compose -f mvp/lab_swarm_demo/docker-compose.yml up --build -d
+# Логи узлов
+docker compose -f mvp/lab_swarm_demo/docker-compose.yml logs -f node
+📚 Документация
+Архитектурные решения
 
-# Запустите демо-цикл
-python mvp/cycle_demo.py
+Формальная верификация
 
-# Запустите тесты
-PYTHONPATH=. pytest tests/ -v
-Документация: начните с docs/README.md.
+Отчёт о симуляции
 
-Лицензия
-MIT / Apache 2.0.
+Валидация TRL-4
+
+📄 Лицензия
+Двойное лицензирование: MIT или Apache-2.0, на ваш выбор.
+См. LICENSE-MIT и LICENSE-APACHE.

@@ -1,67 +1,55 @@
-# Black Swan
+# BlackSwan 🦢
 
-**Autonomous, self-improving AI system with defense in depth, a distributed swarm, economic sovereignty, and a continuous operational security loop.**
+**Autonomous, self‑healing AI swarm with defense‑in‑depth and economic sovereignty.**
 
-[![Status](https://img.shields.io/badge/status-prototype%20(TRL--3)-yellow)](#)
-[![Version](https://img.shields.io/badge/version-2.3%20DarkSwan-darkgreen)](#)
-[![License](https://img.shields.io/badge/license-MIT%2FApache%202.0-yellow)](#)
-[![CI](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](#)
-[![TLA+](https://github.com/Deus-corp/BlackSwan/actions/workflows/formal-verification.yml/badge.svg)](#)
-
-> [!CAUTION]
-> This project describes hypothetical protocols (Omega, Last Breath, Sting). Their physical implementation is illegal and strongly discouraged.
+[![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
 
 ---
 
-## Project Status
+## 📌 Project Status: **TRL-4** (laboratory‑validated components)
 
-| Level | Definition | Status |
-| :--- | :--- | :--- |
-| **TRL-3** | Experimental demonstration of key functions | ✅ Current status |
-
-**What already works:**
-
--   **Closed economic cycle MVP** (`mvp/cycle_demo.py`) with isolated sandbox (Docker).
--   **Bayesian `ROIDispatcher`** (Kelly criterion) demonstrated Sharpe > 0 and lower drawdown than a random agent.
--   **Formal verification:** models of node lifecycle (`NodeLifecycle.tla`) and **D2BFT consensus** (`D2BFT.tla`) with automatic TLC checks in CI/CD.
--   **Unit tests** for the core (`GlobalState`, `EventBus`, `ROIDispatcher`, `IPFSClient`) and CI/CD (pytest in GitHub Actions).
--   **Economic swarm simulator** (`sim/`) with configurable scenarios.
+- ✅ Formal TLA+ specs (`NodeLifecycle`, `D2BFT`, `GlobalState`, `SporeProtocol`)
+- ✅ Economic simulator with multi‑agent parameter sweep
+- ✅ Docker swarm lab demo (8 nodes, Redis pub/sub, auto‑recovery)
+- ✅ CI/CD: unit tests, nightly simulation runs
+- 📖 [Full TRL-4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
+- 🗺 [Roadmap](ROADMAP.md)
 
 ---
 
-## Repository Structure
+## 🧬 Key Features
 
-BlackSwan/
--   .github/workflows/ – CI/CD
--   docs/
-    -   architecture/ – core system
-    -   deployment/ – launch
-    -   domains/ – domain modules
-    -   singularity/ – final protocols
-    -   appendices/ – technical appendices
-    -   adr/ – architecture decision records
-    -   development/ – developer guides
--   formal/ – formal specifications (TLA+)
--   sim/ – economic swarm simulator
--   mvp/ – minimum viable prototype (TRL-3)
--   src/ – source code (core)
--   tests/ – unit tests
--   config/ – reference configuration files
+- **Self‑Sovereign Economy** – built‑in market and Kelly‑criterion capital dispatcher.
+- **Defense in Depth** – multi‑layer isolation, traffic obfuscation, formally verified survival protocols.
+- **Swarm Resilience** – automatic failure detection and Spore Protocol (node rebirth).
+- **Formally Verified Core** – critical properties proven in TLA+.
 
 ---
 
-## Quick Start
+## 🚀 Quick Start (local demo)
 
 ```bash
-# Install dependencies
-pip install numpy requests
+git clone https://github.com/Deus-corp/BlackSwan.git
+cd BlackSwan
+pip install -r requirements.txt
+python mvp/cycle_demo.py          # single agent
+python sim/multi_agent_sim.py     # multi‑agent run
+python sim/sweep.py               # stability zone search
+🐳 Docker Swarm (TRL-4)
+bash
+docker compose -f mvp/lab_swarm_demo/docker-compose.yml up --build -d
+# Node logs
+docker compose -f mvp/lab_swarm_demo/docker-compose.yml logs -f node
+📚 Documentation
+Architecture decisions
 
-# Run the demo cycle
-python mvp/cycle_demo.py
+Formal verification
 
-# Run tests
-PYTHONPATH=. pytest tests/ -v
-Documentation: start with docs/README.md.
+Simulation report
 
-License
-MIT / Apache 2.0.
+TRL-4 Validation
+
+📄 License
+Dual‑licensed under MIT or Apache‑2.0, at your option.
+See LICENSE-MIT and LICENSE-APACHE.
