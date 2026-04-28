@@ -1,19 +1,56 @@
-# TLC artifacts
-states/
-*.st
-*.tt
-*_TTM/
-*_TE/
-*.tla.st
-*.tla.tt
-
-# JAR files
-tla2tools.jar
-
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.manifest
+*.spec
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# macOS
+# Virtual environments
+venv/
+.env
+.venv
+env/
+ENV/
+env.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Docker
+docker-compose.override.yml
+
+# IPFS local cache (created by mvp/cycle_demo.py)
+.ipfs_fallback/
+
+# Simulation outputs (временные логи, CSV)
+sim_output/
+*.log
+*.csv
+!docs/baseline_TRL3.csv   # разрешить эталонный baseline, если понадобится
+
+# TLA+ build artifacts (если генерируются модели в TeX или ещё что)
+formal/tla/*.pdf
+formal/tla/*.out
+
+# Secrets / keys (на будущее)
+*.pem
+*.key
+secrets/
