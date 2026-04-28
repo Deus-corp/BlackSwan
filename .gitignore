@@ -53,4 +53,4 @@ formal/tla/*.out
 # Secrets / keys (на будущее)
 *.pem
 *.key
-secrets/
+secrets/states/
