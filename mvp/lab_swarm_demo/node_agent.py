@@ -49,6 +49,6 @@ for msg in pubsub.listen():
         capital *= (1 + ret)
         capital -= 1.0
         state.update("economic_state", {"node_id": NODE_ID, "capital": capital})
-        event_bus.publish("trades", {"node": NODE_ID, "fraction": fraction, "return": ret})
+      # event_bus.publish("trades", {"node": NODE_ID, "fraction": fraction, "return": ret})
 
     time.sleep(0.5)
