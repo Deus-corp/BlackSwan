@@ -14,6 +14,16 @@ market = MarketEnvironment(volatility=VOLATILITY, drift=DRIFT)
 
 print(f"Market service started, publishing every {INTERVAL}s")
 while True:
-    market_state = market.step()
+    raw_state = market.step()
+    # Убеждаемся, что market_state — словарь (ожидается roi_dispatcher)
+    if isinstance(raw_state, dict):
+        market_state = raw_state
+    else:
+        # Если step вернул просто цену, создаём ожидаемый словарь
+        market_state = {
+            "price": raw_state,
+            "volatility_estimate": VOLATILITY,
+            "drift": DRIFT
+        }
     r.publish("market_ticks", json.dumps(market_state))
     time.sleep(INTERVAL)

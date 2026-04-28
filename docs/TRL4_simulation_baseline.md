@@ -27,3 +27,13 @@ Agents: 6 (3 Kelly, 3 Random), 200 steps.
   * Kelly advantage: ~1400–1565
 
 Selected for TRL-4 Docker demo: **burn_rate=0.1, failure_prob=0.0**.
+
+## Docker Swarm Demo (Iteration 3)
+
+Date: 2026-04-28
+Configuration: 8 nodes, burn_rate=0.1, failure_prob=0.0, market drift=0.002, volatility=0.01
+Infrastructure: Docker Compose, Redis pub/sub, Python 3.11-slim
+
+- All 8 nodes started successfully and maintained capital above initial value.
+- Node failure recovery works: after manually stopping a node, it automatically restarted within 5 seconds (restart_policy: on-failure).
+- Communication via Redis EventBus confirmed.
