@@ -9,6 +9,9 @@ ResourceID == 1..MaxResources
 \* Типы состояния узла (из NodeLifecycle)
 NodeState == { "booting", "active", "suspected", "dead", "spawning" }
 
+\* Минимальный идентификатор узла (для инициализации спор)
+MinNode == 1
+
 \* Тип записи в GlobalState: CRDT-подобные регистры
 RecordType == { "lww", "counter", "map" }
 
