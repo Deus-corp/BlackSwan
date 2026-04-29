@@ -41,7 +41,7 @@
 | **Экономический контур** | ✅ Лабораторный рой | 4 | `sim/multi_agent_sim.py`, `mvp/lab_swarm_demo/` |
 | **Ouroboros (самоулучшение)** | ✅ Распределённый прототип | 4 | `sim/evolve_kelly.py`, `formal/tla/Ouroboros.tla`, `mvp/lab_swarm_demo/` |
 | **Survival Objective** | ✅ Встроен в рой | 4 | `sim/survival_evaluator.py`, `formal/tla/SurvivalObjective.tla` |
-| **Genetic Engine** | 🧪 Прототип | 3 | `sim/genetic_engine.py`, `formal/tla/GeneticEngine.tla` |
+| **Genetic Engine** | ✅ TRL-4 | 4 | `sim/genetic_engine.py`, `formal/tla/GeneticEngine.tla` |
 | **Curiosity Engine** | 🧪 Формальная модель | 3 | `formal/tla/CuriosityEngine.tla` |
 | **CRDT‑состояние** | 🧪 Прототип | 3 | `src/core/crdt_state.py` |
 | **D2BFT консенсус** | 🧪 Прототип | 3 | `src/core/d2bft.py`, `formal/tla/D2BFT.tla` |

@@ -4,18 +4,22 @@
 
 [![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen)](https://deus-corp.github.io/BlackSwan/)
 
 ---
 
-## 📌 Project Status: **TRL-4** (laboratory‑validated components)
+## 📌 Project Status: **TRL‑4** (laboratory‑validated components)
 
-- ✅ Formal TLA+ specs (`NodeLifecycle`, `D2BFT`, `GlobalState`, `SporeProtocol`, `Ouroboros`)
+- ✅ Formal TLA+ specifications for 8 protocols (including Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine)
 - ✅ Economic simulator with multi‑agent sweep and stability zone discovery
 - ✅ Docker lab swarm (8 nodes, Redis pub/sub, auto‑recovery)
-- ✅ **Ouroboros v0.2** — distributed strategy evolution, genome exchange between nodes
+- ✅ **Ouroboros v0.3** — distributed strategy evolution with Champion/Challenger and L2 memory
+- ✅ **SurvivalObjective** — intelligent rejection of dangerous trades
+- ✅ **GeneticEngine** — full population‑based evolution with formal verification
+- ✅ Prototypes of **CRDT state** and **D2BFT consensus**
 - ✅ CI/CD: unit tests, formal verification (local + GitHub Actions)
-- 📖 [Full TRL-4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
-- 📖 [Ouroboros TRL-4 Report](docs/TRL4_OUROBOROS_REPORT.md)
+- 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
+- 📖 [Full TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
 - 🗺 [Roadmap](ROADMAP.md)
 
 ---
@@ -23,10 +27,11 @@
 ## 🧬 Key Features
 
 - **Self‑Sovereign Economy** – built‑in market and Kelly‑criterion capital dispatcher.
-- **Defense in Depth** – multi‑layer isolation, traffic obfuscation, formally verified survival protocols.
+- **Ouroboros Self‑Improvement** – genetic search for optimal strategies, genome exchange in the swarm, Champion/Challenger.
+- **Survival Objective** – each node evaluates detection risk and refuses dangerous actions.
 - **Swarm Resilience** – automatic failure detection and Spore Protocol (node rebirth).
-- **Ouroboros Self‑Improvement** – genetic search for optimal strategies, genome exchange in the swarm.
 - **Formally Verified Core** – critical invariants proven in TLA+.
+- **Defense in Depth** – multi‑layer isolation, traffic obfuscation.
 
 ---
 
@@ -38,10 +43,11 @@ cd BlackSwan
 pip install -r requirements.txt
 python mvp/cycle_demo.py          # single agent
 python sim/multi_agent_sim.py     # multi‑agent run
-python sim/evolve_kelly.py        # evolve Kelly params (Ouroboros)
+python sim/evolve_kelly.py        # evolve Kelly params
+python sim/genetic_engine.py      # full Genetic Engine
 ```
 
-## 🐳 Docker Swarm (TRL-4)
+## 🐳 Docker Swarm (TRL‑4)
 ```bash
 docker compose -f mvp/lab_swarm_demo/docker-compose.yml up --build -d
 # Node logs
@@ -49,8 +55,7 @@ docker compose -f mvp/lab_swarm_demo/docker-compose.yml logs -f node
 ```
 ## 📚 Documentation
 
-📖 [Full documentation site](https://deus-corp.github.io/BlackSwan/)
-
+- [Documentation site](https://deus-corp.github.io/BlackSwan/)
 - [Architecture decisions](docs/architecture/)
 - [Formal verification](formal/tla/)
 - [Simulation report](docs/TRL4_simulation_baseline.md)
