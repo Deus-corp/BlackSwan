@@ -44,6 +44,10 @@ pubsub = r.pubsub()
 pubsub.subscribe("market_ticks", "genome_updates")
 
 step_count = 0
+last_champion_fitness = 0.0
+# Метрики Ouroboros
+v_s = 0   # скорость улучшения (количество успешных мутаций)
+v_h = 0   # скорость деградации (количество ухудшений или откатов)
 print(f"Node {NODE_ID} started, capital={capital}, strategy={current_params}, dq={survival.dq:.3f}, liveness={survival.liveness:.3f}")
 
 for msg in pubsub.listen():
@@ -109,8 +113,14 @@ for msg in pubsub.listen():
 
     # --- Эволюция каждые 50 шагов ---
     if step_count % 50 == 0:
-        print(f"Node {NODE_ID} evolving generation (step {step_count})...")
+        print(f"Node {NODE_ID} evolving generation (step {step_count}), V_s={v_s}, V_h={v_h}, ratio={v_s/(v_h+1):.2f}")
         engine.evolve_generation()
+        # Обновляем метрики V_s и V_h
+        if engine.champion[1] > last_champion_fitness:
+            v_s += 1
+        elif engine.champion[1] < last_champion_fitness:
+            v_h += 1
+        last_champion_fitness = engine.champion[1]
 
         # Публикуем текущего чемпиона, если он улучшился
         if engine.champion[1] > 0:
