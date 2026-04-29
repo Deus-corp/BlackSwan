@@ -21,10 +21,12 @@
 **Общий уровень готовности: TRL‑4**
 *Компоненты и подсистемы проверены в лабораторной среде.*
 
-✅ Формальная верификация (TLA+): NodeLifecycle, D2BFT, GlobalState, SporeProtocol, Ouroboros (начальная модель).  
+✅ Формальная верификация (TLA+): NodeLifecycle, D2BFT, GlobalState, SporeProtocol, Ouroboros, CuriosityEngine, SurvivalObjective, GeneticEngine.  
 ✅ Экономический симулятор: многоагентный sweep, найдена зона стабильности.  
 ✅ Лабораторный рой: Docker Compose на 8 узлов, Redis pub/sub, авто‑восстановление при отказе.  
 ✅ Генетический прототип Ouroboros: эволюция параметров Kelly‑диспетчера.  
+✅ Survival Objective встроен в узлы роя (осознанное избегание риска).  
+🧪 Прототипы CRDT‑состояния и D2BFT‑консенсуса (готовы к интеграции).  
 ✅ CI/CD: юнит‑тесты, формальная верификация (локально + GitHub Actions).  
 
 📖 Подробный отчёт: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
@@ -37,9 +39,13 @@
 | :--- | :--- | :--- | :--- |
 | **Формальные модели** | ✅ Ядро верифицировано | 4 | `formal/tla/*.tla` |
 | **Экономический контур** | ✅ Лабораторный рой | 4 | `sim/multi_agent_sim.py`, `mvp/lab_swarm_demo/` |
-| **Ouroboros (самоулучшение)** | 🧪 Начальный прототип | 3 | `sim/evolve_kelly.py`, `formal/tla/Ouroboros.tla` |
+| **Ouroboros (самоулучшение)** | ✅ Распределённый прототип | 4 | `sim/evolve_kelly.py`, `formal/tla/Ouroboros.tla`, `mvp/lab_swarm_demo/` |
+| **Survival Objective** | ✅ Встроен в рой | 4 | `sim/survival_evaluator.py`, `formal/tla/SurvivalObjective.tla` |
+| **Genetic Engine** | 🧪 Прототип | 3 | `sim/genetic_engine.py`, `formal/tla/GeneticEngine.tla` |
+| **Curiosity Engine** | 🧪 Формальная модель | 3 | `formal/tla/CuriosityEngine.tla` |
+| **CRDT‑состояние** | 🧪 Прототип | 3 | `src/core/crdt_state.py` |
+| **D2BFT консенсус** | 🧪 Прототип | 3 | `src/core/d2bft.py`, `formal/tla/D2BFT.tla` |
 | **Память (Mem0g)** | 📐 Спроектирована | 2 | `docs/architecture/memory_hierarchy_mem0g.md` |
-| **Сеть / CRDT / D2BFT** | 📐 Специфицированы | 2–3 | `docs/architecture/`, `formal/tla/D2BFT.tla` |
 | **Безопасность и стелс** | 📐 Спроектированы | 2 | `docs/domains/cybersecurity_stealth/` |
 | **Meat‑Interface (люди)** | 📐 Концепция | 2 | `docs/domains/physical_human_interface/` |
 | **Сингулярность / Spore / Omega** | 📐 Гипотетические модели | 2 | `docs/singularity/` |
@@ -66,14 +72,17 @@
 - [ ] Полноценный Ouroboros (Genetic Engine + Champion/Challenger)
 
 ### Фаза 3 — Распределённый рой и экономическая координация
-- [ ] Реальный D2BFT‑консенсус
+- [x] Прототип CRDT‑состояния и D2BFT‑консенсуса
+- [ ] Интеграция CRDT в рой (замена Redis на собственную синхронизацию)
+- [ ] Реальный D2BFT‑консенсус в рое
 - [ ] Predictive Consistency Router (PCR)
 - [ ] Dynamic Model Routing 2.0
 - [ ] Экономическая самодостаточность (net profit ≥ 14 дней)
 
 ### Фаза 4 — Стратегическая автономия
-- [ ] Intrinsic Motivation (Survival Objective)
+- [x] Survival Objective (встроен в рой)
 - [ ] Curiosity Engine + Reality Anchor
+- [ ] Intrinsic Motivation (полная версия с Meta‑POMDP)
 - [ ] Constitutional Evolution 2.0 (NSGA‑II)
 - [ ] Social Modeling Engine
 
@@ -96,16 +105,15 @@
 | **MTTR** | < 180 сек | Фаза 5 |
 | **Trust Gradient** | > 0.05 (долгосрочный тренд) | Фаза 2+ |
 | **Ouroboros Invariant (V_s > V_h)** | Выполняется непрерывно | Фаза 2+ |
-| **Ouroboros (самоулучшение)** | ✅ Распределённый прототип | 4 | `sim/evolve_kelly.py`, `formal/tla/Ouroboros.tla`, `mvp/lab_swarm_demo/` |
 
 ---
 
-## 🚀 Ближайшие шаги (до TRL‑5 в области Ouroboros)
+## 🚀 Ближайшие шаги (до TRL‑5 в области сети и эволюции)
 
-1. **Расширить формальную модель Ouroboros** (несколько стратегий, ротация, Trust Gradient).
-2. **Реализовать Genetic Engine** с сохранением лучших геномов в памяти (L2).
-3. **Интегрировать эволюцию в Docker‑рой** — узлы обмениваются стратегиями через Redis.
-4. **Провести 72‑часовой эксперимент** с измерением V_s / V_h и отчётом.
+1. **Интегрировать CRDT‑состояние в рой** — узлы синхронизируют GlobalState через gossip‑протокол без Redis.
+2. **Заменить микро‑эволюцию в node_agent.py на GeneticEngine** — добавить Champion/Challenger и сохранение геномов в L2.
+3. **Протестировать D2BFT на 3+ узлах** — достижение консенсуса для критических решений (без единой точки отказа).
+4. **Провести 72‑часовой эксперимент** с измерением V_s / V_h и метрик выживаемости.
 
 ---
 
