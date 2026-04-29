@@ -86,8 +86,8 @@ class SurvivalEvaluator:
         return self.dq > self.config["max_dq"] * 0.7
 
     def should_expand(self) -> bool:
-        """Рекомендация: стоит ли расширяться (если liveness низок)."""
-        return self.liveness < self.config["min_p_liveness"] * 1.01
+        """Рекомендация: стоит ли расширяться (если liveness ниже 0.9)."""
+        return self.liveness < 0.9
 
 # Пример использования
 if __name__ == "__main__":
