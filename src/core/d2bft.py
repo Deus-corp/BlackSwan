@@ -20,19 +20,14 @@ class D2BFTNode:
         return value
 
     def receive_vote(self, from_node: str, value: Any) -> bool:
-        """
-        Принять голос от другого узла.
-        Возвращает True, если достигнут консенсус.
-        """
         if from_node not in self.votes:
             self.votes[from_node] = value
-        # Считаем голоса
         count = {}
         for v in self.votes.values():
             count[v] = count.get(v, 0) + 1
-        # Проверяем большинство (2/3)
+        # Для 3 узлов достаточно 2 одинаковых голосов (большинство)
         for v, cnt in count.items():
-            if cnt >= (2 * self.total_nodes // 3) + 1:
+            if cnt > self.total_nodes // 2:          # большинство
                 self.decision = v
                 return True
         return False
