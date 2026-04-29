@@ -1,4 +1,12 @@
 [book]
 title = "BlackSwan Documentation"
-authors = ["Deus-corp"]
+authors = ["BlackSwan Core Team"]
 language = "en"
+
+[output.html]
+default-theme = "ayu"
+preferred-dark-theme = "ayu"
+additional-css = ["theme/css/custom.css"]
+default-editor = true
+search = true
+git-repository-url = "https://github.com/Deus-corp/BlackSwan"

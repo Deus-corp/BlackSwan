@@ -1,0 +1,82 @@
+/* Тёмная тема как база */
+:root {
+    --bg: #0d1117;
+    --fg: #c9d1d9;
+    --link: #58a6ff;
+    --link-visited: #bc8cff;
+    --border: #30363d;
+    --code-bg: #161b22;
+    --accent: #f0c000; /* золотой */
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+a {
+    color: var(--link);
+}
+
+a:visited {
+    color: var(--link-visited);
+}
+
+/* Заголовки */
+h1, h2, h3, h4 {
+    color: var(--fg);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.3em;
+}
+
+/* Код */
+code {
+    background-color: var(--code-bg);
+    color: #f0c000;
+}
+
+pre {
+    background-color: var(--code-bg);
+    border: 1px solid var(--border);
+}
+
+/* Левая панель */
+.sidebar {
+    background-color: #0d1117;
+    border-right: 1px solid var(--border);
+}
+
+.sidebar a {
+    color: var(--fg);
+}
+
+.sidebar a:hover {
+    color: var(--accent);
+}
+
+/* Поиск */
+.searchbar input {
+    background-color: var(--code-bg);
+    border: 1px solid var(--border);
+    color: var(--fg);
+}
+
+/* Кнопки */
+button {
+    background-color: var(--code-bg);
+    border: 1px solid var(--border);
+    color: var(--fg);
+}
+
+/* Scrollbar minimal */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
