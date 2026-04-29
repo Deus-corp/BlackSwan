@@ -13,7 +13,7 @@ class SurvivalEvaluator:
         # Параметры по умолчанию
         self.config = {
             "lambda": 0.15,                # вес капитала в полезности
-            "min_p_liveness": 0.999,      # минимально допустимая P(Liveness)
+            "min_p_liveness": 0.9,      # минимально допустимая P(Liveness)
             "max_dq": 0.05,               # максимальный Detection Quotient
             "trade_risk_increase": 0.002, # на сколько каждая сделка повышает DQ
             "hide_cost_factor": 0.1,      # доля капитала, тратящаяся на снижение DQ

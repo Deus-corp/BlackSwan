@@ -35,7 +35,7 @@ else:
 dispatcher = ROIDispatcher(config=current_params)
 survival = SurvivalEvaluator()
 survival.dq = 0.02
-survival.liveness = 0.95
+survival.liveness = 1.0
 
 capital = 1000.0
 state.update("economic_state", {"node_id": NODE_ID, "capital": capital})
