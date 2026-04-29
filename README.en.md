@@ -49,6 +49,8 @@ docker compose -f mvp/lab_swarm_demo/docker-compose.yml logs -f node
 ```
 ## 📚 Documentation
 
+📖 [Full documentation site](https://deus-corp.github.io/BlackSwan/)
+
 - [Architecture decisions](docs/architecture/)
 - [Formal verification](formal/tla/)
 - [Simulation report](docs/TRL4_simulation_baseline.md)
