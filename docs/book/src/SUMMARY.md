@@ -58,4 +58,7 @@
 
 - [Implemented Protocols](implemented/README.md)
   - [Ouroboros (Self-Improvement)](implemented/ouroboros.md)
-  - [Curiosity Engine (Formal Model)](implemented/curiosity_engine.md)
+  - [Survival Objective](implemented/survival_objective.md)
+  - [Genetic Engine](implemented/genetic_engine.md)
+  - [CRDT State](implemented/crdt_state.md)
+  - [D2BFT Consensus](implemented/d2bft.md)
