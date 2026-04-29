@@ -9,13 +9,14 @@ services:
 
   market:
     build:
-      context: ../..            # корень проекта
+      context: ../..
     image: blackswan-market:latest
     entrypoint: ["python", "-m", "mvp.lab_swarm_demo.market_service"]
     environment:
       - REDIS_URL=redis://redis:6379
       - DRIFT=0.002
       - VOLATILITY=0.01
+      - PYTHONUNBUFFERED=1          # <-- добавьте эту строку
     depends_on:
       redis:
         condition: service_healthy

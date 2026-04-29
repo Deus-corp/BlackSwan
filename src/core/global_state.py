@@ -18,7 +18,8 @@ class GlobalState:
                 "economic_state": {
                     "treasury_balance": {"USDC": 0.0, "ETH": 0.0},
                     "active_positions": [],
-                    "capital_allocation": {"operational": 0.4, "reserve": 0.3, "active_growth": 0.3}
+                    "capital_allocation": {"operational": 0.4, "reserve": 0.3, "active_growth": 0.3},
+                    "genomes": {}           # 🆕 хранилище стратегий
                 },
                 "infrastructure_state": {
                     "core_nodes": [],
@@ -75,12 +76,10 @@ class GlobalState:
     def verify_invariants(self) -> List[str]:
         """Проверяет глобальные инварианты (когерентность, экономическая безопасность)."""
         violations = []
-        # Проверка наличия обязательных полей
         required_sections = ["knowledge_graph", "economic_state", "infrastructure_state", "security_state"]
         for section in required_sections:
             if section not in self.state:
                 violations.append(f"Missing section: {section}")
-        # Проверка экономической безопасности: резервный фонд не должен быть пустым
         reserve = self.state.get("economic_state", {}).get("capital_allocation", {}).get("reserve", 0)
         if reserve < 0:
             violations.append("Negative reserve allocation")
@@ -93,6 +92,20 @@ class GlobalState:
     def from_json(cls, json_str: str) -> "GlobalState":
         state = json.loads(json_str)
         return cls(initial_state=state)
+
+    # ========== 🧬 Методы для Ouroboros ==========
+
+    def save_genome(self, strategy_id: str, params: Dict):
+        """Сохранить геном в economic_state.genomes."""
+        genomes = self.state.setdefault("economic_state", {}).setdefault("genomes", {})
+        genomes[strategy_id] = params
+        self.state["economic_state"]["genomes"] = genomes
+
+    def get_best_genomes(self, top_n: int = 3) -> Dict[str, Dict]:
+        """Возвращает последние top_n геномов (MVP: просто последние добавленные)."""
+        genomes = self.state.get("economic_state", {}).get("genomes", {})
+        items = list(genomes.items())[-top_n:]
+        return {k: v for k, v in items}
 
     def __repr__(self):
         return f"GlobalState(v={self.state.get('version')}, ts={self.state.get('timestamp')})"
