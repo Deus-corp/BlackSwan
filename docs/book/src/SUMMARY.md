@@ -47,3 +47,4 @@
   - [007 - JEPA](adr/adr_007_jepa_integration.md)
 - [TRL-4 Validation](TRL4_VALIDATION_REPORT.md)
 - [Ouroboros Report](TRL4_OUROBOROS_REPORT.md)
+
