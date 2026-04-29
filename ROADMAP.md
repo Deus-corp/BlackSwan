@@ -96,6 +96,7 @@
 | **MTTR** | < 180 сек | Фаза 5 |
 | **Trust Gradient** | > 0.05 (долгосрочный тренд) | Фаза 2+ |
 | **Ouroboros Invariant (V_s > V_h)** | Выполняется непрерывно | Фаза 2+ |
+| **Ouroboros (самоулучшение)** | ✅ Распределённый прототип | 4 | `sim/evolve_kelly.py`, `formal/tla/Ouroboros.tla`, `mvp/lab_swarm_demo/` |
 
 ---
 
