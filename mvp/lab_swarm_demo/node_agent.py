@@ -122,7 +122,7 @@ def make_genome(params, fitness):
     return {
         "params": params,
         "fitness": fitness,
-        'niche': node_niche(),
+        "niche": node_niche(),
         "origin": NODE_ID,
         "lineage": [NODE_ID],
         "ts": time.time()
@@ -157,6 +157,13 @@ def local_score(genome):
 
 def population_diversity(pop):
     return len(set(str(p) for p in pop))
+
+def population_niche_counts(pop):
+    counts = {"survival": 0, "capital": 0, "exploration": 0}
+    for g in pop:
+        niche = g.get("niche", "exploration")
+        counts[niche] = counts.get(niche, 0) + 1
+    return counts
 
 # ================= GOSSIP =================
 
@@ -278,17 +285,23 @@ async def main_loop():
                     capital -= 1.0
                     survival.dq = min(1.0, survival.dq + 0.001)
 
-            # Import genomes from swarm with rate limiting
+            # Import genomes from swarm with rate limiting + diversity-aware
             if step_count - last_import_step > IMPORT_COOLDOWN:
                 remote = await crdt.get_top(10)
                 filtered = [g for g in remote if accept_genome(g)]
                 scored = sorted(filtered, key=local_score, reverse=True)
                 preferred_niche = node_niche()
+                counts = population_niche_counts(engine.population)
+                total = sum(counts.values()) or 1
                 selected = []
                 for g in scored:
-                    # 80% берём свою нишу, 20% — другие для разнообразия
                     if g.get("niche") == preferred_niche or random.random() < 0.2:
-                        selected.append(g)
+                        # Reduce probability if niche already dominates (>50% of population)
+                        if counts.get(g.get("niche"), 0) / total > 0.5:
+                            if random.random() < 0.3:
+                                selected.append(g)
+                        else:
+                            selected.append(g)
                         if len(selected) >= MAX_IMPORT:
                             break
                 for g in selected:
@@ -316,10 +329,13 @@ async def main_loop():
                     current_params = engine.champion[0]
                     dispatcher = ROIDispatcher(config=current_params)
 
-                # Log metrics
+                # Log metrics with niche information
+                current_niche = node_niche()
+                counts = population_niche_counts(engine.population)
+                dominant_niche = max(counts, key=counts.get)
                 print(f"[{NODE_ID}] step={step_count} capital={capital:.2f} dq={survival.dq:.3f} "
                       f"fitness={engine.champion[1]:.4f} diversity={population_diversity(engine.population)} "
-                      f"crdt_size={len(crdt.state)}")
+                      f"crdt_size={len(crdt.state)} niche={current_niche} dominant={dominant_niche}")
 
             # Curiosity + Meta every 100 steps
             if step_count % 100 == 0:
