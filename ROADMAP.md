@@ -1,131 +1,130 @@
-# Black Swan — Дорожная карта (Roadmap)
+# Black Swan — Roadmap
 
-**Назначение:** Единый источник истины о прогрессе проекта. Показывает,
-какие компоненты уже реализованы, какие находятся в активной разработке и
-как проект движется от лабораторного прототипа (TRL‑4) к полностью
-автономной, самоулучшающейся системе (TRL‑7+).
+**Purpose:** Single source of truth about project progress. Shows which components are already implemented, which are in active development, and how the project moves from a laboratory prototype (TRL‑4) towards a fully autonomous, self‑improving system (TRL‑7+).
 
 ---
 
-## 🔭 Видение
+## 🔭 Vision
 
-Создать распределённый ИИ‑рой, способный автономно выживать,
-самовосстанавливаться, зарабатывать ресурсы и непрерывно улучшать
-собственный код, не нарушая фундаментальные аксиомы безопасности
-(L3.0).
+Create a distributed AI swarm capable of autonomously surviving, self‑healing, earning resources, and continuously improving its own code without violating fundamental safety axioms (L3.0).
 
 ---
 
-## 📍 Текущий статус (апрель 2026)
+## 📍 Current Status (April 2026)
 
-**Общий уровень готовности: TRL‑4**
-*Компоненты и подсистемы проверены в лабораторной среде.*
+**Overall readiness level: TRL‑4**
+*Components and subsystems validated in a laboratory environment.*
 
-✅ Формальная верификация (TLA+): NodeLifecycle, D2BFT, GlobalState, SporeProtocol, Ouroboros, CuriosityEngine, SurvivalObjective, GeneticEngine.  
-✅ Экономический симулятор: многоагентный sweep, найдена зона стабильности.  
-✅ Лабораторный рой: Docker Compose на 8 узлов, Redis pub/sub, авто‑восстановление при отказе.  
-✅ Генетический прототип Ouroboros: эволюция параметров Kelly‑диспетчера.  
-✅ Survival Objective встроен в узлы роя (осознанное избегание риска).  
-🧪 Прототипы CRDT‑состояния и D2BFT‑консенсуса (готовы к интеграции).  
-✅ CI/CD: юнит‑тесты, формальная верификация (локально + GitHub Actions).  
-🧪 Curiosity Engine: генерация исследовательских гипотез в рое, 12-часовой прогон подтвердил стабильность.
+✅ Formal verification (TLA+): NodeLifecycle, D2BFT, GlobalState, SporeProtocol, Ouroboros, CuriosityEngine, SurvivalObjective, GeneticEngine, AdaptiveMotivation.  
+✅ Economic simulator: multi‑agent sweep, stability zone discovered.  
+✅ Laboratory swarm: Docker Compose with 8 nodes, Redis pub/sub, auto‑recovery on failure.  
+✅ Genetic Ouroboros prototype: evolution of Kelly dispatcher parameters.  
+✅ Survival Objective integrated into every node (conscious risk avoidance).  
+✅ Adaptive Intrinsic Motivation: Meta‑POMDP agent switches between scenarios.  
+✅ Curiosity Engine generates research hypotheses from market anomalies.  
+🧪 Decentralized CRDT‑Gossip prototype (async, 3 nodes successfully exchanging genomes, feature branch `feature/async-gossip`).  
+✅ CI/CD: unit tests, formal verification (local + GitHub Actions).  
 
-📖 Подробный отчёт: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
+📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
 ---
 
-## 🧩 Компонентная карта и готовность
+## 🧩 Component Map and Readiness
 
-| Подсистема | Статус | TRL | Ключевые артефакты |
+| Subsystem | Status | TRL | Key artifacts |
 | :--- | :--- | :--- | :--- |
-| **Формальные модели** | ✅ Ядро верифицировано | 4 | `formal/tla/*.tla` |
-| **Экономический контур** | ✅ Лабораторный рой | 4 | `sim/multi_agent_sim.py`, `mvp/lab_swarm_demo/` |
-| **Ouroboros (самоулучшение)** | ✅ Распределённый прототип | 4 | `sim/evolve_kelly.py`, `formal/tla/Ouroboros.tla`, `mvp/lab_swarm_demo/` |
-| **Survival Objective** | ✅ Встроен в рой | 4 | `sim/survival_evaluator.py`, `formal/tla/SurvivalObjective.tla` |
-| **Genetic Engine** | ✅ TRL-4 | 4 | `sim/genetic_engine.py`, `formal/tla/GeneticEngine.tla` |
-| **Curiosity Engine** | ✅ Распределённый прототип | 4 | `sim/curiosity_engine.py`, `formal/tla/CuriosityEngine.tla`, `mvp/lab_swarm_demo/` (генерация гипотез в рое) |
-| **CRDT‑состояние** | 🧪 Прототип | 3 | `src/core/crdt_state.py` |
-| **D2BFT консенсус** | 🧪 Прототип | 3 | `src/core/d2bft.py`, `formal/tla/D2BFT.tla` |
-| **Память (Mem0g)** | 📐 Спроектирована | 2 | `docs/architecture/memory_hierarchy_mem0g.md` |
-| **Безопасность и стелс** | 📐 Спроектированы | 2 | `docs/domains/cybersecurity_stealth/` |
-| **Meat‑Interface (люди)** | 📐 Концепция | 2 | `docs/domains/physical_human_interface/` |
-| **Сингулярность / Spore / Omega** | 📐 Гипотетические модели | 2 | `docs/singularity/` |
-| **Аппаратная изоляция** | 📐 Спецификация | 2 | `docs/deployment/hardware_isolation.md` |
+| **Formal models** | ✅ Core verified | 4 | `formal/tla/*.tla` |
+| **Economic contour** | ✅ Laboratory swarm | 4 | `sim/multi_agent_sim.py`, `mvp/lab_swarm_demo/` |
+| **Ouroboros (self‑improvement)** | ✅ Distributed prototype | 4 | `sim/evolve_kelly.py`, `formal/tla/Ouroboros.tla`, `mvp/lab_swarm_demo/` |
+| **Survival Objective** | ✅ Integrated into swarm | 4 | `sim/survival_evaluator.py`, `formal/tla/SurvivalObjective.tla` |
+| **Genetic Engine** | ✅ Integrated with Champion/Challenger | 4 | `sim/genetic_engine.py`, `formal/tla/GeneticEngine.tla` |
+| **Adaptive Intrinsic Motivation** | ✅ Integrated (Meta‑POMDP) | 4 | `sim/meta_pomdp_agent.py`, `formal/tla/AdaptiveMotivation.tla` |
+| **Curiosity Engine** | ✅ Distributed hypothesis generation | 4 | `sim/curiosity_engine.py`, `formal/tla/CuriosityEngine.tla` |
+| **CRDT‑Gossip (decentralization)** | 🧪 Async prototype (3 nodes) | 3 | `src/core/crdt_state.py`, `src/core/gossip_node.py`, `feature/async-gossip` |
+| **D2BFT consensus** | 🧪 Prototype (majority voting) | 3 | `src/core/d2bft.py`, `formal/tla/D2BFT.tla` |
+| **Memory (Mem0g)** | 📐 Designed | 2 | `docs/architecture/memory_hierarchy_mem0g.md` |
+| **Security & stealth** | 📐 Designed | 2 | `docs/domains/cybersecurity_stealth/` |
+| **Meat‑Interface (humans)** | 📐 Concept | 2 | `docs/domains/physical_human_interface/` |
+| **Singularity / Spore / Omega** | 📐 Hypothetical models | 2 | `docs/singularity/` |
+| **Hardware isolation** | 📐 Specification | 2 | `docs/deployment/hardware_isolation.md` |
 
 ---
 
-## 🧬 Фазы развития (взяты из документации)
+## 🧬 Development Phases (from documentation)
 
-### Фаза 0 — Подготовка и изоляция
-- [x] Формальная верификация критических протоколов
-- [ ] Аппаратная сборка Core Node (ожидает бюджет $45k+)
-- [ ] Readiness Checks и Initial Seed Validation
+### Phase 0 — Preparation and isolation
+- [x] Formal verification of critical protocols
+- [ ] Hardware assembly of Core Node (awaiting budget $45k+)
+- [ ] Readiness Checks and Initial Seed Validation
 
-### Фаза 1 — Гибридный цикл и детерминированная валидация
-- [ ] Запуск гибридного цикла (API + локальная модель)
-- [ ] Полный Validation Pipeline (Ruff, Mypy, Bandit, Pytest, TLA+)
-- [ ] Статистический бенчмаркинг и хаос‑тесты
+### Phase 1 — Hybrid cycle and deterministic validation
+- [ ] Hybrid cycle launch (API + local model)
+- [ ] Full Validation Pipeline (Ruff, Mypy, Bandit, Pytest, TLA+)
+- [ ] Statistical benchmarking and chaos tests
 
-### Фаза 2 — Когнитивная эволюция и память
-- [ ] Активация Sleep Cycle Consolidation
-- [ ] Внедрение CRDT‑графа знаний
-- [ ] JEPA‑энкодинг и DSL‑правила
-- [ ] Полноценный Ouroboros (Genetic Engine + Champion/Challenger)
+### Phase 2 — Cognitive evolution and memory
+- [ ] Sleep Cycle Consolidation activation
+- [ ] CRDT knowledge graph deployment
+- [ ] JEPA encoding and DSL rules
+- [ ] Full Ouroboros (Genetic Engine + Champion/Challenger)
 
-### Фаза 3 — Распределённый рой и экономическая координация
-- [x] Прототип CRDT‑состояния и D2BFT‑консенсуса
-- [ ] Интеграция CRDT в рой (замена Redis на собственную синхронизацию)
-- [ ] Реальный D2BFT‑консенсус в рое
+### Phase 3 — Distributed swarm and economic coordination
+- [x] Prototype of CRDT state and D2BFT consensus
+- [x] Async CRDT‑Gossip prototype (3‑node test successful)
+- [ ] Docker‑based async swarm without Redis
+- [ ] Integration of gossip genome exchange into main branch
 - [ ] Predictive Consistency Router (PCR)
 - [ ] Dynamic Model Routing 2.0
-- [ ] Экономическая самодостаточность (net profit ≥ 14 дней)
+- [ ] Economic self‑sufficiency (net profit ≥ 14 days)
 
-### Фаза 4 — Стратегическая автономия
-- [x] Survival Objective (встроен в рой)
-- [ ] Curiosity Engine + Reality Anchor
-- [ ] Intrinsic Motivation (полная версия с Meta‑POMDP)
+### Phase 4 — Strategic autonomy
+- [x] Survival Objective (embedded in swarm)
+- [x] Curiosity Engine + basic anomaly detection
+- [x] Adaptive Intrinsic Motivation (Meta‑POMDP)
+- [ ] Full Intrinsic Motivation with Meta‑POMDP + Reality Anchor
 - [ ] Constitutional Evolution 2.0 (NSGA‑II)
 - [ ] Social Modeling Engine
 
-### Фаза 5 — Операционная безопасность и суверенитет
-- [ ] Непрерывный фоновый аудит (Custodian)
+### Phase 5 — Operational security and sovereignty
+- [ ] Continuous background audit (Custodian)
 - [ ] Value Drift Early‑Warning System
-- [ ] Аппаратная независимость (HAEL, RISC‑V)
-- [ ] Spore Protocol (полное восстановление после коллапса)
+- [ ] Hardware independence (HAEL, RISC‑V)
+- [ ] Spore Protocol (full recovery after collapse)
 
 ---
 
-## 🎯 Ключевые метрики (целевые значения)
+## 🎯 Key Metrics (target values)
 
-| Метрика | Цель | Когда |
+| Metric | Target | When |
 | :--- | :--- | :--- |
-| **Economic self‑sufficiency** | Net Profit > Expenses ≥ 14 дней | Фаза 3 |
-| **Detection Quotient (DQ)** | < 0.05 | Фаза 4 |
-| **Resilience Factor (R_f)** | ≥ 0.99995 | Фаза 4 |
-| **Swarm size** | ≥ 1000 edge nodes | Фаза 4 |
-| **MTTR** | < 180 сек | Фаза 5 |
-| **Trust Gradient** | > 0.05 (долгосрочный тренд) | Фаза 2+ |
-| **Ouroboros Invariant (V_s > V_h)** | Выполняется непрерывно | Фаза 2+ |
+| **Economic self‑sufficiency** | Net Profit > Expenses ≥ 14 days | Phase 3 |
+| **Detection Quotient (DQ)** | < 0.05 | Phase 4 |
+| **Resilience Factor (R_f)** | ≥ 0.99995 | Phase 4 |
+| **Swarm size** | ≥ 1000 edge nodes | Phase 4 |
+| **MTTR** | < 180 sec | Phase 5 |
+| **Trust Gradient** | > 0.05 (long‑term trend) | Phase 2+ |
+| **Ouroboros Invariant (V_s > V_h)** | Continuously satisfied | Phase 2+ |
 
 ---
 
-## 🚀 Ближайшие шаги (до TRL‑5 в области сети и эволюции)
+## 🚀 Immediate Next Steps (towards TRL‑5 in networking)
 
-1. **Интегрировать CRDT‑состояние в рой** — узлы синхронизируют GlobalState через gossip‑протокол без Redis.
-2. **Заменить микро‑эволюцию в node_agent.py на GeneticEngine** — добавить Champion/Challenger и сохранение геномов в L2.
-3. **Протестировать D2BFT на 3+ узлах** — достижение консенсуса для критических решений (без единой точки отказа).
-4. **Провести 72‑часовой эксперимент** с измерением V_s / V_h и метрик выживаемости.
+1. **Run 3‑node async gossip overnight** – collect long‑term stability metrics.
+2. **Create Docker Compose for async swarm** (no Redis) and test 4–8 nodes.
+3. **Merge feature/async-gossip into main** after successful Docker test.
+4. **Add speciation, trust‑weighted gossip, and co‑evolution** (only after stability confirmed).
+5. **Conduct 72‑hour experiment** measuring V_s / V_h and survival metrics.
 
 ---
 
-## 📚 Связанные документы
+## 📚 Related Documents
 
-- [Design Principles](docs/design_principles.md)
-- [Glossary](docs/glossary.md)
+- [Design Principles](docs/design_principles.en.md)
+- [Glossary](docs/glossary.en.md)
 - [TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
-- [System Definition](docs/architecture/system_definition.md)
-- [Terminal Goals & L3 Invariants](docs/architecture/terminal_goals_and_l3_invariants.md)
+- [System Definition](docs/architecture/system_definition.en.md)
+- [Terminal Goals & L3 Invariants](docs/architecture/terminal_goals_and_l3_invariants.en.md)
 
 ---
 
-*Black Swan © 2026. Все планы являются гипотетическими и не призывают к действию.*
+*Black Swan © 2026. All plans are hypothetical and do not constitute a call to action.*
