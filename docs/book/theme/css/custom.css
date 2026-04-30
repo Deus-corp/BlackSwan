@@ -1,4 +1,4 @@
-/* Тёмная тема как база */
+/* Тёмная тема */
 :root {
     --bg: #0d1117;
     --fg: #c9d1d9;
@@ -6,7 +6,7 @@
     --link-visited: #bc8cff;
     --border: #30363d;
     --code-bg: #161b22;
-    --accent: #f0c000; /* золотой */
+    --accent: #f0c000;
 }
 
 body {
@@ -39,75 +39,23 @@ pre {
     border: 1px solid var(--border);
 }
 
+/* Боковая панель – только цвета, не трогаем раскрытие */
 .sidebar {
     background-color: #0d1117;
     border-right: 1px solid var(--border);
 }
 
-.sidebar ul {
-    list-style: none;
-    padding-left: 0;
-}
-
-.sidebar li {
-    margin: 0;
-    padding: 0;
-}
-
-.sidebar .chapter-item {
-    overflow: hidden;
-    max-height: 0;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
-    opacity: 0;
-}
-
-.sidebar .chapter-root {
-    max-height: none;
-    opacity: 1;
-}
-
-.sidebar .section.open .chapter-item {
-    max-height: 2000px;
-    opacity: 1;
-}
-
-.sidebar .section > .chapter-root > a::before {
-    content: '▸ ';
-    display: inline-block;
-    transition: transform 0.2s;
-    font-size: 0.8em;
-    margin-right: 4px;
-}
-
-.sidebar .section.open > .chapter-root > a::before {
-    transform: rotate(90deg);
-}
-
-.sidebar .section .chapter-item {
-    padding-left: 1.2em;
-}
-
-.sidebar .section .section .chapter-item {
-    padding-left: 2.4em;
-}
-
 .sidebar a {
-    display: block;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.15s;
-    text-decoration: none;
     color: var(--fg);
+    text-decoration: none;
 }
 
 .sidebar a:hover {
-    background: var(--border);
     color: var(--accent);
 }
 
 .sidebar a.active {
-    background: var(--accent);
-    color: var(--bg);
+    color: var(--accent);
     font-weight: bold;
 }
 
