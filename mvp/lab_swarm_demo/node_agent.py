@@ -100,6 +100,7 @@ def update_peer(peer, success):
     if peer not in peer_score:
         peer_score[peer] = 1.0
     peer_score[peer] *= (1.05 if success else 0.7)
+    peer_score[peer] = max(0.1, min(2.0, peer_score[peer]))
 
 def pick_peer():
     if not PEERS:
@@ -121,7 +122,7 @@ def make_genome(params, fitness):
     return {
         "params": params,
         "fitness": fitness,
-        "niche": random.choice(["survival", "capital", "exploration"]),
+        "niche": node_niche(),
         "origin": NODE_ID,
         "lineage": [NODE_ID],
         "ts": time.time()
@@ -157,6 +158,13 @@ def local_score(genome):
 def population_diversity(pop):
     return len(set(str(p) for p in pop))
 
+def population_niche_counts(pop):
+    counts = {"survival": 0, "capital": 0, "exploration": 0}
+    for g in pop:
+        niche = g.get("niche", "exploration")
+        counts[niche] = counts.get(niche, 0) + 1
+    return counts
+
 # ================= GOSSIP =================
 
 async def gossip_loop():
@@ -171,8 +179,14 @@ async def gossip_loop():
                 async with session.post(f"{peer}/gossip", json={"versions": known}, timeout=1) as resp:
                     data = await resp.json()
                     delta = data.get("delta", {})
-                    # Apply admission control to incoming delta
-                    filtered_delta = {k: v for k, v in delta.items() if accept_genome(v)}
+                    filtered_delta = {}
+                    trust = peer_score.get(peer, 1.0)
+                    for k, v in delta.items():
+                        if not accept_genome(v):
+                            continue
+                        # Trust-weighted acceptance
+                        if random.random() < min(1.0, trust):
+                            filtered_delta[k] = v
                     await crdt.merge(filtered_delta)
                     update_peer(peer, True)
             except:
@@ -231,6 +245,15 @@ capital = 1000.0
 step_count = 0
 last_import_step = 0
 
+def node_niche():
+    """Determine the node's preferred niche based on current state."""
+    if survival.dq >= 0.8 or survival.liveness < 0.5:
+        return "survival"
+    elif capital > 50000 and survival.dq < 0.3:
+        return "capital"
+    else:
+        return "exploration"
+
 # ================= MAIN LOOP =================
 
 async def main_loop():
@@ -262,12 +285,25 @@ async def main_loop():
                     capital -= 1.0
                     survival.dq = min(1.0, survival.dq + 0.001)
 
-            # Import genomes from swarm with rate limiting
+            # Import genomes from swarm with rate limiting + diversity-aware
             if step_count - last_import_step > IMPORT_COOLDOWN:
                 remote = await crdt.get_top(10)
                 filtered = [g for g in remote if accept_genome(g)]
                 scored = sorted(filtered, key=local_score, reverse=True)
-                selected = scored[:MAX_IMPORT]
+                preferred_niche = node_niche()
+                counts = population_niche_counts(engine.population)
+                total = sum(counts.values()) or 1
+                selected = []
+                for g in scored:
+                    if g.get("niche") == preferred_niche or random.random() < 0.2:
+                        # Reduce probability if niche already dominates (>50% of population)
+                        if counts.get(g.get("niche"), 0) / total > 0.5:
+                            if random.random() < 0.3:
+                                selected.append(g)
+                        else:
+                            selected.append(g)
+                        if len(selected) >= MAX_IMPORT:
+                            break
                 for g in selected:
                     parent = random.choice(engine.population)
                     child = recombine({"params": parent, "niche": "local", "lineage": []}, g)
@@ -293,10 +329,13 @@ async def main_loop():
                     current_params = engine.champion[0]
                     dispatcher = ROIDispatcher(config=current_params)
 
-                # Log metrics
+                # Log metrics with niche information
+                current_niche = node_niche()
+                counts = population_niche_counts(engine.population)
+                dominant_niche = max(counts, key=counts.get)
                 print(f"[{NODE_ID}] step={step_count} capital={capital:.2f} dq={survival.dq:.3f} "
                       f"fitness={engine.champion[1]:.4f} diversity={population_diversity(engine.population)} "
-                      f"crdt_size={len(crdt.state)}")
+                      f"crdt_size={len(crdt.state)} niche={current_niche} dominant={dominant_niche}")
 
             # Curiosity + Meta every 100 steps
             if step_count % 100 == 0:
