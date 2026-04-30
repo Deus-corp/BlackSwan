@@ -9,6 +9,7 @@ from src.core.event_bus import EventBus
 from sim.genetic_engine import GeneticEngine
 from sim.survival_evaluator import SurvivalEvaluator
 from sim.curiosity_engine import CuriosityEngine
+from sim.meta_pomdp_agent import MetaPOMDPAgent
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
 BURN_RATE = float(os.environ.get("BURN_RATE", 0.5))
@@ -35,6 +36,7 @@ survival = SurvivalEvaluator()
 survival.dq = 0.02
 survival.liveness = 1.0
 curiosity = CuriosityEngine(window_size=10, surprise_threshold=0.3)  # более чувствительный
+meta_agent = MetaPOMDPAgent()
 
 capital = 1000.0
 state.update("economic_state", {"node_id": NODE_ID, "capital": capital})
@@ -135,5 +137,18 @@ for msg in pubsub.listen():
             if len(engine.population) > engine.pop_size:
                 engine.population.pop(0)
             print(f"Node {NODE_ID} curiosity generated hypothesis: {hypothesis}")
+    
+        # --- Adaptive Intrinsic Motivation (каждые 100 шагов) ---
+    if step_count % 100 == 0:
+        weights = meta_agent.update(
+            dq=survival.dq,
+            liveness=survival.liveness,
+            capital=capital / max(1.0, capital),  # нормализация
+            surprise=curiosity.prediction_errors[-1] if curiosity.prediction_errors else 0.0
+        )
+        # Применяем новые веса к SurvivalEvaluator и CuriosityEngine
+        survival.config["lambda"] = weights["w_capital"]  # λ влияет на важность капитала
+        curiosity.surprise_threshold = 0.7 if weights["w_curiosity"] > 0.3 else 0.3
+        print(f"Node {NODE_ID} adapted weights: {weights}, scenario={meta_agent.current_scenario}")
 
     time.sleep(0.5)
