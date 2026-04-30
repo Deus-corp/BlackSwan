@@ -35,7 +35,7 @@ dispatcher = ROIDispatcher(config=current_params)
 survival = SurvivalEvaluator()
 survival.dq = 0.02
 survival.liveness = 1.0
-curiosity = CuriosityEngine(window_size=10, surprise_threshold=0.3)  # более чувствительный
+curiosity = CuriosityEngine(window_size=10, surprise_threshold=0.3)
 meta_agent = MetaPOMDPAgent()
 
 capital = 1000.0
@@ -48,12 +48,15 @@ step_count = 0
 last_champion_fitness = 0.0
 v_s = 0
 v_h = 0
+trust_gradient = 0.0
+trust_ema_alpha = 0.1
 print(f"Node {NODE_ID} started, capital={capital}, strategy={current_params}, dq={survival.dq:.3f}, liveness={survival.liveness:.3f}")
 
 for msg in pubsub.listen():
     if msg["type"] != "message":
         continue
 
+    # --- Redis-обмен геномами (восстановлен) ---
     if msg["channel"] == b"genome_updates":
         try:
             foreign_params = json.loads(msg["data"])
@@ -65,6 +68,7 @@ for msg in pubsub.listen():
             pass
         continue
 
+    # --- Рыночный тик ---
     try:
         market_data = json.loads(msg["data"])
     except:
@@ -107,7 +111,7 @@ for msg in pubsub.listen():
 
     # --- Эволюция каждые 50 шагов ---
     if step_count % 50 == 0:
-        print(f"Node {NODE_ID} evolving generation (step {step_count}), V_s={v_s}, V_h={v_h}, ratio={v_s/(v_h+1):.2f}")
+        print(f"Node {NODE_ID} evolving generation (step {step_count}), V_s={v_s}, V_h={v_h}, ratio={v_s/(v_h+1):.2f}, Trust={trust_gradient:.4f}")
         engine.evolve_generation()
         if engine.champion[1] > last_champion_fitness:
             v_s += 1
@@ -115,9 +119,13 @@ for msg in pubsub.listen():
                 curiosity.report_outcome(engine.champion[0], improved=True)
         elif engine.champion[1] < last_champion_fitness:
             v_h += 1
+        # Trust Gradient
+        delta = engine.champion[1] - last_champion_fitness
+        trust_gradient = trust_ema_alpha * delta + (1 - trust_ema_alpha) * trust_gradient
         last_champion_fitness = engine.champion[1]
 
         if engine.champion[1] > 0:
+            # Публикуем чемпиона через Redis
             r.publish("genome_updates", json.dumps(engine.champion[0]))
             print(f"Node {NODE_ID} published champion genome: {engine.champion[0]}")
 
@@ -137,18 +145,27 @@ for msg in pubsub.listen():
             if len(engine.population) > engine.pop_size:
                 engine.population.pop(0)
             print(f"Node {NODE_ID} curiosity generated hypothesis: {hypothesis}")
-    
+
         # --- Adaptive Intrinsic Motivation (каждые 100 шагов) ---
-    if step_count % 100 == 0:
+        norm_capital = min(1.0, capital / 10000.0)  # нормализация для MetaPOMDP
+        latest_surprise = curiosity.prediction_errors[-1] if curiosity.prediction_errors else 0.0
         weights = meta_agent.update(
             dq=survival.dq,
             liveness=survival.liveness,
-            capital=capital / max(1.0, capital),  # нормализация
-            surprise=curiosity.prediction_errors[-1] if curiosity.prediction_errors else 0.0
+            capital=norm_capital,
+            surprise=latest_surprise
         )
-        # Применяем новые веса к SurvivalEvaluator и CuriosityEngine
-        survival.config["lambda"] = weights["w_capital"]  # λ влияет на важность капитала
-        curiosity.surprise_threshold = 0.7 if weights["w_curiosity"] > 0.3 else 0.3
+        survival.config["lambda"] = weights["w_capital"]
+        survival.config["hide_cost_factor"] = 0.05 if weights["w_survival"] > 0.8 else 0.1
+        curiosity.surprise_threshold = 0.5 if weights["w_curiosity"] > 0.3 else 0.3
         print(f"Node {NODE_ID} adapted weights: {weights}, scenario={meta_agent.current_scenario}")
+
+                # Управление темпом мутаций через MetaPOMDP
+        if meta_agent.current_scenario in ("crisis", "stealth_mode"):
+            engine.set_mutation_rate(0.1)   # минимальные мутации
+        elif meta_agent.current_scenario == "exploration":
+            engine.set_mutation_rate(0.5)   # агрессивные мутации
+        else:
+            engine.set_mutation_rate(0.3)   # стандарт
 
     time.sleep(0.5)

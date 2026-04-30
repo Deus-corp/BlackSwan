@@ -23,6 +23,10 @@ class GeneticEngine:
         self.challenger: Tuple[Dict, float] = ({}, 0.0)
         self.generation = 0
 
+    def set_mutation_rate(self, rate: float):
+        """Динамически меняет вероятность мутации (0.0 – 1.0)."""
+        self.mutation_rate = max(0.0, min(1.0, rate))
+
     def initialize(self):
         self.population = [random_params() for _ in range(self.pop_size)]
         # Первый champion – лучший в начальной популяции
