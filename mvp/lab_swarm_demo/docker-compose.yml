@@ -16,20 +16,21 @@ services:
       - REDIS_URL=redis://redis:6379
       - DRIFT=0.002
       - VOLATILITY=0.01
-      - PYTHONUNBUFFERED=1          # <-- добавьте эту строку
     depends_on:
       redis:
         condition: service_healthy
 
   node:
     build:
-      context: ../..            # корень проекта
+      context: ../..
     image: blackswan-node:latest
     entrypoint: ["/app/mvp/lab_swarm_demo/node_entrypoint.sh"]
     environment:
       - REDIS_URL=redis://redis:6379
       - BURN_RATE=0.1
       - FAILURE_PROB=0.0
+      - GOSSIP_PORT=9777
+      - TOTAL_NODES=8
     deploy:
       replicas: 8
       restart_policy:

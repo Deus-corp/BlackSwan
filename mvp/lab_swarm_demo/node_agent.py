@@ -3,6 +3,7 @@ import json
 import os
 import time
 import random
+import math
 from src.economy.roi_dispatcher import ROIDispatcher
 from src.core.global_state import GlobalState
 from src.core.event_bus import EventBus
@@ -56,7 +57,7 @@ for msg in pubsub.listen():
     if msg["type"] != "message":
         continue
 
-    # --- Redis-обмен геномами (восстановлен) ---
+    # --- Redis-обмен геномами ---
     if msg["channel"] == b"genome_updates":
         try:
             foreign_params = json.loads(msg["data"])
@@ -125,7 +126,6 @@ for msg in pubsub.listen():
         last_champion_fitness = engine.champion[1]
 
         if engine.champion[1] > 0:
-            # Публикуем чемпиона через Redis
             r.publish("genome_updates", json.dumps(engine.champion[0]))
             print(f"Node {NODE_ID} published champion genome: {engine.champion[0]}")
 
@@ -147,7 +147,7 @@ for msg in pubsub.listen():
             print(f"Node {NODE_ID} curiosity generated hypothesis: {hypothesis}")
 
         # --- Adaptive Intrinsic Motivation (каждые 100 шагов) ---
-        norm_capital = min(1.0, capital / 10000.0)  # нормализация для MetaPOMDP
+        norm_capital = min(1.0, capital / 10000.0)
         latest_surprise = curiosity.prediction_errors[-1] if curiosity.prediction_errors else 0.0
         weights = meta_agent.update(
             dq=survival.dq,
@@ -160,12 +160,12 @@ for msg in pubsub.listen():
         curiosity.surprise_threshold = 0.5 if weights["w_curiosity"] > 0.3 else 0.3
         print(f"Node {NODE_ID} adapted weights: {weights}, scenario={meta_agent.current_scenario}")
 
-                # Управление темпом мутаций через MetaPOMDP
+        # Управление темпом мутаций
         if meta_agent.current_scenario in ("crisis", "stealth_mode"):
-            engine.set_mutation_rate(0.1)   # минимальные мутации
+            engine.set_mutation_rate(0.1)
         elif meta_agent.current_scenario == "exploration":
-            engine.set_mutation_rate(0.5)   # агрессивные мутации
+            engine.set_mutation_rate(0.5)
         else:
-            engine.set_mutation_rate(0.3)   # стандарт
+            engine.set_mutation_rate(0.3)
 
     time.sleep(0.5)
