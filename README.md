@@ -1,75 +1,82 @@
 # BlackSwan 🦢
 
-**Автономный, самоулучшающийся ИИ-рой с распределённой эволюцией, экономическим суверенитетом и формально верифицированным ядром.**
+**Autonomous, self‑improving AI swarm with distributed evolution, economic sovereignty, and formally verified core.**
 
 [![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#лицензия)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen)](https://deus-corp.github.io/BlackSwan/)
 
 ---
 
-## 📌 Статус проекта: **TRL-4** (лабораторная валидация компонентов)
+## 📌 Project Status: **TRL‑4** (laboratory‑validated components)
 
-- ✅ Формальные спецификации TLA+ для 8 протоколов (включая Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine)
-- ✅ Экономический симулятор с многоагентным свипом и поиском зон стабильности
-- ✅ Лабораторный Docker-рой (8 узлов, Redis pub/sub, авто-восстановление)
-- ✅ **Ouroboros v0.3** — распределённая эволюция стратегий с Champion/Challenger и L2-памятью
-- ✅ **SurvivalObjective** — интеллектуальный отказ от опасных сделок
-- ✅ **GeneticEngine** — полноценный популяционный движок с формальной верификацией
-- ✅ Прототипы **CRDT-состояния** и **D2BFT-консенсуса**
-- ✅ CI/CD: юнит-тесты, формальная верификация (локально + GitHub Actions)
-- 📖 [Документация на сайте](https://deus-corp.github.io/BlackSwan/)
-- 📖 [Полный отчёт TRL-4](docs/TRL4_VALIDATION_REPORT.md)
-- 🗺 [Дорожная карта](ROADMAP.md)
-
----
-
-## 🧬 Ключевые особенности
-
-- **Self‑Sovereign Economy** – встроенный рынок и диспетчер капитала на основе критерия Келли.
-- **Ouroboros Self‑Improvement** – генетический поиск оптимальных стратегий, обмен геномами в рое, Champion/Challenger.
-- **Survival Objective** – каждый узел оценивает риск обнаружения и отказывается от опасных действий.
-- **Swarm Resilience** – автоматическое обнаружение отказов и Spore Protocol (перерождение узлов).
-- **Formally Verified Core** – критические инварианты доказаны в TLA+.
-- **Defense in Depth** – многоуровневая изоляция, обфускация трафика.
+- ✅ Formal TLA+ specifications for 8 protocols (including Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation)
+- ✅ Economic simulator with multi‑agent sweep and stability zone discovery
+- ✅ Docker lab swarm (8 nodes, Redis pub/sub, auto‑recovery)
+- ✅ **Ouroboros v0.3** — distributed strategy evolution with Champion/Challenger and L2 memory
+- ✅ **SurvivalObjective** — intelligent rejection of dangerous trades
+- ✅ **GeneticEngine** — full population‑based evolution with formal verification
+- ✅ **Adaptive Intrinsic Motivation** — Meta‑POMDP agent switches between 5 scenarios based on market conditions
+- ✅ **Curiosity Engine** — proactive exploration of market anomalies
+- ✅ Prototypes of **CRDT state** and **D2BFT consensus**
+- 🧪 **Decentralized Gossip** — async CRDT‑gossip genome exchange (feature branch)
+- ✅ CI/CD: unit tests, formal verification (local + GitHub Actions)
+- 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
+- 📖 [Full TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
+- 🗺 [Roadmap](ROADMAP.md)
 
 ---
 
-## 🚀 Быстрый старт (локальное демо)
+## 🧬 Key Features
+
+- **Self‑Sovereign Economy** – built‑in market and Kelly‑criterion capital dispatcher.
+- **Ouroboros Self‑Improvement** – genetic search for optimal strategies, genome exchange in the swarm, Champion/Challenger.
+- **Survival Objective** – each node evaluates detection risk and refuses dangerous actions.
+- **Adaptive Intrinsic Motivation** – dynamic balancing of capital, stealth, and curiosity via Meta‑POMDP.
+- **Curiosity Engine** – autonomous detection of market anomalies and generation of research hypotheses.
+- **Swarm Resilience** – automatic failure detection and Spore Protocol (node rebirth).
+- **Formally Verified Core** – critical invariants proven in TLA+.
+- **Defense in Depth** – multi‑layer isolation, traffic obfuscation.
+
+---
+
+## 🚀 Quick Start (local demo)
 
 ```bash
 git clone https://github.com/Deus-corp/BlackSwan.git
 cd BlackSwan
 pip install -r requirements.txt
-python mvp/cycle_demo.py          # один агент
-python sim/multi_agent_sim.py     # многоагентный прогон
-python sim/evolve_kelly.py        # эволюция параметров Kelly
-python sim/genetic_engine.py      # полноценный Genetic Engine
+python mvp/cycle_demo.py          # single agent
+python sim/multi_agent_sim.py     # multi‑agent run
+python sim/evolve_kelly.py        # evolve Kelly params
+python sim/genetic_engine.py      # full Genetic Engine
+python sim/survival_evaluator.py  # test survival logic
+python sim/meta_pomdp_agent.py    # test adaptive motivation
 ```
 
-## 🐳 Docker-рой (TRL-4)
+## 🐳 Docker Swarm (TRL‑4)
 ```bash
 docker compose -f mvp/lab_swarm_demo/docker-compose.yml up --build -d
-# Логи узлов
+# Node logs
 docker compose -f mvp/lab_swarm_demo/docker-compose.yml logs -f node
 ```
 
-## 📚 Документация
+## 📚 Documentation
 
-- [Сайт документации](https://deus-corp.github.io/BlackSwan/)
-- [Архитектурные решения](docs/architecture/)
-- [Формальная верификация](formal/tla/)
-- [Отчёт о симуляции](docs/TRL4_simulation_baseline.md)
-- [Валидация TRL-4](docs/TRL4_VALIDATION_REPORT.md)
-- [Отчёт Ouroboros](docs/TRL4_OUROBOROS_REPORT.md)
-
----
-
-## 📄 Лицензия
-
-Двойное лицензирование: MIT или Apache-2.0, на ваш выбор.  
-См. [LICENSE-MIT](LICENSE-MIT.md) и [LICENSE-APACHE](LICENSE-APACHE.md).
+- [Documentation site](https://deus-corp.github.io/BlackSwan/)
+- [Architecture decisions](docs/architecture/)
+- [Formal verification](formal/tla/)
+- [Simulation report](docs/TRL4_simulation_baseline.md)
+- [TRL‑4 Validation](docs/TRL4_VALIDATION_REPORT.md)
+- [Ouroboros Report](docs/TRL4_OUROBOROS_REPORT.md)
 
 ---
 
-*Black Swan © 2026. Технический препринт. Не содержит призывов к действию.*
+## 📄 License
+
+Dual‑licensed under MIT or Apache‑2.0, at your option.  
+See [LICENSE-MIT](LICENSE-MIT.md) and [LICENSE-APACHE](LICENSE-APACHE.md).
+
+---
+
+*Black Swan © 2026. Technical preprint. Does not constitute a call to action.*
