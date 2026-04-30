@@ -100,6 +100,7 @@ def update_peer(peer, success):
     if peer not in peer_score:
         peer_score[peer] = 1.0
     peer_score[peer] *= (1.05 if success else 0.7)
+    peer_score[peer] = max(0.1, min(2.0, peer_score[peer]))
 
 def pick_peer():
     if not PEERS:
@@ -121,7 +122,7 @@ def make_genome(params, fitness):
     return {
         "params": params,
         "fitness": fitness,
-        "niche": random.choice(["survival", "capital", "exploration"]),
+        'niche': node_niche(),
         "origin": NODE_ID,
         "lineage": [NODE_ID],
         "ts": time.time()
@@ -171,8 +172,14 @@ async def gossip_loop():
                 async with session.post(f"{peer}/gossip", json={"versions": known}, timeout=1) as resp:
                     data = await resp.json()
                     delta = data.get("delta", {})
-                    # Apply admission control to incoming delta
-                    filtered_delta = {k: v for k, v in delta.items() if accept_genome(v)}
+                    filtered_delta = {}
+                    trust = peer_score.get(peer, 1.0)
+                    for k, v in delta.items():
+                        if not accept_genome(v):
+                            continue
+                        # Trust-weighted acceptance
+                        if random.random() < min(1.0, trust):
+                            filtered_delta[k] = v
                     await crdt.merge(filtered_delta)
                     update_peer(peer, True)
             except:
@@ -231,6 +238,15 @@ capital = 1000.0
 step_count = 0
 last_import_step = 0
 
+def node_niche():
+    """Determine the node's preferred niche based on current state."""
+    if survival.dq >= 0.8 or survival.liveness < 0.5:
+        return "survival"
+    elif capital > 50000 and survival.dq < 0.3:
+        return "capital"
+    else:
+        return "exploration"
+
 # ================= MAIN LOOP =================
 
 async def main_loop():
@@ -263,11 +279,17 @@ async def main_loop():
                     survival.dq = min(1.0, survival.dq + 0.001)
 
             # Import genomes from swarm with rate limiting
-            if step_count - last_import_step > IMPORT_COOLDOWN:
+             if step_count - last_import_step > IMPORT_COOLDOWN:
                 remote = await crdt.get_top(10)
                 filtered = [g for g in remote if accept_genome(g)]
                 scored = sorted(filtered, key=local_score, reverse=True)
-                selected = scored[:MAX_IMPORT]
+                preferred_niche = node_niche()
+                selected = []
+                for g in scored:
+                    if g.get("niche") == preferred_niche or random.random() < 0.2:
+                        selected.append(g)
+                        if len(selected) >= MAX_IMPORT:
+                            break
                 for g in selected:
                     parent = random.choice(engine.population)
                     child = recombine({"params": parent, "niche": "local", "lineage": []}, g)
