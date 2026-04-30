@@ -1,0 +1,150 @@
+=== Запуск эволюции стратегии Kelly ===
+
+Поколение 1: средний капитал = 3903.83, максимальный = 8124.26
+Поколение 2: средний капитал = 5686.46, максимальный = 8322.77
+Поколение 3: средний капитал = 7367.49, максимальный = 9538.98
+Поколение 4: средний капитал = 7983.11, максимальный = 8828.54
+Поколение 5: средний капитал = 7849.42, максимальный = 9939.33
+Поколение 6: средний капитал = 8225.84, максимальный = 10022.69
+Поколение 7: средний капитал = 7831.93, максимальный = 9719.36
+Поколение 8: средний капитал = 8577.79, максимальный = 11464.83
+Поколение 9: средний капитал = 8396.38, максимальный = 9622.21
+Поколение 10: средний капитал = 8514.28, максимальный = 10295.41
+
+=== Лучшие параметры после 10 поколений ===
+max_risk_per_trade = 0.2000
+phi_llm = 0.4031
+Достигнутый капитал = 11464.83
+
+Капитал со стандартными параметрами (0.05, 0.15): 1709.94
+Улучшение: 9754.88
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] port=8000 peers=['http://localhost:8001', 'http://localhost:8002']
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=9537.6926
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=50 capital=98922886.47 dq=0.048 fitness=9537.6926 diversity=6 crdt_size=1
+[Gen 2] New champion: fitness=10518.02
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=10518.0227
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=100 capital=98922861.47 dq=0.048 fitness=10518.0227 diversity=5 crdt_size=4
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=10518.0227
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=150 capital=98922836.47 dq=0.048 fitness=10518.0227 diversity=6 crdt_size=7
+[Gen 4] New champion: fitness=12098.02
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=12098.0233
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=200 capital=98922811.47 dq=0.048 fitness=12098.0233 diversity=4 crdt_size=10
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=12098.0233
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=250 capital=98922786.47 dq=0.048 fitness=12098.0233 diversity=4 crdt_size=12
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=12098.0233
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=300 capital=98922761.47 dq=0.048 fitness=12098.0233 diversity=6 crdt_size=14
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=12098.0233
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=350 capital=98922736.47 dq=0.048 fitness=12098.0233 diversity=4 crdt_size=16
+[Gen 8] New champion: fitness=14810.05
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=14810.0502
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=400 capital=98922711.47 dq=0.048 fitness=14810.0502 diversity=2 crdt_size=18
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=14810.0502
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=450 capital=98922686.47 dq=0.048 fitness=14810.0502 diversity=7 crdt_size=20
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=14810.0502
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=500 capital=98922661.47 dq=0.048 fitness=14810.0502 diversity=7 crdt_size=22
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=14810.0502
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=550 capital=98922636.47 dq=0.048 fitness=14810.0502 diversity=6 crdt_size=24
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=14810.0502
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=600 capital=98922611.47 dq=0.048 fitness=14810.0502 diversity=6 crdt_size=26
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=14810.0502
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=650 capital=98922586.47 dq=0.048 fitness=14810.0502 diversity=5 crdt_size=28
+[Gen 14] New champion: fitness=18597.32
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=18597.3169
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=700 capital=98922561.47 dq=0.048 fitness=18597.3169 diversity=6 crdt_size=30
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=18597.3169
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=750 capital=98922536.47 dq=0.048 fitness=18597.3169 diversity=4 crdt_size=32
+[Gen 16] New champion: fitness=22075.99
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=22075.9938
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=800 capital=98922511.47 dq=0.048 fitness=22075.9938 diversity=3 crdt_size=34
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=22075.9938
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=850 capital=98922486.47 dq=0.048 fitness=22075.9938 diversity=4 crdt_size=25
+[Gen 18] New champion: fitness=23075.10
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=23075.1006
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=900 capital=98922461.47 dq=0.048 fitness=23075.1006 diversity=6 crdt_size=27
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=23075.1006
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=950 capital=98922436.47 dq=0.048 fitness=23075.1006 diversity=4 crdt_size=29
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=23075.1006
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1000 capital=98922411.47 dq=0.048 fitness=23075.1006 diversity=2 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=23075.1006
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1050 capital=98922386.47 dq=0.048 fitness=23075.1006 diversity=7 crdt_size=25
+[Gen 22] New champion: fitness=28923.43
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=28923.4327
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1100 capital=98922361.47 dq=0.048 fitness=28923.4327 diversity=3 crdt_size=27
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=28923.4327
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1150 capital=98922336.47 dq=0.048 fitness=28923.4327 diversity=4 crdt_size=29
+[Gen 24] New champion: fitness=30133.56
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=30133.5611
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1200 capital=98922311.47 dq=0.048 fitness=30133.5611 diversity=2 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=30133.5611
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1250 capital=98922286.47 dq=0.048 fitness=30133.5611 diversity=2 crdt_size=25
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=30133.5611
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1300 capital=98922261.47 dq=0.048 fitness=30133.5611 diversity=4 crdt_size=27
+[Gen 27] New champion: fitness=32386.41
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=32386.4050
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1350 capital=98922236.47 dq=0.048 fitness=32386.4050 diversity=5 crdt_size=29
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=32386.4050
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1400 capital=98922211.47 dq=0.048 fitness=32386.4050 diversity=6 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=32386.4050
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1450 capital=98922186.47 dq=0.048 fitness=32386.4050 diversity=4 crdt_size=25
+[Gen 30] New champion: fitness=32895.63
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=32895.6274
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1500 capital=98922161.47 dq=0.048 fitness=32895.6274 diversity=3 crdt_size=27
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=32895.6274
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1550 capital=98922136.47 dq=0.048 fitness=32895.6274 diversity=3 crdt_size=29
+[Gen 32] New champion: fitness=35937.68
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=35937.6807
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1600 capital=98922111.47 dq=0.048 fitness=35937.6807 diversity=2 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=35937.6807
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1650 capital=98922086.47 dq=0.048 fitness=35937.6807 diversity=2 crdt_size=25
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=35937.6807
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1700 capital=98922061.47 dq=0.048 fitness=35937.6807 diversity=4 crdt_size=27
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=35937.6807
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1750 capital=98922036.47 dq=0.048 fitness=35937.6807 diversity=4 crdt_size=29
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=35937.6807
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1800 capital=98922011.47 dq=0.048 fitness=35937.6807 diversity=5 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=35937.6807
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1850 capital=98921986.47 dq=0.048 fitness=35937.6807 diversity=5 crdt_size=25
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=35937.6807
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1900 capital=98921961.47 dq=0.048 fitness=35937.6807 diversity=6 crdt_size=27
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=35937.6807
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=1950 capital=98921936.47 dq=0.048 fitness=35937.6807 diversity=3 crdt_size=29
+[Gen 40] New champion: fitness=37817.68
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=37817.6842
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2000 capital=98921911.47 dq=0.048 fitness=37817.6842 diversity=5 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=37817.6842
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2050 capital=98921886.47 dq=0.048 fitness=37817.6842 diversity=3 crdt_size=25
+[Gen 42] New champion: fitness=42140.87
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2100 capital=98921861.47 dq=0.048 fitness=42140.8654 diversity=4 crdt_size=27
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2150 capital=98921836.47 dq=0.048 fitness=42140.8654 diversity=6 crdt_size=29
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2200 capital=98921811.47 dq=0.048 fitness=42140.8654 diversity=3 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2250 capital=98921786.47 dq=0.048 fitness=42140.8654 diversity=5 crdt_size=25
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2300 capital=98921761.47 dq=0.048 fitness=42140.8654 diversity=6 crdt_size=27
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2350 capital=98921736.47 dq=0.048 fitness=42140.8654 diversity=4 crdt_size=29
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2400 capital=98921711.47 dq=0.048 fitness=42140.8654 diversity=2 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2450 capital=98921686.47 dq=0.048 fitness=42140.8654 diversity=6 crdt_size=25
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=42140.8654
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2500 capital=98921661.47 dq=0.048 fitness=42140.8654 diversity=4 crdt_size=27
+[Gen 51] New champion: fitness=51896.29
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=51896.2930
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2550 capital=98921636.47 dq=0.048 fitness=51896.2930 diversity=6 crdt_size=29
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=51896.2930
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2600 capital=98921611.47 dq=0.048 fitness=51896.2930 diversity=3 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=51896.2930
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2650 capital=98921586.47 dq=0.048 fitness=51896.2930 diversity=3 crdt_size=25
+[Gen 54] New champion: fitness=66235.73
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=66235.7272
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2700 capital=98921561.47 dq=0.048 fitness=66235.7272 diversity=2 crdt_size=27
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=66235.7272
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2750 capital=98921536.47 dq=0.048 fitness=66235.7272 diversity=4 crdt_size=29
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=66235.7272
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2800 capital=98921511.47 dq=0.048 fitness=66235.7272 diversity=4 crdt_size=31
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] share fitness=66235.7272
+[2b2d4967-d6b6-4d9e-89d9-cb5e6f8d67e0] step=2850 capital=98921486.47 dq=0.048 fitness=66235.7272 diversity=6 crdt_size=25
