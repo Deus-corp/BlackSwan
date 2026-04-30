@@ -48,6 +48,9 @@ class SurvivalEvaluator:
         original_dq = self.dq
         self.dq = new_dq
 
+        if math.isnan(capital) or math.isinf(capital):
+            capital = 1000.0  # сброс к начальному значению при аварии
+
         new_capital = capital + expected_return
         score = self.compute_survival_score(new_capital)
 
@@ -63,13 +66,15 @@ class SurvivalEvaluator:
         return score, approved
 
     def hide(self, capital: float) -> float:
-        """
-        Снижение DQ ценой части капитала.
-        Возвращает новый капитал.
-        """
+        # Ограничиваем максимальный капитал, чтобы избежать переполнения
+        max_cap = 1e9  # 1 миллиард — более чем достаточно для лабораторного роя
+        if capital > max_cap or math.isnan(capital) or math.isinf(capital):
+            capital = max_cap
         cost = capital * self.config["hide_cost_factor"]
-        self.dq = max(0.0, self.dq - 0.01)  # снижаем DQ на фиксированную величину
-        return capital - cost
+        self.dq = max(0.0, self.dq - 0.01)
+        new_capital = capital - cost
+        # Защита от отрицательного капитала
+        return max(0.0, new_capital)
 
     def expand(self, capital: float) -> bool:
         """

@@ -28,6 +28,7 @@
 ✅ Survival Objective встроен в узлы роя (осознанное избегание риска).  
 🧪 Прототипы CRDT‑состояния и D2BFT‑консенсуса (готовы к интеграции).  
 ✅ CI/CD: юнит‑тесты, формальная верификация (локально + GitHub Actions).  
+🧪 Curiosity Engine: генерация исследовательских гипотез в рое, 12-часовой прогон подтвердил стабильность.
 
 📖 Подробный отчёт: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
@@ -42,7 +43,7 @@
 | **Ouroboros (самоулучшение)** | ✅ Распределённый прототип | 4 | `sim/evolve_kelly.py`, `formal/tla/Ouroboros.tla`, `mvp/lab_swarm_demo/` |
 | **Survival Objective** | ✅ Встроен в рой | 4 | `sim/survival_evaluator.py`, `formal/tla/SurvivalObjective.tla` |
 | **Genetic Engine** | ✅ TRL-4 | 4 | `sim/genetic_engine.py`, `formal/tla/GeneticEngine.tla` |
-| **Curiosity Engine** | 🧪 Формальная модель | 3 | `formal/tla/CuriosityEngine.tla` |
+| **Curiosity Engine** | ✅ Распределённый прототип | 4 | `sim/curiosity_engine.py`, `formal/tla/CuriosityEngine.tla`, `mvp/lab_swarm_demo/` (генерация гипотез в рое) |
 | **CRDT‑состояние** | 🧪 Прототип | 3 | `src/core/crdt_state.py` |
 | **D2BFT консенсус** | 🧪 Прототип | 3 | `src/core/d2bft.py`, `formal/tla/D2BFT.tla` |
 | **Память (Mem0g)** | 📐 Спроектирована | 2 | `docs/architecture/memory_hierarchy_mem0g.md` |
