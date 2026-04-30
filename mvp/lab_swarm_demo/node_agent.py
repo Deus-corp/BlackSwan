@@ -279,13 +279,14 @@ async def main_loop():
                     survival.dq = min(1.0, survival.dq + 0.001)
 
             # Import genomes from swarm with rate limiting
-             if step_count - last_import_step > IMPORT_COOLDOWN:
+            if step_count - last_import_step > IMPORT_COOLDOWN:
                 remote = await crdt.get_top(10)
                 filtered = [g for g in remote if accept_genome(g)]
                 scored = sorted(filtered, key=local_score, reverse=True)
                 preferred_niche = node_niche()
                 selected = []
                 for g in scored:
+                    # 80% берём свою нишу, 20% — другие для разнообразия
                     if g.get("niche") == preferred_niche or random.random() < 0.2:
                         selected.append(g)
                         if len(selected) >= MAX_IMPORT:
