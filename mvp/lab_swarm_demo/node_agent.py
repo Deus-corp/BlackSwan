@@ -1,10 +1,10 @@
 import os
 import time
 import random
-import threading
-import requests
 import uuid
-import json
+import asyncio
+import aiohttp
+from aiohttp import web
 
 from src.economy.roi_dispatcher import ROIDispatcher
 from src.core.global_state import GlobalState
@@ -17,111 +17,207 @@ from sim.meta_pomdp_agent import MetaPOMDPAgent
 
 NODE_ID = os.environ.get("NODE_ID", str(uuid.uuid4()))
 PORT = int(os.environ.get("PORT", 8000))
-PEERS = os.environ.get("PEERS", "").split(",") if os.environ.get("PEERS") else []
+PEERS = [p for p in os.environ.get("PEERS", "").split(",") if p]
 MARKET_URL = os.environ.get("MARKET_URL", None)
 
 BURN_RATE = float(os.environ.get("BURN_RATE", 0.5))
 FAILURE_PROB = float(os.environ.get("FAILURE_PROB", 0.0))
 
-# ================= CRDT =================
+GOSSIP_INTERVAL = 1.5
+MAX_STATE = 200
+TTL = 300  # seconds
+
+MAX_IMPORT = 2
+IMPORT_COOLDOWN = 5
+ELITE_SIZE = 2
+
+# ================= CRDT (Delta + Versioned LWW) =================
 
 class CRDTState:
     def __init__(self):
         self.state = {}
-        self.lock = threading.Lock()
+        self.version = 0
+        self.lock = asyncio.Lock()
 
-    def add_genome(self, params, fitness):
-        gid = str(uuid.uuid4())
-        with self.lock:
+    async def add_genome(self, params, fitness):
+        async with self.lock:
+            gid = str(uuid.uuid4())
+            self.version += 1
             self.state[gid] = {
                 "params": params,
                 "fitness": fitness,
-                "timestamp": time.time(),
-                "node_id": NODE_ID
+                "ts": time.time(),
+                "node": NODE_ID,
+                "ver": self.version
             }
 
-    def merge(self, remote):
-        with self.lock:
-            for gid, val in remote.items():
+    async def merge(self, remote_items):
+        async with self.lock:
+            for gid, val in remote_items.items():
                 if gid not in self.state:
                     self.state[gid] = val
                 else:
                     local = self.state[gid]
-                    if (val["timestamp"], val["node_id"]) > (local["timestamp"], local["node_id"]):
+                    if (val["ver"], val["node"]) > (local["ver"], local["node"]):
                         self.state[gid] = val
 
-    def get_top(self, n=5):
-        with self.lock:
-            return sorted(
-                self.state.values(),
-                key=lambda x: x["fitness"],
-                reverse=True
-            )[:n]
+    async def get_delta(self, known_versions):
+        async with self.lock:
+            delta = {}
+            for gid, val in self.state.items():
+                if gid not in known_versions or known_versions[gid] < val["ver"]:
+                    delta[gid] = val
+            return delta
 
-    def prune(self, max_size=100):
-        with self.lock:
-            if len(self.state) > max_size:
-                top = self.get_top(max_size)
-                self.state = {str(i): g for i, g in enumerate(top)}
+    async def get_versions(self):
+        async with self.lock:
+            return {gid: val["ver"] for gid, val in self.state.items()}
+
+    async def get_top(self, n=5):
+        async with self.lock:
+            return sorted(self.state.values(), key=lambda x: x["fitness"], reverse=True)[:n]
+
+    async def prune(self):
+        async with self.lock:
+            now = time.time()
+            # TTL
+            self.state = {
+                k: v for k, v in self.state.items()
+                if now - v["ts"] < TTL
+            }
+            # size cap
+            if len(self.state) > MAX_STATE:
+                top = sorted(self.state.items(), key=lambda x: x[1]["fitness"], reverse=True)[:MAX_STATE]
+                self.state = dict(top)
 
 crdt = CRDTState()
 
+# ================= PEER REPUTATION =================
+
+peer_score = {p: 1.0 for p in PEERS}
+
+def update_peer(peer, success):
+    if peer not in peer_score:
+        peer_score[peer] = 1.0
+    peer_score[peer] *= (1.05 if success else 0.7)
+
+def pick_peer():
+    if not PEERS:
+        return None
+    weights = [peer_score.get(p, 1.0) for p in PEERS]
+    return random.choices(PEERS, weights=weights)[0]
+
+# ================= STABILISERS =================
+
+def accept_genome(genome):
+    if genome.get("fitness", 0) < 0.001:
+        return False
+    for v in genome.get("params", {}).values():
+        if not (0 < v < 10):
+            return False
+    return True
+
+def make_genome(params, fitness):
+    return {
+        "params": params,
+        "fitness": fitness,
+        "niche": random.choice(["survival", "capital", "exploration"]),
+        "origin": NODE_ID,
+        "lineage": [NODE_ID],
+        "ts": time.time()
+    }
+
+def recombine(g1, g2):
+    child = {}
+    for k in g1["params"]:
+        val = g1["params"][k] if random.random() < 0.5 else g2["params"][k]
+        if random.random() < 0.1:
+            val *= random.uniform(0.9, 1.1)
+        val = max(0.0001, min(1.0, val))
+        child[k] = val
+    return {
+        "params": child,
+        "fitness": 0.0,
+        "niche": g1.get("niche", "mixed") if random.random() < 0.5 else g2.get("niche", "mixed"),
+        "lineage": (g1.get("lineage", [])[-5:] + [NODE_ID]),
+        "ts": time.time()
+    }
+
+def local_score(genome):
+    base = genome["fitness"]
+    bias = 1.0
+    if genome.get("niche") == "survival":
+        bias += min(0.5, survival.liveness)
+    elif genome.get("niche") == "exploration":
+        bias += min(0.3, curiosity.surprise_threshold)
+    elif genome.get("niche") == "capital":
+        bias += min(0.5, capital / 2000)
+    return base * bias
+
+def population_diversity(pop):
+    return len(set(str(p) for p in pop))
+
 # ================= GOSSIP =================
 
-def gossip_loop():
-    while True:
-        if not PEERS:
-            time.sleep(2)
-            continue
+async def gossip_loop():
+    async with aiohttp.ClientSession() as session:
+        while True:
+            peer = pick_peer()
+            if not peer:
+                await asyncio.sleep(GOSSIP_INTERVAL)
+                continue
+            try:
+                known = await crdt.get_versions()
+                async with session.post(f"{peer}/gossip", json={"versions": known}, timeout=1) as resp:
+                    data = await resp.json()
+                    delta = data.get("delta", {})
+                    # Apply admission control to incoming delta
+                    filtered_delta = {k: v for k, v in delta.items() if accept_genome(v)}
+                    await crdt.merge(filtered_delta)
+                    update_peer(peer, True)
+            except:
+                update_peer(peer, False)
+            await asyncio.sleep(GOSSIP_INTERVAL)
 
-        peer = random.choice(PEERS)
-        try:
-            res = requests.post(f"{peer}/sync", json=crdt.state, timeout=1)
-            remote = res.json()
-            crdt.merge(remote)
-        except:
-            pass
+# ================= HTTP =================
 
-        time.sleep(2)
+routes = web.RouteTableDef()
 
-# ================= HTTP SERVER =================
+@routes.post("/gossip")
+async def gossip_handler(request):
+    data = await request.json()
+    remote_versions = data.get("versions", {})
+    delta = await crdt.get_delta(remote_versions)
+    await crdt.merge(data.get("delta", {}))
+    return web.json_response({"delta": delta})
 
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-
-@app.route("/sync", methods=["POST"])
-def sync():
-    remote = request.json
-    crdt.merge(remote)
-    return jsonify(crdt.state)
-
-def run_server():
-    app.run(host="0.0.0.0", port=PORT)
+async def run_server():
+    app = web.Application()
+    app.add_routes(routes)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
 
 # ================= MARKET =================
 
-def get_market_tick():
+async def get_market_tick(session):
     if MARKET_URL:
         try:
-            return requests.get(MARKET_URL, timeout=1).json()
+            async with session.get(MARKET_URL, timeout=1) as resp:
+                return await resp.json()
         except:
             pass
-    # fallback (симуляция)
     return {"price": random.uniform(90, 110)}
 
-# ================= AGENT INIT =================
+# ================= AGENT =================
 
 engine = GeneticEngine(pop_size=10)
 engine.initialize()
 
 state = GlobalState()
-
 best = state.get_best_genomes(top_n=1)
-if best:
-    current_params = list(best.values())[-1]
-else:
-    current_params = {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
+current_params = list(best.values())[-1] if best else {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
 
 dispatcher = ROIDispatcher(config=current_params)
 survival = SurvivalEvaluator()
@@ -133,100 +229,116 @@ meta_agent = MetaPOMDPAgent()
 
 capital = 1000.0
 step_count = 0
-last_champion_fitness = 0.0
-
-print(f"[{NODE_ID}] started on port {PORT}, peers={PEERS}")
+last_import_step = 0
 
 # ================= MAIN LOOP =================
 
-def main_loop():
-    global capital, step_count, current_params, dispatcher, last_champion_fitness
+async def main_loop():
+    global capital, step_count, current_params, dispatcher, last_import_step
 
-    while True:
-        step_count += 1
+    async with aiohttp.ClientSession() as session:
+        while True:
+            step_count += 1
 
-        if FAILURE_PROB > 0 and random.random() < FAILURE_PROB:
-            print(f"[{NODE_ID}] failed!")
-            break
+            if FAILURE_PROB > 0 and random.random() < FAILURE_PROB:
+                print(f"[{NODE_ID}] failed")
+                return
 
-        market_data = get_market_tick()
+            market = await get_market_tick(session)
 
-        # --- survival ---
-        if survival.should_hide():
-            capital = survival.hide(capital)
+            capital -= BURN_RATE
+            if capital <= 0:
+                print(f"[{NODE_ID}] died")
+                return
 
-        if survival.should_expand() and capital >= survival.config["expand_cost"]:
-            if survival.expand(capital):
-                capital -= survival.config["expand_cost"]
+            expected = market["price"] * 0.1 * 0.05
+            _, approved = survival.evaluate_trade(capital, expected)
 
-        capital -= BURN_RATE
-        if capital <= 0:
-            print(f"[{NODE_ID}] died")
-            break
+            if approved:
+                fraction, _ = dispatcher.evaluate(market, capital)
+                if fraction > 0:
+                    ret = market["price"] * fraction * 0.1
+                    capital *= (1 + ret)
+                    capital -= 1.0
+                    survival.dq = min(1.0, survival.dq + 0.001)
 
-        # --- trading ---
-        expected_return = market_data["price"] * 0.1 * 0.05
-        _, approved = survival.evaluate_trade(capital, expected_return)
+            # Import genomes from swarm with rate limiting
+            if step_count - last_import_step > IMPORT_COOLDOWN:
+                remote = await crdt.get_top(10)
+                filtered = [g for g in remote if accept_genome(g)]
+                scored = sorted(filtered, key=local_score, reverse=True)
+                selected = scored[:MAX_IMPORT]
+                for g in selected:
+                    parent = random.choice(engine.population)
+                    child = recombine({"params": parent, "niche": "local", "lineage": []}, g)
+                    engine.population.append(child["params"])
+                    if len(engine.population) > engine.pop_size:
+                        engine.population.pop(0)
+                last_import_step = step_count
 
-        if approved:
-            fraction, _ = dispatcher.evaluate(market_data, capital)
-            if fraction > 0:
-                ret = market_data["price"] * fraction * 0.1
-                capital *= (1 + ret)
-                capital -= 1.0
-                survival.dq = min(1.0, survival.dq + 0.001)
+            # Evolution every 50 steps
+            if step_count % 50 == 0:
+                # Elitism: keep best before evolution
+                elite = sorted(engine.population, key=lambda p: engine._fitness(p), reverse=True)[:ELITE_SIZE]
+                engine.evolve_generation()
+                # Restore elite
+                engine.population[-ELITE_SIZE:] = elite
 
-        # --- import genomes from CRDT ---
-        top = crdt.get_top(3)
-        for g in top:
-            engine.population.append(g["params"])
-            if len(engine.population) > engine.pop_size:
-                engine.population.pop(0)
+                if engine.champion[1] > 0:
+                    genome = make_genome(engine.champion[0], engine.champion[1])
+                    await crdt.add_genome(genome["params"], genome["fitness"])
+                    print(f"[{NODE_ID}] share fitness={engine.champion[1]:.4f}")
 
-        # --- evolution ---
-        if step_count % 50 == 0:
-            engine.evolve_generation()
+                if engine.champion[1] > engine._fitness(current_params):
+                    current_params = engine.champion[0]
+                    dispatcher = ROIDispatcher(config=current_params)
 
-            if engine.champion[1] > last_champion_fitness:
-                last_champion_fitness = engine.champion[1]
+                # Log metrics
+                print(f"[{NODE_ID}] step={step_count} capital={capital:.2f} dq={survival.dq:.3f} "
+                      f"fitness={engine.champion[1]:.4f} diversity={population_diversity(engine.population)} "
+                      f"crdt_size={len(crdt.state)}")
 
-            # publish to CRDT
-            if engine.champion[1] > 0:
-                crdt.add_genome(engine.champion[0], engine.champion[1])
-                print(f"[{NODE_ID}] shared genome {engine.champion[1]:.4f}")
+            # Curiosity + Meta every 100 steps
+            if step_count % 100 == 0:
+                hypothesis = curiosity.update(market)
+                if hypothesis:
+                    engine.population.append(hypothesis)
 
-            # upgrade strategy
-            if engine.champion[1] > engine._fitness(current_params):
-                current_params = engine.champion[0]
-                dispatcher = ROIDispatcher(config=current_params)
+                norm_cap = min(1.0, capital / 10000.0)
+                surprise = curiosity.prediction_errors[-1] if curiosity.prediction_errors else 0.0
+                weights = meta_agent.update(
+                    dq=survival.dq,
+                    liveness=survival.liveness,
+                    capital=norm_cap,
+                    surprise=surprise
+                )
+                survival.config["lambda"] = weights["w_capital"]
 
-        # --- curiosity + meta ---
-        if step_count % 100 == 0:
-            hypothesis = curiosity.update(market_data)
-            if hypothesis:
-                engine.population.append(hypothesis)
+                # Adaptive mutation rate
+                if meta_agent.current_scenario in ("crisis", "stealth_mode"):
+                    engine.set_mutation_rate(0.1)
+                elif meta_agent.current_scenario == "exploration":
+                    engine.set_mutation_rate(0.5)
+                else:
+                    engine.set_mutation_rate(0.25)
 
-            norm_capital = min(1.0, capital / 10000.0)
-            surprise = curiosity.prediction_errors[-1] if curiosity.prediction_errors else 0.0
+            if step_count % 200 == 0:
+                await crdt.prune()
 
-            weights = meta_agent.update(
-                dq=survival.dq,
-                liveness=survival.liveness,
-                capital=norm_capital,
-                surprise=surprise
-            )
-
-            survival.config["lambda"] = weights["w_capital"]
-
-        # --- maintenance ---
-        if step_count % 200 == 0:
-            crdt.prune()
-
-        time.sleep(0.5)
+            await asyncio.sleep(0.5)
 
 # ================= START =================
 
+async def start():
+    print(f"[{NODE_ID}] port={PORT} peers={PEERS}")
+    await asyncio.gather(
+        run_server(),
+        gossip_loop(),
+        main_loop()
+    )
+
 if __name__ == "__main__":
-    threading.Thread(target=run_server, daemon=True).start()
-    threading.Thread(target=gossip_loop, daemon=True).start()
-    main_loop()
+    try:
+        asyncio.run(start())
+    except KeyboardInterrupt:
+        print("Node stopped.")
