@@ -7,6 +7,5 @@ language = "en"
 default-theme = "ayu"
 preferred-dark-theme = "ayu"
 additional-css = ["theme/css/custom.css"]
-default-editor = true
-search = true
+search = {}
 git-repository-url = "https://github.com/Deus-corp/BlackSwan"
