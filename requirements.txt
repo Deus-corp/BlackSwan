@@ -2,3 +2,4 @@ redis
 numpy
 aiohttp
 cryptography
+llama-cpp-python

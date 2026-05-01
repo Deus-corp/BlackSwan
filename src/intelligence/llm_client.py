@@ -9,7 +9,7 @@ class LLMClient:
         if model_path is None:
             model_path = "llama_cpp/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"
         self.llm = Llama(
-            model_path=model_path,
+            model_path="/app/llama_cpp/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",  # путь из контейнера
             n_ctx=512,
             n_threads=4,
             verbose=False

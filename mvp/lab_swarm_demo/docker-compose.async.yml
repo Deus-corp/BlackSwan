@@ -18,3 +18,5 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
+    volumes:
+      - ../../llama_cpp:/app/llama_cpp:ro
