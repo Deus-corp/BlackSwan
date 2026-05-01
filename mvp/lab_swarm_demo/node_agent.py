@@ -57,6 +57,10 @@ def accept_genome(genome):
     for v in genome.get("params", {}).values():
         if not (0 < v < 10):
             return False
+    # Проверка подписи
+    payload = {"params": genome.get("params", {}), "fitness": genome.get("fitness", 0.0)}
+    if not CryptoManager.verify(payload, genome.get("signature", ""), genome.get("origin_pubkey", "")):
+        return False
     return True
 
 def make_genome(params, fitness):
@@ -298,8 +302,6 @@ async def main_loop():
 
             if step_count % 200 == 0:
                 await crdt.prune()
-
-            if step_count % 200 == 0:
                 # Выбираем случайный геном из CRDT и перепроверяем его фитнес
                 top = await crdt.get_top(20)
                 if top:
