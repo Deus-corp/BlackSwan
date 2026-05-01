@@ -14,6 +14,7 @@
   - [CRDT State](implemented/crdt_state.md)
   - [D2BFT Consensus](implemented/d2bft.md)
   - [Curiosity Engine](implemented/curiosity_engine.md)
+  - [Episodic Memory (L1)](implemented/episodic_memory.md)
 
 - [Architecture](architecture/architecture_overview.en.md)
   - [Global State & Decision Pipeline](architecture/global_state_and_decision_pipeline.en.md)

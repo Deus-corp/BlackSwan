@@ -73,6 +73,8 @@ class SwarmNode:
         self.step_count = 0
         self.last_import_step = 0
 
+        self._prev_prev_price = 100.0
+
     def _seed_from_memory(self):
         """Добавляет в популяцию параметры из похожих рыночных ситуаций."""
         if len(self.memory) == 0:
@@ -141,6 +143,19 @@ class SwarmNode:
             bias += min(0.3, self.curiosity.surprise_threshold)
         elif genome.niche == "capital":
             bias += min(0.5, self.capital / 2000)
+
+        # 🆕 Memory bias: если похожая стратегия была успешна в прошлом
+        if hasattr(self, 'memory') and len(self.memory) > 0:
+            # вычисляем текущую волатильность (упрощённо, по последней цене)
+            current_volatility = abs(getattr(self, '_prev_price', 100.0) - getattr(self, '_prev_prev_price', 100.0)) / max(1.0, getattr(self, '_prev_price', 100.0))
+            current_dq = self.survival.dq
+            similar_records = self.memory.find_similar(current_volatility, current_dq, top_k=5)
+            # проверяем, есть ли среди них запись с таким же набором параметров
+            for rec in similar_records:
+                if rec["params"] == genome.params:
+                    bias += 0.2  # бонус за знакомую успешную стратегию
+                    break
+
         return base * bias
 
     def population_diversity(self):
@@ -269,6 +284,8 @@ class SwarmNode:
                             params=self.engine.champion[0],
                             fitness=self.engine.champion[1],
                         )
+                        # Сохраняем в эпизодическую память (добавьте перед вызовом memory.add)
+                        self._prev_prev_price = getattr(self, '_prev_price', market.get("price", 100.0))
                         self._prev_price = market.get("price", 0.0)
 
                     cur_niche = self.node_niche()
@@ -313,6 +330,12 @@ class SwarmNode:
                             actual_fit = self.engine._fitness(sample["params"])
                             claimed_fit = sample.get("fitness", 0.0)
                             self.reputation.update(pubkey, claimed_fit, actual_fit)
+
+                if self.step_count % 500 == 0:
+                    # Консолидация эпизодической памяти
+                    self.memory.records = list({ (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec for rec in self.memory.records }.values())
+                    if len(self.memory.records) > self.memory.max_size:
+                        self.memory.records = self.memory.records[-self.memory.max_size:]
 
                 await asyncio.sleep(0.5)
 
