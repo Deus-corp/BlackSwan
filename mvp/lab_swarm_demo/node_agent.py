@@ -13,6 +13,7 @@ from sim.survival_evaluator import SurvivalEvaluator
 from sim.curiosity_engine import CuriosityEngine
 from sim.meta_pomdp_agent import MetaPOMDPAgent
 from src.core.crdt_adapter import CRDTAdapter
+from src.core.gossip_adapter import SafeGossipAdapter
 
 # ================= CONFIG =================
 
@@ -32,82 +33,10 @@ MAX_IMPORT = 2
 IMPORT_COOLDOWN = 5
 ELITE_SIZE = 2
 
-# ================= CRDT (Delta + Versioned LWW) =================
-
-class CRDTState:
-    def __init__(self):
-        self.state = {}
-        self.version = 0
-        self.lock = asyncio.Lock()
-
-    async def add_genome(self, params, fitness):
-        async with self.lock:
-            gid = str(uuid.uuid4())
-            self.version += 1
-            self.state[gid] = {
-                "params": params,
-                "fitness": fitness,
-                "ts": time.time(),
-                "node": NODE_ID,
-                "ver": self.version
-            }
-
-    async def merge(self, remote_items):
-        async with self.lock:
-            for gid, val in remote_items.items():
-                if gid not in self.state:
-                    self.state[gid] = val
-                else:
-                    local = self.state[gid]
-                    if (val["ver"], val["node"]) > (local["ver"], local["node"]):
-                        self.state[gid] = val
-
-    async def get_delta(self, known_versions):
-        async with self.lock:
-            delta = {}
-            for gid, val in self.state.items():
-                if gid not in known_versions or known_versions[gid] < val["ver"]:
-                    delta[gid] = val
-            return delta
-
-    async def get_versions(self):
-        async with self.lock:
-            return {gid: val["ver"] for gid, val in self.state.items()}
-
-    async def get_top(self, n=5):
-        async with self.lock:
-            return sorted(self.state.values(), key=lambda x: x["fitness"], reverse=True)[:n]
-
-    async def prune(self):
-        async with self.lock:
-            now = time.time()
-            # TTL
-            self.state = {
-                k: v for k, v in self.state.items()
-                if now - v["ts"] < TTL
-            }
-            # size cap
-            if len(self.state) > MAX_STATE:
-                top = sorted(self.state.items(), key=lambda x: x[1]["fitness"], reverse=True)[:MAX_STATE]
-                self.state = dict(top)
+# ================= CRDT + GOSSIP (новые адаптеры) =================
 
 crdt = CRDTAdapter(NODE_ID)
-
-# ================= PEER REPUTATION =================
-
-peer_score = {p: 1.0 for p in PEERS}
-
-def update_peer(peer, success):
-    if peer not in peer_score:
-        peer_score[peer] = 1.0
-    peer_score[peer] *= (1.05 if success else 0.7)
-    peer_score[peer] = max(0.1, min(2.0, peer_score[peer]))
-
-def pick_peer():
-    if not PEERS:
-        return None
-    weights = [peer_score.get(p, 1.0) for p in PEERS]
-    return random.choices(PEERS, weights=weights)[0]
+gossip = SafeGossipAdapter(crdt)
 
 # ================= STABILISERS =================
 
@@ -165,54 +94,6 @@ def population_niche_counts(pop):
         niche = g.get("niche", "exploration")
         counts[niche] = counts.get(niche, 0) + 1
     return counts
-
-# ================= GOSSIP =================
-
-async def gossip_loop():
-    async with aiohttp.ClientSession() as session:
-        while True:
-            peer = pick_peer()
-            if not peer:
-                await asyncio.sleep(GOSSIP_INTERVAL)
-                continue
-            try:
-                known = await crdt.get_versions()
-                async with session.post(f"{peer}/gossip", json={"versions": known}, timeout=1) as resp:
-                    data = await resp.json()
-                    delta = data.get("delta", {})
-                    filtered_delta = {}
-                    trust = peer_score.get(peer, 1.0)
-                    for k, v in delta.items():
-                        if not accept_genome(v):
-                            continue
-                        # Trust-weighted acceptance
-                        if random.random() < min(1.0, trust):
-                            filtered_delta[k] = v
-                    await crdt.merge(filtered_delta)
-                    update_peer(peer, True)
-            except:
-                update_peer(peer, False)
-            await asyncio.sleep(GOSSIP_INTERVAL)
-
-# ================= HTTP =================
-
-routes = web.RouteTableDef()
-
-@routes.post("/gossip")
-async def gossip_handler(request):
-    data = await request.json()
-    remote_versions = data.get("versions", {})
-    delta = await crdt.get_delta(remote_versions)
-    await crdt.merge(data.get("delta", {}))
-    return web.json_response({"delta": delta})
-
-async def run_server():
-    app = web.Application()
-    app.add_routes(routes)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", PORT)
-    await site.start()
 
 # ================= MARKET =================
 
@@ -362,18 +243,15 @@ async def main_loop():
                 else:
                     engine.set_mutation_rate(0.25)
 
-            if step_count % 200 == 0:
-                await crdt.prune()
-
             await asyncio.sleep(0.5)
 
 # ================= START =================
 
 async def start():
     print(f"[{NODE_ID}] port={PORT} peers={PEERS}")
+    # Запускаем промышленный gossip (он сам поднимет HTTP-сервер и gossip-цикл)
     await asyncio.gather(
-        run_server(),
-        gossip_loop(),
+        gossip.start(),
         main_loop()
     )
 

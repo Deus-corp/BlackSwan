@@ -54,3 +54,4 @@ formal/tla/*.out
 *.pem
 *.key
 secrets/states/
+crdt_state.db
