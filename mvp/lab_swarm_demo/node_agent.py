@@ -2,19 +2,21 @@ import os
 import time
 import random
 import uuid
+import hashlib
 import asyncio
+from typing import Dict, Any, Optional
+
 import aiohttp
 from aiohttp import web
 
 from src.economy.roi_dispatcher import ROIDispatcher
 from src.core.global_state import GlobalState
-from sim.genetic_engine import GeneticEngine
+from sim.genetic_engine import GeneticEngine, Genome
 from sim.survival_evaluator import SurvivalEvaluator
 from sim.curiosity_engine import CuriosityEngine
 from sim.meta_pomdp_agent import MetaPOMDPAgent
 from src.core.crdt_adapter import CRDTAdapter
 from src.core.gossip_adapter import SafeGossipAdapter
-from sim.genetic_engine import Genome  # добавляем в импорт
 
 # ================= CONFIG =================
 
@@ -75,27 +77,6 @@ def recombine(g1, g2):
         "ts": time.time()
     }
 
-def local_score(genome):
-    base = genome["fitness"]
-    bias = 1.0
-    if genome.get("niche") == "survival":
-        bias += min(0.5, survival.liveness)
-    elif genome.get("niche") == "exploration":
-        bias += min(0.3, curiosity.surprise_threshold)
-    elif genome.get("niche") == "capital":
-        bias += min(0.5, capital / 2000)
-    return base * bias
-
-def population_diversity(pop):
-    return len(set(str(p) for p in pop))
-
-def population_niche_counts(pop):
-    counts = {"survival": 0, "capital": 0, "exploration": 0}
-    for g in pop:
-        niche = g.get("niche", "exploration")
-        counts[niche] = counts.get(niche, 0) + 1
-    return counts
-
 def dict_to_genome(d: Dict[str, Any], niche: str = "exploration") -> Genome:
     """Преобразует словарь (из CRDT) в объект Genome."""
     return Genome(
@@ -105,11 +86,22 @@ def dict_to_genome(d: Dict[str, Any], niche: str = "exploration") -> Genome:
         lineage=list(d.get("lineage", [])[:12]),
     )
 
+def local_score(genome: Genome) -> float:
+    base = genome.fitness
+    bias = 1.0
+    if genome.niche == "survival":
+        bias += min(0.5, survival.liveness)
+    elif genome.niche == "exploration":
+        bias += min(0.3, curiosity.surprise_threshold)
+    elif genome.niche == "capital":
+        bias += min(0.5, capital / 2000)
+    return base * bias
+
 def population_diversity(pop):
     if not pop:
         return 0
-    # Для нового движка популяция — это list[Genome]
-    return len({hashlib.md5(str(sorted(g.params.items())).encode()).hexdigest() for g in pop if isinstance(g, Genome)})
+    sigs = {hashlib.md5(str(sorted(g.params.items())).encode()).hexdigest() for g in pop if isinstance(g, Genome)}
+    return len(sigs) / len(pop) if pop else 0
 
 def population_niche_counts(pop):
     counts = {"survival": 0, "capital": 0, "exploration": 0}
@@ -156,7 +148,6 @@ step_count = 0
 last_import_step = 0
 
 def node_niche():
-    """Determine the node's preferred niche based on current state."""
     if survival.dq >= 0.8 or survival.liveness < 0.5:
         return "survival"
     elif capital > 50000 and survival.dq < 0.3:
@@ -195,45 +186,56 @@ async def main_loop():
                     capital -= 1.0
                     survival.dq = min(1.0, survival.dq + 0.001)
 
-            # Import genomes from swarm with rate limiting + diversity-aware
+            # Import genomes from swarm
             if step_count - last_import_step > IMPORT_COOLDOWN:
                 remote = await crdt.get_top(10)
-                filtered = [g for g in remote if accept_genome(g)]
-                scored = sorted(filtered, key=local_score, reverse=True)
+                remote_genomes = []
+                for g in remote:
+                    if accept_genome(g):
+                        try:
+                            remote_genomes.append(dict_to_genome(g))
+                        except:
+                            pass
+
+                scored = sorted(remote_genomes, key=local_score, reverse=True)
                 preferred_niche = node_niche()
                 counts = population_niche_counts(engine.population)
                 total = sum(counts.values()) or 1
                 selected = []
+
                 for g in scored:
-                    if g.get("niche") == preferred_niche or random.random() < 0.2:
-                        # Reduce probability if niche already dominates (>50% of population)
-                        if counts.get(g.get("niche"), 0) / total > 0.5:
-                            if random.random() < 0.3:
-                                selected.append(g)
-                        else:
-                            selected.append(g)
-                        if len(selected) >= MAX_IMPORT:
-                            break
+                    niche = g.niche
+                    niche_share = counts.get(niche, 0) / total
+                    accept_prob = 0.2
+                    if niche == preferred_niche:
+                        accept_prob = 1.0
+                    elif niche_share > 0.5:
+                        accept_prob = 0.3
+                    if random.random() < accept_prob:
+                        selected.append(g)
+                    if len(selected) >= MAX_IMPORT:
+                        break
+
                 for g in selected:
                     parent = random.choice(engine.population) if engine.population else None
                     if parent is None:
                         continue
-                    child = recombine({"params": parent.params if isinstance(parent, Genome) else parent, "niche": "local", "lineage": []}, g)
-                    if isinstance(child, dict) and "params" in child:
-                        engine.population.append(child["params"])
-                    elif isinstance(child, Genome):
-                        engine.population.append(child)
+                    child_dict = recombine(
+                        {"params": parent.params, "niche": "local", "lineage": []},
+                        {"params": g.params, "fitness": g.fitness, "niche": g.niche, "lineage": g.lineage}
+                    )
+                    engine.population.append(child_dict["params"])
                     if len(engine.population) > engine.pop_size:
                         engine.population.pop(0)
 
-            # Evolution every 50 steps
-            if step_count % 50 == 0:
-                # Теперь движок сам заботится об элитизме
-                engine.evolve_generation()
+                last_import_step = step_count
 
+            # Evolution
+            if step_count % 50 == 0:
+                engine.evolve_generation()
                 if engine.champion[1] > 0:
-                    genome = make_genome(engine.champion[0], engine.champion[1])
-                    await crdt.add_genome(genome)  # адаптер сам разберётся
+                    genome_dict = make_genome(engine.champion[0], engine.champion[1])
+                    await crdt.add_genome(genome_dict)
                     print(f"[{NODE_ID}] share fitness={engine.champion[1]:.4f}")
 
                 if engine.champion[1] > engine._fitness(current_params):
@@ -248,7 +250,7 @@ async def main_loop():
                       f"diversity={engine.diversity():.2f} "
                       f"crdt_size={len(crdt.state)} niche={current_niche} dominant={dominant_niche}")
 
-            # Curiosity + Meta every 100 steps
+            # Curiosity + Meta
             if step_count % 100 == 0:
                 hypothesis = curiosity.update(market)
                 if hypothesis:
@@ -264,7 +266,6 @@ async def main_loop():
                 )
                 survival.config["lambda"] = weights["w_capital"]
 
-                # Adaptive mutation rate
                 if meta_agent.current_scenario in ("crisis", "stealth_mode"):
                     engine.set_mutation_rate(0.1)
                 elif meta_agent.current_scenario == "exploration":
@@ -272,13 +273,15 @@ async def main_loop():
                 else:
                     engine.set_mutation_rate(0.25)
 
+            if step_count % 200 == 0:
+                await crdt.prune()
+
             await asyncio.sleep(0.5)
 
 # ================= START =================
 
 async def start():
     print(f"[{NODE_ID}] port={PORT} peers={PEERS}")
-    # Запускаем промышленный gossip (он сам поднимет HTTP-сервер и gossip-цикл)
     await asyncio.gather(
         gossip.start(),
         main_loop()
