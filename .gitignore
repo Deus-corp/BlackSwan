@@ -63,4 +63,4 @@ echo "llama_cpp/" >> .gitignore
 echo "*.gguf" >> .gitignore
 echo "" >> .gitignore
 echo "# Local test scripts with secrets" >> .gitignore
-echo "run_model_api.py" >> .gitignore
+echo "run_model_api.py" >> .gitignorellama.zip
