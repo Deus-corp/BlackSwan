@@ -12,6 +12,7 @@ from sim.genetic_engine import GeneticEngine
 from sim.survival_evaluator import SurvivalEvaluator
 from sim.curiosity_engine import CuriosityEngine
 from sim.meta_pomdp_agent import MetaPOMDPAgent
+from src.core.crdt_adapter import CRDTAdapter
 
 # ================= CONFIG =================
 
@@ -90,7 +91,7 @@ class CRDTState:
                 top = sorted(self.state.items(), key=lambda x: x[1]["fitness"], reverse=True)[:MAX_STATE]
                 self.state = dict(top)
 
-crdt = CRDTState()
+crdt = CRDTAdapter(NODE_ID)
 
 # ================= PEER REPUTATION =================
 
