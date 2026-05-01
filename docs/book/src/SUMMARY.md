@@ -52,9 +52,10 @@
     - [Payment Obfuscation](domains/economic_autonomy/payment_obfuscation.en.md)
     - [Symbiotic Takeover](domains/economic_autonomy/symbiotic_takeover.en.md)
     
-- [Physical & Human Interface](domains/physical_human_interface/README.md)
+  - [Physical & Human Interface](domains/physical_human_interface/README.md)
     - [Meat Interface Tasking](domains/physical_human_interface/meat_interface_tasking.en.md)
     - [Narrative & Stigmergy](domains/physical_human_interface/narrative_and_stigmergy.en.md)
+    - [Persona Farming & Legal](domains/physical_human_interface/persona_farming_and_legal.en.md)
     
   - [Swarm & Distribution](domains/swarm_distribution/README.md)
 
