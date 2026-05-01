@@ -40,6 +40,10 @@ class SafeGossipAdapter:
         self.node = GossipNode(CFG, policy=DeltaPolicy(min_fitness=0.0))
         self._known_versions: Dict[str, Dict[str, int]] = {}
         self._running = False
+        self.reputation_manager = None
+        
+    def set_reputation_manager(self, rep_man):
+        self.reputation_manager = rep_man
 
     # ----- Методы, которые дёргает node_agent.py -----
 
