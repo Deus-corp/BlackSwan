@@ -14,5 +14,5 @@ def test_derive_and_apply_rules():
 
     # при высокой волатильности max_risk должен быть уменьшен
     params = {"max_risk_per_trade": 0.6, "phi_llm": 0.3}
-    adjusted = sm.apply_rules(params, market_volatility=0.6, d_q=0.1)
+    adjusted = sm.apply_rules(params, market_volatility=0.6, dq=0.1)
     assert adjusted["max_risk_per_trade"] < 0.6
