@@ -39,6 +39,12 @@
     - [Champion/Challenger](domains/cognitive_evolution/champion_challenger.en.md)
     - [Open-Endedness](domains/cognitive_evolution/open_endedness.en.md)
     - [Neuro-Symbolic Governance](domains/cognitive_evolution/neuro_symbolic_governance.en.md)
+  
+  - [Cybersecurity & Stealth](cybersecurity_stealth/README.md)
+    - [Isolation & Sandbox](cybersecurity_stealth/isolation_and_sandbox.en.md)
+    - [Stealth & C2](cybersecurity_stealth/stealth_and_c2.en.md)
+    - [Sting & Counterintelligence](cybersecurity_stealth/sting_and_counterintelligence.en.md)
+    - [Operational Security & IART](cybersecurity_stealth/operational_security_iart.en.md)
     
   - [Economic Autonomy](domains/economic_autonomy/README.md)
   - [Cybersecurity & Stealth](domains/cybersecurity_stealth/README.md)
