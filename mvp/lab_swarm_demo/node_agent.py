@@ -20,6 +20,7 @@ from src.core.crdt_adapter import CRDTAdapter
 from src.core.gossip_adapter import SafeGossipAdapter
 from src.security.crypto_manager import CryptoManager
 from src.security.reputation_manager import ReputationManager
+from src.intelligence.episodic_memory import EpisodicMemory
 
 logger = logging.getLogger("SwarmNode")
 
@@ -53,6 +54,7 @@ class SwarmNode:
 
         self.engine = GeneticEngine(pop_size=10)
         self.engine.initialize()
+        self._seed_from_memory()
 
         self.state = GlobalState()
         best = self.state.get_best_genomes(top_n=1)
@@ -65,10 +67,26 @@ class SwarmNode:
 
         self.curiosity = CuriosityEngine(window_size=10, surprise_threshold=0.3)
         self.meta_agent = MetaPOMDPAgent()
+        self.memory = EpisodicMemory(max_size=500)
 
         self.capital = 1000.0
         self.step_count = 0
         self.last_import_step = 0
+
+    def _seed_from_memory(self):
+        """Добавляет в популяцию параметры из похожих рыночных ситуаций."""
+        if len(self.memory) == 0:
+            return
+        # Вычисляем текущую волатильность (очень грубо, по последней цене)
+        current_volatility = 0.02  # значение по умолчанию, можно улучшить
+        current_dq = self.survival.dq
+        similar = self.memory.find_similar(current_volatility, current_dq, top_k=3)
+        for rec in similar:
+            try:
+                genome = self.dict_to_genome({"params": rec["params"]})
+                self.engine.add_genome(genome)
+            except:
+                pass
 
     # ---- helpers ----
     def node_niche(self) -> str:
@@ -241,6 +259,17 @@ class SwarmNode:
                     if self.engine.champion[1] > self.engine._fitness(self.current_params):
                         self.current_params = self.engine.champion[0]
                         self.dispatcher = ROIDispatcher(config=self.current_params)
+
+                                    # Сохраняем в эпизодическую память
+                    if self.engine.champion[1] > 0:
+                        self.memory.add(
+                            market_volatility=abs(market.get("price", 0.0) - getattr(self, '_prev_price', market.get("price", 0.0))) / max(1.0, market.get("price", 1.0)),
+                            dq=self.survival.dq,
+                            capital=self.capital,
+                            params=self.engine.champion[0],
+                            fitness=self.engine.champion[1],
+                        )
+                        self._prev_price = market.get("price", 0.0)
 
                     cur_niche = self.node_niche()
                     counts = self.population_niche_counts()
