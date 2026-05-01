@@ -55,3 +55,12 @@ formal/tla/*.out
 *.key
 secrets/states/
 crdt_state.db
+
+cd /Users/catharsis/Desktop/BlackSwan
+echo "" >> .gitignore
+echo "# LLM models (large binary files)" >> .gitignore
+echo "llama_cpp/" >> .gitignore
+echo "*.gguf" >> .gitignore
+echo "" >> .gitignore
+echo "# Local test scripts with secrets" >> .gitignore
+echo "run_model_api.py" >> .gitignore
