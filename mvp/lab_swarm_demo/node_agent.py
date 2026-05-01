@@ -1,11 +1,5 @@
-import os
-import time
-import random
-import uuid
-import hashlib
-import asyncio
-import logging
-from typing import Dict, Any, Optional, List
+import os, time, random, uuid, hashlib, asyncio, logging
+from typing import Dict, Any, Optional, List, Tuple
 
 import aiohttp
 from aiohttp import web
@@ -30,55 +24,53 @@ MAX_NORMALIZED_CAPITAL = 10000.0
 
 
 class SwarmNode:
-    def __init__(self):
-        # ---- config ----
-        self.node_id = os.environ.get("NODE_ID", str(uuid.uuid4()))
-        self.port = int(os.environ.get("PORT", 8000))
-        self.peers = [p for p in os.environ.get("PEERS", "").split(",") if p]
-        self.market_url = os.environ.get("MARKET_URL")
-        self.burn_rate = float(os.environ.get("BURN_RATE", 0.5))
-        self.failure_prob = float(os.environ.get("FAILURE_PROB", 0.0))
-        self.gossip_interval = 1.5
-        self.max_state = 200
-        self.ttl = 300
-        self.max_import = 2
-        self.import_cooldown = 5
+    def __init__(self) -> None:
+        # конфигурация
+        self.node_id: str = os.environ.get("NODE_ID", str(uuid.uuid4()))
+        self.port: int = int(os.environ.get("PORT", 8000))
+        self.peers: List[str] = [p for p in os.environ.get("PEERS", "").split(",") if p]
+        self.market_url: Optional[str] = os.environ.get("MARKET_URL")
+        self.burn_rate: float = float(os.environ.get("BURN_RATE", 0.5))
+        self.failure_prob: float = float(os.environ.get("FAILURE_PROB", 0.0))
+        self.gossip_interval: float = 1.5
+        self.max_state: int = 200
+        self.ttl: int = 300
+        self.max_import: int = 2
+        self.import_cooldown: int = 5
 
-        # ---- components ----
-        self.crypto = CryptoManager()
-        self.reputation = ReputationManager()
-        self.reputation_blacklist_threshold = 0.3
-        self.crdt = CRDTAdapter(self.node_id)
-        self.gossip = SafeGossipAdapter(self.crdt)
+        # компоненты
+        self.crypto: CryptoManager = CryptoManager()
+        self.reputation: ReputationManager = ReputationManager()
+        self.reputation_blacklist_threshold: float = 0.3
+        self.crdt: CRDTAdapter = CRDTAdapter(self.node_id)
+        self.gossip: SafeGossipAdapter = SafeGossipAdapter(self.crdt)
         self.gossip.set_reputation_manager(self.reputation)
 
-        self.engine = GeneticEngine(pop_size=10)
+        self.engine: GeneticEngine = GeneticEngine(pop_size=10)
         self.engine.initialize()
 
-        self.state = GlobalState()
+        self.state: GlobalState = GlobalState()
         best = self.state.get_best_genomes(top_n=1)
-        self.current_params = list(best.values())[-1] if best else {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
-        self.dispatcher = ROIDispatcher(config=self.current_params)
+        self.current_params: Dict[str, float] = list(best.values())[-1] if best else {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
+        self.dispatcher: ROIDispatcher = ROIDispatcher(config=self.current_params)
 
-        self.survival = SurvivalEvaluator()
+        self.survival: SurvivalEvaluator = SurvivalEvaluator()
         self.survival.dq = 0.02
         self.survival.liveness = 1.0
 
-        self.curiosity = CuriosityEngine(window_size=10, surprise_threshold=0.3)
-        self.meta_agent = MetaPOMDPAgent()
+        self.curiosity: CuriosityEngine = CuriosityEngine(window_size=10, surprise_threshold=0.3)
+        self.meta_agent: MetaPOMDPAgent = MetaPOMDPAgent()
 
-        # Память нужно создать до вызова _seed_from_memory
-        self.memory = EpisodicMemory(max_size=500)
-        self.semantic = SemanticMemory()
+        self.memory: EpisodicMemory = EpisodicMemory(max_size=500)
+        self.semantic: SemanticMemory = SemanticMemory()
 
-        # ---- runtime state ----
-        self.capital = 1000.0
-        self.step_count = 0
-        self.last_import_step = 0
-        self._prev_price = 100.0
-        self._prev_prev_price = 100.0
+        # runtime‑состояние
+        self.capital: float = 1000.0
+        self.step_count: int = 0
+        self.last_import_step: int = 0
+        self._prev_price: float = 100.0
+        self._prev_prev_price: float = 100.0
 
-        # Наполняем популяцию предыдущим опытом
         self._seed_from_memory()
 
     # ------------------------------------------------------------
@@ -103,13 +95,13 @@ class SwarmNode:
             payload = {"params": genome.get("params", {}), "fitness": genome.get("fitness", 0.0)}
             if not CryptoManager.verify(payload, sig, pubkey):
                 return False
-        # Фильтр по репутации
+        # репутационный фильтр
         pubkey = genome.get("origin_pubkey")
         if pubkey and not self.reputation.is_trusted(pubkey):
             return False
         return True
 
-    def make_genome(self, params, fitness):
+    def make_genome(self, params: Dict[str, float], fitness: float) -> dict:
         return {
             "params": params,
             "fitness": fitness,
@@ -137,7 +129,6 @@ class SwarmNode:
         elif genome.niche == "capital":
             bias += min(0.5, self.capital / 2000)
 
-        # Memory bias
         if len(self.memory) > 0:
             vol = self._current_volatility()
             similar = self.memory.find_similar(vol, self.survival.dq, top_k=5)
@@ -147,14 +138,14 @@ class SwarmNode:
                     break
         return base * bias
 
-    def population_diversity(self):
+    def population_diversity(self) -> float:
         pop = self.engine.population
         if not pop:
-            return 0
+            return 0.0
         sigs = {hashlib.md5(str(sorted(g.params.items())).encode()).hexdigest() for g in pop if isinstance(g, Genome)}
-        return len(sigs) / len(pop) if pop else 0
+        return len(sigs) / len(pop) if pop else 0.0
 
-    def population_niche_counts(self):
+    def population_niche_counts(self) -> Dict[str, int]:
         counts = {"survival": 0, "capital": 0, "exploration": 0}
         for g in self.engine.population:
             if isinstance(g, Genome):
@@ -167,12 +158,11 @@ class SwarmNode:
         return counts
 
     def _current_volatility(self) -> float:
-        """Грубая оценка волатильности по последним двум ценам."""
         prev = getattr(self, '_prev_price', 100.0)
         prev_prev = getattr(self, '_prev_prev_price', 100.0)
         return abs(prev - prev_prev) / max(1.0, prev)
 
-    def _seed_from_memory(self):
+    def _seed_from_memory(self) -> None:
         if len(self.memory) == 0:
             return
         current_volatility = self._current_volatility()
@@ -187,7 +177,7 @@ class SwarmNode:
     # ------------------------------------------------------------
     # Market
     # ------------------------------------------------------------
-    async def get_market_tick(self, session):
+    async def get_market_tick(self, session: aiohttp.ClientSession) -> dict:
         if self.market_url:
             try:
                 async with session.get(self.market_url, timeout=1) as resp:
@@ -199,7 +189,7 @@ class SwarmNode:
     # ------------------------------------------------------------
     # Main loop
     # ------------------------------------------------------------
-    async def main_loop(self):
+    async def main_loop(self) -> None:
         async with aiohttp.ClientSession() as session:
             while True:
                 self.step_count += 1
@@ -290,11 +280,9 @@ class SwarmNode:
                         self.current_params = self.engine.champion[0]
                         self.dispatcher = ROIDispatcher(config=self.current_params)
 
-                    # Обновляем ценовую историю ДО сохранения в память
                     self._prev_prev_price = self._prev_price
                     self._prev_price = market.get("price", self._prev_price)
 
-                    # Сохраняем в эпизодическую память
                     if self.engine.champion[1] > 0:
                         self.memory.add(
                             market_volatility=self._current_volatility(),
@@ -335,7 +323,7 @@ class SwarmNode:
                     else:
                         self.engine.set_mutation_rate(0.25)
 
-                # ---- prune + spot-check ----
+                # ---- prune + semantic update + spot-check ----
                 if self.step_count % 200 == 0:
                     self.semantic.derive_rules(self.memory.to_dict_list())
                     await self.crdt.prune()
@@ -350,7 +338,6 @@ class SwarmNode:
 
                 # ---- memory consolidation ----
                 if self.step_count % 500 == 0:
-                    # Удаляем дубликаты по ключу (max_risk_per_trade, phi_llm)
                     self.memory.records = list({
                         (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec
                         for rec in self.memory.records
@@ -361,7 +348,7 @@ class SwarmNode:
                 await asyncio.sleep(0.5)
 
     @staticmethod
-    def _recombine(g1, g2):
+    def _recombine(g1: dict, g2: dict) -> dict:
         child = {}
         for k in g1["params"]:
             val = g1["params"][k] if random.random() < 0.5 else g2["params"][k]
@@ -377,7 +364,7 @@ class SwarmNode:
             "ts": time.time(),
         }
 
-    async def start(self):
+    async def start(self) -> None:
         logger.info(f"[{self.node_id}] port={self.port} peers={self.peers}")
         await asyncio.gather(
             self.gossip.start(),
