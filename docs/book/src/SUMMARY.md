@@ -1,5 +1,6 @@
 # BlackSwan Documentation
 
+- [Getting Started](getting_started.md)
 - [Design Principles](design_principles.en.md)
 - [Glossary](glossary.en.md)
 - [System Definition](system_definition.en.md)
