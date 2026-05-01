@@ -390,6 +390,12 @@ class GeneticEngine:
     def best(self, top_n: int = 1) -> List[Dict[str, float]]:
         ranked = self._ranked_population()[:top_n]
         return [dict(g.params) for g in ranked]
+    
+    def add_genome(self, genome: Genome) -> None:
+        """Безопасно добавляет геном в популяцию (инкапсуляция)."""
+        self.population.append(genome)
+        if len(self.population) > self.pop_size:
+            self.population.pop(0)
 
     def get_best(self, top_n: int = 1) -> List[Genome]:
         return [g.copy() for g in self._ranked_population()[:top_n]]
