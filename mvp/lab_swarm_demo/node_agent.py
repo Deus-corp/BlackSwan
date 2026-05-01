@@ -24,14 +24,13 @@ from src.intelligence.episodic_memory import EpisodicMemory
 
 logger = logging.getLogger("SwarmNode")
 
-# ================= CONFIG =================
-
 EXPECTED_RETURN_RATE = 0.1 * 0.05
 MAX_NORMALIZED_CAPITAL = 10000.0
 
 
 class SwarmNode:
     def __init__(self):
+        # ---- config ----
         self.node_id = os.environ.get("NODE_ID", str(uuid.uuid4()))
         self.port = int(os.environ.get("PORT", 8000))
         self.peers = [p for p in os.environ.get("PEERS", "").split(",") if p]
@@ -44,7 +43,7 @@ class SwarmNode:
         self.max_import = 2
         self.import_cooldown = 5
 
-        # Компоненты
+        # ---- components ----
         self.crypto = CryptoManager()
         self.reputation = ReputationManager()
         self.reputation_blacklist_threshold = 0.3
@@ -54,7 +53,6 @@ class SwarmNode:
 
         self.engine = GeneticEngine(pop_size=10)
         self.engine.initialize()
-        self._seed_from_memory()
 
         self.state = GlobalState()
         best = self.state.get_best_genomes(top_n=1)
@@ -67,30 +65,23 @@ class SwarmNode:
 
         self.curiosity = CuriosityEngine(window_size=10, surprise_threshold=0.3)
         self.meta_agent = MetaPOMDPAgent()
+
+        # Память нужно создать до вызова _seed_from_memory
         self.memory = EpisodicMemory(max_size=500)
 
+        # ---- runtime state ----
         self.capital = 1000.0
         self.step_count = 0
         self.last_import_step = 0
-
+        self._prev_price = 100.0
         self._prev_prev_price = 100.0
 
-    def _seed_from_memory(self):
-        """Добавляет в популяцию параметры из похожих рыночных ситуаций."""
-        if len(self.memory) == 0:
-            return
-        # Вычисляем текущую волатильность (очень грубо, по последней цене)
-        current_volatility = 0.02  # значение по умолчанию, можно улучшить
-        current_dq = self.survival.dq
-        similar = self.memory.find_similar(current_volatility, current_dq, top_k=3)
-        for rec in similar:
-            try:
-                genome = self.dict_to_genome({"params": rec["params"]})
-                self.engine.add_genome(genome)
-            except:
-                pass
+        # Наполняем популяцию предыдущим опытом
+        self._seed_from_memory()
 
-    # ---- helpers ----
+    # ------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------
     def node_niche(self) -> str:
         if self.survival.dq >= 0.8 or self.survival.liveness < 0.5:
             return "survival"
@@ -110,11 +101,11 @@ class SwarmNode:
             payload = {"params": genome.get("params", {}), "fitness": genome.get("fitness", 0.0)}
             if not CryptoManager.verify(payload, sig, pubkey):
                 return False
-        return True
-                # Фильтр по репутации
+        # Фильтр по репутации
         pubkey = genome.get("origin_pubkey")
         if pubkey and not self.reputation.is_trusted(pubkey):
             return False
+        return True
 
     def make_genome(self, params, fitness):
         return {
@@ -144,18 +135,14 @@ class SwarmNode:
         elif genome.niche == "capital":
             bias += min(0.5, self.capital / 2000)
 
-        # 🆕 Memory bias: если похожая стратегия была успешна в прошлом
-        if hasattr(self, 'memory') and len(self.memory) > 0:
-            # вычисляем текущую волатильность (упрощённо, по последней цене)
-            current_volatility = abs(getattr(self, '_prev_price', 100.0) - getattr(self, '_prev_prev_price', 100.0)) / max(1.0, getattr(self, '_prev_price', 100.0))
-            current_dq = self.survival.dq
-            similar_records = self.memory.find_similar(current_volatility, current_dq, top_k=5)
-            # проверяем, есть ли среди них запись с таким же набором параметров
-            for rec in similar_records:
+        # Memory bias
+        if len(self.memory) > 0:
+            vol = self._current_volatility()
+            similar = self.memory.find_similar(vol, self.survival.dq, top_k=5)
+            for rec in similar:
                 if rec["params"] == genome.params:
-                    bias += 0.2  # бонус за знакомую успешную стратегию
+                    bias += 0.2
                     break
-
         return base * bias
 
     def population_diversity(self):
@@ -177,17 +164,39 @@ class SwarmNode:
             counts[niche] = counts.get(niche, 0) + 1
         return counts
 
-    # ---- market ----
+    def _current_volatility(self) -> float:
+        """Грубая оценка волатильности по последним двум ценам."""
+        prev = getattr(self, '_prev_price', 100.0)
+        prev_prev = getattr(self, '_prev_prev_price', 100.0)
+        return abs(prev - prev_prev) / max(1.0, prev)
+
+    def _seed_from_memory(self):
+        if len(self.memory) == 0:
+            return
+        current_volatility = self._current_volatility()
+        similar = self.memory.find_similar(current_volatility, self.survival.dq, top_k=3)
+        for rec in similar:
+            try:
+                genome = self.dict_to_genome({"params": rec["params"]})
+                self.engine.add_genome(genome)
+            except Exception:
+                pass
+
+    # ------------------------------------------------------------
+    # Market
+    # ------------------------------------------------------------
     async def get_market_tick(self, session):
         if self.market_url:
             try:
                 async with session.get(self.market_url, timeout=1) as resp:
                     return await resp.json()
-            except:
+            except Exception:
                 pass
         return {"price": random.uniform(90, 110)}
 
-    # ---- main loop ----
+    # ------------------------------------------------------------
+    # Main loop
+    # ------------------------------------------------------------
     async def main_loop(self):
         async with aiohttp.ClientSession() as session:
             while True:
@@ -212,7 +221,7 @@ class SwarmNode:
                         self.capital -= 1.0
                         self.survival.dq = min(1.0, self.survival.dq + 0.001)
 
-                # import genomes
+                # ---- import genomes ----
                 if self.step_count - self.last_import_step > self.import_cooldown:
                     remote = await self.crdt.get_top(10)
                     remote_genomes = []
@@ -220,7 +229,7 @@ class SwarmNode:
                         if self.accept_genome(g):
                             try:
                                 remote_genomes.append(self.dict_to_genome(g))
-                            except:
+                            except Exception:
                                 pass
                     scored = sorted(remote_genomes, key=self.local_score, reverse=True)
                     pref = self.node_niche()
@@ -261,7 +270,7 @@ class SwarmNode:
                         self.engine.add_genome(child_genome)
                     self.last_import_step = self.step_count
 
-                # evolution
+                # ---- evolution ----
                 if self.step_count % 50 == 0:
                     self.engine.evolve_generation()
                     if self.engine.champion[1] > 0:
@@ -275,18 +284,19 @@ class SwarmNode:
                         self.current_params = self.engine.champion[0]
                         self.dispatcher = ROIDispatcher(config=self.current_params)
 
-                                    # Сохраняем в эпизодическую память
+                    # Обновляем ценовую историю ДО сохранения в память
+                    self._prev_prev_price = self._prev_price
+                    self._prev_price = market.get("price", self._prev_price)
+
+                    # Сохраняем в эпизодическую память
                     if self.engine.champion[1] > 0:
                         self.memory.add(
-                            market_volatility=abs(market.get("price", 0.0) - getattr(self, '_prev_price', market.get("price", 0.0))) / max(1.0, market.get("price", 1.0)),
+                            market_volatility=self._current_volatility(),
                             dq=self.survival.dq,
                             capital=self.capital,
                             params=self.engine.champion[0],
                             fitness=self.engine.champion[1],
                         )
-                        # Сохраняем в эпизодическую память (добавьте перед вызовом memory.add)
-                        self._prev_prev_price = getattr(self, '_prev_price', market.get("price", 100.0))
-                        self._prev_price = market.get("price", 0.0)
 
                     cur_niche = self.node_niche()
                     counts = self.population_niche_counts()
@@ -298,7 +308,7 @@ class SwarmNode:
                         f"niche={cur_niche} dominant={dom_niche}"
                     )
 
-                # curiosity + meta
+                # ---- curiosity + meta ----
                 if self.step_count % 100 == 0:
                     hypothesis = self.curiosity.update(market)
                     if hypothesis:
@@ -319,7 +329,7 @@ class SwarmNode:
                     else:
                         self.engine.set_mutation_rate(0.25)
 
-                # prune + spot-check
+                # ---- prune + spot-check ----
                 if self.step_count % 200 == 0:
                     await self.crdt.prune()
                     top = await self.crdt.get_top(20)
@@ -331,9 +341,13 @@ class SwarmNode:
                             claimed_fit = sample.get("fitness", 0.0)
                             self.reputation.update(pubkey, claimed_fit, actual_fit)
 
+                # ---- memory consolidation ----
                 if self.step_count % 500 == 0:
-                    # Консолидация эпизодической памяти
-                    self.memory.records = list({ (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec for rec in self.memory.records }.values())
+                    # Удаляем дубликаты по ключу (max_risk_per_trade, phi_llm)
+                    self.memory.records = list({
+                        (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec
+                        for rec in self.memory.records
+                    }.values())
                     if len(self.memory.records) > self.memory.max_size:
                         self.memory.records = self.memory.records[-self.memory.max_size:]
 
