@@ -16,6 +16,7 @@ from src.security.crypto_manager import CryptoManager
 from src.security.reputation_manager import ReputationManager
 from src.intelligence.episodic_memory import EpisodicMemory
 from src.intelligence.semantic_memory import SemanticMemory
+from src.intelligence.llm_client import LLMClient
 
 logger = logging.getLogger("SwarmNode")
 
@@ -60,6 +61,7 @@ class SwarmNode:
 
         self.curiosity: CuriosityEngine = CuriosityEngine(window_size=10, surprise_threshold=0.3)
         self.meta_agent: MetaPOMDPAgent = MetaPOMDPAgent()
+        self.llm = LLMClient()
 
         self.memory: EpisodicMemory = EpisodicMemory(max_size=500)
         self.semantic: SemanticMemory = SemanticMemory()
@@ -72,6 +74,36 @@ class SwarmNode:
         self._prev_prev_price: float = 100.0
 
         self._seed_from_memory()
+
+    #------------------------------------------------------------
+    def _llm_mutate(self, params: Dict[str, float], context: str) -> Dict[str, float]:
+        """Мутация параметров через LLM."""
+        prompt = f"""You are a trading strategy optimizer for the Kelly criterion.
+
+Current market context:
+{context}
+
+Current strategy parameters:
+{params}
+
+Suggest a small adjustment to these parameters that could improve the strategy.
+Respond ONLY with the adjusted parameters in JSON format, like:
+{{"max_risk_per_trade": X, "phi_llm": Y}}"""
+        
+        try:
+            response = self.llm.generate(prompt, max_tokens=64)
+            # Парсим JSON из ответа
+            import json
+            start = response.find("{")
+            end = response.rfind("}") + 1
+            if start != -1 and end > start:
+                new_params = json.loads(response[start:end])
+                for k in new_params:
+                    new_params[k] = max(0.0001, min(1.0, float(new_params[k])))
+                return new_params
+        except Exception:
+            pass
+        return params  # fallback: возвращаем исходные параметры
 
     # ------------------------------------------------------------
     # Helpers
@@ -275,6 +307,14 @@ class SwarmNode:
                         genome_dict["signature"] = self.crypto.sign(payload)
                         genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
                         await self.crdt.add_genome(genome_dict)
+
+                                        # LLM-мутация чемпиона (каждые 200 шагов)
+                    if self.step_count % 200 == 0:
+                        context = f"volatility={self._current_volatility():.3f}, dq={self.survival.dq:.3f}, capital={self.capital:.2f}"
+                        new_params = self._llm_mutate(self.engine.champion[0], context)
+                        if new_params != self.engine.champion[0]:
+                            genome = self.dict_to_genome({"params": new_params})
+                            self.engine.add_genome(genome)
 
                     if self.engine.champion[1] > self.engine._fitness(self.current_params):
                         self.current_params = self.engine.champion[0]
