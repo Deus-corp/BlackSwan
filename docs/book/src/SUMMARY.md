@@ -34,11 +34,12 @@
   - [Cold Start Protocol](deployment/cold_start_protocol.en.md)
 
 - [Domains](domains/README.md)
-  - [Cognitive Evolution](domains/cognitive_evolution/README.md)
-    - [Genetic Engine](domains/cognitive_evolution/genetic_engine.md)
-    - [Champion/Challenger](domains/cognitive_evolution/champion_challenger.md)
-    - [Open-Endedness](domains/cognitive_evolution/open_endedness.md)
-    - [Neuro-Symbolic Governance](domains/cognitive_evolution/neuro_symbolic_governance.md)
+  - [Cognitive Evolution](domains/cognitive_evolution/cognitive_evolution.en.md)
+    - [Genetic Engine](domains/cognitive_evolution/genetic_engine.en.md)
+    - [Champion/Challenger](domains/cognitive_evolution/champion_challenger.en.md)
+    - [Open-Endedness](domains/cognitive_evolution/open_endedness.en.md)
+    - [Neuro-Symbolic Governance](domains/cognitive_evolution/neuro_symbolic_governance.en.md)
+    
   - [Economic Autonomy](domains/economic_autonomy/README.md)
   - [Cybersecurity & Stealth](domains/cybersecurity_stealth/README.md)
   - [Physical & Human Interface](domains/physical_human_interface/README.md)
