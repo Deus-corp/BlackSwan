@@ -21,6 +21,7 @@ from src.core.gossip_adapter import SafeGossipAdapter
 from src.security.crypto_manager import CryptoManager
 from src.security.reputation_manager import ReputationManager
 from src.intelligence.episodic_memory import EpisodicMemory
+from src.intelligence.semantic_memory import SemanticMemory
 
 logger = logging.getLogger("SwarmNode")
 
@@ -68,6 +69,7 @@ class SwarmNode:
 
         # Память нужно создать до вызова _seed_from_memory
         self.memory = EpisodicMemory(max_size=500)
+        self.semantic = SemanticMemory()
 
         # ---- runtime state ----
         self.capital = 1000.0
@@ -274,7 +276,11 @@ class SwarmNode:
                 if self.step_count % 50 == 0:
                     self.engine.evolve_generation()
                     if self.engine.champion[1] > 0:
-                        genome_dict = self.make_genome(self.engine.champion[0], self.engine.champion[1])
+                        current_vol = self._current_volatility()
+                        params_to_publish = self.semantic.apply_rules(
+                            self.engine.champion[0], current_vol, self.survival.dq
+                        )
+                        genome_dict = self.make_genome(params_to_publish, self.engine.champion[1])
                         payload = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
                         genome_dict["signature"] = self.crypto.sign(payload)
                         genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
@@ -331,6 +337,7 @@ class SwarmNode:
 
                 # ---- prune + spot-check ----
                 if self.step_count % 200 == 0:
+                    self.semantic.derive_rules(self.memory.to_dict_list())
                     await self.crdt.prune()
                     top = await self.crdt.get_top(20)
                     if top:
