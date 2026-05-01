@@ -42,4 +42,4 @@ java -cp tla2tools.jar tlc2.TLC formal/tla/Ouroboros.tla -config formal/tla/Ouro
 
 - Read the [Design Principles](design_principles.en.md)
 - Explore the [Architecture](architecture/architecture_overview.en.md)
-- Check [Implemented Protocols](implemented/README.md)
+- Check [Implemented Protocols](implemented/ouroboros.md)
