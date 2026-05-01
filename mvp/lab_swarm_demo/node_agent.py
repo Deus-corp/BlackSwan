@@ -57,10 +57,13 @@ def accept_genome(genome):
     for v in genome.get("params", {}).values():
         if not (0 < v < 10):
             return False
-    # Проверка подписи
-    payload = {"params": genome.get("params", {}), "fitness": genome.get("fitness", 0.0)}
-    if not CryptoManager.verify(payload, genome.get("signature", ""), genome.get("origin_pubkey", "")):
-        return False
+    # Если есть подпись, проверяем её. Если нет – пропускаем (старый геном)
+    sig = genome.get("signature")
+    pubkey = genome.get("origin_pubkey")
+    if sig and pubkey:
+        payload = {"params": genome.get("params", {}), "fitness": genome.get("fitness", 0.0)}
+        if not CryptoManager.verify(payload, sig, pubkey):
+            return False
     return True
 
 def make_genome(params, fitness):
@@ -302,15 +305,15 @@ async def main_loop():
 
             if step_count % 200 == 0:
                 await crdt.prune()
-                # Выбираем случайный геном из CRDT и перепроверяем его фитнес
+                # Spot-check фитнеса случайного генома
                 top = await crdt.get_top(20)
                 if top:
                     sample = random.choice(top)
-                    if sample.get("origin_pubkey") != crypto.public_bytes_hex:
-                        # вычисляем реальный фитнес на наших данных
+                    pubkey = sample.get("origin_pubkey")
+                    if pubkey and pubkey != crypto.public_bytes_hex:
                         actual_fit = engine._fitness(sample["params"])
                         claimed_fit = sample.get("fitness", 0.0)
-                        reputation.update(sample["origin_pubkey"], claimed_fit, actual_fit)
+                        reputation.update(pubkey, claimed_fit, actual_fit)
 
             await asyncio.sleep(0.5)
 
