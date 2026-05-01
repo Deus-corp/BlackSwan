@@ -24,6 +24,9 @@
 - 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
 - 📖 [Full TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
 - 🗺 [Roadmap](ROADMAP.md)
+- 🏭 **Industrial CRDT** – SQLite-backed, op-based CRDT with deterministic LWW merge.
+- 🛡️ **Secure Gossip** – HMAC-signed envelopes, replay protection, peer scoring and backoff.
+- 🧬 **Speciated Genetic Engine** – species-based evolution with adaptive mutation and fitness cache.
 
 ---
 
