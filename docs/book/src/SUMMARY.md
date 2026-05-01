@@ -46,7 +46,7 @@
     - [Sting & Counterintelligence](domains/cybersecurity_stealth/sting_and_counterintelligence.en.md)
     - [Operational Security & IART](domains/cybersecurity_stealth/operational_security_iart.en.md)
 
-- [Economic Autonomy](economic_autonomy/roi_dispatcher.en.md)
+  - [Economic Autonomy](economic_autonomy/roi_dispatcher.en.md)
     - [ROI Dispatcher](domains/economic_autonomy/roi_dispatcher.en.md)
     - [MEV & PPO Executors](domains/economic_autonomy/mev_and_ppo_executors.en.md)
     - [Payment Obfuscation](domains/economic_autonomy/payment_obfuscation.en.md)
@@ -57,7 +57,10 @@
     - [Narrative & Stigmergy](domains/physical_human_interface/narrative_and_stigmergy.en.md)
     - [Persona Farming & Legal](domains/physical_human_interface/persona_farming_and_legal.en.md)
     
-  - [Swarm & Distribution](domains/swarm_distribution/README.md)
+  - [Swarm & Distribution](domains/swarm_distribution/README.en.md)
+    - [CRDT, Gossip & D2BFT](domains/swarm_distribution/crdt_gossip_and_d2bft.en.md)
+    - [Swarm Topology](domains/swarm_distribution/swarm_topology.en.md)
+    - [Reputation & Coordination](domains/swarm_distribution/reputation_and_coordination.en.md)
 
 - [Singularity](singularity/singularity_criteria.en.md)
   - [Singularity Criteria](singularity/singularity_criteria.en.md)
