@@ -36,6 +36,9 @@ MAX_IMPORT = 2
 IMPORT_COOLDOWN = 5
 ELITE_SIZE = 2
 
+EXPECTED_RETURN_RATE = 0.1 * 0.05
+MAX_NORMALIZED_CAPITAL = 10000.0
+
 # ================= CRDT + GOSSIP (новые адаптеры) =================
 
 crdt = CRDTAdapter(NODE_ID)
@@ -58,7 +61,7 @@ def make_genome(params, fitness):
         "niche": node_niche(),
         "origin": NODE_ID,
         "lineage": [NODE_ID],
-        "ts": time.time()
+        "ts": time.time(),
     }
 
 def recombine(g1, g2):
@@ -74,7 +77,7 @@ def recombine(g1, g2):
         "fitness": 0.0,
         "niche": g1.get("niche", "mixed") if random.random() < 0.5 else g2.get("niche", "mixed"),
         "lineage": (g1.get("lineage", [])[-5:] + [NODE_ID]),
-        "ts": time.time()
+        "ts": time.time(),
     }
 
 def dict_to_genome(d: Dict[str, Any], niche: str = "exploration") -> Genome:
@@ -175,7 +178,7 @@ async def main_loop():
                 print(f"[{NODE_ID}] died")
                 return
 
-            expected = market["price"] * 0.1 * 0.05
+            expected = market["price"] * EXPECTED_RETURN_RATE
             _, approved = survival.evaluate_trade(capital, expected)
 
             if approved:
@@ -186,7 +189,7 @@ async def main_loop():
                     capital -= 1.0
                     survival.dq = min(1.0, survival.dq + 0.001)
 
-            # Import genomes from swarm
+            # Import genomes from swarm with rate limiting + diversity-aware
             if step_count - last_import_step > IMPORT_COOLDOWN:
                 remote = await crdt.get_top(10)
                 remote_genomes = []
@@ -217,22 +220,33 @@ async def main_loop():
                         break
 
                 for g in selected:
-                    parent = random.choice(engine.population) if engine.population else None
-                    if parent is None:
+                    if engine.population:
+                        parent_obj = random.choice(engine.population)
+                        if isinstance(parent_obj, Genome):
+                            parent_dict = {
+                                "params": parent_obj.params,
+                                "fitness": parent_obj.fitness,
+                                "niche": parent_obj.niche,
+                                "lineage": parent_obj.lineage,
+                            }
+                        else:
+                            parent_dict = parent_obj  # уже словарь
+                    else:
                         continue
+
                     child_dict = recombine(
-                        {"params": parent.params, "niche": "local", "lineage": []},
-                        {"params": g.params, "fitness": g.fitness, "niche": g.niche, "lineage": g.lineage}
+                        parent_dict,
+                        {"params": g.params, "fitness": g.fitness, "niche": g.niche, "lineage": g.lineage},
                     )
-                    engine.population.append(child_dict["params"])
-                    if len(engine.population) > engine.pop_size:
-                        engine.population.pop(0)
+                    child_genome = dict_to_genome(child_dict, niche=g.niche)
+                    engine.add_genome(child_genome)
 
                 last_import_step = step_count
 
-            # Evolution
+            # Evolution every 50 steps
             if step_count % 50 == 0:
                 engine.evolve_generation()
+
                 if engine.champion[1] > 0:
                     genome_dict = make_genome(engine.champion[0], engine.champion[1])
                     await crdt.add_genome(genome_dict)
@@ -250,13 +264,13 @@ async def main_loop():
                       f"diversity={engine.diversity():.2f} "
                       f"crdt_size={len(crdt.state)} niche={current_niche} dominant={dominant_niche}")
 
-            # Curiosity + Meta
+            # Curiosity + Meta every 100 steps
             if step_count % 100 == 0:
                 hypothesis = curiosity.update(market)
                 if hypothesis:
-                    engine.population.append(hypothesis)
+                    engine.add_genome(dict_to_genome(hypothesis))
 
-                norm_cap = min(1.0, capital / 10000.0)
+                norm_cap = min(1.0, capital / MAX_NORMALIZED_CAPITAL)
                 surprise = curiosity.prediction_errors[-1] if curiosity.prediction_errors else 0.0
                 weights = meta_agent.update(
                     dq=survival.dq,
