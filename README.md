@@ -27,6 +27,7 @@
 - 🏭 **Industrial CRDT** – SQLite-backed, op-based CRDT with deterministic LWW merge.
 - 🛡️ **Secure Gossip** – HMAC-signed envelopes, replay protection, peer scoring and backoff.
 - 🧬 **Speciated Genetic Engine** – species-based evolution with adaptive mutation and fitness cache.
+- 🧠 **LLM-Powered Mutations** – a local LLM (Qwen2.5-1.5B) generates new strategy parameters instead of random mutations.
 
 ---
 
