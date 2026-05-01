@@ -33,20 +33,20 @@
   - [Hardware Transition Plan](deployment/hardware_transition_plan.en.md)
   - [Cold Start Protocol](deployment/cold_start_protocol.en.md)
 
-- [Domains](domains/cognitive_evolution.en.md)
+- [Domains](domains/README.en.md)
   - [Cognitive Evolution](domains/cognitive_evolution/cognitive_evolution.en.md)
     - [Genetic Engine](domains/cognitive_evolution/genetic_engine.en.md)
     - [Champion/Challenger](domains/cognitive_evolution/champion_challenger.en.md)
     - [Open-Endedness](domains/cognitive_evolution/open_endedness.en.md)
     - [Neuro-Symbolic Governance](domains/cognitive_evolution/neuro_symbolic_governance.en.md)
   
-  - [Cybersecurity & Stealth](domains/cybersecurity_stealth/isolation_and_sandbox.en.md)
+  - [Cybersecurity & Stealth](domains/cybersecurity_stealth/README.en.md)
     - [Isolation & Sandbox](domains/cybersecurity_stealth/isolation_and_sandbox.en.md)
     - [Stealth & C2](domains/cybersecurity_stealth/stealth_and_c2.en.md)
     - [Sting & Counterintelligence](domains/cybersecurity_stealth/sting_and_counterintelligence.en.md)
     - [Operational Security & IART](domains/cybersecurity_stealth/operational_security_iart.en.md)
 
-  - [Economic Autonomy](economic_autonomy/roi_dispatcher.en.md)
+  - [Economic Autonomy](economic_autonomy/README.en.md)
     - [ROI Dispatcher](domains/economic_autonomy/roi_dispatcher.en.md)
     - [MEV & PPO Executors](domains/economic_autonomy/mev_and_ppo_executors.en.md)
     - [Payment Obfuscation](domains/economic_autonomy/payment_obfuscation.en.md)
@@ -62,14 +62,14 @@
     - [Swarm Topology](domains/swarm_distribution/swarm_topology.en.md)
     - [Reputation & Coordination](domains/swarm_distribution/reputation_and_coordination.en.md)
 
-- [Singularity](singularity/singularity_criteria.en.md)
+- [Singularity](singularity/README.en.md)
   - [Singularity Criteria](singularity/singularity_criteria.en.md)
   - [Spore Protocol](singularity/spore_protocol_and_recovery.en.md)
   - [Last Breath Protocol](singularity/last_breath_protocol.en.md)
   - [Omega Protocol](singularity/controlled_collapse_omega.en.md)
   - [Hardware Independence (HAEL)](singularity/hardware_independence_hael.en.md)
 
-- [Appendices](appendices/appendix_a_gpu_configurations.md)
+- [Appendices](appendices/README.en.md)
   - [A - GPU Configurations](appendices/appendix_a_gpu_configurations.md)
   - [AA - Fine-Tuning DeepSeek V4](appendices/appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks.md)
   - [AB - Decentralized Bootstrap Config.](appendices/appendix_ab_decentralized_bootstrap_configurations.md)
@@ -101,7 +101,7 @@
   - [Y - Verification Report](appendices/appendix_y_verification_report.md)
   - [Z - Proof Tree Specification](appendices/appendix_z_proof_tree_specification.md)
 
-- [ADR](adr/adr_001_migration_to_deepseekv4.md)
+- [ADR](adr/README.en.md)
   - [001 - Migration to DeepSeek V4](adr/adr_001_migration_to_deepseekv4.md)
   - [002 - Dynamic Model Routing](adr/adr_002_dynamic_model_routing.md)
   - [003 - Predictive Consistency Router](adr/adr_003_predictive_consistency_router.md)
@@ -110,7 +110,7 @@
   - [006 - Decentralized Bootstrap](adr/adr_006_decentralized_bootstrap.md)
   - [007 - JEPA Integration](adr/adr_007_jepa_integration.md)
 
-- [Reports](reports/TRL4_VALIDATION_REPORT.md)
+- [Reports](reports/README.en.md)
   - [TRL-4 Validation](reports/TRL4_VALIDATION_REPORT.md)
   - [Ouroboros Report](reports/TRL4_OUROBOROS_REPORT.md)
   - [Simulation Baseline](reports/TRL4_simulation_baseline.md)
