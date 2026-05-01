@@ -7,7 +7,7 @@
 - [Terminal Goals & L3 Invariants](terminal_goals_and_l3_invariants.en.md)
 - [Roadmap](ROADMAP.md)
 
-- [Implemented Protocols](implemented/ouroboros.md)
+- [Implemented Protocols](implemented/README.en.md)
   - [Ouroboros (Self-Improvement)](implemented/ouroboros.md)
   - [Survival Objective](implemented/survival_objective.md)
   - [Genetic Engine](implemented/genetic_engine.md)
