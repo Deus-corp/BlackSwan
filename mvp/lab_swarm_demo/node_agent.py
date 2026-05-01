@@ -17,6 +17,8 @@ from sim.curiosity_engine import CuriosityEngine
 from sim.meta_pomdp_agent import MetaPOMDPAgent
 from src.core.crdt_adapter import CRDTAdapter
 from src.core.gossip_adapter import SafeGossipAdapter
+from src.security.crypto_manager import CryptoManager
+from src.security.reputation_manager import ReputationManager
 
 # ================= CONFIG =================
 
@@ -38,6 +40,9 @@ ELITE_SIZE = 2
 
 EXPECTED_RETURN_RATE = 0.1 * 0.05
 MAX_NORMALIZED_CAPITAL = 10000.0
+
+crypto = CryptoManager()
+reputation = ReputationManager()
 
 # ================= CRDT + GOSSIP (новые адаптеры) =================
 
@@ -249,8 +254,12 @@ async def main_loop():
 
                 if engine.champion[1] > 0:
                     genome_dict = make_genome(engine.champion[0], engine.champion[1])
+                    # подписываем параметры + фитнес
+                    payload = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
+                    signature = crypto.sign(payload)
+                    genome_dict["signature"] = signature
+                    genome_dict["origin_pubkey"] = crypto.public_bytes_hex
                     await crdt.add_genome(genome_dict)
-                    print(f"[{NODE_ID}] share fitness={engine.champion[1]:.4f}")
 
                 if engine.champion[1] > engine._fitness(current_params):
                     current_params = engine.champion[0]
@@ -289,6 +298,17 @@ async def main_loop():
 
             if step_count % 200 == 0:
                 await crdt.prune()
+
+            if step_count % 200 == 0:
+                # Выбираем случайный геном из CRDT и перепроверяем его фитнес
+                top = await crdt.get_top(20)
+                if top:
+                    sample = random.choice(top)
+                    if sample.get("origin_pubkey") != crypto.public_bytes_hex:
+                        # вычисляем реальный фитнес на наших данных
+                        actual_fit = engine._fitness(sample["params"])
+                        claimed_fit = sample.get("fitness", 0.0)
+                        reputation.update(sample["origin_pubkey"], claimed_fit, actual_fit)
 
             await asyncio.sleep(0.5)
 

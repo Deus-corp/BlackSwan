@@ -1,3 +1,4 @@
 redis
 numpy
 aiohttp
+cryptography
