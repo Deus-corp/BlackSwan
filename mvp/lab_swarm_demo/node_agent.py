@@ -14,6 +14,7 @@ from sim.curiosity_engine import CuriosityEngine
 from sim.meta_pomdp_agent import MetaPOMDPAgent
 from src.core.crdt_adapter import CRDTAdapter
 from src.core.gossip_adapter import SafeGossipAdapter
+from sim.genetic_engine import Genome  # добавляем в импорт
 
 # ================= CONFIG =================
 
@@ -92,6 +93,33 @@ def population_niche_counts(pop):
     counts = {"survival": 0, "capital": 0, "exploration": 0}
     for g in pop:
         niche = g.get("niche", "exploration")
+        counts[niche] = counts.get(niche, 0) + 1
+    return counts
+
+def dict_to_genome(d: Dict[str, Any], niche: str = "exploration") -> Genome:
+    """Преобразует словарь (из CRDT) в объект Genome."""
+    return Genome(
+        params={str(k): float(v) for k, v in d.get("params", d).items() if isinstance(v, (int, float))},
+        fitness=float(d.get("fitness", 0.0)),
+        niche=str(d.get("niche", niche)),
+        lineage=list(d.get("lineage", [])[:12]),
+    )
+
+def population_diversity(pop):
+    if not pop:
+        return 0
+    # Для нового движка популяция — это list[Genome]
+    return len({hashlib.md5(str(sorted(g.params.items())).encode()).hexdigest() for g in pop if isinstance(g, Genome)})
+
+def population_niche_counts(pop):
+    counts = {"survival": 0, "capital": 0, "exploration": 0}
+    for g in pop:
+        if isinstance(g, Genome):
+            niche = g.niche
+        elif isinstance(g, dict):
+            niche = g.get("niche", "exploration")
+        else:
+            continue
         counts[niche] = counts.get(niche, 0) + 1
     return counts
 
@@ -187,36 +215,37 @@ async def main_loop():
                         if len(selected) >= MAX_IMPORT:
                             break
                 for g in selected:
-                    parent = random.choice(engine.population)
-                    child = recombine({"params": parent, "niche": "local", "lineage": []}, g)
-                    engine.population.append(child["params"])
+                    parent = random.choice(engine.population) if engine.population else None
+                    if parent is None:
+                        continue
+                    child = recombine({"params": parent.params if isinstance(parent, Genome) else parent, "niche": "local", "lineage": []}, g)
+                    if isinstance(child, dict) and "params" in child:
+                        engine.population.append(child["params"])
+                    elif isinstance(child, Genome):
+                        engine.population.append(child)
                     if len(engine.population) > engine.pop_size:
                         engine.population.pop(0)
-                last_import_step = step_count
 
             # Evolution every 50 steps
             if step_count % 50 == 0:
-                # Elitism: keep best before evolution
-                elite = sorted(engine.population, key=lambda p: engine._fitness(p), reverse=True)[:ELITE_SIZE]
+                # Теперь движок сам заботится об элитизме
                 engine.evolve_generation()
-                # Restore elite
-                engine.population[-ELITE_SIZE:] = elite
 
                 if engine.champion[1] > 0:
                     genome = make_genome(engine.champion[0], engine.champion[1])
-                    await crdt.add_genome(genome["params"], genome["fitness"])
+                    await crdt.add_genome(genome)  # адаптер сам разберётся
                     print(f"[{NODE_ID}] share fitness={engine.champion[1]:.4f}")
 
                 if engine.champion[1] > engine._fitness(current_params):
                     current_params = engine.champion[0]
                     dispatcher = ROIDispatcher(config=current_params)
 
-                # Log metrics with niche information
                 current_niche = node_niche()
                 counts = population_niche_counts(engine.population)
                 dominant_niche = max(counts, key=counts.get)
-                print(f"[{NODE_ID}] step={step_count} capital={capital:.2f} dq={survival.dq:.3f} "
-                      f"fitness={engine.champion[1]:.4f} diversity={population_diversity(engine.population)} "
+                print(f"[{NODE_ID}] step={step_count} capital={capital:.2f} "
+                      f"dq={survival.dq:.3f} fitness={engine.champion[1]:.4f} "
+                      f"diversity={engine.diversity():.2f} "
                       f"crdt_size={len(crdt.state)} niche={current_niche} dominant={dominant_niche}")
 
             # Curiosity + Meta every 100 steps
