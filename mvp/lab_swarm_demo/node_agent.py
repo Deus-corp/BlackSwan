@@ -46,8 +46,10 @@ class SwarmNode:
         # Компоненты
         self.crypto = CryptoManager()
         self.reputation = ReputationManager()
+        self.reputation_blacklist_threshold = 0.3
         self.crdt = CRDTAdapter(self.node_id)
         self.gossip = SafeGossipAdapter(self.crdt)
+        self.gossip.set_reputation_manager(self.reputation)
 
         self.engine = GeneticEngine(pop_size=10)
         self.engine.initialize()
@@ -89,6 +91,10 @@ class SwarmNode:
             if not CryptoManager.verify(payload, sig, pubkey):
                 return False
         return True
+                # Фильтр по репутации
+        pubkey = genome.get("origin_pubkey")
+        if pubkey and not self.reputation.is_trusted(pubkey):
+            return False
 
     def make_genome(self, params, fitness):
         return {
