@@ -18,7 +18,7 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ Formal verification (TLA+): 8 protocols (Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation, etc.).  
 ✅ Economic simulator: multi‑agent sweep, stability zone discovered.  
 ✅ Laboratory swarm: Docker Compose with 4 nodes, fully decentralized (no Redis).
-✅ **Multinode DeepSeek Swarm (v2.10)** – 4–5 nodes running DeepSeek-R1-Distill-Qwen-1.5B, model shared via read‑only volume, resource limits for 8 GB RAM PCs. 
+✅ **Multinode DeepSeek Swarm (v2.13)** – 4–5 nodes running DeepSeek-R1-Distill-Qwen-1.5B, model shared via read‑only volume, resource limits for 8 GB RAM PCs. 
 ✅ **Industrial CRDT layer** – operation‑based CRDT with SQLite persistence, version vectors, and deterministic LWW merge.  
 ✅ **Secure Gossip protocol** – HMAC‑signed envelopes, replay protection, peer backoff and scoring.  
 ✅ **Speciated Genetic Engine** – genome dataclass, species formation, adaptive mutation, fitness cache.  
