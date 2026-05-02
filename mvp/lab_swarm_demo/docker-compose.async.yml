@@ -8,9 +8,9 @@ services:
       - BURN_RATE=0.1
       - FAILURE_PROB=0.0
       - GOSSIP_PORT=9777
-      - TOTAL_NODES=4
+      - TOTAL_NODES=5
       - PYTHONUNBUFFERED=1
-      - LLM_MODEL=smollm2
+      - LLM_MODEL=deepseek
     ports:
       - "9777"
     deploy:
@@ -19,5 +19,12 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 2G
+        reservations:
+          cpus: '0.3'
+          memory: 1G
     volumes:
-      - ../../llama_cpp:/app/llama_cpp:ro
+      - ../../llama_cpp:/app/llama_cpp:ro 
