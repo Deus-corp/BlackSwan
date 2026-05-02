@@ -68,7 +68,7 @@ docker compose -f mvp/lab_swarm_demo/docker-compose.yml logs -f node
 ```
 
 ## 🧪 Model Benchmark
-python model_benchmark.py   # автоматически прогонит все модели и сохранит логи в docs/logs/models/
+python model_benchmark.py   # automatically tests all local LLMs and saves logs to docs/logs/models/
 
 ## 📚 Documentation
 
