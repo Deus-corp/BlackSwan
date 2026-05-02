@@ -6,8 +6,9 @@ export PORT="${GOSSIP_PORT:-9777}"
 # Случайная задержка 0–10 секунд, чтобы ноды стартовали вразнобой
 sleep $(( RANDOM % 10 ))
 
-TOTAL_NODES=${TOTAL_NODES:-4}
-MY_INDEX=$(echo "$NODE_ID" | grep -oE '[0-9]+$')
+TOTAL_NODES=${TOTAL_NODES:-3}
+# безопасно извлекаем номер из hostname, например lab_swarm_demo-node-2
+MY_INDEX=$(echo "$NODE_ID" | grep -oE '[0-9]+' | tail -1)
 if [ -z "$MY_INDEX" ]; then
   MY_INDEX=1
 fi
