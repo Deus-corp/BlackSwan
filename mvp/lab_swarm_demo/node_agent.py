@@ -389,9 +389,13 @@ Respond ONLY with the adjusted parameters in JSON format, like:
 
     @staticmethod
     def _recombine(g1: dict, g2: dict) -> dict:
+        # объединяем все ключи из обоих родителей
+        all_keys = set(g1.get("params", {}).keys()) | set(g2.get("params", {}).keys())
         child = {}
-        for k in g1["params"]:
-            val = g1["params"][k] if random.random() < 0.5 else g2["params"][k]
+        for k in all_keys:
+            v1 = g1.get("params", {}).get(k, 0.5)      # default, если ключ отсутствует
+            v2 = g2.get("params", {}).get(k, 0.5)
+            val = v1 if random.random() < 0.5 else v2
             if random.random() < 0.1:
                 val *= random.uniform(0.9, 1.1)
             val = max(0.0001, min(1.0, val))
