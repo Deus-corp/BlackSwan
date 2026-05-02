@@ -11,6 +11,7 @@ MODEL_NAME = os.environ.get("LLM_MODEL", "qwen")  # "qwen" или "deepseek"
 MODEL_PATHS = {
     "qwen": "llama_cpp/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
     "deepseek": "llama_cpp/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
+    "smollm2": "llama_cpp/SmolLM2-135M-Instruct-Q4_K_M.gguf",
 }
 
 class LLMClient:
@@ -25,7 +26,7 @@ class LLMClient:
             n_ctx=512,
             n_threads=4,
             verbose=False,
-            chat_format="deepseek" if model_name == "deepseek" else None,
+            chat_format="deepseek" if self.model_name == "deepseek" else None,
         )
 
     def generate(self, prompt: str, max_tokens: int = 128, temperature: float = 0.7) -> str:

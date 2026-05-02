@@ -10,11 +10,11 @@ services:
       - GOSSIP_PORT=9777
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
-      - LLM_MODEL=deepseek   # ← используем DeepSeek
+      - LLM_MODEL=smollm2
     ports:
       - "9777"
     deploy:
-      replicas: 2
+      replicas: 3
       restart_policy:
         condition: on-failure
         delay: 5s
