@@ -23,6 +23,25 @@ logger = logging.getLogger("SwarmNode")
 EXPECTED_RETURN_RATE = 0.1 * 0.05
 MAX_NORMALIZED_CAPITAL = 10000.0
 
+# LLM mutation counters (глобально, т.к. в каждом процессе они независимы)
+_llm_mutation_count = 0
+_llm_mutation_total_impact = 0.0
+_last_capital = None          # запоминаем предыдущий капитал для расчёта impact
+
+def note_llm_mutation():
+    global _llm_mutation_count
+    _llm_mutation_count += 1
+
+def update_llm_impact(current_capital: float):
+    global _llm_mutation_total_impact, _last_capital
+    if _last_capital is not None:
+        impact = current_capital - _last_capital
+        _llm_mutation_total_impact += impact
+    _last_capital = current_capital
+
+def get_llm_stats() -> Tuple[int, float]:
+    avg = _llm_mutation_total_impact / _llm_mutation_count if _llm_mutation_count else 0.0
+    return _llm_mutation_count, avg
 
 class SwarmNode:
     def __init__(self) -> None:
@@ -315,6 +334,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         if new_params != self.engine.champion[0]:
                             genome = self.dict_to_genome({"params": new_params})
                             self.engine.add_genome(genome)
+                            note_llm_mutation()          # <-- добавить эту строку
 
                     if self.engine.champion[1] > self.engine._fitness(self.current_params):
                         self.current_params = self.engine.champion[0]
@@ -335,11 +355,13 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     cur_niche = self.node_niche()
                     counts = self.population_niche_counts()
                     dom_niche = max(counts, key=counts.get)
+                    llm_muts, avg_impact = get_llm_stats()
                     logger.info(
                         f"[{self.node_id}] step={self.step_count} capital={self.capital:.2f} "
                         f"dq={self.survival.dq:.3f} fitness={self.engine.champion[1]:.4f} "
                         f"diversity={self.engine.diversity():.2f} crdt_size={len(self.crdt.state)} "
-                        f"niche={cur_niche} dominant={dom_niche}"
+                        f"niche={cur_niche} dominant={dom_niche} "
+                        f"llm_muts={llm_muts} avg_llm_impact={avg_impact:+.2f}"
                     )
 
                 # ---- curiosity + meta ----
@@ -384,6 +406,9 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     }.values())
                     if len(self.memory.records) > self.memory.max_size:
                         self.memory.records = self.memory.records[-self.memory.max_size:]
+
+                                        # ---- добавляем сюда ----
+                update_llm_impact(self.capital)
 
                 await asyncio.sleep(0.5)
 
