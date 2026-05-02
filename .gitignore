@@ -64,3 +64,5 @@ echo "*.gguf" >> .gitignore
 echo "" >> .gitignore
 echo "# Local test scripts with secrets" >> .gitignore
 echo "run_model_api.py" >> .gitignorellama.zip
+llama_cpp/
+*.gguf
