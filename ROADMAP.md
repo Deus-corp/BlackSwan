@@ -17,7 +17,8 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 
 ✅ Formal verification (TLA+): 8 protocols (Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation, etc.).  
 ✅ Economic simulator: multi‑agent sweep, stability zone discovered.  
-✅ Laboratory swarm: Docker Compose with 4 nodes, fully decentralized (no Redis).  
+✅ Laboratory swarm: Docker Compose with 4 nodes, fully decentralized (no Redis).
+✅ **Multinode DeepSeek Swarm (v2.10)** – 4–5 nodes running DeepSeek-R1-Distill-Qwen-1.5B, model shared via read‑only volume, resource limits for 8 GB RAM PCs. 
 ✅ **Industrial CRDT layer** – operation‑based CRDT with SQLite persistence, version vectors, and deterministic LWW merge.  
 ✅ **Secure Gossip protocol** – HMAC‑signed envelopes, replay protection, peer backoff and scoring.  
 ✅ **Speciated Genetic Engine** – genome dataclass, species formation, adaptive mutation, fitness cache.  
@@ -55,11 +56,11 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 
 ## 🚀 Immediate Next Steps
 
-1. **Merge feature branch into main** – after confirming stability.
-2. **Release v2.9‑Industrial** – tag and publish on GitHub.
-3. **Create monitoring dashboard** (Prometheus + Grafana).
-4. **Add digital signatures (Ed25519) and reputation system** – to protect against Byzantine nodes.
-
+1. **Stress‑test Spore Protocol** – introduce artificial node failures (`FAILURE_PROB > 0`) and verify automatic rebirth and state recovery.
+2. **Build metrics dashboard** – visualise capital, fitness, diversity, and gossip health (Prometheus + Grafana).
+3. **Harden gossip security** – add Ed25519 signatures, peer reputation, and optional TLS.
+4. **Experiment with Qwen2.5 and other local LLMs** – compare reasoning quality vs resource usage.
+5. **Evaluate Kubernetes deployment** – prepare Helm chart for production‑grade swarm.
 ---
 
 *Black Swan © 2026. All plans are hypothetical and do not constitute a call to action.*
