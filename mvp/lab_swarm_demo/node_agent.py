@@ -1,4 +1,4 @@
-import os, time, random, uuid, hashlib, asyncio, logging
+import os, time, random, uuid, hashlib, asyncio, logging, sys
 from typing import Dict, Any, Optional, List, Tuple
 
 import aiohttp
@@ -246,7 +246,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                 self.step_count += 1
                 if self.failure_prob > 0 and random.random() < self.failure_prob:
                     logger.info(f"[{self.node_id}] failed")
-                    return
+                    sys.exit(1)
 
                 market = await self.get_market_tick(session)
                 self.capital -= self.burn_rate
