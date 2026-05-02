@@ -10,10 +10,11 @@ services:
       - GOSSIP_PORT=9777
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
+      - LLM_MODEL=qwen   # или deepseek
     ports:
       - "9777"
     deploy:
-      replicas: 4
+      replicas: 3
       restart_policy:
         condition: on-failure
         delay: 5s
