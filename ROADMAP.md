@@ -26,7 +26,8 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ Survival Objective integrated into every node (conscious risk avoidance).  
 ✅ Adaptive Intrinsic Motivation: Meta‑POMDP agent switches between scenarios.  
 ✅ Curiosity Engine: proactive exploration of market anomalies.  
-✅ CI/CD: unit tests, formal verification (local + GitHub Actions).  
+✅ CI/CD: unit tests, formal verification (local + GitHub Actions). 
+✅ **Multi-model benchmark completed** – 10 models evaluated, top performer: SmolLM2-1.7B-Instruct (fitness 0.898).
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 

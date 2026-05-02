@@ -29,6 +29,7 @@
 - 🧬 **Speciated Genetic Engine** – species-based evolution with adaptive mutation and fitness cache.
 - 🧠 **LLM-Powered Mutations** – a local LLM (Qwen2.5-1.5B) generates new strategy parameters instead of random mutations.
 - ✅ **Multinode DeepSeek Swarm** — 4–5 nodes on DeepSeek-R1-Distill-Qwen-1.5B, shared read‑only model volume, resource limits for low‑RAM PCs (v2.13)
+- ✅ **Multi-model benchmark** – 10 local LLMs compared (135M–1.7B). Report: [docs/reports/benchmark_10_models_2026-05-03.md](docs/reports/benchmark_10_models_2026-05-03.md)
 
 ---
 
@@ -65,6 +66,9 @@ docker compose -f mvp/lab_swarm_demo/docker-compose.yml up --build -d
 # Node logs
 docker compose -f mvp/lab_swarm_demo/docker-compose.yml logs -f node
 ```
+
+## 🧪 Model Benchmark
+python model_benchmark.py   # автоматически прогонит все модели и сохранит логи в docs/logs/models/
 
 ## 📚 Documentation
 
