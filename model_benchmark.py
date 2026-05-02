@@ -24,9 +24,19 @@ MAX_WAIT_SECONDS = 60 * 60  # максимум 1 час на модель
 
 # Модели для тестирования: {имя_папки: (название_LLM_MODEL, путь_к_gguf_относительно_корня)}
 MODELS = {
+    # Стандартные модели
     "deepseek-r1-distill-qwen-1.5b": ("deepseek", "llama_cpp/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf"),
     "qwen2.5-1.5b-instruct": ("qwen", "llama_cpp/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"),
     "smollm2-135m-instruct": ("smollm2", "llama_cpp/SmolLM2-135M-Instruct-Q4_K_M.gguf"),
+    "qwen2.5-0.5b-instruct": ("qwen05", "llama_cpp/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf"),
+    "llama-3.2-1b-instruct": ("llama1b", "llama_cpp/Llama-3.2-1B-Instruct-Q4_K_M.gguf"),
+    "smollm2-1.7b-instruct": ("smollm17", "llama_cpp/SmolLM2-1.7B-Instruct-Q4_K_M.gguf"),
+    "smollm2-360m-instruct": ("smollm360", "llama_cpp/SmolLM2-360M-Instruct-Q4_K_M.gguf"),
+
+    # Abliterated / Uncensored
+    "qwen2.5-0.5b-abliterated-v3": ("abl_qwen05", "llama_cpp/Qwen2.5-0.5B-Instruct-abliterated-v3-Q4_K_M.gguf"),
+    "gemma-3-1b-it-abliterated": ("abl_gemma1b", "llama_cpp/gemma-3-1b-it-abliterated-Q4_K_M.gguf"),
+    "llama-3.2-1b-uncensored": ("unc_llama1b", "llama_cpp/llama3.2-1b-Uncensored-Q4_K_M.gguf"),
 }
 
 # ---------- УТИЛИТЫ ----------
