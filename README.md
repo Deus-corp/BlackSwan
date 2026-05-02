@@ -28,6 +28,7 @@
 - 🛡️ **Secure Gossip** – HMAC-signed envelopes, replay protection, peer scoring and backoff.
 - 🧬 **Speciated Genetic Engine** – species-based evolution with adaptive mutation and fitness cache.
 - 🧠 **LLM-Powered Mutations** – a local LLM (Qwen2.5-1.5B) generates new strategy parameters instead of random mutations.
+- ✅ **Multinode DeepSeek Swarm** — 4–5 nodes on DeepSeek-R1-Distill-Qwen-1.5B, shared read‑only model volume, resource limits for low‑RAM PCs
 
 ---
 
