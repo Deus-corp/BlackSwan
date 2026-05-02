@@ -3,8 +3,10 @@ set -e
 export NODE_ID="${HOSTNAME:-unknown}"
 export PORT="${GOSSIP_PORT:-9777}"
 
+# Случайная задержка 0–10 секунд, чтобы ноды стартовали вразнобой
+sleep $(( RANDOM % 10 ))
+
 TOTAL_NODES=${TOTAL_NODES:-4}
-# HOSTNAME будет вида lab_swarm_demo-node-<N>, извлекаем номер
 MY_INDEX=$(echo "$NODE_ID" | grep -oE '[0-9]+$')
 if [ -z "$MY_INDEX" ]; then
   MY_INDEX=1
