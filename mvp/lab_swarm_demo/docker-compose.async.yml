@@ -8,7 +8,7 @@ services:
       - BURN_RATE=0.1
       - FAILURE_PROB=0.0
       - GOSSIP_PORT=9777
-      - TOTAL_NODES=5
+      - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
       - LLM_MODEL=deepseek
     ports:
