@@ -15,8 +15,8 @@ services:
       - MEMORY_API_ENABLED=true
       - MARKET_MODE=sim
       - TRADING_SYMBOL=BTC/USDT
-      - BINANCE_TESTNET_API_KEY=your_api_key
-      - BINANCE_TESTNET_API_SECRET=your_api_secret
+      - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
+      - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
     ports:
       - "9777"
     deploy:
