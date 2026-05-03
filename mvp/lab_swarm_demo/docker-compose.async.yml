@@ -13,6 +13,10 @@ services:
       - LLM_MODEL=smollm17
       - GOSSIP_SIGNING_ENABLED=true
       - MEMORY_API_ENABLED=true
+      - MARKET_MODE=sim
+      - TRADING_SYMBOL=BTC/USDT
+      - BINANCE_TESTNET_API_KEY=your_api_key
+      - BINANCE_TESTNET_API_SECRET=your_api_secret
     ports:
       - "9777"
     deploy:

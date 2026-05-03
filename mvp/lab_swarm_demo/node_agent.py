@@ -20,6 +20,7 @@ from src.intelligence.llm_client import LLMClient
 from src.security.gossip_envelope import sign_envelope, generate_key_pair, public_key_bytes, sha256, GossipEnvelope
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
+from adapters.live_market import BinanceTestnetAdapter
 
 logger = logging.getLogger("SwarmNode")
 
@@ -52,7 +53,13 @@ class SwarmNode:
         self.node_id: str = os.environ.get("NODE_ID", str(uuid.uuid4()))
         self.port: int = int(os.environ.get("PORT", 8000))
         self.peers: List[str] = [p for p in os.environ.get("PEERS", "").split(",") if p]
+
         self.market_url: Optional[str] = os.environ.get("MARKET_URL")
+        self.market_mode: str = os.environ.get("MARKET_MODE", "sim")
+        self.live_market: Optional[BinanceTestnetAdapter] = None
+        if self.market_mode == "live":
+            self.live_market = BinanceTestnetAdapter(symbol=os.environ.get("TRADING_SYMBOL", "BTC/USDT"))
+
         self.burn_rate: float = float(os.environ.get("BURN_RATE", 0.5))
         self.failure_prob: float = float(os.environ.get("FAILURE_PROB", 0.0))
         self.gossip_interval: float = 1.5
@@ -251,6 +258,13 @@ Respond ONLY with the adjusted parameters in JSON format, like:
     # Market
     # ------------------------------------------------------------
     async def get_market_tick(self, session: aiohttp.ClientSession) -> dict:
+        # Если включён живой режим и адаптер доступен
+        if self.market_mode == "live" and self.live_market:
+            tick = await self.live_market.get_ticker()
+            # tick уже содержит price и другие поля
+            return tick
+
+        # Иначе старый симулированный рынок
         if self.market_url:
             try:
                 async with session.get(self.market_url, timeout=1) as resp:
