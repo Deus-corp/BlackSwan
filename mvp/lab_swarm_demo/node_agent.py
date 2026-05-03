@@ -65,7 +65,13 @@ class SwarmNode:
         self.crypto: CryptoManager = CryptoManager()
         self.reputation: ReputationManager = ReputationManager()
         self.reputation_blacklist_threshold: float = 0.3
-        self.crdt: CRDTAdapter = CRDTAdapter(self.node_id)
+
+        self.crdt: CRDTAdapter = CRDTAdapter(
+            node_id=self.node_id,
+            memory_api=self.memory_api if self.memory_api_enabled else None,
+            reputation=self.reputation if self.memory_api_enabled else None
+        )
+
         self.gossip: SafeGossipAdapter = SafeGossipAdapter(self.crdt)
         self.gossip.set_reputation_manager(self.reputation)
 
