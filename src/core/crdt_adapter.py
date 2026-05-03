@@ -22,6 +22,7 @@ class CRDTAdapter:
         self.node_id = node_id
         storage = CRDTStorage(DB_PATH)
         self.crdt = GenomeCRDT(node_id, storage=storage)
+        self.storage = storage   # для доступа к CRDTStorage извне (например, для памяти)
         self._seen_nonces: dict[str, set] = {}
         self._last_seq: dict[str, int] = {}
         self.memory_api = memory_api

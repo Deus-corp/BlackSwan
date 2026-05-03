@@ -74,8 +74,6 @@ class SwarmNode:
         self.reputation_blacklist_threshold: float = 0.3
 
         self.memory_api_enabled: bool = os.environ.get("MEMORY_API_ENABLED", "false").lower() == "true"
-        self.memory_api: LocalMemoryAPI = LocalMemoryAPI(node_id=self.node_id) if self.memory_api_enabled else None
-
         self.crdt: CRDTAdapter = CRDTAdapter(
             node_id=self.node_id,
             memory_api=self.memory_api if self.memory_api_enabled else None,
@@ -108,6 +106,12 @@ class SwarmNode:
         self.curiosity: CuriosityEngine = CuriosityEngine(window_size=10, surprise_threshold=0.3)
         self.meta_agent: MetaPOMDPAgent = MetaPOMDPAgent()
         self.llm = LLMClient()
+
+                # storage уже создан для CRDT, передадим его в память
+        self.memory_api: LocalMemoryAPI = LocalMemoryAPI(
+            node_id=self.node_id,
+            storage=self.crdt.storage  # передаём тот же CRDTStorage
+        )
 
         self.memory: EpisodicMemory = EpisodicMemory(max_size=500)
         self.semantic: SemanticMemory = SemanticMemory()
@@ -280,6 +284,8 @@ Respond ONLY with the adjusted parameters in JSON format, like:
     # ------------------------------------------------------------
     async def main_loop(self) -> None:
         async with aiohttp.ClientSession() as session:
+            if self.memory_api_enabled:
+                await self.memory_api.load_from_db()
             while True:
                 self.step_count += 1
                 if self.failure_prob > 0 and random.random() < self.failure_prob:
@@ -499,6 +505,9 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     }.values())
                     if len(self.memory.records) > self.memory.max_size:
                         self.memory.records = self.memory.records[-self.memory.max_size:]
+                    
+                    if self.memory_api_enabled:
+                        await self.memory_api.save_to_db()
 
                 # ---- добавляем сюда ----
                 update_llm_impact(self.capital)

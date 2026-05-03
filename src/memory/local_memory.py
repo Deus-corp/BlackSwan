@@ -67,11 +67,11 @@ class MemorySnapshot(BaseModel):
 # ---------- Memory Implementation ----------
 
 class LocalMemoryAPI:
-    def __init__(self, node_id: str = "unknown"):
+    def __init__(self, node_id: str = "unknown", storage=None):
         self.node_id = node_id
-        # Основное хранилище — словарь всех записей по id
+        self.storage = storage  # объект с методами save_snapshot / load_snapshot
+        # Основное хранилище
         self._records: Dict[str, MemoryRecord] = {}
-        # Отдельные слои (могут пересекаться с _records, но упрощают фильтрацию)
         self._episodic: List[EpisodeEvent] = []
         self._semantic: List[FactStoreItem] = []
         self._policies: List[PolicyRule] = []
@@ -128,6 +128,40 @@ class LocalMemoryAPI:
         if kind:
             sorted_recs = [r for r in sorted_recs if r.kind == kind]
         return sorted_recs[:limit]
+    
+    async def save_to_db(self) -> None:
+        """Сохраняет всю память в SQLite (через переданный storage)."""
+        if not self.storage:
+            return
+        data = {
+            'node_id': self.node_id,
+            'records': [r.model_dump() for r in self._records.values()],
+            'episodic': [e.model_dump() for e in self._episodic],
+            'semantic': [s.model_dump() for s in self._semantic],
+            'policies': [p.model_dump() for p in self._policies],
+            'snapshots': [s.model_dump() for s in self._snapshots],
+            'updated_at': time.time()
+        }
+        self.storage.save_snapshot(self.node_id, json.dumps(data).encode('utf-8'))
+
+    async def load_from_db(self) -> None:
+        """Загружает память из SQLite (вызывается при старте)."""
+        if not self.storage:
+            return
+        raw = self.storage.load_snapshot(self.node_id)
+        if not raw:
+            return
+        try:
+            data = json.loads(raw.decode('utf-8'))
+            self._records = {r['id']: MemoryRecord(**r) for r in data.get('records', [])}
+            self._episodic = [EpisodeEvent(**e) for e in data.get('episodic', [])]
+            self._semantic = [FactStoreItem(**f) for f in data.get('semantic', [])]
+            self._policies = [PolicyRule(**p) for p in data.get('policies', [])]
+            self._snapshots = [MemorySnapshot(**s) for s in data.get('snapshots', [])]
+        except Exception:
+            pass
+
+
 
     # ---------- SNAPSHOT / RESTORE ----------
 
