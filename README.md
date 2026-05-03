@@ -83,6 +83,19 @@ python model_benchmark.py   # automatically tests all local LLMs and saves logs 
 
 ---
 
+## ❤️ Support the Project
+
+BlackSwan is an independent research project. If you find it valuable,
+consider supporting its development:
+
+- **[GitHub Sponsors](https://github.com/sponsors/Deus-corp)** — monthly or one-time sponsorship
+- **Crypto donations** — see [DONATIONS.md](DONATIONS.md)
+
+All funds go toward infrastructure, compute resources, and further research.
+Sponsorship does not confer any rights over the project.
+
+---
+
 ## 📄 License
 
 Dual‑licensed under MIT or Apache‑2.0, at your option.  
