@@ -261,7 +261,9 @@ Respond ONLY with the adjusted parameters in JSON format, like:
         # Если включён живой режим и адаптер доступен
         if self.market_mode == "live" and self.live_market:
             tick = await self.live_market.get_ticker()
-            # tick уже содержит price и другие поля
+            # Масштабируем цену, чтобы не сломать Kelly-стратегию
+            scale = float(os.environ.get("PRICE_SCALE", 10000))
+            tick['price'] = tick['price'] / scale
             return tick
 
         # Иначе старый симулированный рынок
