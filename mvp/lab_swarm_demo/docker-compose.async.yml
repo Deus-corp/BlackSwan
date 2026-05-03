@@ -6,12 +6,12 @@ services:
     entrypoint: ["/app/mvp/lab_swarm_demo/node_entrypoint_async.sh"]
     environment:
       - BURN_RATE=0.1
-      - FAILURE_PROB=0.02
+      - FAILURE_PROB=0.0
       - GOSSIP_PORT=9777
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
       - LLM_MODEL=smollm17
-      - GOSSIP_SIGNING_ENABLED=false
+      - GOSSIP_SIGNING_ENABLED=true
     ports:
       - "9777"
     deploy:
