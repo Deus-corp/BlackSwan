@@ -30,6 +30,7 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ **Multi-model benchmark completed** – 10 models evaluated, top performer: SmolLM2-1.7B-Instruct (fitness 0.898).
 ✅ Spore protocol stress‑test completed (4 nodes, high failure rate, automatic recovery).
 ✅ Signed GossipEnvelope implemented – genome exchange cryptographically signed.
+✅ Signed genome exchange with Ed25519 verified and tested in live swarm.
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
