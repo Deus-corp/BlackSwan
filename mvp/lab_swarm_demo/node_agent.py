@@ -262,15 +262,16 @@ Respond ONLY with the adjusted parameters in JSON format, like:
     # Market
     # ------------------------------------------------------------
     async def get_market_tick(self, session: aiohttp.ClientSession) -> dict:
-        # Если включён живой режим и адаптер доступен
         if self.market_mode == "live" and self.live_market:
             tick = await self.live_market.get_ticker()
-            # Масштабируем цену, чтобы не сломать Kelly-стратегию
-            scale = float(os.environ.get("PRICE_SCALE", 10000))
-            tick['price'] = tick['price'] / scale
-            return tick
-
-        # Иначе старый симулированный рынок
+            if tick is not None:
+                # Масштабируем цену
+                scale = float(os.environ.get("PRICE_SCALE", 10000))
+                tick['price'] = tick.get('price', tick.get('ask', 50000))  # fallback
+                tick['price'] = tick['price'] / scale
+                return tick
+            # Иначе рынок закрыт – fallback к симуляции
+        # Старое поведение (симуляция)
         if self.market_url:
             try:
                 async with session.get(self.market_url, timeout=1) as resp:
