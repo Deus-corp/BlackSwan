@@ -19,6 +19,7 @@ from src.intelligence.semantic_memory import SemanticMemory
 from src.intelligence.llm_client import LLMClient
 from src.security.gossip_envelope import sign_envelope, generate_key_pair, public_key_bytes, sha256, GossipEnvelope
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 
 logger = logging.getLogger("SwarmNode")
 
@@ -94,6 +95,8 @@ class SwarmNode:
 
         self.memory: EpisodicMemory = EpisodicMemory(max_size=500)
         self.semantic: SemanticMemory = SemanticMemory()
+        self.memory_api: LocalMemoryAPI = LocalMemoryAPI(node_id=self.node_id)
+        self.memory_api_enabled: bool = os.environ.get("MEMORY_API_ENABLED", "false").lower() == "true"
 
         # runtime‑состояние
         self.capital: float = 1000.0
@@ -402,6 +405,28 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         f"llm_muts={llm_muts} avg_llm_impact={avg_impact:+.2f}"
                     )
 
+                    # Сохраняем сводку в новую память, если API включено
+                    if self.memory_api_enabled:
+                        record = MemoryRecord(
+                            id="",  # будет сгенерирован автоматически
+                            kind="summary",
+                            scope="local",
+                            payload={
+                                "step": self.step_count,
+                                "capital": self.capital,
+                                "fitness": self.engine.champion[1],
+                                "diversity": self.engine.diversity(),
+                                "crdt_size": len(self.crdt.state),
+                                "niche": cur_niche,
+                                "dominant": dom_niche,
+                                "llm_muts": llm_muts,
+                                "avg_llm_impact": avg_impact
+                            },
+                            confidence=0.9,
+                            priority=10
+                        )
+                        await self.memory_api.remember(record)
+
                 # ---- curiosity + meta ----
                 if self.step_count % 100 == 0:
                     hypothesis = self.curiosity.update(market)
@@ -435,6 +460,11 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             actual_fit = self.engine._fitness(sample["params"])
                             claimed_fit = sample.get("fitness", 0.0)
                             self.reputation.update(pubkey, claimed_fit, actual_fit)
+
+                    # Статистика новой памяти (если включено)
+                    if self.memory_api_enabled:
+                        stats = await self.memory_api.compress()
+                        logger.info(f"Memory stats: {stats}")
 
                 # ---- memory consolidation ----
                 if self.step_count % 500 == 0:
