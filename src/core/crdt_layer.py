@@ -264,6 +264,29 @@ class CRDTStorage:
                 )
             conn.commit()
 
+    def save_snapshot(self, key: str, data: bytes):
+        """Сохраняет бинарный снапшот памяти."""
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS memory_snapshots (key TEXT PRIMARY KEY, data BLOB, updated_at REAL)",
+            ()
+        )
+        self.db.execute(
+            "INSERT OR REPLACE INTO memory_snapshots (key, data, updated_at) VALUES (?, ?, ?)",
+            (key, data, time.time())
+        )
+        self.db.commit()
+
+    def load_snapshot(self, key: str) -> Optional[bytes]:
+        """Загружает снапшот памяти."""
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS memory_snapshots (key TEXT PRIMARY KEY, data BLOB, updated_at REAL)",
+            ()
+        )
+        row = self.db.execute("SELECT data FROM memory_snapshots WHERE key = ?", (key,)).fetchone()
+        if row:
+            return row[0]
+        return None
+
 
 # =========================
 # CRDT CORE

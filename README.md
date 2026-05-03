@@ -36,6 +36,10 @@
 - ✅ **Quarantine Buffer** – signature, reputation, and confidence checks for incoming memory records.
 - ✅ **Gossip Filter** – replay protection (nonce‑cache) and monotonic sequence numbers across all gossip messages.
 - 🧪 **Binance Testnet Adapter** – live price feed via CCXT, paper trading on BTC/USDT (enable with `MARKET_MODE=live`).
+- ✅ **Persistent Memory** – SQLite‑backed storage for LocalMemoryAPI, survives node restarts.
+- ✅ **Live Market Enhancements** – bid/ask pricing, market hours filter, multi‑symbol support (ETH/USDT).
+- ✅ **Telegram Bot** – remote monitoring via /status, /nodes, /memory commands.
+- ✅ **Improved Dashboard** – 2×2 layout with capital, fitness, diversity/CRDT, and niche pie chart.
 
 ---
 
@@ -113,6 +117,12 @@ docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml up -d --scale node
 
 ```python
 python model_benchmark.py   # automatically tests all local LLMs and saves logs to docs/logs/models/
+```
+
+## 🤖 Telegram Bot
+```bash
+export TELEGRAM_BOT_TOKEN=your_token  # или добавить в .env
+python3 telegram_bot.py
 ```
 
 ## 📚 Documentation
