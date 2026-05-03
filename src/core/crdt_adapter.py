@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 from src.core.crdt_layer import GenomeCRDT, CRDTStorage
 from src.security.gossip_envelope import GossipEnvelope, verify_envelope
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from src.core.gossip_filter import GossipFilter
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class CRDTAdapter:
         self._last_seq: dict[str, int] = {}
         self.memory_api = memory_api
         self.reputation = reputation
+        self.gossip_filter = GossipFilter(max_clock_skew_ms=10_000)
         if memory_api and reputation:
             from src.memory.quarantine import QuarantineBuffer
             self.quarantine = QuarantineBuffer(memory_api, reputation)
@@ -36,13 +38,24 @@ class CRDTAdapter:
 
         # --- ПРОВЕРКА НА GOSSIP ENVELOPE ---
         if isinstance(genome, dict) and genome.get("domain") == "blackswan-gossip-v1":
-            # Это подписанный конверт
             if os.environ.get("GOSSIP_SIGNING_ENABLED", "false").lower() == "true":
                 try:
                     envelope = GossipEnvelope(**genome)
                 except Exception:
                     logger.warning("Invalid envelope format, discarding")
                     return ""
+
+                # --- GOSSIP FILTER ---
+                if not self.gossip_filter.check(
+                    sender_node_id=envelope.sender_node_id,
+                    nonce=envelope.nonce,
+                    seq_no=envelope.seq_no,
+                    timestamp_ms=envelope.timestamp_ms,
+                    ttl_ms=envelope.ttl_ms
+                ):
+                    logger.warning("Gossip message rejected by filter")
+                    return ""
+               
                 sender_pubkey_bytes = envelope.sender_pubkey
                 try:
                     pubkey = Ed25519PublicKey.from_public_bytes(sender_pubkey_bytes)
@@ -66,13 +79,24 @@ class CRDTAdapter:
                     await self.quarantine.process(genome)
 
             else:
-                # Подпись не требуется, просто извлекаем payload
                 try:
                     envelope = GossipEnvelope(**genome)
-                    genome = envelope.payload
                 except Exception:
                     logger.warning("Invalid envelope format (signing disabled), discarding")
                     return ""
+
+                # --- GOSSIP FILTER ---
+                if not self.gossip_filter.check(
+                    sender_node_id=envelope.sender_node_id,
+                    nonce=envelope.nonce,
+                    seq_no=envelope.seq_no,
+                    timestamp_ms=envelope.timestamp_ms,
+                    ttl_ms=envelope.ttl_ms
+                ):
+                    logger.warning("Gossip message rejected by filter")
+                    return ""
+
+                genome = envelope.payload
 
                 # --- КАРАНТИН ДЛЯ memory.fact ---
                 if self.quarantine and envelope.payload_type == "memory.fact":
