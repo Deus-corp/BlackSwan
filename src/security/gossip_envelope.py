@@ -1,18 +1,17 @@
 # src/security/gossip_envelope.py
 import json
 import time
-from typing import Optional, Any, List
+import os
+from typing import Optional, Any, List, Literal
 from pydantic import BaseModel, Field
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
-import os
+import base64
 
 # ---------- Вспомогательные функции ----------
 
 def canonical_dict(obj: Any) -> Any:
-    """Приводит объект к каноническому виду: сортирует ключи в словарях, списки оставляет как есть."""
     if isinstance(obj, dict):
         return {k: canonical_dict(v) for k, v in sorted(obj.items())}
     elif isinstance(obj, list):
@@ -21,7 +20,6 @@ def canonical_dict(obj: Any) -> Any:
         return obj
 
 def canonical_json(obj: Any) -> bytes:
-    """Сериализует объект в канонический JSON (отсортированные ключи, без лишних пробелов)."""
     return json.dumps(canonical_dict(obj), sort_keys=True, separators=(',', ':')).encode('utf-8')
 
 def sha256(data: bytes) -> str:
@@ -29,18 +27,32 @@ def sha256(data: bytes) -> str:
     digest.update(data)
     return digest.finalize().hex()
 
-# ---------- Модели данных ----------
+# ---------- Кодирование ключей ----------
+
+def public_key_bytes(pubkey: Ed25519PublicKey) -> bytes:
+    return pubkey.public_bytes_raw()
+
+def public_key_id(pubkey: bytes) -> str:
+    return sha256(pubkey)
+
+def b64encode(data: bytes) -> str:
+    return base64.b64encode(data).decode('ascii')
+
+def b64decode(data: str) -> bytes:
+    return base64.b64decode(data)
+
+# ---------- Модель конверта ----------
 
 class GossipEnvelope(BaseModel):
-    envelope_version: str = Field("1.0", const=True)
-    domain: str = Field("blackswan-gossip-v1", const=True)
-    payload_type: str  # "memory.fact", "decision.proposal" и т.д.
+    envelope_version: Literal["1.0"] = "1.0"
+    domain: Literal["blackswan-gossip-v1"] = "blackswan-gossip-v1"
+    payload_type: str
     topic: str
 
     sender_peer_id: str
     sender_node_id: str
-    sender_pubkey: bytes  # Ed25519 public key bytes (raw)
-    key_id: str  # хеш публичного ключа
+    sender_pubkey: str              # base64
+    key_id: str                     # hex
     key_version: int
 
     seq_no: int
@@ -53,8 +65,8 @@ class GossipEnvelope(BaseModel):
 
     parent_hashes: List[str] = Field(default_factory=list)
     payload_hash: str
-    payload: Any  # фактически GossipPayload
-    signature: bytes = b""
+    payload: Any
+    signature: str = ""             # base64
 
     trace_id: Optional[str] = None
     correlation_id: Optional[str] = None
@@ -66,24 +78,23 @@ def generate_key_pair():
     public_key = private_key.public_key()
     return private_key, public_key
 
-def public_key_bytes(pubkey: Ed25519PublicKey) -> bytes:
-    return pubkey.public_bytes(Encoding.Raw, PublicFormat.Raw)
-
-def public_key_id(pubkey: bytes) -> str:
-    return sha256(pubkey)
-
 # ---------- Подпись и проверка ----------
 
 def sign_envelope(
     payload: Any,
     meta: dict,
-    private_key: Ed25519PrivateKey,
-    public_key_bytes_hex: str = None  # для удобства
+    private_key: Ed25519PrivateKey
 ) -> GossipEnvelope:
     """
     Создаёт подписанный GossipEnvelope.
     meta должен содержать все поля, кроме payload, payload_hash, signature.
+    sender_pubkey может быть bytes или base64-строкой.
     """
+    # Обработка sender_pubkey: приводим к base64
+    if isinstance(meta.get('sender_pubkey'), bytes):
+        meta = meta.copy()
+        meta['sender_pubkey'] = b64encode(meta['sender_pubkey'])
+
     # Вычисляем хеш payload
     payload_b = canonical_json(payload)
     payload_hash = sha256(payload_b)
@@ -92,45 +103,39 @@ def sign_envelope(
     envelope_data = meta.copy()
     envelope_data['payload'] = payload
     envelope_data['payload_hash'] = payload_hash
-    envelope_data['signature'] = b""
-    # Остальные поля уже должны быть в meta (envelope_version, domain, sender_*, seq_no, nonce, ...)
+    envelope_data['signature'] = ""
 
-    # Строим объект (валидация pydantic)
     env = GossipEnvelope(**envelope_data)
 
     # Подписываем пре-image (все поля кроме signature)
-    # Используем канонический JSON объекта envelope без поля signature
     env_dict = env.model_dump(exclude={'signature'})
     preimage = canonical_json(env_dict)
-    sig = private_key.sign(preimage)
-    env.signature = sig
+    sig_bytes = private_key.sign(preimage)
+    env.signature = b64encode(sig_bytes)
     return env
 
 def verify_envelope(envelope: GossipEnvelope, public_key: Ed25519PublicKey, seen_nonces: set, last_seq: int, now_ms: int) -> tuple[bool, str]:
     """Проверяет конверт. Возвращает (True, "") или (False, причина)."""
-    # Проверка срока действия
     if now_ms > envelope.expires_at_ms:
         return False, "expired"
 
-    # Проверка nonce (повтор)
     if envelope.nonce in seen_nonces:
         return False, "replay"
 
-    # Проверка seq_no монотонность
     if envelope.seq_no <= last_seq:
         return False, "non-monotonic seq_no"
 
-    # Проверим хеш payload
     actual_hash = sha256(canonical_json(envelope.payload))
     if actual_hash != envelope.payload_hash:
         return False, "payload hash mismatch"
 
-    # Проверка подписи
+    # Подпись
     env_dict = envelope.model_dump(exclude={'signature'})
     preimage = canonical_json(env_dict)
     try:
-        public_key.verify(envelope.signature, preimage)
-    except InvalidSignature:
+        signature_bytes = b64decode(envelope.signature)
+        public_key.verify(signature_bytes, preimage)
+    except (InvalidSignature, Exception):
         return False, "bad signature"
 
     return True, ""
