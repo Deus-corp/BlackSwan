@@ -25,14 +25,9 @@ class BinanceTestnetAdapter:
             'options': {
                 'defaultType': 'spot',
             },
-            'urls': {
-                'api': {
-                    'public': 'https://testnet.binance.vision/api',
-                    'private': 'https://testnet.binance.vision/api',
-                },
-            },
+            'testnet': True,   # встроенный режим тестнета
         })
-        # Проверка соединения
+        # Проверка соединения (теперь будет стучаться на правильный testnet)
         try:
             self.exchange.load_markets()
             logger.info(f"Binance Testnet connected. Symbol: {symbol}")
