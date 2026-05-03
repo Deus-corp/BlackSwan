@@ -66,6 +66,9 @@ class SwarmNode:
         self.reputation: ReputationManager = ReputationManager()
         self.reputation_blacklist_threshold: float = 0.3
 
+        self.memory_api_enabled: bool = os.environ.get("MEMORY_API_ENABLED", "false").lower() == "true"
+        self.memory_api: LocalMemoryAPI = LocalMemoryAPI(node_id=self.node_id) if self.memory_api_enabled else None
+
         self.crdt: CRDTAdapter = CRDTAdapter(
             node_id=self.node_id,
             memory_api=self.memory_api if self.memory_api_enabled else None,
