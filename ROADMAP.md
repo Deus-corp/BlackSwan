@@ -28,6 +28,8 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ Curiosity Engine: proactive exploration of market anomalies.  
 ✅ CI/CD: unit tests, formal verification (local + GitHub Actions). 
 ✅ **Multi-model benchmark completed** – 10 models evaluated, top performer: SmolLM2-1.7B-Instruct (fitness 0.898).
+✅ Spore protocol stress‑test completed (4 nodes, high failure rate, automatic recovery).
+✅ Signed GossipEnvelope implemented – genome exchange cryptographically signed.
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
@@ -57,11 +59,12 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 
 ## 🚀 Immediate Next Steps
 
-1. **Stress‑test Spore Protocol** – introduce artificial node failures (`FAILURE_PROB > 0`) and verify automatic rebirth and state recovery.
-2. **Build metrics dashboard** – visualise capital, fitness, diversity, and gossip health (Prometheus + Grafana).
-3. **Harden gossip security** – add Ed25519 signatures, peer reputation, and optional TLS.
-4. **Experiment with Qwen2.5 and other local LLMs** – compare reasoning quality vs resource usage.
-5. **Evaluate Kubernetes deployment** – prepare Helm chart for production‑grade swarm.
+- **Build metrics dashboard** – visualise capital, fitness, diversity, and gossip health (Prometheus + Grafana).
+- **Harden gossip security** – add Ed25519 signatures, peer reputation, and optional TLS.
+- **Evaluate Kubernetes deployment** – prepare Helm chart for production‑grade swarm.
+- Activate `GOSSIP_SIGNING_ENABLED=true` and verify signed genome exchange without failures.
+- Begin design of LocalMemoryAPI (working/episodic/semantic/policy layers).
+- Prepare adapter for Binance Testnet (CCXT integration).
 ---
 
 *Black Swan © 2026. All plans are hypothetical and do not constitute a call to action.*

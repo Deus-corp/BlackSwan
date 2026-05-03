@@ -30,6 +30,8 @@
 - 🧠 **LLM-Powered Mutations** – a local LLM (Qwen2.5-1.5B) generates new strategy parameters instead of random mutations.
 - ✅ **Multinode DeepSeek Swarm** — 4–5 nodes on DeepSeek-R1-Distill-Qwen-1.5B, shared read‑only model volume, resource limits for low‑RAM PCs (v2.13)
 - ✅ **Multi-model benchmark** – 10 local LLMs compared (135M–1.7B). Report: [docs/reports/benchmark_10_models_2026-05-03.md](docs/reports/benchmark_10_models_2026-05-03.md)
+- ✅ Spore Protocol validated — sustained fault‑recovery on 4‑node swarm (SmolLM2‑1.7B, 1h+ run)
+- ✅ Signed genome exchange (Ed25519) ready for testing (feature flag `GOSSIP_SIGNING_ENABLED`)
 
 ---
 
