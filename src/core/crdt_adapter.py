@@ -17,12 +17,19 @@ logger = logging.getLogger(__name__)
 DB_PATH = os.environ.get("CRDT_DB_PATH", "./crdt_state.db")
 
 class CRDTAdapter:
-    def __init__(self, node_id: str):
+    def __init__(self, node_id: str, memory_api=None, reputation=None):
         self.node_id = node_id
         storage = CRDTStorage(DB_PATH)
         self.crdt = GenomeCRDT(node_id, storage=storage)
         self._seen_nonces: dict[str, set] = {}
         self._last_seq: dict[str, int] = {}
+        self.memory_api = memory_api
+        self.reputation = reputation
+        if memory_api and reputation:
+            from src.memory.quarantine import QuarantineBuffer
+            self.quarantine = QuarantineBuffer(memory_api, reputation)
+        else:
+            self.quarantine = None
 
     async def add_genome(self, genome: Dict[str, Any]) -> str:
         """Добавляет геном и возвращает gid."""
@@ -51,8 +58,13 @@ class CRDTAdapter:
                     return ""
                 seen_nonces.add(envelope.nonce)
                 self._last_seq[envelope.sender_node_id] = envelope.seq_no
-                # Извлекаем payload – именно он и есть исходный genome
+                # Извлекаем payload
                 genome = envelope.payload
+
+                # --- КАРАНТИН ДЛЯ memory.fact ---
+                if self.quarantine and envelope.payload_type == "memory.fact":
+                    await self.quarantine.process(genome)
+
             else:
                 # Подпись не требуется, просто извлекаем payload
                 try:
@@ -61,6 +73,10 @@ class CRDTAdapter:
                 except Exception:
                     logger.warning("Invalid envelope format (signing disabled), discarding")
                     return ""
+
+                # --- КАРАНТИН ДЛЯ memory.fact ---
+                if self.quarantine and envelope.payload_type == "memory.fact":
+                    await self.quarantine.process(genome)
 
         # --- Обычная обработка genome (теперь genome – это исходные данные) ---
         gid = genome.get("gid") or str(uuid.uuid4())
@@ -78,17 +94,10 @@ class CRDTAdapter:
         return gid
 
     async def merge(self, remote_items: Dict[str, Dict[str, Any]]) -> None:
-        """Принимает словарь {gid: genome_dict} от других узлов."""
         for gid, genome in remote_items.items():
-            # При merge тоже могут приходить envelope? Сейчас предполагаем, что нет.
-            # При необходимости можно добавить такую же проверку, как в add_genome.
             self.crdt.upsert(gid, genome)
 
     async def get_delta(self, known_versions: Dict[str, int]) -> Dict[str, Dict[str, Any]]:
-        """
-        Возвращает словарь геномов, которые новее, чем known_versions.
-        Для совместимости с текущим gossip.
-        """
         all_state = self.crdt.state()
         delta = {}
         for gid, payload in all_state.items():
@@ -98,21 +107,17 @@ class CRDTAdapter:
         return delta
 
     async def get_versions(self) -> Dict[str, int]:
-        """Возвращает {gid: ver} для всех геномов."""
         all_state = self.crdt.state()
         return {gid: payload.get("ver", 0) for gid, payload in all_state.items()}
 
     async def get_top(self, n: int = 5):
-        """Возвращает топ-N геномов по фитнесу."""
         all_state = self.crdt.state()
         sorted_genomes = sorted(all_state.values(), key=lambda x: x.get("fitness", 0.0), reverse=True)
         return sorted_genomes[:n]
 
     async def prune(self) -> None:
-        """Удаляет старые записи (реализовано на уровне CRDTStorage по TTL)."""
         pass
 
     @property
     def state(self):
-        """Для обратной совместимости с crdt_size в логах."""
         return self.crdt.state()
