@@ -73,12 +73,24 @@ class SwarmNode:
         self.reputation: ReputationManager = ReputationManager()
         self.reputation_blacklist_threshold: float = 0.3
 
+        # === ПАМЯТЬ ДОЛЖНА БЫТЬ ГОТОВА ДО CRDTАдаптера ===
         self.memory_api_enabled: bool = os.environ.get("MEMORY_API_ENABLED", "false").lower() == "true"
+        self.memory_api: LocalMemoryAPI = LocalMemoryAPI(
+            node_id=self.node_id,
+            storage=None  # storage будет назначен позже, после создания CRDT
+        )
+
+        # Создаём CRDTAdapter (передаём memory_api, если нужно)
         self.crdt: CRDTAdapter = CRDTAdapter(
             node_id=self.node_id,
             memory_api=self.memory_api if self.memory_api_enabled else None,
-            reputation=self.reputation if self.memory_api_enabled else None
+            reputation=self.reputation
         )
+
+        # Теперь у нас есть storage из CRDTAdapter — подключаем его к памяти
+        if self.memory_api_enabled:
+            self.memory_api.storage = self.crdt.storage
+
 
         self.gossip: SafeGossipAdapter = SafeGossipAdapter(self.crdt)
         self.gossip.set_reputation_manager(self.reputation)
