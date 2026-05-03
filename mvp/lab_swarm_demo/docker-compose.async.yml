@@ -13,7 +13,8 @@ services:
       - LLM_MODEL=smollm17
       - GOSSIP_SIGNING_ENABLED=true
       - MEMORY_API_ENABLED=true
-      - MARKET_MODE=sim
+      - MARKET_MODE=live
+      - PRICE_SCALE=10000   # можно добавить, если хочешь менять
       - TRADING_SYMBOL=BTC/USDT
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
       - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
