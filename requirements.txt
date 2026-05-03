@@ -3,3 +3,4 @@ numpy
 aiohttp
 cryptography
 llama-cpp-python
+pydantic>=2.0

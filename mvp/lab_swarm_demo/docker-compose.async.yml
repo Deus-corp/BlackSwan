@@ -11,6 +11,7 @@ services:
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
       - LLM_MODEL=smollm17
+      - GOSSIP_SIGNING_ENABLED=false
     ports:
       - "9777"
     deploy:

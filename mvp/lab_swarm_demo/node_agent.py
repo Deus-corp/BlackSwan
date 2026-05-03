@@ -17,6 +17,8 @@ from src.security.reputation_manager import ReputationManager
 from src.intelligence.episodic_memory import EpisodicMemory
 from src.intelligence.semantic_memory import SemanticMemory
 from src.intelligence.llm_client import LLMClient
+from src.security.gossip_envelope import sign_envelope, generate_key_pair, public_key_bytes, sha256, GossipEnvelope
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 logger = logging.getLogger("SwarmNode")
 
@@ -65,6 +67,14 @@ class SwarmNode:
         self.crdt: CRDTAdapter = CRDTAdapter(self.node_id)
         self.gossip: SafeGossipAdapter = SafeGossipAdapter(self.crdt)
         self.gossip.set_reputation_manager(self.reputation)
+
+        # Ключи для подписи геномов (если GOSSIP_SIGNING_ENABLED=true)
+        self.gossip_private_key = Ed25519PrivateKey.generate()
+        self.gossip_public_key = self.gossip_private_key.public_key()
+        self.gossip_public_bytes = public_key_bytes(self.gossip_public_key)
+        self.gossip_key_id = sha256(self.gossip_public_bytes)
+        self.gossip_seq_no = 0
+        self.gossip_lamport_ts = 0
 
         self.engine: GeneticEngine = GeneticEngine(pop_size=10)
         self.engine.initialize()
@@ -322,19 +332,47 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             self.engine.champion[0], current_vol, self.survival.dq
                         )
                         genome_dict = self.make_genome(params_to_publish, self.engine.champion[1])
-                        payload = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
-                        genome_dict["signature"] = self.crypto.sign(payload)
-                        genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
-                        await self.crdt.add_genome(genome_dict)
 
-                                        # LLM-мутация чемпиона (каждые 200 шагов)
+                        # --- отправка с подписью или без ---
+                        if os.environ.get("GOSSIP_SIGNING_ENABLED", "false").lower() == "true":
+                            # Собираем подписанный конверт
+                            self.gossip_seq_no += 1
+                            self.gossip_lamport_ts += 1
+                            meta = {
+                                "envelope_version": "1.0",
+                                "domain": "blackswan-gossip-v1",
+                                "payload_type": "memory.fact",
+                                "topic": "swarm.genome",
+                                "sender_peer_id": self.node_id,
+                                "sender_node_id": self.node_id,
+                                "sender_pubkey": self.gossip_public_bytes,
+                                "key_id": self.gossip_key_id,
+                                "key_version": 1,
+                                "seq_no": self.gossip_seq_no,
+                                "lamport_ts": self.gossip_lamport_ts,
+                                "nonce": os.urandom(16).hex(),
+                                "timestamp_ms": int(time.time() * 1000),
+                                "ttl_ms": 60000,
+                                "expires_at_ms": int(time.time() * 1000) + 60000,
+                                "parent_hashes": [],
+                            }
+                            envelope = sign_envelope(genome_dict, meta, self.gossip_private_key)
+                            await self.crdt.add_genome(envelope.model_dump(mode='json'))
+                        else:
+                            # Старое поведение
+                            payload = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
+                            genome_dict["signature"] = self.crypto.sign(payload)
+                            genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
+                            await self.crdt.add_genome(genome_dict)
+
+                    # LLM-мутация чемпиона (каждые 200 шагов)
                     if self.step_count % 200 == 0:
                         context = f"volatility={self._current_volatility():.3f}, dq={self.survival.dq:.3f}, capital={self.capital:.2f}"
                         new_params = self._llm_mutate(self.engine.champion[0], context)
                         if new_params != self.engine.champion[0]:
                             genome = self.dict_to_genome({"params": new_params})
                             self.engine.add_genome(genome)
-                            note_llm_mutation()          # <-- добавить эту строку
+                            note_llm_mutation()
 
                     if self.engine.champion[1] > self.engine._fitness(self.current_params):
                         self.current_params = self.engine.champion[0]
@@ -407,7 +445,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     if len(self.memory.records) > self.memory.max_size:
                         self.memory.records = self.memory.records[-self.memory.max_size:]
 
-                                        # ---- добавляем сюда ----
+                # ---- добавляем сюда ----
                 update_llm_impact(self.capital)
 
                 await asyncio.sleep(0.5)
