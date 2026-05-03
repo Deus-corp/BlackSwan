@@ -4,7 +4,7 @@ Gossip message filter: replay protection, monotonic sequence numbers, timestamp 
 """
 import time
 import logging
-from typing import Dict, Set
+from typing import Dict, Optional, Set
 
 logger = logging.getLogger(__name__)
 
