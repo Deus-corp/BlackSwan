@@ -83,13 +83,22 @@ You can customise the swarm through environment variables in `docker-compose.asy
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LLM_MODEL` | Which local LLM to use (`smollm2`, `qwen`, `deepseek`, …) | `smollm2` |
+| `LLM_MODEL` | Which local LLM to use (`smollm2`, `qwen`, `deepseek`, `smollm17`, `llama1b`, `abl_qwen05`, `unc_llama1b` …) | `smollm2` |
 | `GOSSIP_SIGNING_ENABLED` | Enable Ed25519 signatures for genome exchange | `false` |
 | `FAILURE_PROB` | Probability of node failure per step (Spore test) | `0.0` |
 | `TOTAL_NODES` | Number of peers expected in the swarm | `4` |
-| `MARKET_MODE` | `sim` (simulated) or `live` (Binance Testnet) | `sim` |
+| `BURN_RATE` | Capital burned per step (cost of living) | `0.1` |
+| `MARKET_MODE` | `sim` (simulated) or `live` (Binance Testnet) or `web3` (stub) | `sim` |
 | `TRADING_SYMBOL` | Trading pair for live market | `BTC/USDT` |
+| `PRICE_SCALE` | Divider for live prices to fit strategy range | `10000` |
+| `MARKET_OPEN` / `MARKET_CLOSE` | Trading hours filter (UTC, HH:MM) | `00:00` / `23:59` |
 | `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_API_SECRET` | API credentials for live trading (store in `.env`) | – |
+| `MEMORY_API_ENABLED` | Enable layered persistent memory (`LocalMemoryAPI`) | `false` |
+| `LOG_LEVEL` | Python logging level (`INFO`, `DEBUG`) | `INFO` |
+| `EVENT_LEDGER_PATH` | Path to append-only event journal | `./data/ledgers/events.jsonl` |
+| `EVENT_SQLITE_PATH` | Optional SQLite index for events | `./data/ledgers/events.db` |
+| `TELEGRAM_BOT_TOKEN` | Token for Telegram monitoring bot (optional) | – |
+| `WEB3_PRIVATE_KEY` | Private key for Web3 testnet (future) | – |
 
 ## 🧪 Model Benchmark
 
@@ -98,8 +107,12 @@ python model_benchmark.py   # automatically tests all local LLMs and saves logs 
 ```
 
 ## 🤖 Telegram Bot
+
+Commands: /status, /nodes, /memory, /help.
+The bot answers with real-time swarm metrics from running nodes.
+
 ```bash
-export TELEGRAM_BOT_TOKEN=your_token  # или добавить в .env
+export TELEGRAM_BOT_TOKEN=your_token  # or add to .env
 python3 telegram_bot.py
 ```
 
