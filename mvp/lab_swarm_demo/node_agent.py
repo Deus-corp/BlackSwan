@@ -75,57 +75,55 @@ class SwarmNode:
         self.max_import: int = 2
         self.import_cooldown: int = 5
 
-        # компоненты
-        self.crypto: CryptoManager = CryptoManager()
+        # ========== INFRASTRUCTURE LAYER (BODY) ==========
+        # Криптография и безопасность
         self.key_manager = KeyManager()
+        self.crypto: CryptoManager = CryptoManager()
+
+        # Сеть и Gossip
         self.reputation: ReputationManager = ReputationManager()
         self.reputation_blacklist_threshold: float = 0.3
 
-        # === ПАМЯТЬ ДОЛЖНА БЫТЬ ГОТОВА ДО CRDTАдаптера ===
         self.memory_api_enabled: bool = os.environ.get("MEMORY_API_ENABLED", "false").lower() == "true"
         self.memory_api: LocalMemoryAPI = LocalMemoryAPI(
             node_id=self.node_id,
-            storage=None  # storage будет назначен позже, после создания CRDT
+            storage=None  # будет подключён после создания CRDT
         )
 
-        # Создаём CRDTAdapter (передаём memory_api, если нужно)
         self.crdt: CRDTAdapter = CRDTAdapter(
             node_id=self.node_id,
             memory_api=self.memory_api if self.memory_api_enabled else None,
             reputation=self.reputation
         )
 
-        # Теперь у нас есть storage из CRDTAdapter — подключаем его к памяти
         if self.memory_api_enabled:
             self.memory_api.storage = self.crdt.storage
-
 
         self.gossip: SafeGossipAdapter = SafeGossipAdapter(self.crdt)
         self.gossip.set_reputation_manager(self.reputation)
 
-        # Ключи для подписи геномов (если GOSSIP_SIGNING_ENABLED=true)
-        self.gossip_private_key = self.key_manager.get_gossip_private_key()
-        self.gossip_public_key = self.gossip_private_key.public_key()
-        self.gossip_public_bytes = public_key_bytes(self.gossip_public_key)
-        self.gossip_key_id = sha256(self.gossip_public_bytes)
-        self.gossip_seq_no = 0
-        self.gossip_lamport_ts = 0
+        # Рыночные данные
+        self.live_market: Optional[BinanceTestnetAdapter] = None
+        if self.market_mode == "live":
+            self.live_market = BinanceTestnetAdapter(symbol=os.environ.get("TRADING_SYMBOL", "BTC/USDT"))
 
-        self.engine: GeneticEngine = GeneticEngine(pop_size=10)
-        self.engine.initialize()
-
-        self.state: GlobalState = GlobalState()
-        # Event store
+        # Хранилище событий
         self.event_store = EventStore(
             ledger_path=os.environ.get("EVENT_LEDGER_PATH", "./data/ledgers/events.jsonl"),
             sqlite_path=os.environ.get("EVENT_SQLITE_PATH", "./data/ledgers/events.db"),
         )
-        self._trace_id: Optional[str] = None
 
+        # ========== INTELLIGENCE LAYER (BRAIN) ==========
+        # Генетический движок и стратегии
+        self.engine: GeneticEngine = GeneticEngine(pop_size=10)
+        self.engine.initialize()
+
+        self.state: GlobalState = GlobalState()
         best = self.state.get_best_genomes(top_n=1)
         self.current_params: Dict[str, float] = list(best.values())[-1] if best else {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
         self.dispatcher: ROIDispatcher = ROIDispatcher(config=self.current_params)
 
+        # Оценка выживания и мотивация
         self.survival: SurvivalEvaluator = SurvivalEvaluator()
         self.survival.dq = 0.02
         self.survival.liveness = 1.0
@@ -134,18 +132,11 @@ class SwarmNode:
         self.meta_agent: MetaPOMDPAgent = MetaPOMDPAgent()
         self.llm = LLMClient()
 
-                # storage уже создан для CRDT, передадим его в память
-        self.memory_api: LocalMemoryAPI = LocalMemoryAPI(
-            node_id=self.node_id,
-            storage=self.crdt.storage  # передаём тот же CRDTStorage
-        )
-
+        # Память (эпизодическая/семантическая) — старая, но пока оставляем
         self.memory: EpisodicMemory = EpisodicMemory(max_size=500)
         self.semantic: SemanticMemory = SemanticMemory()
-        self.memory_api: LocalMemoryAPI = LocalMemoryAPI(node_id=self.node_id)
-        self.memory_api_enabled: bool = os.environ.get("MEMORY_API_ENABLED", "false").lower() == "true"
 
-        # runtime‑состояние
+        # ========== RUNTIME STATE ==========
         self.capital: float = 1000.0
         self.step_count: int = 0
         self.last_import_step: int = 0
