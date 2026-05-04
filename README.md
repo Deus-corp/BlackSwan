@@ -126,6 +126,12 @@ Sponsorship does not confer any rights over the project.
 
 ---
 
+## ⚠️ Disclaimer
+
+This software is experimental and has been tested exclusively on simulated and testnet environments (Binance Testnet, local sim). It is not financial advice. Use in real market conditions is at your own risk. Always verify strategies thoroughly and never trade with funds you cannot afford to lose.
+
+---
+
 ## 📄 License
 
 Dual‑licensed under MIT or Apache‑2.0, at your option.  
