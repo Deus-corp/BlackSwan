@@ -1,4 +1,4 @@
-import os, time, random, uuid, hashlib, asyncio, logging, sys
+import os, time, random, uuid, hashlib, asyncio, logging, sys, signal
 from typing import Dict, Any, Optional, List, Tuple
 
 import aiohttp
@@ -631,6 +631,35 @@ Respond ONLY with the adjusted parameters in JSON format, like:
         await asyncio.gather(
             self.gossip.start(),
             self.main_loop(),
+        )
+
+    async def start(self) -> None:
+        logger.info(f"[{self.node_id}] port={self.port} peers={self.peers}")
+
+        loop = asyncio.get_running_loop()
+        shutdown_event = asyncio.Event()
+
+        def _shutdown():
+            logger.info(f"[{self.node_id}] received signal, shutting down gracefully")
+            shutdown_event.set()
+
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                loop.add_signal_handler(sig, _shutdown)
+            except NotImplementedError:
+                pass
+
+        async def _shutdown_waiter():
+            await shutdown_event.wait()
+            if self.memory_api_enabled:
+                await self.memory_api.save_to_db()
+                logger.info(f"[{self.node_id}] memory saved before exit")
+            raise SystemExit(0)
+
+        await asyncio.gather(
+            self.gossip.start(),
+            self.main_loop(),
+            _shutdown_waiter(),
         )
 
 
