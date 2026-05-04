@@ -23,6 +23,7 @@ from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 from adapters.live_market import BinanceTestnetAdapter
 from src.core.events import Event
 from src.core.event_store import EventStore
+from src.security.key_manager import KeyManager
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -76,6 +77,7 @@ class SwarmNode:
 
         # компоненты
         self.crypto: CryptoManager = CryptoManager()
+        self.key_manager = KeyManager()
         self.reputation: ReputationManager = ReputationManager()
         self.reputation_blacklist_threshold: float = 0.3
 
@@ -102,7 +104,7 @@ class SwarmNode:
         self.gossip.set_reputation_manager(self.reputation)
 
         # Ключи для подписи геномов (если GOSSIP_SIGNING_ENABLED=true)
-        self.gossip_private_key = Ed25519PrivateKey.generate()
+        self.gossip_private_key = self.key_manager.get_gossip_private_key()
         self.gossip_public_key = self.gossip_private_key.public_key()
         self.gossip_public_bytes = public_key_bytes(self.gossip_public_key)
         self.gossip_key_id = sha256(self.gossip_public_bytes)
