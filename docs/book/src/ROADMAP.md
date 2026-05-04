@@ -17,7 +17,8 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 
 ✅ Formal verification (TLA+): 8 protocols (Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation, etc.).  
 ✅ Economic simulator: multi‑agent sweep, stability zone discovered.  
-✅ Laboratory swarm: Docker Compose with 4 nodes, fully decentralized (no Redis).  
+✅ Laboratory swarm: Docker Compose with 4 nodes, fully decentralized (no Redis).
+✅ **Multinode DeepSeek Swarm (v2.13)** – 4–5 nodes running DeepSeek-R1-Distill-Qwen-1.5B, model shared via read‑only volume, resource limits for 8 GB RAM PCs. 
 ✅ **Industrial CRDT layer** – operation‑based CRDT with SQLite persistence, version vectors, and deterministic LWW merge.  
 ✅ **Secure Gossip protocol** – HMAC‑signed envelopes, replay protection, peer backoff and scoring.  
 ✅ **Speciated Genetic Engine** – genome dataclass, species formation, adaptive mutation, fitness cache.  
@@ -25,7 +26,14 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ Survival Objective integrated into every node (conscious risk avoidance).  
 ✅ Adaptive Intrinsic Motivation: Meta‑POMDP agent switches between scenarios.  
 ✅ Curiosity Engine: proactive exploration of market anomalies.  
-✅ CI/CD: unit tests, formal verification (local + GitHub Actions).  
+✅ CI/CD: unit tests, formal verification (local + GitHub Actions). 
+✅ **Multi-model benchmark completed** – 10 models evaluated, top performer: SmolLM2-1.7B-Instruct (fitness 0.898).
+✅ Spore protocol stress‑test completed (4 nodes, high failure rate, automatic recovery).
+✅ Signed GossipEnvelope implemented – genome exchange cryptographically signed.
+✅ Signed genome exchange with Ed25519 verified and tested in live swarm.
+🔑 Key Manager now centralizes all private keys; keys are never exposed in logs.
+📜 Intelligence Contract v1.0 defines strict boundaries between Infrastructure and Intelligence layers.
+📊 Gold Filter pipeline extracts successful trading episodes into JSONL datasets for future LoRA training.
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
@@ -55,11 +63,14 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 
 ## 🚀 Immediate Next Steps
 
-1. **Merge feature branch into main** – after confirming stability.
-2. **Release v2.9‑Industrial** – tag and publish on GitHub.
-3. **Create monitoring dashboard** (Prometheus + Grafana).
-4. **Add digital signatures (Ed25519) and reputation system** – to protect against Byzantine nodes.
-
+- **Build metrics dashboard** – visualise capital, fitness, diversity, and gossip health (Prometheus + Grafana).
+- **Harden gossip security** – add Ed25519 signatures, peer reputation, and optional TLS.
+- **Evaluate Kubernetes deployment** – prepare Helm chart for production‑grade swarm.
+- Activate `GOSSIP_SIGNING_ENABLED=true` and verify signed genome exchange without failures.
+- Begin design of LocalMemoryAPI (working/episodic/semantic/policy layers).
+- Prepare adapter for Binance Testnet (CCXT integration).
+- Begin Web3 testnet integration (Arbitrum Sepolia) via `Web3TestnetAdapter` stub.
+- Validate gold‑filter output with real profitable episodes; prepare first fine‑tuning dataset.
 ---
 
 *Black Swan © 2026. All plans are hypothetical and do not constitute a call to action.*
