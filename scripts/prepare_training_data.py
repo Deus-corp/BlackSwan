@@ -3,16 +3,19 @@
 Скрипт для подготовки тренировочных данных из памяти.
 """
 from __future__ import annotations
+
 import sys
+from pathlib import Path
+
+# ВАЖНО: сначала добавляем корень проекта в PYTHONPATH
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import argparse
 from typing import Dict, List
 import json
 
 from src.memory.gold_filter import filter_gold_samples
 from src.memory.exporter import save_jsonl
-
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 def load_memory_entries(memory_dir: str | Path) -> List[Dict]:
     memory_path = Path(memory_dir)
