@@ -117,6 +117,7 @@ class SafeGossipAdapter:
         app = self.node.build_app()
         # Добавляем маршрут для проверки работоспособности
         app.router.add_get("/health", self._handle_health)
+        app.router.add_get("/metrics", self._handle_metrics)
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, CFG.bind_host, CFG.port)
@@ -133,3 +134,9 @@ class SafeGossipAdapter:
 
     async def stop(self) -> None:
         self._running = False
+        # handle_metrics
+    async def _handle_metrics(self, request):
+        from src.observability.metrics import collect_metrics, prometheus_format
+        metrics = collect_metrics()
+        body = prometheus_format(metrics)
+        return web.Response(text=body, content_type="text/plain; charset=utf-8")
