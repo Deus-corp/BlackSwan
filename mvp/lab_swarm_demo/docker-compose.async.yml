@@ -5,19 +5,20 @@ services:
     image: blackswan-node:latest
     entrypoint: ["/app/mvp/lab_swarm_demo/node_entrypoint_async.sh"]
     environment:
-      - BURN_RATE=0.1
+      - BURN_RATE=0.2
       - FAILURE_PROB=0.0
       - GOSSIP_PORT=9777
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
       - LLM_MODEL=smollm17
-      - GOSSIP_SIGNING_ENABLED=true
+      - GOSSIP_SIGNING_ENABLED=false
       - MEMORY_API_ENABLED=true
-      - MARKET_MODE=live
+      - MARKET_MODE=sim
       - PRICE_SCALE=10000   # можно добавить, если хочешь менять
       - TRADING_SYMBOL=BTC/USDT
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
       - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
+      - LOG_LEVEL=INFO   # или DEBUG для детальных трейдов
     ports:
       - "9777"
     deploy:
