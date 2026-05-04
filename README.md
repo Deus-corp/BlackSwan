@@ -40,6 +40,9 @@
 - ✅ **Live Market Enhancements** – bid/ask pricing, market hours filter, multi‑symbol support (ETH/USDT).
 - ✅ **Telegram Bot** – remote monitoring via /status, /nodes, /memory commands.
 - ✅ **Improved Dashboard** – 2×2 layout with capital, fitness, diversity/CRDT, and niche pie chart.
+- ✅ Event sourcing with append-only ledger and trace IDs.
+- ✅ Gold filter and dataset export pipeline for future LoRA training.
+- ✅ Health endpoint (`/health`), graceful shutdown, model integrity check.
 
 ---
 
