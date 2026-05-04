@@ -22,7 +22,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 from adapters.live_market import BinanceTestnetAdapter
 
+import logging
 logger = logging.getLogger("SwarmNode")
+trade_logger = logging.getLogger("SwarmNode.Trade")
+# Уровень устанавливается из переменной окружения LOG_LEVEL (по умолчанию INFO)
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 
 EXPECTED_RETURN_RATE = 0.1 * 0.05
 MAX_NORMALIZED_CAPITAL = 10000.0
@@ -317,9 +321,18 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
                     if fraction > 0:
                         ret = market["price"] * fraction * 0.1
+                        prev_capital = self.capital
                         self.capital *= (1 + ret)
                         self.capital -= 1.0
                         self.survival.dq = min(1.0, self.survival.dq + 0.001)
+                        # Логирование сделки
+                        logger.debug(
+                            f"[{self.node_id}] TRADE | step={self.step_count} "
+                            f"price={market['price']:.2f} fraction={fraction:.4f} "
+                            f"ret={ret:.6f} capital_before={prev_capital:.2f} "
+                            f"capital_after={self.capital:.2f} dq={self.survival.dq:.3f} "
+                            f"params={self.current_params}"
+                        )
 
                 # ---- import genomes ----
                 if self.step_count - self.last_import_step > self.import_cooldown:
