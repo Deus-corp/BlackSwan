@@ -31,6 +31,9 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ Spore protocol stress‑test completed (4 nodes, high failure rate, automatic recovery).
 ✅ Signed GossipEnvelope implemented – genome exchange cryptographically signed.
 ✅ Signed genome exchange with Ed25519 verified and tested in live swarm.
+🔑 Key Manager now centralizes all private keys; keys are never exposed in logs.
+📜 Intelligence Contract v1.0 defines strict boundaries between Infrastructure and Intelligence layers.
+📊 Gold Filter pipeline extracts successful trading episodes into JSONL datasets for future LoRA training.
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
@@ -66,6 +69,8 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 - Activate `GOSSIP_SIGNING_ENABLED=true` and verify signed genome exchange without failures.
 - Begin design of LocalMemoryAPI (working/episodic/semantic/policy layers).
 - Prepare adapter for Binance Testnet (CCXT integration).
+- Begin Web3 testnet integration (Arbitrum Sepolia) via `Web3TestnetAdapter` stub.
+- Validate gold‑filter output with real profitable episodes; prepare first fine‑tuning dataset.
 ---
 
 *Black Swan © 2026. All plans are hypothetical and do not constitute a call to action.*

@@ -43,6 +43,10 @@
 - ✅ Event sourcing with append-only ledger and trace IDs.
 - ✅ Gold filter and dataset export pipeline for future LoRA training.
 - ✅ Health endpoint (`/health`), graceful shutdown, model integrity check.
+- 🔑 **Centralized Key Manager** – isolated, env‑based secret store; private keys never leaked to logs.
+- 📜 **Intelligence Contract v1.0** – formal, documented interface between Infrastructure and Intelligence layers.
+- 🧱 **Logical Layer Separation** – code structured into `Infrastructure` (gossip, market, events) and `Intelligence` (LLM, strategies), ready for future sidecar extraction.
+- 📊 **Gold Filter & Dataset Export** – automated selection of successful trading episodes for future LoRA fine‑tuning.
 
 ---
 
