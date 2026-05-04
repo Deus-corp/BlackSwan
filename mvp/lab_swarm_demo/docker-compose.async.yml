@@ -35,4 +35,5 @@ services:
           cpus: '0.3'
           memory: 1G
     volumes:
-      - ../../llama_cpp:/app/llama_cpp:ro 
+      - ../../llama_cpp:/app/llama_cpp:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
