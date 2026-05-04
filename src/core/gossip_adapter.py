@@ -136,7 +136,12 @@ class SafeGossipAdapter:
         self._running = False
         # handle_metrics
     async def _handle_metrics(self, request):
-        from src.observability.metrics import collect_metrics, prometheus_format
-        metrics = collect_metrics()
-        body = prometheus_format(metrics)
-        return web.Response(text=body, content_type="text/plain; charset=utf-8")
+        try:
+            from src.observability.metrics import collect_metrics, prometheus_format
+            metrics = collect_metrics()
+            body = prometheus_format(metrics)
+            return web.Response(text=body, content_type="text/plain; charset=utf-8")
+        except Exception as e:
+            import traceback
+            logger.error(f"Metrics endpoint failed: {traceback.format_exc()}")
+            return web.Response(text=f"Error: {e}", status=500)
