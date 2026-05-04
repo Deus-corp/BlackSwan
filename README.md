@@ -8,45 +8,57 @@
 
 ---
 
+## 🚀 Quick Start (local demo)
+
+Interactive menu to start/stop/rebuild the swarm, change models, set API keys, save logs – no Docker memorisation needed.
+
+## 🎮 Swarm Control Panel
+```bash
+python3 swarm_control.py
+```
+---
+
 ## 📌 Project Status: **TRL‑4** (laboratory‑validated components)
 
-- ✅ Formal TLA+ specifications for 8 protocols (including Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation)
-- ✅ Economic simulator with multi‑agent sweep and stability zone discovery
-- ✅ Docker lab swarm (8 nodes, Redis pub/sub, auto‑recovery)
-- ✅ **Ouroboros v0.3** — distributed strategy evolution with Champion/Challenger and L2 memory
-- ✅ **SurvivalObjective** — intelligent rejection of dangerous trades
-- ✅ **GeneticEngine** — full population‑based evolution with formal verification
-- ✅ **Adaptive Intrinsic Motivation** — Meta‑POMDP agent switches between 5 scenarios based on market conditions
-- ✅ **Curiosity Engine** — proactive exploration of market anomalies
-- ✅ Prototypes of **CRDT state** and **D2BFT consensus**
-- 🧪 **Decentralized Gossip** — async CRDT‑gossip genome exchange (feature branch)
-- ✅ CI/CD: unit tests, formal verification (local + GitHub Actions)
+### Core & Formal Verification
+- ✅ TLA+ specs for 8 protocols (Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation)
+- ✅ Industrial CRDT – SQLite‑backed, op‑based with deterministic LWW merge
+- ✅ Secure Gossip – HMAC‑signed envelopes, replay protection, peer scoring & backoff
+- ✅ Gossip Filter – replay protection and monotonic sequence numbers across all messages
+- ✅ Signed genome exchange (Ed25519) for cryptographically verified genome distribution
+
+### Swarm & Communication
+- ✅ Docker lab swarm (4–5 nodes) with auto‑recovery (Spore Protocol validated)
+- ✅ Spore Protocol – sustained fault‑recovery on 4‑node swarm (SmolLM2‑1.7B, 1h+ run)
+- ✅ Logical layer separation (Infrastructure / Intelligence layers) via documented Intelligence Contract v1.0
+
+### Memory & Data Pipeline
+- ✅ LocalMemoryAPI – layered memory (episodic, semantic, policy) with snapshot/restore & SQLite persistence
+- ✅ Quarantine Buffer – signature, reputation, and confidence checks for incoming memory records
+- ✅ Event sourcing – append‑only ledger with trace IDs
+- ✅ Gold Filter & dataset export pipeline for future LoRA training
+
+### LLM & Evolution
+- ✅ Speciated Genetic Engine with adaptive mutation and fitness cache
+- ✅ LLM‑Powered Mutations – local LLMs generate new strategy parameters
+- ✅ Multi‑model benchmark – 10 local LLMs compared (135M–1.7B). Report: [benchmark](docs/reports/benchmark_10_models_2026-05-03.md)
+
+### Security & Key Management
+- 🔑 Centralized Key Manager – isolated, env‑based secret store; private keys never leaked to logs
+
+### Observability & Operations
+- ✅ Health endpoint (`/health`), graceful shutdown, model integrity check
+- ✅ Improved Dashboard – 2×2 layout with capital, fitness, diversity/CRDT, and niche pie chart
+- 🤖 Telegram Bot – remote monitoring via /status, /nodes, /memory
+
+### Market & Trading
+- 🧪 Binance Testnet Adapter – live price feed via CCXT, bid/ask pricing, market hours filter, multi‑symbol support
+- 🧪 Web3 Testnet Adapter (stub) – prepared for Arbitrum Sepolia integration
+
+### Documentation & Reports
 - 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
 - 📖 [Full TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
 - 🗺 [Roadmap](ROADMAP.md)
-- 🏭 **Industrial CRDT** – SQLite-backed, op-based CRDT with deterministic LWW merge.
-- 🛡️ **Secure Gossip** – HMAC-signed envelopes, replay protection, peer scoring and backoff.
-- 🧬 **Speciated Genetic Engine** – species-based evolution with adaptive mutation and fitness cache.
-- 🧠 **LLM-Powered Mutations** – a local LLM (Qwen2.5-1.5B) generates new strategy parameters instead of random mutations.
-- ✅ **Multinode DeepSeek Swarm** — 4–5 nodes on DeepSeek-R1-Distill-Qwen-1.5B, shared read‑only model volume, resource limits for low‑RAM PCs (v2.13)
-- ✅ **Multi-model benchmark** – 10 local LLMs compared (135M–1.7B). Report: [docs/reports/benchmark_10_models_2026-05-03.md](docs/reports/benchmark_10_models_2026-05-03.md)
-- ✅ Spore Protocol validated — sustained fault‑recovery on 4‑node swarm (SmolLM2‑1.7B, 1h+ run)
-- ✅ Signed genome exchange (Ed25519) active – cryptographically verified gossip for genome distribution.
-- ✅ **LocalMemoryAPI** – layered memory (episodic, semantic, policy) with snapshot/restore.
-- ✅ **Quarantine Buffer** – signature, reputation, and confidence checks for incoming memory records.
-- ✅ **Gossip Filter** – replay protection (nonce‑cache) and monotonic sequence numbers across all gossip messages.
-- 🧪 **Binance Testnet Adapter** – live price feed via CCXT, paper trading on BTC/USDT (enable with `MARKET_MODE=live`).
-- ✅ **Persistent Memory** – SQLite‑backed storage for LocalMemoryAPI, survives node restarts.
-- ✅ **Live Market Enhancements** – bid/ask pricing, market hours filter, multi‑symbol support (ETH/USDT).
-- ✅ **Telegram Bot** – remote monitoring via /status, /nodes, /memory commands.
-- ✅ **Improved Dashboard** – 2×2 layout with capital, fitness, diversity/CRDT, and niche pie chart.
-- ✅ Event sourcing with append-only ledger and trace IDs.
-- ✅ Gold filter and dataset export pipeline for future LoRA training.
-- ✅ Health endpoint (`/health`), graceful shutdown, model integrity check.
-- 🔑 **Centralized Key Manager** – isolated, env‑based secret store; private keys never leaked to logs.
-- 📜 **Intelligence Contract v1.0** – formal, documented interface between Infrastructure and Intelligence layers.
-- 🧱 **Logical Layer Separation** – code structured into `Infrastructure` (gossip, market, events) and `Intelligence` (LLM, strategies), ready for future sidecar extraction.
-- 📊 **Gold Filter & Dataset Export** – automated selection of successful trading episodes for future LoRA fine‑tuning.
 
 ---
 
@@ -60,15 +72,9 @@
 - **Swarm Resilience** – automatic failure detection and Spore Protocol (node rebirth).
 - **Formally Verified Core** – critical invariants proven in TLA+.
 - **Defense in Depth** – multi‑layer isolation, traffic obfuscation.
+- **Control Panel** – interactive CLI menu to start/stop/configure the swarm without Docker commands.
 
 ---
-
-## 🚀 Quick Start (local demo)
-
-## 🎮 Swarm Control Panel
-```bash
-python3 swarm_control.py
-```
 
 ## 🛠️ Swarm Configuration Guide
 
@@ -84,27 +90,6 @@ You can customise the swarm through environment variables in `docker-compose.asy
 | `MARKET_MODE` | `sim` (simulated) or `live` (Binance Testnet) | `sim` |
 | `TRADING_SYMBOL` | Trading pair for live market | `BTC/USDT` |
 | `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_API_SECRET` | API credentials for live trading (store in `.env`) | – |
-
-**Example – launch a 4‑node signed swarm with SmolLM2‑1.7B and Spore resilience:**
-
-```bash
-# In docker-compose.async.yml, set:
-# LLM_MODEL=smollm17
-# GOSSIP_SIGNING_ENABLED=true
-# FAILURE_PROB=0.02
-# TOTAL_NODES=4
-docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml up -d --scale node=4
-```
-**Example – live paper trading:**
-
-```bash
-# 1. Create .env file with your Binance Testnet keys
-# 2. In docker-compose.async.yml, set:
-# MARKET_MODE=live
-# BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
-# BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
-docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml up -d --scale node=4
-```
 
 ## 🧪 Model Benchmark
 
