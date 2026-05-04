@@ -21,6 +21,8 @@ from src.security.gossip_envelope import sign_envelope, generate_key_pair, publi
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 from adapters.live_market import BinanceTestnetAdapter
+from src.core.events import Event
+from src.core.event_store import EventStore
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -111,6 +113,13 @@ class SwarmNode:
         self.engine.initialize()
 
         self.state: GlobalState = GlobalState()
+        # Event store
+        self.event_store = EventStore(
+            ledger_path=os.environ.get("EVENT_LEDGER_PATH", "./data/ledgers/events.jsonl"),
+            sqlite_path=os.environ.get("EVENT_SQLITE_PATH", "./data/ledgers/events.db"),
+        )
+        self._trace_id: Optional[str] = None
+
         best = self.state.get_best_genomes(top_n=1)
         self.current_params: Dict[str, float] = list(best.values())[-1] if best else {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
         self.dispatcher: ROIDispatcher = ROIDispatcher(config=self.current_params)
@@ -305,6 +314,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                 await self.memory_api.load_from_db()
             while True:
                 self.step_count += 1
+                self._trace_id = str(uuid.uuid4())
                 if self.failure_prob > 0 and random.random() < self.failure_prob:
                     logger.info(f"[{self.node_id}] failed")
                     sys.exit(1)
@@ -333,6 +343,24 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             f"capital_after={self.capital:.2f} dq={self.survival.dq:.3f} "
                             f"params={self.current_params}"
                         )
+
+                        # Запись события сделки
+                        self.event_store.append(Event.create(
+                            node_id=self.node_id,
+                            event_type="trade_executed",
+                            payload={
+                                "step": self.step_count,
+                                "price": market["price"],
+                                "fraction": fraction,
+                                "ret": ret,
+                                "capital_before": prev_capital,
+                                "capital_after": self.capital,
+                                "dq": self.survival.dq,
+                                "params": self.current_params,
+                                "trace_id": self._trace_id,
+                            },
+                            parent_id=self._trace_id,
+                        ))
 
                 # ---- import genomes ----
                 if self.step_count - self.last_import_step > self.import_cooldown:
