@@ -10,6 +10,9 @@ from typing import Dict, Optional, Any
 import aiohttp
 from aiohttp import web
 
+import logging
+logger = logging.getLogger(__name__)
+
 from src.core.gossip_layer import (
     GossipConfig,
     GossipNode,
@@ -140,8 +143,8 @@ class SafeGossipAdapter:
             from src.observability.metrics import collect_metrics, prometheus_format
             metrics = collect_metrics()
             body = prometheus_format(metrics)
-            return web.Response(text=body, content_type="text/plain; charset=utf-8")
+            return web.Response(text=body, content_type="text/plain", charset="utf-8")
         except Exception as e:
             import traceback
             logger.error(f"Metrics endpoint failed: {traceback.format_exc()}")
-            return web.Response(text=f"Error: {e}", status=500)
+            return web.Response(text=f"Error: {e}", status=500, content_type="text/plain")
