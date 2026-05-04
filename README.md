@@ -10,12 +10,21 @@
 
 ## 🚀 Quick Start (local demo)
 
+### 🎮 Swarm Control Panel
+
 Interactive menu to start/stop/rebuild the swarm, change models, set API keys, save logs – no Docker memorisation needed.
 
-## 🎮 Swarm Control Panel
 ```bash
 python3 swarm_control.py
 ```
+### 🌐 Web Dashboard
+
+Open http://localhost:8000 in your browser to see real-time graphs of capital, fitness, diversity, and niche distribution. Requires fastapi and uvicorn.
+
+```bash
+python3 web_dashboard.py
+```
+
 ---
 
 ## 📌 Project Status: **TRL‑4** (laboratory‑validated components)
@@ -103,7 +112,7 @@ You can customise the swarm through environment variables in `docker-compose.asy
 ## 🧪 Model Benchmark
 
 ```python
-python model_benchmark.py   # automatically tests all local LLMs and saves logs to docs/logs/models/
+python tools/model_benchmark.py   # automatically tests all local LLMs and saves logs to docs/logs/models/
 ```
 
 ## 🤖 Telegram Bot
@@ -113,7 +122,7 @@ The bot answers with real-time swarm metrics from running nodes.
 
 ```bash
 export TELEGRAM_BOT_TOKEN=your_token  # or add to .env
-python3 telegram_bot.py
+python3 tools/telegram_bot.py
 ```
 
 ## 📚 Documentation
