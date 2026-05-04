@@ -65,23 +65,9 @@
 
 ## 🚀 Quick Start (local demo)
 
+## 🎮 Swarm Control Panel
 ```bash
-git clone https://github.com/Deus-corp/BlackSwan.git
-cd BlackSwan
-pip install -r requirements.txt
-python mvp/cycle_demo.py          # single agent
-python sim/multi_agent_sim.py     # multi‑agent run
-python sim/evolve_kelly.py        # evolve Kelly params
-python sim/genetic_engine.py      # full Genetic Engine
-python sim/survival_evaluator.py  # test survival logic
-python sim/meta_pomdp_agent.py    # test adaptive motivation
-```
-
-## 🐳 Docker Swarm (TRL‑4)
-```bash
-docker compose -f mvp/lab_swarm_demo/docker-compose.yml up --build -d
-# Node logs
-docker compose -f mvp/lab_swarm_demo/docker-compose.yml logs -f node
+python3 swarm_control.py
 ```
 
 ## 🛠️ Swarm Configuration Guide
