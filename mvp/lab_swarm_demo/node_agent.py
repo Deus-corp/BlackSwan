@@ -316,6 +316,20 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                 self.step_count += 1
                 self._trace_id = str(uuid.uuid4())
                 if self.failure_prob > 0 and random.random() < self.failure_prob:
+                    self.event_store.append(Event.create(
+                        node_id=self.node_id,
+                        event_type="spore_failure",
+                        payload={
+                            "step": self.step_count,
+                            "capital": self.capital,
+                            "dq": self.survival.dq,
+                            "fitness": self.engine.champion[1],
+                            "diversity": self.engine.diversity(),
+                            "crdt_size": len(self.crdt.state),
+                            "trace_id": self._trace_id,
+                        },
+                        parent_id=self._trace_id,
+                    ))
                     logger.info(f"[{self.node_id}] failed")
                     sys.exit(1)
 
@@ -409,6 +423,19 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         )
                         child_genome = self.dict_to_genome(child_dict, niche=g.niche)
                         self.engine.add_genome(child_genome)
+                        self.event_store.append(Event.create(
+                            node_id=self.node_id,
+                            event_type="genome_imported",
+                            payload={
+                                "step": self.step_count,
+                                "gid": child_genome.params,
+                                "fitness": child_genome.fitness,
+                                "niche": child_genome.niche,
+                                "origin": g.params if hasattr(g, 'params') else str(g),
+                                "trace_id": self._trace_id,
+                            },
+                            parent_id=self._trace_id,
+                        ))
                     self.last_import_step = self.step_count
 
                 # ---- evolution ----
@@ -562,6 +589,16 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     
                     if self.memory_api_enabled:
                         await self.memory_api.save_to_db()
+                    self.event_store.append(Event.create(
+                        node_id=self.node_id,
+                        event_type="memory_snapshot_created",
+                        payload={
+                            "step": self.step_count,
+                            "records_count": len(self.memory_api._records),
+                            "trace_id": self._trace_id,
+                        },
+                        parent_id=self._trace_id,
+                    ))
 
                 # ---- добавляем сюда ----
                 update_llm_impact(self.capital)
