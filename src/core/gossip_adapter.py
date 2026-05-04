@@ -108,11 +108,15 @@ class SafeGossipAdapter:
             except Exception:
                 pass  # пир недоступен – идём дальше
 
+    # ----- Health endpoint -----
+    async def _handle_health(self, request):
+        return web.json_response({"status": "ok"})
+
     async def start(self) -> None:
         """Запускает HTTP-сервер и gossip-цикл (заменяет run_server + gossip_loop)."""
         app = self.node.build_app()
         # Добавляем маршрут для проверки работоспособности
-        app.router.add_get("/health", lambda r: web.json_response({"ok": True}))
+        app.router.add_get("/health", self._handle_health)
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, CFG.bind_host, CFG.port)

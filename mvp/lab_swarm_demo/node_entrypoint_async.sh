@@ -6,6 +6,19 @@ export PORT="${GOSSIP_PORT:-9777}"
 # Случайная задержка 0–10 секунд, чтобы ноды стартовали вразнобой
 sleep $(( RANDOM % 10 ))
 
+# Проверка хэша модели (если задан EXPECTED_SHA256)
+MODEL_PATH="${MODEL_PATH:-/app/llama_cpp/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf}"
+EXPECTED_SHA256="${EXPECTED_SHA256:-}"
+
+if [ -n "$EXPECTED_SHA256" ] && [ -f "$MODEL_PATH" ]; then
+    ACTUAL_SHA256=$(sha256sum "$MODEL_PATH" | awk '{print $1}')
+    if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+        echo "ERROR: model hash mismatch! expected=$EXPECTED_SHA256 actual=$ACTUAL_SHA256" >&2
+        exit 1
+    fi
+    echo "Model integrity check passed: $ACTUAL_SHA256"
+fi
+
 TOTAL_NODES=${TOTAL_NODES:-3}
 # безопасно извлекаем номер из hostname, например lab_swarm_demo-node-2
 MY_INDEX=$(echo "$NODE_ID" | grep -oE '[0-9]+' | tail -1)
