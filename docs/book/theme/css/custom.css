@@ -39,34 +39,21 @@ pre {
     border: 1px solid var(--border);
 }
 
-/* Боковая панель – только цвета, не трогаем раскрытие */
-.sidebar {
-    background-color: #0d1117;
-    border-right: 1px solid var(--border);
+/* Аккордеон для боковой панели */
+.sidebar .expandable {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.sidebar a {
-    color: var(--fg);
-    text-decoration: none;
+.sidebar .expandable::after {
+    content: '▸';
+    font-size: 0.7em;
+    transition: transform 0.2s;
+    margin-left: 4px;
 }
 
-.sidebar a:hover {
-    color: var(--accent);
-}
-
-.sidebar a.active {
-    color: var(--accent);
-    font-weight: bold;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-    width: 8px;
-}
-::-webkit-scrollbar-track {
-    background: var(--bg);
-}
-::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 4px;
+.sidebar .expandable.open::after {
+    transform: rotate(90deg);
 }

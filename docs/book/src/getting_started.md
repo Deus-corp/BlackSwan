@@ -1,45 +1,49 @@
 # Getting Started
 
-This guide will help you set up and run the BlackSwan swarm on your local machine.
+This guide will help you launch your first BlackSwan swarm in under 5 minutes.
 
 ## Prerequisites
+- Docker Desktop installed and running.
+- Python 3.11+ with `pip` available.
+- Git (to clone the repository).
 
-- Python 3.11+
-- Docker & Docker Compose
-- Git
-
-## Installation
-
+## 1. Clone the repository
 ```bash
 git clone https://github.com/Deus-corp/BlackSwan.git
 cd BlackSwan
-pip install -r requirements.txt
 ```
-## Running a Single Node
+
+## 2. Launch the Control Panel
+The easiest way to manage the swarm is the interactive CLI:
 
 ```bash
-python mvp/lab_swarm_demo/node_agent.py
+python3 swarm_control.py
 ```
 
-## Running a Swarm
+From the menu you can:
+- Start / stop / rebuild the swarm.
+- Change the LLM model.
+- Switch between simulated and live (Binance Testnet) market.
+- Set your Binance API keys securely.
+- Save and view real-time logs.
+
+## 3. Visual monitoring
+
+Start the web dashboard to see capital, fitness, diversity, and niche distribution in your browser:
 
 ```bash
-docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml up --build -d
-docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml logs -f node
+python3 web_dashboard.py
 ```
-## Running Tests
+Open http://localhost:8000.
 
-```bash
-pytest tests/
-```
-## Formal Verification
+## 4. Configuration
 
-```bash
-java -cp tla2tools.jar tlc2.TLC formal/tla/Ouroboros.tla -config formal/tla/Ouroboros.cfg
-```
+All settings are in mvp/lab_swarm_demo/docker-compose.async.yml.
+Configuration Guide explains every environment variable.
 
-## Next Steps
+## 5. Next Steps
 
-- Read the [Design Principles](design_principles.en.md)
-- Explore the [Architecture](architecture/architecture_overview.en.md)
-- Check [Implemented Protocols](implemented/ouroboros.md)
+- Read the [Architecture Overview](../architecture/) to understand the layers and formal contracts.
+- Run the [Multi-Model Benchmark](../benchmarks/report/) to compare local LLMs.
+- Explore the [Spore Protocol](../spore/) for resilience testing.
+- Check the [Roadmap](../roadmap/) for upcoming features.
