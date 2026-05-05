@@ -6,12 +6,11 @@ LLM Client — обёртка для локальной модели через 
 import os
 from llama_cpp import Llama
 
-MODEL_NAME = os.environ.get("LLM_MODEL", "qwen")  # "qwen" или "deepseek"
+MODEL_NAME = os.environ.get("LLM_MODEL", "deepseek")  # по умолчанию DeepSeek
 
 MODEL_PATHS = {
-    "qwen": "llama_cpp/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
     "deepseek": "llama_cpp/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
-    "smollm2": "llama_cpp/SmolLM2-135M-Instruct-Q4_K_M.gguf",
+    "smollm17": "llama_cpp/SmolLM2-1.7B-Instruct-Q4_K_M.gguf",
 }
 
 class LLMClient:
