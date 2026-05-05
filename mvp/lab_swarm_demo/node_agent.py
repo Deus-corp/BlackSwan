@@ -24,6 +24,7 @@ from adapters.live_market import BinanceTestnetAdapter
 from src.core.events import Event
 from src.core.event_store import EventStore
 from src.security.key_manager import KeyManager
+from src.intelligence.internet_researcher import InternetResearcher
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -88,6 +89,10 @@ class SwarmNode:
         self.memory_api: LocalMemoryAPI = LocalMemoryAPI(
             node_id=self.node_id,
             storage=None  # будет подключён после создания CRDT
+        )
+
+        self.internet_researcher: InternetResearcher = InternetResearcher(
+            memory_api=self.memory_api if self.memory_api_enabled else None
         )
 
         self.crdt: CRDTAdapter = CRDTAdapter(
@@ -475,7 +480,22 @@ Respond ONLY with the adjusted parameters in JSON format, like:
 
                     # LLM-мутация чемпиона (каждые 200 шагов)
                     if self.step_count % 200 == 0:
-                        context = f"volatility={self._current_volatility():.3f}, dq={self.survival.dq:.3f}, capital={self.capital:.2f}"
+                        external_context = ""
+                        # Собираем внешние данные, если включён интернет-режим
+                        if os.environ.get("INTERNET_RESEARCHER_ENABLED", "false").lower() == "true":
+                            try:
+                                external_context = await self.internet_researcher.gather_context()
+                            except Exception:
+                                external_context = ""
+                        
+                        context = (
+                            f"volatility={self._current_volatility():.3f}, "
+                            f"dq={self.survival.dq:.3f}, "
+                            f"capital={self.capital:.2f}"
+                        )
+                        if external_context:
+                            context += "\n" + external_context
+                        
                         new_params = self._llm_mutate(self.engine.champion[0], context)
                         if new_params != self.engine.champion[0]:
                             genome = self.dict_to_genome({"params": new_params})
