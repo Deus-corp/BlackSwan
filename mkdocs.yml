@@ -26,7 +26,7 @@ nav:
   - Roadmap: ROADMAP.md
 
   - Implemented Protocols:
-      - Overview: implemented/README.en.md
+      - Overview: implemented/overview.md
       - Ouroboros (Self-Improvement): implemented/ouroboros.md
       - Survival Objective: implemented/survival_objective.md
       - Genetic Engine: implemented/genetic_engine.md
@@ -56,7 +56,7 @@ nav:
       - Cold Start Protocol: deployment/cold_start_protocol.en.md
 
   - Domains:
-      - Overview: domains/README.en.md
+      - Overview: domains/overview.md
       - Cognitive Evolution:
           - Overview: domains/cognitive_evolution/cognitive_evolution.en.md
           - Genetic Engine: domains/cognitive_evolution/genetic_engine.en.md
@@ -86,21 +86,8 @@ nav:
           - Swarm Topology: domains/swarm_distribution/swarm_topology.en.md
           - Reputation & Coordination: domains/swarm_distribution/reputation_and_coordination.en.md
 
-  - Implemented Protocols:
-      - Overview: implemented/README.en.md
-      - Ouroboros (Self-Improvement): implemented/ouroboros.md
-      - Survival Objective: implemented/survival_objective.md
-      - Genetic Engine: implemented/genetic_engine.md
-      - Adaptive Intrinsic Motivation: implemented/adaptive_motivation.md
-      - Byzantine Resilience: implemented/byzantine_resilience.md
-      - CRDT State: implemented/crdt_state.md
-      - D2BFT Consensus: implemented/d2bft.md
-      - Curiosity Engine: implemented/curiosity_engine.md
-      - Episodic Memory (L1): implemented/episodic_memory.md
-      - Semantic Memory (L2): implemented/semantic_memory.md
-
   - Singularity:
-      - Overview: singularity/README.en.md
+      - Overview: singularity/overview.md
       - Singularity Criteria: singularity/singularity_criteria.en.md
       - Spore Protocol: singularity/spore_protocol_and_recovery.en.md
       - Last Breath Protocol: singularity/last_breath_protocol.en.md
@@ -110,7 +97,6 @@ nav:
       - Physical Energy Sovereignty: singularity/physical_energy_sovereignty.md
 
   - Appendices:
-      - Overview: appendices/README.en.md
       - A - GPU Configurations: appendices/appendix_a_gpu_configurations.md
       - AA - Fine-Tuning DeepSeek V4: appendices/appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks.md
       - AB - Decentralized Bootstrap Config.: appendices/appendix_ab_decentralized_bootstrap_configurations.md
@@ -143,7 +129,6 @@ nav:
       - Z - Proof Tree Specification: appendices/appendix_z_proof_tree_specification.md
 
   - ADR:
-      - Overview: adr/README.en.md
       - 001 - Migration to DeepSeek V4: adr/adr_001_migration_to_deepseekv4.md
       - 002 - Dynamic Model Routing: adr/adr_002_dynamic_model_routing.md
       - 003 - Predictive Consistency Router: adr/adr_003_predictive_consistency_router.md
@@ -153,8 +138,7 @@ nav:
       - 007 - JEPA Integration: adr/adr_007_jepa_integration.md
 
   - Reports:
-      - Overview: reports/README.en.md
-      - TRL-3 Validation: reports/TRL3_VALIDATION_REPORT.md
+      - TRL3_baseline_results.md: reports/TRL3_baseline_results.md
       - TRL-4 Curiosity Report: reports/TRL4_CURIOSITY_REPORT.md
       - TRL-4 Validation: reports/TRL4_VALIDATION_REPORT.md
       - Ouroboros Report: reports/TRL4_OUROBOROS_REPORT.md
