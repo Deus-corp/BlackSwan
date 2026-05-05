@@ -1,14 +1,14 @@
 # Appendix B: Launch Commands & Cold Start Scripts
 
-**Назначение:** Содержит эталонные команды для запуска всех ключевых компонентов системы Black Swan: vLLM с экспертными масками, изолированных sandbox (Kata Containers, gVisor), аппаратного watchdog, скрипта холодного старта (`cold_start.sh`) и проверок готовности (readiness checks). Все команды проверены для конфигурации Core Node, описанной в [Appendix A](Appendix_A_GPU_Configurations.md), и валидны по состоянию на апрель 2026 года.
+**Purpose:** Contains reference commands for launching all key components of the Black Swan system: vLLM with expert masks, isolated sandboxes (Kata Containers, gVisor), hardware watchdog, cold start script (`cold_start.sh`), and readiness checks. All commands are validated for the Core Node configuration described in [Appendix A](Appendix_A_GPU_Configurations.md) and are current as of April 2026.
 
 ---
 
-## B1. Запуск vLLM с экспертными масками DeepSeek‑V4
+## B1. Launching vLLM with DeepSeek‑V4 Expert Masks
 
-Система запускает один или несколько экземпляров vLLM с динамической активацией экспертов в зависимости от активных видов.
+The system launches one or more vLLM instances with dynamic expert activation depending on the active species.
 
-### B1.1. Профиль `Vagrant` (20% экспертов)
+### B1.1. `Vagrant` Profile (20% experts)
 
 ```bash
 vllm serve deepseek-ai/DeepSeek-V4 \
@@ -24,7 +24,7 @@ vllm serve deepseek-ai/DeepSeek-V4 \
   --tensor-parallel-size 1
 ```
 
-### B1.2. Профиль Arbtiragius (30% экспертов)
+### B1.2. Arbtiragius Profile (30% experts)
 
 ```bash
 vllm serve deepseek-ai/DeepSeek-V4 \
@@ -40,7 +40,7 @@ vllm serve deepseek-ai/DeepSeek-V4 \
   --tensor-parallel-size 1
 ```
 
-### B1.3. Профиль Sentinella (40% экспертов)
+### B1.3. Sentinella Profile (40% experts)
 
 ```bash
 vllm serve deepseek-ai/DeepSeek-V4 \
@@ -54,7 +54,7 @@ vllm serve deepseek-ai/DeepSeek-V4 \
   --tensor-parallel-size 1
 ```
 
-### B1.4. Профиль Architectus (60% экспертов, требует полного Core Node)
+### B1.4. Architectus Profile (60% experts, requires full Core Node)
 
 ```bash
 vllm serve deepseek-ai/DeepSeek-V4 \
@@ -71,15 +71,15 @@ vllm serve deepseek-ai/DeepSeek-V4 \
 
 ---
 
-## B2. Запуск изолированных sandbox
+## B2. Launching Isolated Sandboxes
 
-### B2.1. Kata Containers с GPU‑пробросом (основной sandbox)
+### B2.1. Kata Containers with GPU Passthrough (Primary Sandbox)
 
 ```bash
-# Загрузка базового образа из IPFS
+# Download base image from IPFS
 ipfs get QmPythonBaseImage -o /var/lib/swarm/images/python_base.img
 
-# Запуск sandbox с VFIO‑passthrough
+# Launch sandbox with VFIO passthrough
 docker run -d \
   --name agent_sandbox \
   --runtime=kata-runtime \
@@ -96,7 +96,7 @@ docker run -d \
   /var/lib/swarm/images/python_base.img
 ```
 
-### B2.2. gVisor (быстрые итерации валидации)
+### B2.2. gVisor (Fast Validation Iterations)
 
 ```bash
 docker run -d \
@@ -114,17 +114,17 @@ docker run -d \
 
 ---
 
-## B3. Аппаратный watchdog и мониторинг
+## B3. Hardware Watchdog and Monitoring
 
-### B3.1. Загрузка скетча на Arduino Uno R4 WiFi
+### B3.1. Uploading the Sketch to Arduino Uno R4 WiFi
 
 ```bash
-# Сборка и загрузка прошивки watchdog
+# Compile and upload watchdog firmware
 arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi /var/lib/swarm/firmware/watchdog_sketch.ino
 arduino-cli upload --fqbn arduino:renesas_uno:unor4wifi --port /dev/ttyACM0 /var/lib/swarm/firmware/watchdog_sketch.ino
 ```
 
-### B3.2. Запуск демона isolationd (systemd)
+### B3.2. Starting the isolationd Daemon (systemd)
 
 ```bash
 systemctl enable isolationd
@@ -132,11 +132,11 @@ systemctl start isolationd
 systemctl status isolationd
 ```
 
-Конфигурация демона: /etc/swarm/isolationd.toml
+Daemon configuration: `/etc/swarm/isolationd.toml`
 
 ---
 
-## B4. Скрипт холодного старта (cold_start.sh)
+## B4. Cold Start Script (cold_start.sh)
 
 ```bash
 #!/bin/bash
@@ -144,20 +144,20 @@ set -euo pipefail
 
 echo "[COLD_START] Beginning Black Swan cold start sequence..."
 
-# 1. Проверка доступности GPU
+# 1. Check GPU availability
 echo "[COLD_START] Checking GPU availability..."
 nvidia-smi || (echo "[FATAL] No GPU detected. Aborting." && exit 1)
 
-# 2. Восстановление GlobalState из IPFS
+# 2. Restore GlobalState from IPFS
 echo "[COLD_START] Restoring GlobalState snapshot..."
 GLOBAL_STATE_CID=$(cat /var/lib/swarm/global_state_cid.txt)
 ipfs get "$GLOBAL_STATE_CID" -o /var/lib/swarm/global_state.json
 
-# 3. Проверка подписей снапшота
+# 3. Verify snapshot signatures
 echo "[COLD_START] Verifying snapshot signatures..."
 verify_artifact --cid "$GLOBAL_STATE_CID" --public-key /etc/swarm/keys/artifact_pub.pem || exit 1
 
-# 4. Запуск vLLM с минимальной маской (Vagrant)
+# 4. Launch vLLM with minimal mask (Vagrant)
 echo "[COLD_START] Launching vLLM (Vagrant profile)..."
 vllm serve deepseek-ai/DeepSeek-V4 \
   --port 8000 \
@@ -166,11 +166,11 @@ vllm serve deepseek-ai/DeepSeek-V4 \
   --quantization awq_4bit \
   --gpu-memory-utilization 0.70 &
 
-# 5. Ожидание готовности vLLM
+# 5. Wait for vLLM readiness
 echo "[COLD_START] Waiting for vLLM to become healthy..."
 curl --retry 30 --retry-delay 2 --retry-connrefused http://localhost:8000/health
 
-# 6. Запуск Arbtiragius (30%) если Core Node готов
+# 6. Launch Arbtiragius (30%) if Core Node is ready
 if [ "${CORE_NODE_READY:-false}" = "true" ]; then
   echo "[COLD_START] Launching vLLM (Arbtiragius profile)..."
   vllm serve deepseek-ai/DeepSeek-V4 \
@@ -181,31 +181,31 @@ if [ "${CORE_NODE_READY:-false}" = "true" ]; then
     --gpu-memory-utilization 0.75 &
 fi
 
-# 7. Запуск isolationd
+# 7. Start isolationd
 echo "[COLD_START] Starting isolationd..."
 systemctl start isolationd
 
-# 8. Запуск Decision Pipeline
+# 8. Activate Decision Pipeline
 echo "[COLD_START] Decision Pipeline active."
 echo "[COLD_START] Cold start complete. System online."
 ```
 
 ---
 
-## B5. Проверки готовности (Readiness Checks)
+## B5. Readiness Checks
 
 ```bash
-# Проверка 1: GPU passthrough
+# Check 1: GPU passthrough
 docker run --rm --runtime=kata-runtime --device=/dev/vfio/1:/dev/vfio/1 nvidia/cuda:12.4-base nvidia-smi
 
-# Проверка 2: Watchdog heartbeat
+# Check 2: Watchdog heartbeat
 echo "HMAC_HEARTBEAT" > /dev/ttyACM0
 
-# Проверка 3: Тепловой стресс-тест (30 мин, контроль температуры)
+# Check 3: Thermal stress test (30 min, monitor temperature)
 stress-ng --gpu 4 --cpu 8 --timeout 30m
 nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader
 
-# Проверка 4: Инференс
+# Check 4: Inference
 curl -X POST http://localhost:8000/v1/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "deepseek-v4", "prompt": "def hello():", "max_tokens": 10}'
@@ -213,10 +213,10 @@ curl -X POST http://localhost:8000/v1/completions \
 
 ---
 
-## B6. Связь с другими документами
+## B6. Relationship with Other Documents
 
-· Конфигурации GPU: Appendix A: GPU Configurations
-· Аппаратная изоляция: Hardware_Isolation.md
-· Холодный старт: Cold_Start_Protocol.md
-· Изоляция и watchdog: Isolation_and_Sandbox.md
-· Глоссарий: Glossary.md
+- GPU Configurations: [Appendix A: GPU Configurations](Appendix_A_GPU_Configurations.md)
+- Hardware Isolation: [Hardware_Isolation.md](Hardware_Isolation.md)
+- Cold Start: [Cold_Start_Protocol.md](Cold_Start_Protocol.md)
+- Isolation and Watchdog: [Isolation_and_Sandbox.md](Isolation_and_Sandbox.md)
+- Glossary: [Glossary.md](Glossary.md)

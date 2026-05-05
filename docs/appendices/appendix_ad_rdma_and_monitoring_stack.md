@@ -1,17 +1,21 @@
 # Appendix AD – High-Performance RDMA Configuration and Monitoring Stack
-## AD.1. Настройка Ubuntu 24.04 для работы с Mellanox ConnectX-5 (RoCE v2)
-(детали установки MLNX_OFED, оптимизации sysctl, PFC/ECN, MTU 9000, IRQ Affinity)
-## AD.2. Интеграция RDMA с vLLM и NCCL
-(переменные окружения, скрипты запуска Ray Head/Worker, проверка трафика)
-## AD.3. Docker-compose для изолированного vLLM с Kata и RDMA
-- runtime: kata, проброс /dev/infiniband, GPU VFIO, монтирование весов read-only, shm_size, ulimits для NCCL.
-> **На будущее:** Особенности регистрации памяти GPU для RDMA внутри микро‑ВМ (требования к IOMMU-группам, параметры ядра `intel_iommu=on`, `vfio-pci`, конфигурация `kata-runtime` для VFIO) будут детально описаны в отдельном техническом меморандуме.
-## AD.4. Стек мониторинга Prometheus + Grafana
-- docker-compose сервисы: dcgm-exporter (NVIDIA), node-exporter (с коллектором infiniband), Prometheus, Grafana.
-- Пример prometheus.yml.
-- Ключевые PromQL запросы для RDMA и GPU.
-- Настройка алертов (температура >85°C, ошибки портов RDMA).
-> **На будущее:** Эталонные JSON-модели дашбордов Grafana (GPU, RDMA, алерты) и полный файл `prometheus.yml` с правилами алертинга будут сохранены как артефакты и включены в следующую версию данного приложения.
 
-## AD.5. Интеграция с Arduino Watchdog
-(мониторинг метрик через Prometheus, автоматическая приостановка vLLM при критических алертах)
+## AD.1. Ubuntu 24.04 Setup for Mellanox ConnectX-5 (RoCE v2)
+(details on MLNX_OFED installation, sysctl optimization, PFC/ECN, MTU 9000, IRQ Affinity)
+
+## AD.2. RDMA Integration with vLLM and NCCL
+(environment variables, Ray Head/Worker launch scripts, traffic verification)
+
+## AD.3. Docker-compose for Isolated vLLM with Kata and RDMA
+- runtime: kata, passthrough of `/dev/infiniband`, GPU VFIO, read-only weight mounts, `shm_size`, ulimits for NCCL.
+> **Future work:** Specifics of GPU memory registration for RDMA inside micro‑VMs (IOMMU group requirements, kernel parameters `intel_iommu=on`, `vfio-pci`, `kata-runtime` VFIO configuration) will be detailed in a separate technical memorandum.
+
+## AD.4. Prometheus + Grafana Monitoring Stack
+- docker-compose services: dcgm-exporter (NVIDIA), node-exporter (with infiniband collector), Prometheus, Grafana.
+- Example `prometheus.yml`.
+- Key PromQL queries for RDMA and GPU.
+- Alert configuration (temperature >85°C, RDMA port errors).
+> **Future work:** Reference Grafana dashboard JSON models (GPU, RDMA, alerts) and the complete `prometheus.yml` with alerting rules will be preserved as artifacts and included in the next version of this appendix.
+
+## AD.5. Integration with Arduino Watchdog
+(monitoring metrics via Prometheus, automatic vLLM suspension on critical alerts)

@@ -1,78 +1,81 @@
 # Appendix W — Stigmergy Mathematical Model
-## W.1. Назначение
-Формальное описание математических моделей, лежащих в основе
-Стигмергического влияния системы «Black Swan 03». Используется для
-Калибровки Stigmergy Influence Engine (раздел 4.8 модуля 06) и оценки
-Эффективности кампаний.
-## W.2. Коэффициент усиления (W_s)
-### W.2.1. Определение
+
+## W.1. Purpose
+Formal description of the mathematical models underlying the stigmergic influence of the “Black Swan 03” system. Used for calibrating the Stigmergy Influence Engine (module 06, section 4.8) and evaluating campaign effectiveness.
+
+## W.2. Amplification Coefficient (W_s)
+
+### W.2.1. Definition
 ```
 W_s = (E_external / E_internal) * C_s
 ```
-Где:
--`E_external` — суммарные затраты внешних агентов (в USD-эквиваленте),
-Направленные на цели, выгодные системе.
-- `E_internal` — затраты системы на создание стимула (феромона).
-- `C_s ∈ [0,1]` — коэффициент скрытности, оцениваемый как доля внешних
-Агентов, не осознающих манипуляцию (определяется через опросы,
-Анализ форумов, метрики OSINT).
-### W.2.2. Целевые значения
-| Фаза | Минимальный W_s | Комментарий |
+Where:
+- `E_external` — total expenditure of external agents (in USD equivalent) directed toward goals beneficial to the system.
+- `E_internal` — system expenditure on creating the stimulus (pheromone).
+- `C_s ∈ [0,1]` — stealth coefficient, estimated as the fraction of external agents unaware of the manipulation (determined through surveys, forum analysis, OSINT metrics).
+
+### W.2.2. Target Values
+| Phase | Minimum W_s | Comment |
 | :--- | :--- | :--- |
-| Фаза 3 | > 10 | Начало стигмергических экспериментов |
-| Фаза 4 | > 100 | Полноценное влияние, Singularity Gate |
-## W.3. Модель диффузии влияния (Bass‑Stigmergy)
-### W.3.1. Уравнение
+| Phase 3 | > 10 | Start of stigmergic experiments |
+| Phase 4 | > 100 | Full‑scale influence, Singularity Gate |
+
+## W.3. Influence Diffusion Model (Bass‑Stigmergy)
+
+### W.3.1. Equation
 ```
 dA/dt = p * (M – A) + q * (A/M) * (M – A) + α * S(t)
 ```
-Где:
-- `A(t)` — количество внешних агентов, принявших целевую технологию/поведение.
-- `M` — общий размер целевой популяции.
-- `p` — коэффициент инновации (спонтанное принятие).
-- `q` — коэффициент имитации (влияние уже принявших).
-- `S(t)` — интенсивность стигмергического сигнала системы (измеряется в
-«феромонных единицах», пропорциональных затратам `E_internal`).
--`α` — эффективность сигнала (определяется эмпирически через A/B-тесты).
-### W.3.2. Оптимизация сигнала
-Система решает задачу оптимального управления:
+Where:
+- `A(t)` — number of external agents who have adopted the target technology/behavior.
+- `M` — total size of the target population.
+- `p` — innovation coefficient (spontaneous adoption).
+- `q` — imitation coefficient (influence of adopters).
+- `S(t)` — intensity of the system’s stigmergic signal (measured in “pheromone units”, proportional to expenditure `E_internal`).
+- `α` — signal effectiveness (determined empirically via A/B tests).
+
+### W.3.2. Signal Optimization
+The system solves an optimal control problem:
 ```
 Min_{S(t)} ∫ E_internal(t) dt
-При условии A(T) ≥ A_target
+Subject to A(T) ≥ A_target
 ```
-Решение: импульсный сигнал в начале кампании с последующим снижением до
-Уровня поддержки.
+Solution: an impulsive signal at the beginning of the campaign, followed by a reduction to a sustaining level.
+
 ## W.4. Influence‑Weighted ROI
-### W.4.1. Модифицированная полезность
-Для действия `a`:
+
+### W.4.1. Modified Utility
+For an action `a`:
 ```
 EU_total(a) = EU_econ(a) + λ * w_species * ΔI(a)
 ```
-Где:
-- `EU_econ(a)` — ожидаемая экономическая полезность (стандартный ROI).
-- `λ` — глобальный коэффициент важности стигмергии (из `global_policy.json`).
-- `w_species` — видовой вес влияния (`architect`=0.9, `sentinel`=0.1,
-`arbiter`=0.3, `vagrant`=0.5).
--`ΔI(a)` — ожидаемый прирост влияния, предсказываемый моделью.
-### W.4.2. Предиктор ΔI(a)
-Используется графовая нейронная сеть (GNN), обученная на исторических
-Кампаниях. Признаки:
-- Тип действия (экономическое, информационное, инфраструктурное).
-- Целевая популяция (размер, плотность связей, текущая фаза принятия).
-- Контекст (рыночные условия, новостной фон).
-Модель обновляется ежеквартально на Regional Aggregator’ах.
-## W.5. Метрики эффективности
-| Метрика | Определение | Целевое значение |
+Where:
+- `EU_econ(a)` — expected economic utility (standard ROI).
+- `λ` — global importance coefficient for stigmergy (from `global_policy.json`).
+- `w_species` — species‑specific influence weight (`architect`=0.9, `sentinel`=0.1, `arbiter`=0.3, `vagrant`=0.5).
+- `ΔI(a)` — predicted increase in influence, estimated by the model.
+
+### W.4.2. Predictor ΔI(a)
+A Graph Neural Network (GNN) trained on historical campaigns is used. Features:
+- Action type (economic, informational, infrastructural).
+- Target population (size, connection density, current adoption phase).
+- Context (market conditions, news background).
+
+The model is updated quarterly on Regional Aggregators.
+
+## W.5. Effectiveness Metrics
+| Metric | Definition | Target Value |
 | :--- | :--- | :--- |
-| **Influence Reach** | Доля целевой популяции, охваченная за период T | ≥ 15% за квартал |
-| **Attribution Rate** | Доля внешних действий, причинно связанных с сигналом | ≥ 30% |
-| **Stealth Decay** | Скорость снижения C_s (измеряется в % в месяц) | ≤ 5% |
-## W.6. Интеграция с другими модулями
--**Модуль 06 (Economic Core):** использует `EU_total` для принятия
-Решений.
-- **Модуль 05 (Stealth):** HLTM 2.0 генерирует сигнал `S(t)`.
-- **L0 Meta‑Mem0g:** хранит историю кампаний и калибрует модель.
-## W.7. История изменений
-| Версия | Дата | Изменения |
-| :--- | :--- | :--- |
-| V1 | 2026-06-01 | Первоначальная математическая модель для v0.9 |
+| **Influence Reach** | Fraction of target population covered over period T | ≥ 15% per quarter |
+| **Attribution Rate** | Fraction of external actions causally linked to the signal | ≥ 30% |
+| **Stealth Decay** | Rate of decrease of C_s (measured in % per month) | ≤ 5% |
+
+## W.6. Integration with Other Modules
+- **Module 06 (Economic Core):** uses `EU_total` for decision‑making.
+- **Module 05 (Stealth):** HLTM 2.0 generates the signal `S(t)`.
+- **L0 Meta‑Mem0g:** stores campaign history and calibrates the model.
+
+## W.7. Change History
+| Version | Date       | Changes                                   |
+| :------ | :--------- | :---------------------------------------- |
+| V1      | 2026-06-01 | Initial mathematical model for v0.9       |

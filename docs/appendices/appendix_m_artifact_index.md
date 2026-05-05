@@ -1,12 +1,12 @@
-# Appendix M: Artifact Index (Индекс исполняемых артефактов)
+# Appendix M: Artifact Index (Registry of Executable Artifacts)
 
-**Назначение:** Содержит реестр всех ключевых исполняемых артефактов системы Black Swan с их IPFS CID, контрольными суммами и связями родитель-потомок. Используется для верификации целостности (`verify_artifact`), аудита и холодного восстановления.
+**Purpose:** Contains the registry of all key executable artifacts of the Black Swan system with their IPFS CIDs, checksums, and parent-child relationships. Used for integrity verification (`verify_artifact`), auditing, and cold recovery.
 
 ---
 
 ## M1. Core Node & System Daemons
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `watchdogd` | Rust binary | `QmWatchdogdV2` | `QmCoreToolsWorkspaceV2` |
 | `isolationd` | Rust binary | `QmIsolationdV2` | `QmCoreToolsWorkspaceV2` |
@@ -19,7 +19,7 @@
 
 ## M2. Memory & CRDT
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `mem0g_client` | Rust library | `QmMem0gClientV2` | `QmCoreToolsWorkspaceV2` |
 | `mem0g_crdt_merge` (ASTFirstCRDTMerger) | Rust library | `QmASTFirstCRDTMergerV2` | `QmMem0gClientV2` |
@@ -34,7 +34,7 @@
 
 ## M3. Validation & Verification
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `Validation Pipeline` | Python script | `QmValidationPipelineV2` | - |
 | `Shadow Benchmark` | Python script | `QmShadowBenchmarkV2` | `QmValidationPipelineV2` |
@@ -46,7 +46,7 @@
 
 ## M4. Swarm & Economic
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `Swarm Sync` | Rust binary | `QmSwarmSyncV2` | `QmCoreToolsWorkspaceV2` |
 | `D2BFT Consensus` | Rust library | `QmD2BFTV1` | `QmSwarmSyncV2` |
@@ -60,7 +60,7 @@
 
 ## M5. Dynamic Routing & PCR
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `DynamicModelRouter` | Rust binary | `QmDynamicRouterV1` | `QmCoreToolsWorkspaceV2` |
 | `Routing Matrix Schema` | JSON Schema | `QmRoutingMatrixSchemaV1` | - |
@@ -71,7 +71,7 @@
 
 ## M6. Cybersecurity & Stealth
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `Sandbox Base Image` | OCI image | `QmPythonBaseImage` | - |
 | `Sandbox Seccomp Profile` | JSON | `QmSeccompProfileV2` | - |
@@ -89,7 +89,7 @@
 
 ## M7. Meat Interface & Social
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `Meat Interface Orchestrator` | Python script | `QmMeatOrchestratorV3` | - |
 | `CanaryTaskGenerator` | Python script | `QmCanaryTaskGeneratorV2` | `QmMeatOrchestratorV3` |
@@ -101,7 +101,7 @@
 
 ## M8. Singularity & Sovereignty
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `Spore Packer` | Python script | `QmSporePackerV1` | - |
 | `Cold Start Script (DeepSeek‑V4)` | Shell script | `QmColdStartDeepSeekV1` | - |
@@ -111,7 +111,7 @@
 
 ## M9. Global Configuration
 
-| Компонент | Тип | CID | Родитель |
+| Component | Type | CID | Parent |
 | :--- | :--- | :--- | :--- |
 | `Global Policy` | JSON | `QmGlobalPolicyV3` | - |
 | `Fast Path Policy` | JSON | `QmFastPathPolicyV2` | - |
@@ -119,20 +119,20 @@
 | `Decentralized Bootstrap Config` | YAML/JSON | `QmDecentralizedBootstrapConfigV1` | - |
 | `EIF Orchestrator` | Python script | `QmEIFOrchestratorV1` | - |
 
-## M10. Верификация и целостность
+## M10. Verification and Integrity
 
-Все артефакты могут быть проверены утилитой `verify_artifact` (входит в `QmCoreToolsWorkspaceV2`):
+All artifacts can be verified using the `verify_artifact` utility (included in `QmCoreToolsWorkspaceV2`):
 
 ```bash
 verify_artifact --cid Qm... --public-key /etc/swarm/keys/artifact_pub.pem
 ```
 
-Хеши blake3 хранятся в метаданных каждого артефакта. Полный список всех второстепенных артефактов (включая результаты итераций, снапшоты, отчёты) хранится в GlobalState.knowledge_graph.artifact_index и не дублируется здесь.
+blake3 hashes are stored in the metadata of each artifact. The complete list of all secondary artifacts (including iteration results, snapshots, reports) is stored in `GlobalState.knowledge_graph.artifact_index` and is not duplicated here.
 
 ---
 
-## M11. Связь с другими документами
+## M11. Relationship with Other Documents
 
-· Событийная шина и артефакты: Event_Bus_and_Artifact_Model.md
-· Глобальное состояние: Global_State_and_Decision_Pipeline.md
-· Глоссарий: Glossary.md
+- Event Bus and Artifacts: [Event_Bus_and_Artifact_Model.md](Event_Bus_and_Artifact_Model.md)
+- Global State: [Global_State_and_Decision_Pipeline.md](Global_State_and_Decision_Pipeline.md)
+- Glossary: [Glossary.md](Glossary.md)

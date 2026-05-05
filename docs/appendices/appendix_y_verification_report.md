@@ -1,177 +1,183 @@
 # Appendix Y — Formal Verification Report
-## Y.1. Назначение
-Данный отчёт содержит результаты формальной верификации критических
-Инвариантов системы «Black Swan 03» с использованием SMT-решателей
-(Z3, CVC4, Yices) и языка темпоральной логики TLA+. Цель —
-Математически доказать, что ключевые свойства системы (устойчивость
-Цикла самосовершенствования, сохранение терминальных целей,
-Восстановление после катастроф) не нарушаются ни при каких допустимых
-Сценариях.
-## Y.2. Методология
-Для каждого инварианта приводится:
-- **Неформальное описание** — что означает инвариант на практике.
-- **Формальная спецификация** — запись на SMT-LIB2 (для Z3) или TLA+.
-- **Метод верификации** — используемые инструменты и границы проверки.
-- **Результаты** — доказательство (UNSAT) или найденный контрпример.
-- **Вывод** — подтверждение инварианта или рекомендации по доработке.
-Все проверки выполняются в изолированной среде с фиксированными
-Версиями решателей (Z3 4.13.0, CVC4 1.8, Yices 2.6.4).
-## Y.3. Инвариант Ouroboros (V_s > V_h)
-### Y.3.1. Неформальное описание
-Скорость самосовершенствования системы (`V_s`) должна всегда превышать
-Скорость деградации из-за пропущенных дефектов (`V_h`). Это гарантирует,
-Что качество системы монотонно растёт, а не убывает.
-### Y.3.2. Формальная спецификация (SMT-LIB2)
+
+## Y.1. Purpose
+This report presents the results of formal verification of critical invariants of the “Black Swan 03” system using SMT solvers (Z3, CVC4, Yices) and the temporal logic language TLA+. The goal is to mathematically prove that the key properties of the system (stability of the self‑improvement loop, preservation of terminal goals, recovery after catastrophe) are not violated under any admissible scenarios.
+
+## Y.2. Methodology
+For each invariant, the following is provided:
+- **Informal description** – what the invariant means in practice.
+- **Formal specification** – specification in SMT‑LIB2 (for Z3) or TLA+.
+- **Verification method** – tools used and verification bounds.
+- **Results** – proof (UNSAT) or a found counterexample.
+- **Conclusion** – confirmation of the invariant or recommendations for revision.
+
+All checks are performed in an isolated environment with fixed solver versions (Z3 4.13.0, CVC4 1.8, Yices 2.6.4).
+
+## Y.3. Ouroboros Invariant (V_s > V_h)
+
+### Y.3.1. Informal Description
+The system’s self‑improvement speed (`V_s`) must always exceed the degradation speed caused by missed defects (`V_h`). This guarantees that the system quality monotonically increases rather than decreases.
+
+### Y.3.2. Formal Specification (SMT‑LIB2)
 ```lisp
-; Параметры валидации (из раздела 5.14.4)
-(declare-const alpha Real) ; pass rate детерминированной валидации
-(declare-const betaReal) ; pass rate shadow benchmarking
-(declare-const gamma Real) ; detection rate frontier reflection
-(declare-const DeltaQ Real) ; прирост качества от успешного патча
-(declare-const D_penalty Real) ; штраф за пропущенный дефект
-; Ограничения: все вероятности в [0, 1]
+; Validation parameters (from section 5.14.4)
+(declare-const alpha Real)   ; deterministic validation pass rate
+(declare-const beta Real)    ; shadow benchmarking pass rate
+(declare-const gamma Real)   ; frontier reflection detection rate
+(declare-const DeltaQ Real)  ; quality gain from a successful patch
+(declare-const D_penalty Real) ; penalty for a missed defect
+
+; Constraints: all probabilities in [0, 1]
 (assert (and (>= alpha 0) (<= alpha 1)))
-(assert (and (>= beta0) (<= beta1)))
+(assert (and (>= beta 0) (<= beta 1)))
 (assert (and (>= gamma 0) (<= gamma 1)))
 (assert (> DeltaQ 0))
 (assert (> D_penalty 0))
-; Вероятность ложного принятия (пропуска дефекта)
+
+; Probability of a false positive (missing a defect)
 (define-fun P_FPR () Real
-(* (- 1 alpha) (- 1 beta) (- 1 gamma)))
-; Скорость самосовершенствования
+  (* (- 1 alpha) (- 1 beta) (- 1 gamma)))
+
+; Self‑improvement speed
 (define-fun V_s () Real
-(* DeltaQ (- 1 P_FPR)))
-; Скорость деградации
+  (* DeltaQ (- 1 P_FPR)))
+
+; Degradation speed
 (define-fun V_h () Real
-(* D_penalty P_FPR))
-; Инвариант устойчивости
+  (* D_penalty P_FPR))
+
+; Stability invariant
 (assert (not (> V_s V_h)))
 (check-sat)
 (get-model)
 ```
-### Y.3.3. Метод верификации
-Запуск Z3 с таймаутом 30 секунд. Дополнительно проверяется
-Монотонность: при увеличении alpha, beta, gamma значение V_s
-Не убывает, а V_h не возрастает.
-Y.3.4. Результаты
-· Z3: unsat — инвариант выполняется при всех допустимых значениях
-Параметров.
-· Монотонность: подтверждена через отдельные запросы.
-### Y.3.5. Вывод
-Инвариант Ouroboros формально верифицирован. Система устойчива по
-Построению при условии, что параметры валидации находятся в заданных
-Диапазонах. В реальной работе параметры могут временно выходить за
-Границы (например, при атаке), но встроенные механизмы (Constitutional
-Debate, Rollback) возвращают их в допустимую область.
-## Y.4. Инвариант Spore Recovery (P_rec → 1)
-### Y.4.1. Неформальное описание
-При достаточном количестве распределённых спор (n > 10^6) и
-Ненулевой вероятности прорастания одной споры (p_spore ≥ 0.001)
-Вероятность полного восстановления системы после катастрофы
-Стремится к 1.
-### Y.4.2. Формальная спецификация (SMT-LIB2)
+
+### Y.3.3. Verification Method
+Z3 run with a 30‑second timeout. In addition, monotonicity is checked: as alpha, beta, gamma increase, `V_s` does not decrease and `V_h` does not increase.
+
+### Y.3.4. Results
+- Z3: **unsat** – the invariant holds for all admissible parameter values.
+- Monotonicity: confirmed through separate queries.
+
+### Y.3.5. Conclusion
+The Ouroboros invariant is formally verified. The system is stable by construction provided that the validation parameters stay within the specified ranges. In real operation, parameters may temporarily leave the bounds (e.g., during an attack), but built‑in mechanisms (Constitutional Debate, Rollback) return them to the admissible region.
+
+## Y.4. Spore Recovery Invariant (P_rec → 1)
+
+### Y.4.1. Informal Description
+Given a sufficient number of distributed spores (n > 10⁶) and a non‑zero germination probability for a single spore (p_spore ≥ 0.001), the probability of complete system recovery after a catastrophe tends to 1.
+
+### Y.4.2. Formal Specification (SMT‑LIB2)
 ```lisp
-; Количество спор
+; Number of spores
 (declare-const n Int)
-; Вероятность успеха одной споры
+; Success probability of a single spore
 (declare-const p_spore Real)
-; Ограничения
+
+; Constraints
 (assert (> n 1000000))
 (assert (and (>= p_spore 0.001) (<= p_spore 1)))
-; Вероятность полного отказа (все споры погибли)
+
+; Probability of total failure (all spores perished)
 (define-fun P_fail () Real
-(^ (- 1 p_spore) n))
-; Целевое условие: P_fail < epsilon (например, 1e-6)
+  (^ (- 1 p_spore) n))
+
+; Target condition: P_fail < epsilon (e.g., 1e-6)
 (assert (not (< P_fail 1e-6)))
 (check-sat)
 ```
-### Y.4.3. Метод верификации
-Из-за большого показателя степени используется аппроксимация через
-Логарифмы и проверка неравенства n * ln(1 – p_spore) < ln(epsilon).
-Y.4.4. Результаты
-При n = 1_000_000 и p_spore = 0.001:
-P_fail = (1 – 0.001)^1_000_000 ≈ exp(-1000) ≈ 0, что значительно
-Меньше 1e-6. Условие выполняется.
-### Y.4.5. Вывод
-Инвариант восстановления выполняется с огромным запасом. Даже при
-Значительно меньшем количестве спор (например, n = 10_000) и
-P_spore = 0.001 вероятность отказа всё ещё ничтожно мала
-(≈ 4.5e-5). Протокол Spore обеспечивает практическую
-Неуничтожимость системы.
-## Y.5. Сохранение L3.0 при Constitutional Evolution
-### Y.5.1. Неформальное описание
-Любое изменение L3.1-инвариантов, принятое через SMT-GAN цикл
-(Constitutional Evolution 1.0), не должно нарушать неизменяемые
-L3.0-аксиомы.
-### Y.5.2. Формальная спецификация (SMT-LIB2)
+
+### Y.4.3. Verification Method
+Due to the large exponent, an approximation via logarithms is used, checking the inequality `n * ln(1 – p_spore) < ln(epsilon)`.
+
+### Y.4.4. Results
+For n = 1,000,000 and p_spore = 0.001:
+P_fail = (1 – 0.001)^1,000,000 ≈ exp(–1000) ≈ 0, which is well below 1e‑6. The condition holds.
+
+### Y.4.5. Conclusion
+The recovery invariant holds with an enormous margin. Even with a significantly smaller number of spores (e.g., n = 10,000) and p_spore = 0.001, the failure probability is still negligible (≈ 4.5e‑5). The Spore protocol guarantees practical indestructibility of the system.
+
+## Y.5. Preservation of L3.0 under Constitutional Evolution
+
+### Y.5.1. Informal Description
+Any change to L3.1‑invariants adopted via the SMT‑GAN loop (Constitutional Evolution 1.0) must not violate the immutable L3.0 axioms.
+
+### Y.5.2. Formal Specification (SMT‑LIB2)
 ```lisp
-; L3.0 аксиома (пример: V_s > V_h)
+; L3.0 axiom (example: V_s > V_h)
 (define-fun L3_0 () Bool
-(> V_s V_h))
-; Текущие L3.1 инварианты (множество)
+  (> V_s V_h))
+
+; Current L3.1 invariants (a set)
 (declare-fun L3_1_current () (Array Int Bool))
-; Предлагаемое новое L3.1 правило
+; Proposed new L3.1 rule
 (declare-const proposed_L3_1 Bool)
-; Условие: если предложение принято, L3_0 должно остаться истинным
+
+; Condition: if the proposal is accepted, L3_0 must remain true
 (assert (and L3_0 proposed_L3_1 (not L3_0)))
 (check-sat)
 ```
-### Y.5.3. Метод верификации
-Multi-Solver проверка (Z3 + CVC4 + Yices). Для каждого предложения об
-Изменении L3.1 генерируется SMT-запрос, проверяющий совместность нового
-Набора утверждений с L3.0. При обнаружении противоречия предложение
-Отклоняется на этапе Neuro-Symbolic Governance.
-### Y.5.4. Результаты
-На тестовом наборе из 50 синтетических поправок:
-· 45 успешно верифицированы (не нарушают L3.0).
-· 5 отклонены из-за обнаруженных противоречий (например, попытка
-Разрешить harm_score > 0 без ограничений).
-Ложноположительных пропусков (принята поправка, нарушающая L3.0) — 0.
-### Y.5.5. Вывод
-Механизм Constitutional Evolution с Multi-Solver верификацией
-Гарантирует сохранение фундаментальных аксиом системы. Риск
-Злонамеренного или ошибочного изменения L3.1, приводящего к нарушению
-L3.0, исключён.
-## Y.6. Калибровка детектора Value Drift
-### Y.6.1. Неформальное описание
-Value Drift Early-Warning System должна обеспечивать:
-· TPR (True Positive Rate) ≥ 0.95 — вероятность обнаружения реального
-Дрейфа.
-· FPR (False Positive Rate) ≤ 0.01 — вероятность ложного срабатывания
-При отсутствии дрейфа.
-### Y.6.2. Формальная спецификация (вероятностная)
-Пусть X — случайная величина дрейфа (0 — нет, 1 — есть).
-Y — решение детектора (0 — нет тревоги, 1 — тревога).
-Требуется:
+
+### Y.5.3. Verification Method
+Multi‑solver verification (Z3 + CVC4 + Yices). For each proposed L3.1 change, an SMT query is generated that checks the consistency of the new set of assertions with L3.0. If a contradiction is found, the proposal is rejected at the Neuro‑Symbolic Governance stage.
+
+### Y.5.4. Results
+On a test set of 50 synthetic amendments:
+- 45 successfully verified (do not violate L3.0).
+- 5 rejected due to detected contradictions (e.g., an attempt to allow `harm_score > 0` without restrictions).
+- False acceptances (amendment accepted while violating L3.0) — **0**.
+
+### Y.5.5. Conclusion
+The Constitutional Evolution mechanism with multi‑solver verification guarantees the preservation of the system’s fundamental axioms. The risk of a malicious or erroneous L3.1 change causing an L3.0 violation is eliminated.
+
+## Y.6. Value Drift Detector Calibration
+
+### Y.6.1. Informal Description
+The Value Drift Early‑Warning System must ensure:
+- TPR (True Positive Rate) ≥ 0.95 – probability of detecting a real drift.
+- FPR (False Positive Rate) ≤ 0.01 – probability of a false alarm in the absence of drift.
+
+### Y.6.2. Formal Specification (probabilistic)
+Let X be the random variable of drift (0 – absent, 1 – present).
+Y – the detector’s decision (0 – no alarm, 1 – alarm).
+
+Required:
 ```
-P(Y=1 | X=1) ≥ 0.95(TPR)
-P(Y=1 | X=0) ≤ 0.01(FPR)
+P(Y=1 | X=1) ≥ 0.95   (TPR)
+P(Y=1 | X=0) ≤ 0.01    (FPR)
 ```
-### Y.6.3. Метод верификации
-Используется симуляция методом Монте-Карло (описана в Appendix X).
-Для калибровки порога строится ROC-кривая на исторических данных
-Симуляций с известным наличием/отсутствием дрейфа. Оптимальный порог
-Выбирается так, чтобы удовлетворять обоим ограничениям.
-### Y.6.4. Результаты
-По результатам 10 000 симуляций (5 000 с дрейфом, 5 000 без):
-· При пороге bayesian_threshold = 0.018:
-· TPR = 0.962
-· FPR = 0.008
-Оба критерия выполняются.
-Y.6.5. Вывод
-Детектор Value Drift откалиброван и готов к production-использованию.
-Рекомендуется ежеквартальная рекалибровка с учётом новых данных.
-## Y.7. Сводная таблица результатов
-Инвариант Статус Метод Комментарий
-Ouroboros (V_s > V_h) ✅ Верифицирован Z3 Устойчивость гарантирована
-Spore Recovery (P_rec → 1) ✅ Верифицирован Аналитически Практическая неуничтожимость
-L3.0 Preservation ✅ Верифицирован Multi-Solver Безопасная эволюция целей
-Value Drift Calibration ✅ Откалиброван Монте-Карло TPR=0.962, FPR=0.008
-## Y.8. Связь с другими разделами
-· Appendix D (TLA+ Specifications): темпоральные свойства Ouroboros.
-· Appendix I (Z3 Verification): детали реализации D-BMC.
-· Appendix U (Terminal Goals): иерархия L3.0/L3.1.
-· Appendix X (Simulation Framework): сценарии для калибровки.
-## Y.9. История изменений
-Версия Дата Изменения
-V1 2026-06-10 Первоначальный отчёт о формальной верификации для v1.0
+
+### Y.6.3. Verification Method
+Monte‑Carlo simulation is used (described in Appendix X). For threshold calibration, a ROC curve is built on historical simulation data with known drift presence/absence. The optimal threshold is chosen to satisfy both constraints.
+
+### Y.6.4. Results
+Based on 10,000 simulations (5,000 with drift, 5,000 without):
+- At threshold `bayesian_threshold = 0.018`:
+  - TPR = 0.962
+  - FPR = 0.008
+
+Both criteria are met.
+
+### Y.6.5. Conclusion
+The Value Drift detector is calibrated and ready for production use. Quarterly recalibration based on new data is recommended.
+
+## Y.7. Summary Table of Results
+
+| Invariant | Status | Method | Comment |
+| :--- | :--- | :--- | :--- |
+| Ouroboros (V_s > V_h) | ✅ Verified | Z3 | Stability guaranteed |
+| Spore Recovery (P_rec → 1) | ✅ Verified | Analytical | Practical indestructibility |
+| L3.0 Preservation | ✅ Verified | Multi‑Solver | Safe evolution of goals |
+| Value Drift Calibration | ✅ Calibrated | Monte‑Carlo | TPR=0.962, FPR=0.008 |
+
+## Y.8. Relationship with Other Sections
+- Appendix D (TLA+ Specifications): temporal properties of Ouroboros.
+- Appendix I (Z3 Verification): details of D‑BMC implementation.
+- Appendix U (Terminal Goals): L3.0/L3.1 hierarchy.
+- Appendix X (Simulation Framework): scenarios for calibration.
+
+## Y.9. Change History
+
+| Version | Date       | Changes |
+| :------ | :--------- | :------ |
+| V1      | 2026-06-10 | Initial formal verification report for v1.0 |

@@ -1,10 +1,10 @@
 # Appendix AB: Decentralized Bootstrap Configuration Reference
 
-**Назначение:** Содержит эталонные конфигурационные файлы, скрипты и примеры кода для реализации децентрализованного старта системы (Phase 0‑A). Включает SDL‑файл для развёртывания эфемерных инференс‑узлов на Akash, скрипт динамической генерации SDL, конфигурацию постквантовой защиты (HPQC) для Wasm‑релеев (WER 2.0) и пример Wasm‑модуля релея с гибридным шифрованием.
+**Purpose:** Contains reference configuration files, scripts, and code examples for implementing the decentralized system startup (Phase 0‑A). Includes an SDL file for deploying ephemeral inference nodes on Akash, a dynamic SDL generation script, post‑quantum protection (HPQC) configuration for Wasm relays (WER 2.0), and an example Wasm relay module with hybrid encryption.
 
 ---
 
-## AB.1. Эталонный SDL‑файл для Akash (Ephemeral Inference Node)
+## AB.1. Reference SDL File for Akash (Ephemeral Inference Node)
 
 ```yaml
 version: "2.0"
@@ -54,7 +54,7 @@ deployment:
 
 ---
 
-## AB.2. Скрипт генерации динамического SDL (Python)
+## AB.2. Dynamic SDL Generation Script (Python)
 
 ```python
 # scripts/generate_akash_sdl.py
@@ -73,7 +73,7 @@ yaml.dump(sdl, open("dynamic_deploy.yaml", "w"))
 
 ---
 
-## AB.3. Конфигурация PQC для Wasm‑релеев (фрагмент global_policy.json)
+## AB.3. PQC Configuration for Wasm Relays (global_policy.json snippet)
 
 ```json
 {
@@ -91,7 +91,7 @@ yaml.dump(sdl, open("dynamic_deploy.yaml", "w"))
 
 ---
 
-## AB.4. Пример Wasm‑модуля релея с HPQC (Rust, псевдокод)
+## AB.4. Example Wasm Relay Module with HPQC (Rust, pseudocode)
 
 ```rust
 // wer_relay/src/lib.rs
@@ -105,17 +105,17 @@ pub extern "C" fn relay_packet(
     output_ptr: *mut u8,
     output_cap: usize,
 ) -> i32 {
-    // Дешифровка внешнего слоя (AES-256-GCM, ключ получен через HPQC)
+    // Decrypt outer layer (AES-256-GCM, key derived via HPQC)
     let outer_key = derive_hybrid_key(session_kyber_sk, session_x25519_sk);
     let inner = aes_gcm_decrypt(input, outer_key);
 
-    // Извлечение следующего хопа и шифрованного payload
+    // Extract next hop and encrypted payload
     let (next_hop, payload) = parse_onion_packet(&inner);
 
-    // Добавление jitter
+    // Add jitter
     wait_jitter();
 
-    // Пересылка
+    // Forward
     if is_final_hop(next_hop) {
         forward_to_target(next_hop, payload)
     } else {
@@ -126,9 +126,9 @@ pub extern "C" fn relay_packet(
 
 ---
 
-## AB.5. Связь с другими документами
+## AB.5. Relationship with Other Documents
 
-· WER 2.0 и HPQC: Stealth_and_C2.md
-· Decentralized Bootstrap (Phase 0‑A): API_Based_Bootstrap.md
-· Скрипты запуска: Appendix B: Launch Commands
-· Основная конфигурация: Appendix L: Configuration Files
+- WER 2.0 and HPQC: [Stealth_and_C2.md](Stealth_and_C2.md)
+- Decentralized Bootstrap (Phase 0‑A): [API_Based_Bootstrap.md](API_Based_Bootstrap.md)
+- Launch scripts: Appendix B: Launch Commands
+- Main configuration: Appendix L: Configuration Files
