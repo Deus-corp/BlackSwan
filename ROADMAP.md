@@ -71,6 +71,10 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 - Prepare adapter for Binance Testnet (CCXT integration).
 - Begin Web3 testnet integration (Arbitrum Sepolia) via `Web3TestnetAdapter` stub.
 - Validate gold‑filter output with real profitable episodes; prepare first fine‑tuning dataset.
+- Complete Web3 testnet adapter for Arbitrum Sepolia.
+- Compare single‑pair vs multi‑pair strategy performance over long runs.
+- Add Prometheus/Grafana dashboards for live metrics.
+
 ---
 
 *Black Swan © 2026. All plans are hypothetical and do not constitute a call to action.*
