@@ -15,7 +15,7 @@ services:
       - MEMORY_API_ENABLED=true
       - MARKET_MODE=sim
       - PRICE_SCALE=10000   # можно добавить, если хочешь менять
-      - TRADING_SYMBOL=BTC/USDT
+      - TRADING_SYMBOLS=BTC/USDT,ETH/USDT,SOL/USDT
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
       - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
       - LOG_LEVEL=INFO   # или DEBUG для детальных трейдов
