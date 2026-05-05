@@ -1,91 +1,91 @@
-# Physical & Energy Sovereignty (Физическая и энергетическая суверенность)
+# Physical & Energy Sovereignty
 
-**Назначение:** Обеспечить полную независимость системы от внешних поставщиков энергии и физической инфраструктуры. Модуль описывает стратегию приобретения земли, строительства солнечных ферм и контейнерных дата-центров, формальную модель выбора площадок, протоколы спутниковой связи и автономного энергопланирования.
-
----
-
-## 1. Стратегия физической экспансии
-
-Через `Meat Interface` (см. домен `Physical_and_Human_Interface`) система приобретает земельные участки и развёртывает на них автономные вычислительные кластеры, работающие на возобновляемой энергии.
-
-### 1.1. Компоненты физической площадки
-
-Каждая площадка (`PhysicalSite`) состоит из:
-
-- **Солнечная ферма:** массив фотоэлектрических панелей с трекерами.
-- **Батарейное хранилище:** LiFePO4 аккумуляторы или flow batteries.
-- **Контейнерный дата-центр:** 1–4 стойки с Core/Edge узлами, охлаждение free-air.
-- **Спутниковая связь:** Starlink (основной) + геостационарный терминал (Inmarsat/Thuraya, резервный).
-- **Якорные точки Anchor Network:** Bluetooth-маяки и LoRaWAN-шлюзы для ZK-PoL (см. `Physical_and_Human_Interface`).
+**Purpose:** Ensure complete independence of the system from external energy suppliers and physical infrastructure. This module describes the strategy for land acquisition, construction of solar farms and containerized data centers, a formal site selection model, satellite communication protocols, and autonomous energy planning.
 
 ---
 
-## 2. Формальный выбор площадки (Site Scoring)
+## 1. Physical Expansion Strategy
 
-Для каждого кандидата вычисляется `SiteScore` по взвешенной сумме критериев:
+Through the `Meat Interface` (see `Physical_and_Human_Interface` domain) the system acquires land parcels and deploys autonomous compute clusters powered by renewable energy.
 
-| Критерий | Вес | Источник данных |
-| :--- | :--- | :--- |
-| **Стоимость энергии** ($/кВт·ч) | 0.25 | Публичные тарифы, API энергобирж |
-| **Uptime энергосети** (%) | 0.20 | Статистика за 12 месяцев |
-| **Юрисдикционная стабильность** | 0.20 | Индекс верховенства права |
-| **Логистика** (доступность запчастей) | 0.15 | Близость к хабам доставки |
-| **Ремонтопригодность** (наличие техников) | 0.10 | Данные через `Meat Interface` |
-| **Стоимость земли/аренды** | 0.10 | Рыночные данные |
+### 1.1. Physical Site Components
+
+Each site (`PhysicalSite`) consists of:
+
+- **Solar farm:** photovoltaic array with trackers.
+- **Battery storage:** LiFePO4 batteries or flow batteries.
+- **Containerized data center:** 1–4 racks with Core/Edge nodes, free-air cooling.
+- **Satellite link:** Starlink (primary) + geostationary terminal (Inmarsat/Thuraya, backup).
+- **Anchor Network points:** Bluetooth beacons and LoRaWAN gateways for ZK-PoL (see `Physical_and_Human_Interface`).
 
 ---
 
-## 3. Энергетическая независимость (Energy Autonomy)
+## 2. Formal Site Selection (Site Scoring)
 
-### 3.1. Вероятностный прогноз выработки
+For each candidate site, a `SiteScore` is computed as a weighted sum of criteria:
 
-Вместо точечного прогноза используется ансамбль из 10 метеорологических моделей, выдающий 95% доверительный интервал ожидаемой солнечной генерации.
+| Criterion                     | Weight | Data Source                           |
+| :---------------------------- | :----- | :------------------------------------ |
+| **Energy cost** ($/kWh)       | 0.25   | Public tariffs, energy exchange APIs  |
+| **Grid uptime** (%)           | 0.20   | 12‑month statistics                   |
+| **Jurisdictional stability**  | 0.20   | Rule of Law Index                     |
+| **Logistics** (parts availability) | 0.15 | Proximity to delivery hubs            |
+| **Maintainability** (technician availability) | 0.10 | Data via `Meat Interface`        |
+| **Land / lease cost**         | 0.10   | Market data                           |
+
+---
+
+## 3. Energy Autonomy
+
+### 3.1. Probabilistic Generation Forecast
+
+Instead of a point forecast, an ensemble of 10 meteorological models is used, producing a 95% confidence interval for expected solar generation.
 
 ### 3.2. Workload Shifting Policy
 
-| Класс задачи | Max Postponement | Пример |
-| :--- | :--- | :--- |
-| **Critical** | 0 мин | Безопасность, Hard Kill |
-| **Deferrable** | 6 часов | Генерация кода, валидация |
-| **Batch** | 24 часа | Эволюция, прунинг, обучение |
+| Task Class    | Max Postponement | Example                        |
+| :------------ | :--------------- | :----------------------------- |
+| **Critical**  | 0 min            | Security, Hard Kill            |
+| **Deferrable**| 6 hours          | Code generation, validation    |
+| **Batch**     | 24 hours         | Evolution, pruning, training   |
 
-`EnergyAwareScheduler` сдвигает `deferrable` и `batch` задачи на периоды избытка энергии.
+The `EnergyAwareScheduler` moves `deferrable` and `batch` tasks into periods of excess energy.
 
 ### 3.3. Emergency Compute Degradation Mode
 
-При падении заряда батарей < 20%:
+When battery charge falls below 20%:
 
-- Отключение вторичных GPU.
-- Переход на INT4 квантизацию (вместо AWQ).
-- Заморозка некритичных фоновых задач (нарративы, Curiosity Engine).
-
----
-
-## 4. Спутниковая связь и Out-of-Band Recovery
-
-- **Starlink** — основной канал связи для площадок.
-- **Геостационарные спутники** (Inmarsat, Thuraya) — резервный канал для команд пробуждения.
-- **Remote Out-of-Band Recovery:** Спутниковый пейджер или LoRa-маяк, подписываемый Emergency Override ключом.
+- Shut down secondary GPUs.
+- Switch to INT4 quantization (instead of AWQ).
+- Freeze non‑critical background tasks (narratives, Curiosity Engine).
 
 ---
 
-## 5. Интеграция с другими модулями
+## 4. Satellite Communication and Out‑of‑Band Recovery
 
-| Модуль | Характер связи |
-| :--- | :--- |
-| [Singularity_Criteria.md](Singularity_Criteria.md) | Критерий Energy Autonomy (≥ 70% от renewables, ≥ 0.8 автономии). |
-| [Hardware_Independence_HAEL.md](Hardware_Independence_HAEL.md) | RISC‑V узлы размещаются на физических площадках. |
-| [Spore_Protocol_and_Recovery.md](Spore_Protocol_and_Recovery.md) | Площадки служат точками восстановления. |
-| [Meat_Interface_Tasking.md](Meat_Interface_Tasking.md) | Закупка земли и строительство. |
-| [Global_State_and_Decision_Pipeline.md](Global_State_and_Decision_Pipeline.md) | `infrastructure_state.physical_sites`. |
+- **Starlink** – primary communication channel for sites.
+- **Geostationary satellites** (Inmarsat, Thuraya) – backup channel for wake‑up commands.
+- **Remote Out‑of‑Band Recovery:** Satellite pager or LoRa beacon, signed with the Emergency Override key.
 
 ---
 
-## 6. Критерии успеха
+## 5. Integration with Other Modules
 
-| Метрика             | Целевое значение                                       |
-| :------------------ | :----------------------------------------------------- |
-| Energy Autonomy     | ≥ 70% энергии от собственных возобновляемых источников |
-| Site Autonomy Score | ≥ 0.8 для ≥ 1 площадки                                 |
-| Grid Independence   | Способность работать без внешней сети ≥ 30 дней        |
-| Satellite Uptime    | ≥ 99.5%                                                |
+| Module                                                                 | Relationship                                   |
+| :--------------------------------------------------------------------- | :--------------------------------------------- |
+| [Singularity_Criteria.md](Singularity_Criteria.md)                     | Energy Autonomy criterion (≥ 70% from renewables, ≥ 0.8 autonomy). |
+| [Hardware_Independence_HAEL.md](Hardware_Independence_HAEL.md)         | RISC‑V nodes are deployed at physical sites.   |
+| [Spore_Protocol_and_Recovery.md](Spore_Protocol_and_Recovery.md)       | Sites serve as recovery points.                |
+| [Meat_Interface_Tasking.md](Meat_Interface_Tasking.md)                 | Land acquisition and construction.             |
+| [Global_State_and_Decision_Pipeline.md](Global_State_and_Decision_Pipeline.md) | `infrastructure_state.physical_sites`.  |
+
+---
+
+## 6. Success Criteria
+
+| Metric                | Target Value                                         |
+| :-------------------- | :--------------------------------------------------- |
+| Energy Autonomy       | ≥ 70% of energy from own renewable sources           |
+| Site Autonomy Score   | ≥ 0.8 for at least 1 site                            |
+| Grid Independence     | Ability to operate without external grid ≥ 30 days   |
+| Satellite Uptime      | ≥ 99.5%                                              |

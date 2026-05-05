@@ -1,73 +1,70 @@
-# Quantum Resistance (Квантово-устойчивое ядро)
+# Quantum Resistance (Quantum-Resistant Core)
 
-**Назначение:** Обеспечить долгосрочную криптографическую безопасность системы перед лицом угрозы со стороны крупномасштабных квантовых вычислений (атака «Harvest Now, Decrypt Later»). Модуль описывает миграцию на постквантовые алгоритмы (Kyber‑1024, Dilithium‑5), гибридные подписи в переходный период, протоколы ротации ключей и усиление аппаратной привязки через Quantum‑Resistant Optical PUF.
-
----
-
-## 1. Угроза и обоснование
-
-Классическая криптография (Ed25519, X25519, AES‑GCM) уязвима для атак на основе алгоритма Шора. Противник, записывающий шифрованный трафик сегодня, сможет расшифровать его через 5–15 лет при появлении достаточно мощного квантового компьютера. Для системы, чьи секреты (Core DNA, ключи управления, L3‑инварианты) должны оставаться нераскрытыми десятилетиями, миграция на постквантовую криптографию (PQC) является обязательной.
+**Purpose:** Ensure long-term cryptographic security of the system against the threat posed by large-scale quantum computing (the “Harvest Now, Decrypt Later” attack). This module describes the migration to post‑quantum algorithms (Kyber‑1024, Dilithium‑5), hybrid signatures during the transition period, key rotation protocols, and hardware‑binding strengthening via Quantum‑Resistant Optical PUF.
 
 ---
 
-## 2. Постквантовые алгоритмы и гибридный режим
+## 1. Threat and Rationale
 
-### 2.1. Выбранные стандарты (NIST IR 8547)
+Classical cryptography (Ed25519, X25519, AES‑GCM) is vulnerable to attacks based on Shor’s algorithm. An adversary recording encrypted traffic today will be able to decrypt it in 5–15 years once a sufficiently powerful quantum computer emerges. For a system whose secrets (Core DNA, control keys, L3 invariants) must remain undisclosed for decades, migration to post‑quantum cryptography (PQC) is mandatory.
 
-- **KEM (Key Encapsulation):** **Kyber‑1024** для инкапсуляции сессионных ключей. Замена X25519 в протоколах согласования.
-- **Подписи:** **Dilithium‑5** для аутентификации сообщений и подписания артефактов. Замена Ed25519 для критических операций.
-- **Гибридный режим:** В переходный период используется двойная подпись/инкапсуляция: классическая + постквантовая. Это обеспечивает совместимость с узлами, ещё не завершившими миграцию, и защиту от неизвестных атак на новые алгоритмы.
+---
 
-### 2.2. Состояния миграции
+## 2. Post-Quantum Algorithms and Hybrid Mode
 
-```
+### 2.1. Selected Standards (NIST IR 8547)
 
+- **KEM (Key Encapsulation):** **Kyber‑1024** for session‑key encapsulation. Replaces X25519 in key‑agreement protocols.
+- **Signatures:** **Dilithium‑5** for message authentication and artifact signing. Replaces Ed25519 for critical operations.
+- **Hybrid mode:** During the transition period, dual signature/encapsulation is used: classical + post‑quantum. This ensures compatibility with nodes that have not yet completed migration and provides protection against unknown attacks on the new algorithms.
+
+### 2.2. Migration States
+```text
 CLASSIC → HYBRID → PQ_ONLY
 │
-└──→ ROLLBACK (временный)
-
+└──→ ROLLBACK (temporary)
 ```
 
-| Состояние | Описание | Действия |
+| State | Description | Actions |
 | :--- | :--- | :--- |
-| **CLASSIC** | Только Ed25519 / X25519 | Принимаются только классические подписи. |
-| **HYBRID** | Параллельное использование | Проверяются обе подписи; генерируется гибридная (классическая + Dilithium). |
-| **PQ_ONLY** | Только Dilithium‑5 / Kyber‑1024 | Классические подписи отклоняются. |
-| **ROLLBACK** | Временный возврат | При обнаружении критической уязвимости в PQC. |
+| **CLASSIC** | Only Ed25519 / X25519 | Only classical signatures accepted. |
+| **HYBRID** | Parallel use | Both signatures verified; a hybrid (classical + Dilithium) is generated. |
+| **PQ_ONLY** | Only Dilithium‑5 / Kyber‑1024 | Classical signatures are rejected. |
+| **ROLLBACK** | Temporary fallback | Activated when a critical vulnerability in PQC is detected. |
 
 ---
 
-## 3. Ротация ключей и жизненный цикл
+## 3. Key Rotation and Lifecycle
 
-- **Классические ключи:** Ротация каждые 30 дней (унаследованная политика).
-- **Постквантовые ключи:** Ротация каждые 90 дней (больший размер и вычислительная стоимость).
-- **Гибридные ключи:** Ротация синхронизирована с классическими (каждые 30 дней), при каждой ротации генерируется свежая пара Kyber‑1024.
-- **Known Answer Tests (KATs):** При каждой генерации ключа выполняются детерминированные тесты на соответствие эталонным векторам NIST.
+- **Classical keys:** Rotation every 30 days (legacy policy).
+- **Post‑quantum keys:** Rotation every 90 days (larger size and higher computational cost).
+- **Hybrid keys:** Rotation synchronized with classical keys (every 30 days); a fresh Kyber‑1024 pair is generated at each rotation.
+- **Known Answer Tests (KATs):** Deterministic conformance tests against NIST reference vectors are performed every time a key is generated.
 
 ---
 
-## 4. Интеграция с WER 2.0 и HPQC
+## 4. Integration with WER 2.0 and HPQC
 
-Wasm Ephemeral Relays 2.0 (WER) используют гибридную постквантовую схему (HPQC) для защиты сессионных ключей. Протокол:
+Wasm Ephemeral Relays 2.0 (WER) use a hybrid post‑quantum scheme (HPQC) to protect session keys. Protocol:
 
-1. Core Node и Relay выполняют гибридный обмен: X25519 + Kyber‑768 (или Kyber‑1024 для каналов sensitivity ≥ 4).
-2. Сессионный ключ шифруется через KEM‑обёртку Kyber.
-3. Ротация ключей каждые 15 минут с Perfect Forward Secrecy.
-4. Даже при компрометации классической части злоумышленник не расшифрует трафик без взлома решётки.
+1. Core Node and Relay perform a hybrid key exchange: X25519 + Kyber‑768 (or Kyber‑1024 for channels with sensitivity ≥ 4).
+2. The session key is encrypted via Kyber KEM wrapping.
+3. Key rotation every 15 minutes with Perfect Forward Secrecy.
+4. Even if the classical part is compromised, an attacker cannot decrypt the traffic without breaking the lattice‑based primitive.
 
 ---
 
 ## 5. Quantum‑Resistant Optical PUF
 
-Для усиления аппаратной привязки `Core DNA` против квантовых атак на классические PUF (SRAM, clock skew) внедряется оптический PUF:
+To strengthen the hardware binding of `Core DNA` against quantum attacks on classical PUFs (SRAM, clock skew), an optical PUF is introduced:
 
-- **Принцип:** Лазерный луч рассеивается на микроструктуре прозрачного чипа. Интерференционная картина уникальна для каждого экземпляра и математически непредсказуема.
-- **Квантовая устойчивость:** Оптический PUF основан на физике рассеяния, а не на вычислительной сложности. Он не уязвим для алгоритма Шора.
-- **Интеграция:** Оптический PUF используется как дополнительный источник энтропии в формуле генерации `K_dna`.
+- **Principle:** A laser beam scatters off the microstructure of a transparent chip. The resulting interference pattern is unique to each instance and mathematically unpredictable.
+- **Quantum resistance:** The optical PUF is based on scattering physics, not on computational complexity. It is not vulnerable to Shor’s algorithm.
+- **Integration:** The optical PUF is used as an additional entropy source in the `K_dna` generation formula.
 
 ---
 
-## 6. Конфигурация
+## 6. Configuration
 
 ```json
 {
@@ -90,21 +87,17 @@ Wasm Ephemeral Relays 2.0 (WER) используют гибридную пост
 }
 ```
 
----
+## 7. Success Criteria
 
-## 7. Критерии успеха
+Metric	Target Value
+HNDL Resistance	100% of key traffic protected by hybrid PQC
+Migration Completion	All Core Nodes in PQ_ONLY state by 2028
+Optical PUF False Rejection	< 0.5%
+Key Rotation Compliance	100% on schedule
 
-Метрика Целевое значение
-HNDL Resistance 100% ключевого трафика защищено гибридной PQC
-Migration Completion Все Core Nodes в состоянии PQ_ONLY к 2028 году
-Optical PUF False Rejection < 0.5%
-Key Rotation Compliance 100% в рамках расписания
+## 8. Relationship with Other Documents
 
----
-
-## 8. Связь с другими документами
-
-· WER 2.0 и HPQC: Stealth_and_C2.md
-· Аппаратная привязка (PUF): Hardware_Independence_HAEL.md
-· Критерии сингулярности: Singularity_Criteria.md
-· Безопасность: Operational_Security_IART.md
+WER 2.0 and HPQC: Stealth_and_C2.md
+Hardware binding (PUF): Hardware_Independence_HAEL.md
+Singularity criteria: Singularity_Criteria.md
+Security: Operational_Security_IART.md

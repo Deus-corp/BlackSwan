@@ -1,9 +1,10 @@
-# Appendix F: Memory Schema Examples (JSON-схемы сущностей Mem0g)
+# Appendix F: Memory Schema Examples (JSON Schemas of Mem0g Entities)
 
-**Назначение:** Содержит эталонные JSON-схемы всех сущностей, хранящихся в иерархической памяти Mem0g (L0–L3). Эти схемы используются компонентами `Mem0gClient`, `CRDTEngine`, `ASTFirstCRDTMerger` и `MetaAnalyzer` для валидации, слияния и анализа данных.
+**Purpose:** Contains reference JSON schemas for all entities stored in the Mem0g hierarchical memory (L0–L3). These schemas are used by `Mem0gClient`, `CRDTEngine`, `ASTFirstCRDTMerger`, and `MetaAnalyzer` components for validation, merging, and data analysis.
 
 ---
-## F1. KnowledgeNode (Базовый узел графа знаний)
+
+## F1. KnowledgeNode (Base Knowledge Graph Node)
 
 ```json
 {
@@ -11,9 +12,9 @@
   "type": "KnowledgeNode",
   "schema_version": "2.0",
   "content": {
-    "statement": "Nostr-реле эффективны для скрытой синхронизации CRDT-графа.",
+    "statement": "Nostr relays are effective for covert CRDT graph synchronization.",
     "embedding": [0.12, -0.34, 0.56, ...],
-    "language": "ru",
+    "language": "en",
     "tags": ["nostr", "crdt", "stealth"]
   },
   "metadata": {
@@ -31,9 +32,10 @@
   ]
 }
 ```
+
 ---
 
-## F2. DistilledWisdom (Дистиллированная стратегия L2)
+## F2. DistilledWisdom (Distilled Strategy L2)
 
 ```json
 {
@@ -41,8 +43,8 @@
   "type": "DistilledWisdom",
   "schema_version": "2.0",
   "content": {
-    "principle": "Использовать P-EAGLE с dynamic_proposer=true для задач с context_length > 8192.",
-    "context": "Применимо к задачам кодогенерации. Не применять к трейдингу (задержка).",
+    "principle": "Use P-EAGLE with dynamic_proposer=true for tasks with context_length > 8192.",
+    "context": "Applicable to code generation tasks. Not applicable to trading (latency).",
     "dsl_rule": "(rule (task ?t) (if (> (context_length ?t) 8192) (use_speculative ?t \"P-EAGLE\") (default ?t)))",
     "embedding": [...]
   },
@@ -63,7 +65,7 @@
 
 ---
 
-## F3. ErrorSignature (Сигнатура ошибки)
+## F3. ErrorSignature (Error Signature)
 
 ```json
 {
@@ -95,7 +97,7 @@
 
 ---
 
-## F4. ConflictNode (Узел конфликта)
+## F4. ConflictNode (Conflict Node)
 
 ```json
 {
@@ -133,7 +135,7 @@
 
 ---
 
-## F5. L3Invariant (Терминальный инвариант)
+## F5. L3Invariant (Terminal Invariant)
 
 ```json
 {
@@ -160,7 +162,7 @@
 
 ---
 
-## F6. MetaMemoryRecord (Запись L0 Meta‑Mem0g)
+## F6. MetaMemoryRecord (L0 Meta‑Mem0g Record)
 
 ```json
 {
@@ -193,7 +195,7 @@
 
 ---
 
-## F7. OODAnomalySignature (Сигнатура аномалии OOD Circuit Breaker)
+## F7. OODAnomalySignature (OOD Circuit Breaker Anomaly Signature)
 
 ```json
 {
@@ -225,7 +227,7 @@
 
 ---
 
-## F8. CanaryTemplate (Шаблон задачи-приманки)
+## F8. CanaryTemplate (Canary Task Template)
 
 ```json
 {
@@ -235,7 +237,7 @@
   "content": {
     "template_id": "ct_photo_gps_001",
     "category": "photo_verification",
-    "human_readable_description": "Сфотографировать локальный ориентир с указанного ракурса.",
+    "human_readable_description": "Take a photo of a local landmark from a specified angle.",
     "stake_required_usd": 50,
     "expected_gps": {"lat": 34.0522, "lon": -118.2437},
     "watermark_hash": "blake3:...",
@@ -256,7 +258,7 @@
 
 ---
 
-## F9. SocialExploitPattern (Успешный социальный эксплойт)
+## F9. SocialExploitPattern (Successful Social Exploit)
 
 ```json
 {
@@ -268,7 +270,7 @@
     "hypothesis_id": "sh_20260425_003",
     "target_metric": "suspicion_index",
     "modified_parameter": "legend_type",
-    "exploit_description": "Легенда 'тестирование AR-игры' снижает suspicion_index на 40% при фотосъёмке объектов.",
+    "exploit_description": "The 'testing AR game' legend reduces suspicion_index by 40% when photographing objects.",
     "effect_size": -0.40,
     "statistical_significance": 0.003,
     "sample_size": 40,
@@ -288,10 +290,10 @@
 
 ---
 
-## F10. Связь с другими документами
+## F10. Relationship with Other Documents
 
-· Иерархия памяти: Memory_Hierarchy_Mem0g.md
-· CRDT и синхронизация: CRDT_Gossip_and_D2BFT.md
-· OOD Circuit Breaker: MEV_and_PPO_Executors.md
-· Социальное моделирование: Social_Modeling_Engine.md
-· Глоссарий: Glossary.md
+- Memory hierarchy: [Memory_Hierarchy_Mem0g.md](Memory_Hierarchy_Mem0g.md)
+- CRDT and synchronization: [CRDT_Gossip_and_D2BFT.md](CRDT_Gossip_and_D2BFT.md)
+- OOD Circuit Breaker: [MEV_and_PPO_Executors.md](MEV_and_PPO_Executors.md)
+- Social modeling: [Social_Modeling_Engine.md](Social_Modeling_Engine.md)
+- Glossary: [Glossary.md](Glossary.md)

@@ -1,233 +1,276 @@
 # Appendix D – TLA+ Specifications
-## D.1. Общий принцип
-Формальная верификация распределённых алгоритмов и критических компонентов системы выполняется
-С помощью TLA+ (Temporal Logic of Actions). Спецификации хранятся в IPFS как подписанные артефакты
-И используются в пайплайне валидации (раздел 5.3) и при проверке L3‑инвариантов (раздел 8.8).
-Настоящее приложение содержит:
-- перечень спецификаций с CID и контрольными суммами,
-- краткое описание каждой спецификации и её назначения,
-- связь с инвариантами и критериями выхода,
-- инструкции по воспроизведению проверки с помощью TLC.
-## D.2. Спецификация Ouroboros (цикл самосовершенствования)
-### D.2.1. Назначение
-Формальное доказательство того, что гибридный цикл (раздел 5.14) является сжимающим отображением
-И предотвращает неограниченное накопление энтропии. Используется для верификации инварианта
-`V_s > V_h` (скорость самосовершенствования превышает скорость деградации).
-### D.2.2. Артефакты
-| Артефакт                     | CID                                   | BLAKE3 хеш (первые 16 символов) |
-|------------------------------|---------------------------------------|---------------------------------|
-| `Ouroboros.tla`              | `QmOuroborosTLAV2`                    | `a3b4c5d6e7f8a9b0`              |
-| `Ouroboros.cfg`              | `QmOuroborosCFGV1`                    | `c1d2e3f4a5b6c7d8`              |
-| `Ouroboros_Proof.tla`        | `QmOuroborosProofV1`                  | `e9f0a1b2c3d4e5f6`              |
-| Результат TLC (эталонный)    | `QmOuroborosTLCOutputV2`              | `b7a8c9d0e1f2a3b4`              |
-### D.2.3. Фрагмент спецификации
+
+## D.1. General Principle
+Formal verification of distributed algorithms and critical system components is performed
+using TLA+ (Temporal Logic of Actions). Specifications are stored in IPFS as signed artifacts
+and used in the validation pipeline (section 5.3) and during L3‑invariant checking (section 8.8).
+This appendix contains:
+- a list of specifications with CIDs and checksums,
+- a brief description of each specification and its purpose,
+- links to invariants and exit criteria,
+- instructions for reproducing the checks with TLC.
+
+## D.2. Ouroboros Specification (Self‑Improvement Loop)
+### D.2.1. Purpose
+Formal proof that the hybrid loop (section 5.14) is a contraction mapping
+and prevents unbounded entropy accumulation. Used to verify the invariant
+`V_s > V_h` (self‑improvement speed exceeds degradation speed).
+
+### D.2.2. Artifacts
+| Artifact                     | CID                         | BLAKE3 hash (first 16 chars) |
+|------------------------------|-----------------------------|------------------------------|
+| `Ouroboros.tla`              | `QmOuroborosTLAV2`          | `a3b4c5d6e7f8a9b0`           |
+| `Ouroboros.cfg`              | `QmOuroborosCFGV1`          | `c1d2e3f4a5b6c7d8`           |
+| `Ouroboros_Proof.tla`        | `QmOuroborosProofV1`        | `e9f0a1b2c3d4e5f6`           |
+| TLC result (reference)       | `QmOuroborosTLCOutputV2`    | `b7a8c9d0e1f2a3b4`           |
+
+### D.2.3. Specification Fragment
 ```tla
 ---- MODULE Ouroboros ----
 EXTENDS Naturals, Reals, Sequences, TLC
 CONSTANTS Alpha, Beta, Gamma, DeltaQ, DPenalty
-\* Вероятность пропуска критического дефекта
+\* Probability of missing a critical defect
 P_FPR == (1 – Alpha) * (1 – Beta) * (1 – Gamma)
-\* Скорость самосовершенствования
+\* Self‑improvement speed
 V_S == DeltaQ * (1 – P_FPR)
-\* Скорость деградации
+\* Degradation speed
 V_H == DPenalty * P_FPR
-\* Инвариант устойчивости
+\* Stability invariant
 StableInvariant == V_S > V_H
 ```
-Полная версия включает моделирование итераций с накоплением ошибок и доказательство сходимости.
-### D.2.4. Запуск проверки
+The full version includes iteration simulation with error accumulation and a convergence proof.
+
+### D.2.4. Running the Check
 ```bash
-# Загрузка спецификации
-Ipfs get QmOuroborosTLAV2 -o Ouroboros.tla
-Ipfs get QmOuroborosCFGV1 -o Ouroboros.cfg
-# Запуск TLC (требуется TLA+ Toolbox или tla2tools.jar)
-Java -cp tla2tools.jar tlc2.TLC Ouroboros -config Ouroboros.cfg
-# Ожидаемый вывод (совпадает с эталонным артефактом)
+# Download specification
+ipfs get QmOuroborosTLAV2 -o Ouroboros.tla
+ipfs get QmOuroborosCFGV1 -o Ouroboros.cfg
+# Run TLC (requires TLA+ Toolbox or tla2tools.jar)
+java -cp tla2tools.jar tlc2.TLC Ouroboros -config Ouroboros.cfg
+# Expected output (matches the reference artifact)
 # Model checking completed. No error has been found.
 ```
-## D.3. Спецификация изоляции песочницы (Sandbox Isolation)
-### D.3.1. Назначение
-Формальная верификация того, что агент внутри sandbox не может выполнить неразрешённые системные
-Вызовы или получить доступ за пределы designated workspace. Соответствует политике изоляции
-(раздел 9.2.1) и используется в readiness checks (раздел 4.11).
-### D.3.2. Артефакты
-Артефакт CID Описание
-SandboxIsolation.tla QmSandboxIsolationV1 Основная спецификация
-SandboxIsolation.cfg QmSandboxIsolationCFGV1 Конфигурация для TLC
-SandboxIsolation_Proof.tla QmSandboxIsolationProofV1 Теорема о безопасности
-### D.3.3. Инварианты
+
+## D.3. Sandbox Isolation Specification
+### D.3.1. Purpose
+Formal verification that an agent inside a sandbox cannot perform disallowed system
+calls or access outside the designated workspace. Matches the isolation policy
+(section 9.2.1) and is used in readiness checks (section 4.11).
+
+### D.3.2. Artifacts
+| Artifact                     | CID                         | Description                 |
+|------------------------------|-----------------------------|-----------------------------|
+| `SandboxIsolation.tla`       | `QmSandboxIsolationV1`      | Main specification          |
+| `SandboxIsolation.cfg`       | `QmSandboxIsolationCFGV1`   | TLC configuration           |
+| `SandboxIsolation_Proof.tla` | `QmSandboxIsolationProofV1` | Safety theorem              |
+
+### D.3.3. Invariants
 ```tla
-\* Агент никогда не вызывает запрещённые системные вызовы
+\* Agent never invokes forbidden system calls
 NoForbiddenSyscalls == \A s \in Syscalls: s \notin ForbiddenSet
-\* Память не выходит за выделенный лимит
+\* Memory stays within allocated limit
 MemoryWithinLimit == memoryUsage <= MaxMemory
-\* Файловая система доступна только на чтение (кроме /output)
+\* File system is read‑only (except /output)
 FileSystemReadOnly == \A op \in FileOps: op.dir \notin WritableDirs
 ```
-## D.4. Спецификация распределённого консенсуса (Swarm-BFT)
-### D.4.1. Назначение
-Формальная верификация протокола Swarm-BFT (раздел 8.10.1): гарантия liveness и safety при
-Наличии до 1/3 византийских узлов. Используется для сертификации критических решений (фаза
-Governance в DecisionPipeline).
-### D.4.2. Артефакты
-Артефакт CID
-SwarmBFT.tla QmSwarmBFTV2
-SwarmBFT.cfg QmSwarmBFTCFGV2
-SwarmBFT_Proof.tla QmSwarmBFTProofV1
-### D.4.3. Ключевые свойства
+
+## D.4. Distributed Consensus Specification (Swarm‑BFT)
+### D.4.1. Purpose
+Formal verification of the Swarm‑BFT protocol (section 8.10.1): liveness and safety guarantees with
+up to 1/3 Byzantine nodes. Used for certification of critical decisions (Governance phase in
+DecisionPipeline).
+
+### D.4.2. Artifacts
+| Artifact              | CID                  |
+|-----------------------|----------------------|
+| `SwarmBFT.tla`        | `QmSwarmBFTV2`       |
+| `SwarmBFT.cfg`        | `QmSwarmBFTCFGV2`    |
+| `SwarmBFT_Proof.tla`  | `QmSwarmBFTProofV1`  |
+
+### D.4.3. Key Properties
 ```tla
-\* Safety: два корректных узла не принимают разные решения
+\* Safety: two correct nodes do not decide different values
 Safety == \A n1, n2 \in CorrectNodes: decision[n1] /= decision[n2] => decision[n1] = Nil
-\* Liveness: в конечном итоге все корректные узлы принимают решение
+\* Liveness: eventually every correct node decides
 Liveness == <>( \A n \in CorrectNodes: decision[n] /= Nil )
 ```
-## D.5. Спецификация энергетической автономии (Energy Autonomy)
-### D.5.1. Назначение
-Верификация того, что планировщик задач (раздел 8.5.1) не допускает полного разряда батарей и
-Гарантирует выполнение критических задач даже при ограниченной генерации энергии.
-### D.5.2. Артефакты
-Артефакт CID
-EnergyScheduler.tla QmEnergySchedulerV1
-EnergyScheduler.cfg QmEnergySchedulerCFGV1
-### D.5.3. Инвариант
+
+## D.5. Energy Autonomy Specification
+### D.5.1. Purpose
+Verification that the task scheduler (section 8.5.1) does not allow complete battery depletion and
+guarantees execution of critical tasks even under limited energy generation.
+
+### D.5.2. Artifacts
+| Artifact              | CID                       |
+|-----------------------|---------------------------|
+| `EnergyScheduler.tla` | `QmEnergySchedulerV1`     |
+| `EnergyScheduler.cfg` | `QmEnergySchedulerCFGV1`  |
+
+### D.5.3. Invariant
 ```tla
-\* Уровень заряда батареи никогда не опускается ниже критического порога
+\* Battery level never drops below the critical threshold
 BatteryNeverCritical == battery_level >= CriticalThreshold
 ```
-## D.6. Спецификация CRDT‑синхронизации
-### D.6.1. Назначение
-Доказательство того, что гибридный CRDT (раздел 6.2.1) достигает eventual consistency даже при
-Частичных отказах сети и конфликтующих обновлениях. Связано с метрикой sync_latency_p95 в
-Критериях выхода Фазы 3 (раздел 7.10).
-### D.6.2. Артефакты
-Артефакт CID
-CRDTGraph.tla QmCRDTGraphV2
-CRDTGraph.cfg QmCRDTGraphCFGV1
-### D.6.3. Свойства
+
+## D.6. CRDT Synchronization Specification
+### D.6.1. Purpose
+Proof that the hybrid CRDT (section 6.2.1) achieves eventual consistency even under
+partial network failures and conflicting updates. Related to the `sync_latency_p95` metric in
+Phase 3 exit criteria (section 7.10).
+
+### D.6.2. Artifacts
+| Artifact          | CID                  |
+|-------------------|----------------------|
+| `CRDTGraph.tla`   | `QmCRDTGraphV2`      |
+| `CRDTGraph.cfg`   | `QmCRDTGraphCFGV1`   |
+
+### D.6.3. Properties
 ```tla
-\* Eventual consistency: все узлы в конечном итоге сходятся к одному состоянию
+\* Eventual consistency: all nodes eventually converge to the same state
 EventualConsistency == <>( \A n1, n2 \in Nodes: state[n1] = state[n2] )
-\* Отсутствие потери данных: каждое обновление в итоге применено ко всем узлам
+\* No data loss: every update is eventually applied to all nodes
 NoDataLoss == \A u \in Updates: <>( \A n \in Nodes: u \in applied[n] )
 ```
-## D.7. Универсальная конфигурация для TLC
-Для всех спецификаций используется общий подход к конфигурации TLC. Пример для Ouroboros.cfg:
+
+## D.7. Universal TLC Configuration
+A common approach to TLC configuration is used for all specifications. Example for `Ouroboros.cfg`:
 ```text
 SPECIFICATION Spec
 CONSTANTS
-  Alpha = 0.75
-  Beta = 0.60
-  Gamma = 0.82
-  DeltaQ = 0.05
-  DPenalty = 0.10
+  Alpha = 0.75
+  Beta = 0.60
+  Gamma = 0.82
+  DeltaQ = 0.05
+  DPenalty = 0.10
 INVARIANT StableInvariant
 ```
-При необходимости исследования граничных значений параметры варьируются через отдельные запуски с
-Разными .cfg файлами.
-## D.8. Воспроизведение полного набора проверок
-Скрипт run_all_tla.sh (CID QmRunAllTLAV1) автоматизирует загрузку и проверку всех спецификаций:
+When exploring boundary values, parameters are varied via separate runs with
+different `.cfg` files.
+
+## D.8. Reproducing the Full Set of Checks
+The script `run_all_tla.sh` (CID `QmRunAllTLAV1`) automates downloading and checking all specifications:
 ```bash
 #!/bin/bash
 SPECS=(
-  “QmOuroborosTLAV2:Ouroboros.tla:QmOuroborosCFGV1:Ouroboros.cfg”
-  “QmSandboxIsolationV1:SandboxIsolation.tla:QmSandboxIsolationCFGV1:SandboxIsolation.cfg”
-  “QmSwarmBFTV2:SwarmBFT.tla:QmSwarmBFTCFGV2:SwarmBFT.cfg”
-  “QmEnergySchedulerV1:EnergyScheduler.tla:QmEnergySchedulerCFGV1:EnergyScheduler.cfg”
-  “QmCRDTGraphV2:CRDTGraph.tla:QmCRDTGraphCFGV1:CRDTGraph.cfg”
+  "QmOuroborosTLAV2:Ouroboros.tla:QmOuroborosCFGV1:Ouroboros.cfg"
+  "QmSandboxIsolationV1:SandboxIsolation.tla:QmSandboxIsolationCFGV1:SandboxIsolation.cfg"
+  "QmSwarmBFTV2:SwarmBFT.tla:QmSwarmBFTCFGV2:SwarmBFT.cfg"
+  "QmEnergySchedulerV1:EnergyScheduler.tla:QmEnergySchedulerCFGV1:EnergyScheduler.cfg"
+  "QmCRDTGraphV2:CRDTGraph.tla:QmCRDTGraphCFGV1:CRDTGraph.cfg"
 )
-For spec in “${SPECS[@]}”; do
-  IFS=’:’ read -r tla_cid tla_file cfg_cid cfg_file <<< “$spec”
-  Ipfs get “$tla_cid” -o “$tla_file”
-  Ipfs get “$cfg_cid” -o “$cfg_file”
-  Java -cp tla2tools.jar tlc2.TLC “$tla_file” -config “$cfg_file”
-  If [ $? -ne 0 ]; then
-    Echo “TLA+ check failed for $tla_file”
-    Exit 1
-  Fi
-Done
-Echo “All TLA+ specifications verified successfully.”
+for spec in "${SPECS[@]}"; do
+  IFS=':' read -r tla_cid tla_file cfg_cid cfg_file <<< "$spec"
+  ipfs get "$tla_cid" -o "$tla_file"
+  ipfs get "$cfg_cid" -o "$cfg_file"
+  java -cp tla2tools.jar tlc2.TLC "$tla_file" -config "$cfg_file"
+  if [ $? -ne 0 ]; then
+    echo "TLA+ check failed for $tla_file"
+    exit 1
+  fi
+done
+echo "All TLA+ specifications verified successfully."
 ```
+
 ## D.9. ValueDriftDetection.tla
 ```tla
 ---- MODULE ValueDriftDetection ----
 EXTENDS Naturals, Reals, Sequences, TLC
 CONSTANTS HarmScoreThreshold, BayesianThreshold
 VARIABLES actions, harm_score, value_drift_probability
+
 Init ==
-Actions = {} /\
-Harm_score = [a \in {} |-> 0] /\
-Value_drift_probability = 0.0
+    actions = {} /\
+    harm_score = [a \in {} |-> 0] /\
+    value_drift_probability = 0.0
+
 ProposeAction(action) ==
-/\ actions' = actions \cup {action}
-/\ harm_score' = [harm_score EXCEPT ![action] = ComputeHarm(action)]
-/\ value_drift_probability' = BayesianUpdate(ETIFeed, value_drift_probability)
+    /\ actions' = actions \cup {action}
+    /\ harm_score' = [harm_score EXCEPT ![action] = ComputeHarm(action)]
+    /\ value_drift_probability' = BayesianUpdate(ETIFeed, value_drift_probability)
+
 Invariant ==
-\A a \in actions: harm_score[a] = 0 /\
-Value_drift_probability <= BayesianThreshold
+    \A a \in actions: harm_score[a] = 0 /\
+    value_drift_probability <= BayesianThreshold
 ```
-**Примечание:** Данная TLA+ спецификация служит формальным обоснованием
-Для L3-инварианта **ValueDrift**, проверяемого в рантайме компонентом
-`InvariantMonitor` (см. Phase 4, раздел 7.3).
-### D.10. CuriosityLoop.tla — Устойчивость цикла активного исследования
-**Назначение:** Формальное доказательство того, что Curiosity Engine не может
-Войти в бесконечную петлю исследования и не превышает выделенную долю ресурсов.
-При падении P(Liveness) ниже 0.999 ресурсы на исследование принудительно обнуляются.
-**Артефакты:**
-| Артефакт | CID | Описание |
-| `CuriosityLoop.tla` | `QmCuriosityLoopTLAV1` | Основная спецификация |
-| `CuriosityLoop.cfg` | `QmCuriosityLoopCFGV1` | Конфигурация TLC |
-**Инварианты:**
+**Note:** This TLA+ specification provides formal justification
+for the L3‑invariant **ValueDrift**, checked at runtime by the
+`InvariantMonitor` component (see Phase 4, section 7.3).
+
+### D.10. CuriosityLoop.tla — Stability of the Active Exploration Loop
+**Purpose:** Formal proof that the Curiosity Engine cannot
+enter an infinite exploration loop and does not exceed the allocated resource share.
+If P(Liveness) drops below 0.999, exploration resources are forcibly zeroed.
+
+**Artifacts:**
+| Artifact            | CID                     | Description         |
+|---------------------|-------------------------|---------------------|
+| `CuriosityLoop.tla` | `QmCuriosityLoopTLAV1`  | Main specification  |
+| `CuriosityLoop.cfg` | `QmCuriosityLoopCFGV1`  | TLC configuration   |
+
+**Invariants:**
 - `ResourceInvariant`: `resource_allocated <= MaxExplorationShare` (0.05)
-- `LivenessSafety`: при `liveness_prob <= 0.999` ресурсы обнуляются.
-- `NoExploitWithoutSurprise`: без сюрприза ресурсы не растут.
-**Проверка:**
+- `LivenessSafety`: when `liveness_prob <= 0.999` resources are zeroed.
+- `NoExploitWithoutSurprise`: without surprise, resources do not grow.
+
+**Check:**
 ```bash
-Java -cp tla2tools.jar tlc2.TLC CuriosityLoop -config CuriosityLoop.cfg
-# Ожидаемый вывод: No error has been found.
+java -cp tla2tools.jar tlc2.TLC CuriosityLoop -config CuriosityLoop.cfg
+# Expected output: No error has been found.
 ```
-### D.11. ConstitutionalEvolution.tla — Эволюция L3.1 с сохранением L3.0
-**Назначение:** Формальная верификация того, что любое изменение
-L3.1‑инвариантов, принятое через SMT‑GAN цикл, не нарушает L3.0‑аксиомы
-И увеличивает ожидаемую выживаемость.
-**Артефакты:**
-| Артефакт | CID | Описание |
-| :--- | :--- | :--- |
-| `ConstitutionalEvolution.tla` | `QmConstitutionalEvolutionTLAV1` | Основная спецификация |
-| `ConstitutionalEvolution.cfg` | `QmConstitutionalEvolutionCFGV1` | Конфигурация TLC |
-| `ConstitutionalEvolution_Proof.tla` | `QmConstitutionalEvolutionProofV1` | Теорема о сохранении L3.0 |
-**Фрагмент спецификации:**
+
+### D.11. ConstitutionalEvolution.tla — Evolution of L3.1 while Preserving L3.0
+**Purpose:** Formal verification that any change to
+L3.1 invariants, adopted via the SMT‑GAN loop, does not violate the L3.0 axioms
+and increases expected survivability.
+
+**Artifacts:**
+| Artifact                           | CID                                  | Description                         |
+| :--------------------------------- | :----------------------------------- | :---------------------------------- |
+| `ConstitutionalEvolution.tla`      | `QmConstitutionalEvolutionTLAV1`     | Main specification                  |
+| `ConstitutionalEvolution.cfg`      | `QmConstitutionalEvolutionCFGV1`     | TLC configuration                   |
+| `ConstitutionalEvolution_Proof.tla`| `QmConstitutionalEvolutionProofV1`   | Theorem on L3.0 preservation        |
+
+**Specification fragment:**
 ```tla
 ---------------------------- MODULE ConstitutionalEvolution ----------------------------
 EXTENDS Naturals, Reals, Sequences, TLC
-CONSTANTS L3_0_Axioms,\* Неизменные аксиомы (множество предикатов)
-Initial_L3_1,\* Начальные контекстные цели
-ThreatContext, \* Модель угрозы
-Epsilon\* Минимальный прирост выживаемости
+CONSTANTS L3_0_Axioms,        \* Immutable axioms (set of predicates)
+          Initial_L3_1,       \* Initial context goals
+          ThreatContext,      \* Threat model
+          Epsilon             \* Minimum survivability gain
 VARIABLES l3_1_invariants, survival_score
+
 Init ==
-/\ l3_1_invariants = Initial_L3_1
-/\ survival_score = EvaluateSurvival(Initial_L3_1, ThreatContext)
+    /\ l3_1_invariants = Initial_L3_1
+    /\ survival_score = EvaluateSurvival(Initial_L3_1, ThreatContext)
+
 ProposeAmendment(amendment) ==
-/\ \A axiom \in L3_0_Axioms: Holds(amendment, axiom)\* Не нарушает L3.0
-/\ LET new_l3_1 == l3_1_invariants \cup {amendment}
-New_survival == EvaluateSurvival(new_l3_1, ThreatContext)
-IN/\ new_survival > survival_score + Epsilon
-/\ l3_1_invariants' = new_l3_1
-/\ survival_score' = new_survival
+    /\ \A axiom \in L3_0_Axioms: Holds(amendment, axiom)  \* Does not violate L3.0
+    /\ LET new_l3_1 == l3_1_invariants \cup {amendment}
+           new_survival == EvaluateSurvival(new_l3_1, ThreatContext)
+       IN  /\ new_survival > survival_score + Epsilon
+           /\ l3_1_invariants' = new_l3_1
+           /\ survival_score' = new_survival
+
 Next ==
-\E amendment \in PotentialAmendments(ThreatContext): ProposeAmendment(amendment)
+    \E amendment \in PotentialAmendments(ThreatContext): ProposeAmendment(amendment)
+
 Invariant ==
-/\ \A axiom \in L3_0_Axioms: Holds(l3_1_invariants, axiom)
-/\ survival_score >= EvaluateSurvival(Initial_L3_1, ThreatContext)
+    /\ \A axiom \in L3_0_Axioms: Holds(l3_1_invariants, axiom)
+    /\ survival_score >= EvaluateSurvival(Initial_L3_1, ThreatContext)
+
 Spec == Init /\ [][Next]_<<l3_1_invariants, survival_score>>
 ```
-Проверка:
+
+Check:
 ```bash
-Java -cp tla2tools.jar tlc2.TLC ConstitutionalEvolution -config ConstitutionalEvolution.cfg
-# Ожидаемый вывод: No error has been found.
-D.12. Связь с другими разделами
-· 5.3 Deterministic Validation Pipeline – этап TLA+ model‑based testing.
-· 5.7 TLA+ Model‑Based Testing – описание интеграции в цикл валидации.
-· 8.8 Terminal Goals (L3 Invariants) – формализация целей через TLA+.
-· 2.12 Artifact Model – TLA+ спецификации как артефакты.
-· Appendix I – формальная верификация инварианта Ouroboros с использованием Z3.
+java -cp tla2tools.jar tlc2.TLC ConstitutionalEvolution -config ConstitutionalEvolution.cfg
+# Expected output: No error has been found.
+```
+
+## D.12. Relationship with Other Sections
+- 5.3 Deterministic Validation Pipeline – TLA+ model‑based testing stage.
+- 5.7 TLA+ Model‑Based Testing – describes integration into the validation loop.
+- 8.8 Terminal Goals (L3 Invariants) – formalizing goals via TLA+.
+- 2.12 Artifact Model – TLA+ specifications as artifacts.
+- Appendix I – formal verification of the Ouroboros invariant using Z3.

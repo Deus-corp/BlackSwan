@@ -1,44 +1,44 @@
-# Appendix G – Машиночитаемый глоссарий (glossary.yaml)
+# Appendix G – Machine-Readable Glossary (glossary.yaml)
 
-**Назначение:** Предоставить глоссарий в формате YAML для автоматической обработки, генерации документации и валидации ссылок. Человекочитаемая версия – в [docs/glossary.md](Glossary.md).
+**Purpose:** Provide a glossary in YAML format for automated processing, documentation generation, and link validation. The human-readable version is in [docs/glossary.md](Glossary.md).
 
 ---
 
-## Актуальный артефакт
+## Current Artifact
 
-| Поле | Значение |
-| :--- | :--- |
-| **CID (IPFS)** | `QmGlossaryV4` (будет обновлён после объединения) |
-| **BLAKE3 хеш** | `a9b8c7d6...` |
-| **Имя файла** | `glossary.yaml` |
-| **Версия схемы** | `3.1` |
-| **Дата генерации** | 2026-04-26 |
-| **Подпись** | `ed25519:...` |
+| Field              | Value                                                     |
+| :----------------- | :-------------------------------------------------------- |
+| **CID (IPFS)**     | `QmGlossaryV4` (will be updated after merging)            |
+| **BLAKE3 hash**    | `a9b8c7d6...`                                             |
+| **File name**      | `glossary.yaml`                                           |
+| **Schema version** | `3.1`                                                     |
+| **Generation date**| 2026-04-26                                                |
+| **Signature**      | `ed25519:...`                                             |
 
-Загрузка:
+Download:
 ```bash
 ipfs get QmGlossaryV4 -o glossary.yaml
 ```
 
 ---
 
-## Структура YAML
+## YAML Structure
 
-Файл содержит массив записей. Каждая запись – объект с полями:
+The file contains an array of entries. Each entry is an object with fields:
 
-· term: string – название термина.
-· definition: string – определение.
-· category: string – одна из категорий глоссария (см. ниже).
-· introduced_in: string – в каком документе/разделе впервые определён.
-· related_terms: list[string] – связанные термины.
-· aliases: list[string] – альтернативные названия.
-· source_files: list[string] – пути к файлам исходного кода, где используется.
+- `term`: string – the term name.
+- `definition`: string – the definition.
+- `category`: string – one of the glossary categories (see below).
+- `introduced_in`: string – the document/section where it was first defined.
+- `related_terms`: list[string] – related terms.
+- `aliases`: list[string] – alternative names.
+- `source_files`: list[string] – paths to source code files where it is used.
 
-Пример:
+Example:
 
 ```yaml
 - term: "AWQ"
-  definition: "Activation-aware Weight Quantization – метод квантизации LLM, сохраняющий точность благодаря учёту распределения активаций."
+  definition: "Activation-aware Weight Quantization – an LLM quantization method that preserves accuracy by considering activation distributions."
   category: "Quantization"
   introduced_in: "Hardware_Isolation.md"
   related_terms: ["GPTQ", "GGUF"]
@@ -48,29 +48,29 @@ ipfs get QmGlossaryV4 -o glossary.yaml
 
 ---
 
-## Категории
+## Categories
 
-Список допустимых категорий (соответствует разделам человекочитаемого глоссария):
+List of allowed categories (corresponds to sections of the human-readable glossary):
 
-· System & Architecture
-· Memory & Knowledge
-· Economics & Finance
-· Security & Stealth
-· Verification & Evolution
-· Motivation & Social
-· Species
-· Phases & States
-· Hardware
-· Distributed Systems
-· Metrics & Criteria
+- System & Architecture
+- Memory & Knowledge
+- Economics & Finance
+- Security & Stealth
+- Verification & Evolution
+- Motivation & Social
+- Species
+- Phases & States
+- Hardware
+- Distributed Systems
+- Metrics & Criteria
 
 ---
 
-## Автоматическая генерация
+## Automatic Generation
 
-Извлечение из исходного кода
+### Extraction from Source Code
 
-Глоссарий может пополняться аннотациями в комментариях Rust/Python:
+The glossary can be populated from annotations in Rust/Python comments:
 
 ```
 /// TERM: CRDT
@@ -79,34 +79,35 @@ ipfs get QmGlossaryV4 -o glossary.yaml
 /// INTRODUCED_IN: CRDT_Gossip_and_D2BFT.md
 ```
 
-Скрипт extract_glossary.py (доступен как артефакт QmExtractGlossaryV2):
+Script `extract_glossary.py` (available as artifact `QmExtractGlossaryV2`):
 
 ```bash
 ipfs get QmExtractGlossaryV2 -o extract_glossary.py
 python extract_glossary.py --repo ~/BlackSwan --output glossary.yaml
 ```
 
-Скрипт собирает аннотации, сливает с базовым glossary.yaml и генерирует обновлённый файл.
+The script collects annotations, merges them with the base `glossary.yaml`, and generates an updated file.
 
-## Валидация
+## Validation
 
-Перед публикацией проверяется:
+Before publication, the following is checked:
 
-· Отсутствие дубликатов.
-· Соответствие схеме glossary.schema.json (CID QmGlossarySchemaV1).
-· Наличие всех терминов, упомянутых в документации (через перекрёстный анализ ссылок).
-
----
-
-## Интеграция с документацией
-
-· Человекочитаемый глоссарий: 00_Manifesto/Glossary.md – основное место для чтения.
-· Проверка целостности: CI может сверять glossary.yaml с определениями в манифесте.
+- No duplicates.
+- Compliance with the `glossary.schema.json` schema (CID `QmGlossarySchemaV1`).
+- Presence of all terms mentioned in the documentation (via cross-reference link analysis).
 
 ---
 
-## История изменений
+## Integration with Documentation
 
-Версия Дата Изменения
-V3 2026-04-20 Полная переработка, генерация из кода
-V4 2026-04-26 Объединение с манифестным глоссарием; единый источник истины
+- Human-readable glossary: `00_Manifesto/Glossary.md` – the primary reading location.
+- Integrity check: CI can compare `glossary.yaml` with definitions in the manifest.
+
+---
+
+## Change History
+
+| Version | Date       | Changes                                                      |
+| :------ | :--------- | :----------------------------------------------------------- |
+| V3      | 2026-04-20 | Complete rework, generation from code                        |
+| V4      | 2026-04-26 | Merged with manifest glossary; single source of truth        |

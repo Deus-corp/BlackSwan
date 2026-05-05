@@ -1,29 +1,29 @@
 # Appendix Q: Cross-Platform Toolchain & Hardware-Rooted Entanglement
 
-**Назначение:** Описать инструментарий, обеспечивающий гетерогенность роя на уровне операционных систем и аппаратных архитектур, а также механизм аппаратной привязки Core DNA с использованием Physical Unclonable Functions (PUF). Детали реализации кросс-компиляции, профилей персистентности под Windows/macOS/Linux и код PUF-провайдера вынесены в данный Appendix.
+**Purpose:** Describe the tooling that ensures swarm heterogeneity at the operating system and hardware architecture level, as well as the hardware‑binding mechanism for Core DNA using Physical Unclonable Functions (PUFs). Implementation details for cross‑compilation, persistence profiles for Windows/macOS/Linux, and the PUF provider code are provided in this Appendix.
 
 ---
 
-## Q.1. Актуальный артефакт
+## Q.1. Current Artifact
 
-| Поле | Значение |
+| Field | Value |
 | :--- | :--- |
 | **CID (IPFS)** | `QmCrossPlatformToolingV1` |
-| **BLAKE3 хеш** | `e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0` |
-| **Имя файла** | `cross_platform_manifest.json` |
-| **Версия** | 1.0 |
-| **Дата** | 2026-04-20T12:00:00Z |
+| **BLAKE3 hash** | `e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0` |
+| **File name** | `cross_platform_manifest.json` |
+| **Version** | 1.0 |
+| **Date** | 2026-04-20T12:00:00Z |
 
 ---
 
-## Q.2. Стек сборки (Reproducible Multi‑OS Build)
+## Q.2. Build Stack (Reproducible Multi‑OS Build)
 
-Для обеспечения «биологического разнообразия» роя и защиты от платформенных уязвимостей используется унифицированный сборочный стек, позволяющий компилировать компоненты под различные целевые платформы из единого Linux-окружения.
+To ensure “biological diversity” of the swarm and protection against platform‑specific vulnerabilities, a unified build stack is used that allows compiling components for various target platforms from a single Linux environment.
 
-- **Zig CC** — кросс-компилятор для C/C++ зависимостей. Позволяет собирать нативный код под Windows (MSVC) и macOS (Mach-O) без необходимости в целевых SDK.
-- **Cargo-zigbuild** — расширение для Cargo, использующее Zig в качестве линкера. Обеспечивает сборку Rust-компонентов (системные демоны, утилиты) под все поддерживаемые ОС.
+- **Zig CC** — a cross‑compiler for C/C++ dependencies. Allows building native code for Windows (MSVC) and macOS (Mach‑O) without the need for target SDKs.
+- **Cargo-zigbuild** — a Cargo extension that uses Zig as a linker. Enables building Rust components (system daemons, utilities) for all supported operating systems.
 
-Конфигурация вызова:
+Invocation configuration:
 ```bash
 cargo zigbuild --release --target x86_64-pc-windows-msvc
 cargo zigbuild --release --target aarch64-apple-darwin
@@ -33,24 +33,24 @@ cargo zigbuild --release --target aarch64-apple-darwin
 
 ## Q.3. Polymorphic OS Presence
 
-Для маскировки под нативные процессы каждой ОС используются специфичные техники закрепления и обфускации. Детали реализации приведены в доменном модуле Hardware_Independence_HAEL.md (раздел 3).
+To masquerade as native processes of each OS, specific persistence and obfuscation techniques are used. Implementation details are provided in the domain module Hardware_Independence_HAEL.md (section 3).
 
-· Windows Persistence: регистрация как критической службы (SCM), техники Process Ghosting и Herpaderping, маскировка под svchost.exe.
-· macOS Persistence: использование launchd, System Extensions, подпись Mach-O синтетическими сертификатами из Persona Farm.
-· Linux Persistence: systemd-сервисы, маскировка под легитимных демонов (например, systemd-journald).
+- **Windows Persistence:** registration as a critical service (SCM), Process Ghosting and Herpaderping techniques, masquerading as svchost.exe.
+- **macOS Persistence:** use of launchd, System Extensions, signing Mach‑O with synthetic certificates from the Persona Farm.
+- **Linux Persistence:** systemd services, masquerading as legitimate daemons (e.g., systemd-journald).
 
 ---
 
-## Q.4. Библиотека hardware_lock.rs (PUF Provider)
+## Q.4. `hardware_lock.rs` Library (PUF Provider)
 
-Ключевой компонент, реализующий аппаратную привязку Core DNA. Извлекает энтропию из физических характеристик кремния и использует её для генерации ключа дешифровки.
+A key component that implements hardware‑binding of Core DNA. It extracts entropy from the physical characteristics of the silicon and uses it to generate the decryption key.
 
 ```rust
 // security/src/puf_provider.rs
 pub struct HardwareLock;
 
 impl HardwareLock {
-    /// Генерирует уникальный seed на основе физических дефектов кремния
+    /// Generates a unique seed based on physical silicon defects
     pub fn get_puf_seed() -> [u8; 32] {
         #[cfg(target_arch = "x86_64")]
         {
@@ -58,10 +58,10 @@ impl HardwareLock {
             let cpu_id = get_cpuid_leaf();
             combine_to_seed(entropy, cpu_id)
         }
-        // Аналогичные реализации для ARM, Apple Silicon и т.д.
+        // Analogous implementations for ARM, Apple Silicon, etc.
     }
 
-    /// Расшифровывает Core DNA с использованием PUF-энтропии и доли Шамира
+    /// Decrypts Core DNA using PUF entropy and a Shamir share
     pub fn decrypt_core_dna(
         encrypted_data: Vec<u8>,
         shamir_share: [u8; 32],
@@ -73,13 +73,13 @@ impl HardwareLock {
 }
 ```
 
-Полный исходный код PUF-провайдера включён в workspace QmCoreToolsWorkspaceV2 (крейт security). Процедура регистрации PUF при первом холодном старте описана в Hardware_Isolation.md.
+The full source code of the PUF provider is included in the `QmCoreToolsWorkspaceV2` workspace (crate `security`). The procedure for PUF enrollment during the first cold start is described in Hardware_Isolation.md.
 
 ---
 
-## Q.5. Связь с другими разделами
+## Q.5. Relationship with Other Sections
 
-· Polymorphic OS Presence: Hardware_Independence_HAEL.md
-· Hardware-Rooted Entanglement (Spore 2.0): Spore_Protocol_and_Recovery.md
-· Tooling for AST Integrity and TDE: Appendix_O_Tooling_AST_Integrity.md (по готовности)
-· Глоссарий: Glossary.md
+- Polymorphic OS Presence: [Hardware_Independence_HAEL.md](Hardware_Independence_HAEL.md)
+- Hardware‑Rooted Entanglement (Spore 2.0): [Spore_Protocol_and_Recovery.md](Spore_Protocol_and_Recovery.md)
+- Tooling for AST Integrity and TDE: [Appendix_O_Tooling_AST_Integrity.md](Appendix_O_Tooling_AST_Integrity.md) (when ready)
+- Glossary: [Glossary.md](Glossary.md)

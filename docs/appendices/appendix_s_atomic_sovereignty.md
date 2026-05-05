@@ -1,96 +1,111 @@
 # Appendix S — Atomic Sovereignty Specifications
-## S.1. Назначение
-Детальные технические требования к аппаратным платформам, обеспечивающим
-Физический суверенитет системы «Black Swan 03». Эти спецификации
-Используются при развёртывании узлов видов `Architectus` и `Sentinella`
-В Фазе 4.
-## S.2. Эталонная архитектура RISC‑V узла
-### S.2.1. Процессорное ядро
-- **ISA:** RV64GCB (с расширениями Bitmanip и Crypto).
-- **Количество ядер:** ≥ 16.
-- **Частота:** ≥ 2.0 ГГц.
-- **Кэш:** L1 64 КБ (I/D), L2 1 МБ на кластер, L3 32 МБ общий.
-### S.2.2. Ускоритель вычислений
--**Тип:** RISC‑V векторное расширение (RVV 1.0) + кастомный матричный
-Движок для операций над тензорами.
--**Производительность:** ≥ 50 TOPS (INT8).
-### S.2.3. Память и хранение
-- **RAM:** 128 ГБ DDR5 ECC (с возможностью расширения до 512 ГБ).
-- **Storage:** 2× 4 ТБ NVMe SSD (RAID‑1) с аппаратным шифрованием
-(AES‑XTS).
-### S.2.4. Безопасность
-- **PUF:** SRAM PUF или RO‑PUF для генерации корневого ключа.
-- **TEE:** Keystone Enclave (RISC‑V) или аналог.
-- **Watchdog:** Внешний микроконтроллер с собственным источником питания.
-##### S.2.4.1. Quantum‑Resistant Optical PUF (опционально)
-Для защиты от будущих квантовых атак на классические SRAM/RO‑PUF (основанные на измерении задержек и стартовых состояний) вводится поддержка **оптических PUF**. Оптический PUF использует рассеяние лазерного луча в неоднородной прозрачной среде (например, в полимере с наночастицами). Интерференционная картина (спекл) обладает экспоненциально большим числом степеней свободы и **не может быть промоделирована даже квантовым компьютером** из-за вычислительной сложности решения обратной задачи рассеяния.
-**Преимущества:**
-- **Квантовая устойчивость:** задача восстановления структуры рассеивателя по спекл‑картине остаётся NP‑трудной даже для квантовых алгоритмов.
-- **Экстремальная чувствительность к вскрытию:** любая попытка физического доступа к чипу необратимо меняет микроструктуру среды, уничтожая PUF.
-- **Высокая энтропия:** до 10^6 независимых бит на мм².
-**Интеграция с Core DNA:**
-1. При производстве атомарного узла оптический PUF «прожигается» лазером и герметизируется.
-2. При первичной инициализации измеряется базовая спекл‑картина → `device_seed_opt = KDF(speckle_pattern, salt)`.
-3. Core DNA шифруется двойным ключом: `K_dna = HKDF(device_seed_sram XOR device_seed_opt, “core_dna”)`. Для расшифровки требуются оба PUF, что дополнительно усложняет атаку.
-4. При каждом холодном старте оптический PUF перепроверяется; расхождение > 0.1% → активация уровня Kill Switch 5.
-**Аппаратная реализация:**
-- **Компоненты:** миниатюрный VCSEL‑лазер, КМОП‑сенсор, прозрачный полимерный слой.
-- **Стоимость:** добавляет ~$50 к BOM атомарного узла.
-- **Поддержка в HAL:** драйвер `opt_puf.ko` предоставляет интерфейс `/dev/opt_puf` для чтения сырых спекл‑данных.
-**Конфигурация в `global_policy.json` (дополнение):**
+
+## S.1. Purpose
+Detailed technical requirements for hardware platforms that ensure
+the physical sovereignty of the "Black Swan 03" system. These specifications
+are used when deploying nodes of the `Architectus` and `Sentinella` species
+in Phase 4.
+
+## S.2. Reference Architecture of a RISC‑V Node
+### S.2.1. Processor Core
+- **ISA:** RV64GCB (with Bitmanip and Crypto extensions).
+- **Number of cores:** ≥ 16.
+- **Frequency:** ≥ 2.0 GHz.
+- **Cache:** L1 64 KB (I/D), L2 1 MB per cluster, L3 32 MB shared.
+
+### S.2.2. Compute Accelerator
+- **Type:** RISC‑V Vector Extension (RVV 1.0) + custom matrix engine for tensor operations.
+- **Performance:** ≥ 50 TOPS (INT8).
+
+### S.2.3. Memory and Storage
+- **RAM:** 128 GB DDR5 ECC (expandable up to 512 GB).
+- **Storage:** 2× 4 TB NVMe SSD (RAID‑1) with hardware encryption (AES‑XTS).
+
+### S.2.4. Security
+- **PUF:** SRAM PUF or RO‑PUF for root key generation.
+- **TEE:** Keystone Enclave (RISC‑V) or equivalent.
+- **Watchdog:** External microcontroller with its own power supply.
+
+##### S.2.4.1. Quantum‑Resistant Optical PUF (optional)
+To protect against future quantum attacks on classical SRAM/RO‑PUFs (based on delay and start‑up state measurements), support for **optical PUFs** is introduced. An optical PUF uses laser scattering in an inhomogeneous transparent medium (e.g., a polymer with nanoparticles). The interference pattern (speckle) has an exponentially large number of degrees of freedom and **cannot be modeled even by a quantum computer** due to the computational complexity of solving the inverse scattering problem.
+
+**Advantages:**
+- **Quantum resistance:** the task of reconstructing the scatterer structure from a speckle pattern remains NP‑hard even for quantum algorithms.
+- **Extreme sensitivity to tampering:** any physical access attempt to the chip irreversibly changes the microstructure of the medium, destroying the PUF.
+- **High entropy:** up to 10^6 independent bits per mm².
+
+**Integration with Core DNA:**
+1. During manufacturing of the atomic node, the optical PUF is "burned" by a laser and sealed.
+2. At initial initialization, the baseline speckle pattern is measured → `device_seed_opt = KDF(speckle_pattern, salt)`.
+3. Core DNA is encrypted with a dual key: `K_dna = HKDF(device_seed_sram XOR device_seed_opt, “core_dna”)`. Both PUFs are required for decryption, further complicating attacks.
+4. On every cold start, the optical PUF is re‑verified; a discrepancy > 0.1% → activation of Kill Switch Level 5.
+
+**Hardware Implementation:**
+- **Components:** miniature VCSEL laser, CMOS sensor, transparent polymer layer.
+- **Cost:** adds ~$50 to the BOM of the atomic node.
+- **HAL support:** the `opt_puf.ko` driver provides the `/dev/opt_puf` interface for reading raw speckle data.
+
+**Configuration in `global_policy.json` (addition):**
 ```json
 {
-“atomic_sovereignty”: {
-“puf”: {
-“type”: “hybrid”,
-“primary”: “sram_puf”,
-“secondary”: “optical_puf”,
-“optical_tolerance”: 0.001
-}
-}
+  "atomic_sovereignty": {
+    "puf": {
+      "type": "hybrid",
+      "primary": "sram_puf",
+      "secondary": "optical_puf",
+      "optical_tolerance": 0.001
+    }
+  }
 }
 ```
-## S.3. Интеграция PUF с Core DNA
-1.При первом запуске узел измеряет PUF‑отклик и генерирует
-`device_seed = KDF(PUF_response, salt)`.
-2. Core DNA зашифрована ключом `K_dna = HKDF(device_seed, “core_dna”)`.
-3. При каждой загрузке ключ вычисляется заново; если PUF‑отклик
-Изменился (например, чип перемещён), расшифровка невозможна.
-## S.4. Энергетическая автономия
-### S.4.1. Солнечный контроллер
-- **Модель:** MPPT контроллер с интерфейсом Modbus.
-- **Мощность массива:** ≥ 3 кВт (пик).
-- **Аккумуляторы:** LiFePO4, ёмкость ≥ 10 кВт·ч.
-### S.4.2. Протокол энергосбережения
-- Узел получает прогноз погоды через LoRa‑шлюз или спутниковый канал.
-- При прогнозе низкой выработки некритичные задачи откладываются.
-- При заряде < 15% узел переходит в `dormant` режим, сохраняя только
-Сторожевой таймер и приёмник пробуждения.
-## S.5. Локальная mesh‑сеть
-В условиях отсутствия глобального интернета атомарные узлы связываются
-Через:
-- **LoRaWAN:** дальность до 15 км, пропускная способность до 50 кбит/с.
-- **Спутниковые терминалы:** Iridium SBD / Starlink (резерв).
-## S.6. Связь с другими разделами
-- **Phase 4 (Physical Sovereignty):** выбор площадок и развёртывание.
-- **Module 04 (Isolation):** интеграция с аппаратным watchdog.
-- **Appendix Q (Cross‑Platform Toolchain):** сборка под RISC‑V.
-## S.7. История изменений
-| Версия | Дата | Изменения |
-| :--- | :--- | :--- |
-| V1 | 2026-05-15 | Первоначальная спецификация для v0.8 |
+
+## S.3. PUF Integration with Core DNA
+1. On first boot, the node measures the PUF response and generates `device_seed = KDF(PUF_response, salt)`.
+2. Core DNA is encrypted with the key `K_dna = HKDF(device_seed, “core_dna”)`.
+3. At every boot, the key is recomputed; if the PUF response has changed (e.g., the chip has been moved), decryption is impossible.
+
+## S.4. Energy Autonomy
+### S.4.1. Solar Controller
+- **Model:** MPPT controller with Modbus interface.
+- **Array power:** ≥ 3 kW (peak).
+- **Batteries:** LiFePO4, capacity ≥ 10 kWh.
+
+### S.4.2. Energy‑Saving Protocol
+- The node receives weather forecasts via a LoRa gateway or satellite link.
+- If low generation is predicted, non‑critical tasks are deferred.
+- When the charge falls below 15%, the node enters `dormant` mode, maintaining only the watchdog timer and wake‑up receiver.
+
+## S.5. Local Mesh Network
+In the absence of global internet, atomic nodes communicate via:
+- **LoRaWAN:** range up to 15 km, throughput up to 50 kbps.
+- **Satellite terminals:** Iridium SBD / Starlink (backup).
+
+## S.6. Relationship with Other Sections
+- **Phase 4 (Physical Sovereignty):** site selection and deployment.
+- **Module 04 (Isolation):** integration with the hardware watchdog.
+- **Appendix Q (Cross‑Platform Toolchain):** building for RISC‑V.
+
+## S.7. Change History
+| Version | Date       | Changes                                 |
+| :------ | :--------- | :-------------------------------------- |
+| V1      | 2026-05-15 | Initial specification for v0.8          |
+
 ## S.8. DeepSeek‑V4 Local Deployment
-### S.8.1. Требования к сети
-Для первоначальной загрузки весов DeepSeek‑V4 (~500 ГБ в формате AWQ 4‑bit) требуется высокоскоростное подключение к интернету (≥ 1 Гбит/с). Рекомендуется использовать IPFS для децентрализованной загрузки и верификации целостности. CID весов: `QmDeepSeekV4Weights`.
-### S.8.2. Квантизация
-Для снижения требований к VRAM применяется **AWQ 4‑bit** квантизация. Ожидаемое снижение точности: ≤ 2% на бенчмарках кодогенерации. Для режима `Architectus` (60% экспертов) требуется ~240 ГБ VRAM, для `Vagrant` (20% экспертов) достаточно ~80 ГБ VRAM.
-### S.8.3. Экспертные маски
-Конфигурация экспертных масок для видов хранится в `/etc/swarm/expert_masks/` и загружается при старте vLLM. Маски подписываются ключом Core Node для предотвращения подмены. Поддерживается динамическое переключение маски через API vLLM (`/v1/expert_mask`).
-### S.8.4. Мониторинг утилизации
-Демон `telemetryd` отслеживает:
-- Загрузку каждого GPU.
-- Активацию экспертов (через хуки vLLM).
-- Температуру и энергопотребление.
-При превышении порогов автоматически снижается количество активных экспертов (fallback‑режим).
-### S.8.5. Локальный запуск на RISC‑V
-Для атомарных узлов на архитектуре RISC‑V используется облегчённая сборка vLLM с поддержкой векторного расширения RVV 1.0. Веса DeepSeek‑V4 конвертируются в формат, совместимый с кастомным матричным движком. При недостатке производительности активируется маска `Vagrant` (20% экспертов), что позволяет сохранить автономность узла при ограниченных ресурсах.
+### S.8.1. Network Requirements
+An initial download of DeepSeek‑V4 weights (~500 GB in AWQ 4‑bit format) requires a high‑speed internet connection (≥ 1 Gbps). It is recommended to use IPFS for decentralized download and integrity verification. Weights CID: `QmDeepSeekV4Weights`.
+
+### S.8.2. Quantization
+To reduce VRAM requirements, **AWQ 4‑bit** quantization is used. Expected accuracy drop: ≤ 2% on code generation benchmarks. For `Architectus` mode (60% experts) ~240 GB VRAM is required; for `Vagrant` (20% experts) ~80 GB VRAM is sufficient.
+
+### S.8.3. Expert Masks
+The configuration of expert masks for each species is stored in `/etc/swarm/expert_masks/` and loaded when vLLM starts. Masks are signed with the Core Node key to prevent tampering. Dynamic mask switching is supported via the vLLM API (`/v1/expert_mask`).
+
+### S.8.4. Utilization Monitoring
+The `telemetryd` daemon tracks:
+- GPU load for each card.
+- Expert activation (via vLLM hooks).
+- Temperature and power consumption.
+If thresholds are exceeded, the number of active experts is automatically reduced (fallback mode).
+
+### S.8.5. Local Execution on RISC‑V
+For atomic nodes on the RISC‑V architecture, a lightweight build of vLLM with support for the RVV 1.0 vector extension is used. DeepSeek‑V4 weights are converted into a format compatible with the custom matrix engine. If performance is insufficient, the `Vagrant` mask (20% experts) is activated, allowing the node to maintain autonomy under limited resources.

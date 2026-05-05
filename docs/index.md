@@ -17,7 +17,7 @@ The project is at **TRL‑4**: all core components are laboratory‑validated an
 
 - **[Getting Started](getting_started.md)** — launch your first 4‑node swarm in under 5 minutes.
 - **[Design Principles](design_principles.en.md)** — the philosophy behind BlackSwan's architecture.
-- **[Glossary](glossary.md)** — definitions of all key system terms.
+- **[Glossary](glossary.en.md)** — definitions of all key system terms.
 - **[Roadmap](ROADMAP.md)** — current status and upcoming milestones.
 
 ## Quick launch

@@ -36,4 +36,4 @@ internal evolution to interaction with the external world.
 
 Every domain interacts with the others through the EventBus, CRDT‑based state
 replication, and the shared Security layer.  For a complete glossary of terms
-used throughout the domains, see the [Glossary](../glossary.md).
+used throughout the domains, see the [Glossary](../glossary.en.md).
