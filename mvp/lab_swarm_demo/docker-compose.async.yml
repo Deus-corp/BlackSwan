@@ -19,6 +19,7 @@ services:
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
       - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
       - LOG_LEVEL=INFO   # или DEBUG для детальных трейдов
+      - INTERNET_RESEARCHER_ENABLED=true
     ports:
       - "9777"
     deploy:
