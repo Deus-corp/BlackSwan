@@ -24,8 +24,8 @@ from adapters.live_market import BinanceTestnetAdapter
 from src.core.events import Event
 from src.core.event_store import EventStore
 from src.security.key_manager import KeyManager
-from src.intelligence.internet_researcher import InternetResearcher
 from adapters.multi_pair_adapter import MultiPairAdapter
+from src.intelligence.internet_researcher import InternetResearcher
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -94,9 +94,6 @@ class SwarmNode:
 
         self.internet_researcher: InternetResearcher = InternetResearcher(
             memory_api=self.memory_api if self.memory_api_enabled else None
-        )
-        self.onchain_analyzer = OnChainAnalyzer(
-            api_key=os.environ.get("ETHERSCAN_API_KEY", "")
         )
 
         self.crdt: CRDTAdapter = CRDTAdapter(
