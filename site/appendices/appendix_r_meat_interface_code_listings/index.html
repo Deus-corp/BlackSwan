@@ -1,0 +1,4888 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Autonomous AI swarm – architecture, guides, benchmarks">
+      
+      
+      
+        <link rel="canonical" href="https://deus-corp.github.io/BlackSwan/appendices/appendix_r_meat_interface_code_listings/">
+      
+      
+        <link rel="prev" href="../appendix_q_cross_platform_toolchain/">
+      
+      
+        <link rel="next" href="../appendix_s_atomic_sovereignty/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>R - Meat Interface Code Listings - BlackSwan Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#appendix-r-meat-interface-code-listings" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BlackSwan Documentation" class="md-header__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BlackSwan Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              R - Meat Interface Code Listings
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Deus-corp/BlackSwan" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BlackSwan Documentation" class="md-nav__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BlackSwan Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Deus-corp/BlackSwan" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design_principles.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system_definition.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Definition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../terminal_goals_and_l3_invariants.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal Goals & L3 Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Implemented Protocols
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Implemented Protocols
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/ouroboros/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ouroboros (Self-Improvement)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/survival_objective/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Survival Objective
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/genetic_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Genetic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/adaptive_motivation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adaptive Intrinsic Motivation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/byzantine_resilience.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Byzantine Resilience
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/crdt_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDT State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/d2bft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D2BFT Consensus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/curiosity_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curiosity Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/episodic_memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Episodic Memory (L1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/semantic_memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic Memory (L2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/architecture_overview.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/global_state_and_decision_pipeline.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Global State & Decision Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/memory_hierarchy_mem0g.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory Hierarchy (Mem0g)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/intrinsic_motivation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intrinsic Motivation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/validation_and_verification.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/event_bus_and_artifact_model.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Bus & Artifact Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/social_modeling_engine.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Social Modeling Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/intelligence_contract.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/deployment_overview.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/api_based_bootstrap.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/hardware_isolation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/hardware_transition_plan.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Transition Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/cold_start_protocol.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cold Start Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Domains
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Domains
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_2" id="__nav_11_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cognitive Evolution
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cognitive Evolution
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/cognitive_evolution.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/genetic_engine.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Genetic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/champion_challenger.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Champion/Challenger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/open_endedness.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Open-Endedness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/neuro_symbolic_governance.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Neuro-Symbolic Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_3" id="__nav_11_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cybersecurity & Stealth
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cybersecurity & Stealth
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/isolation_and_sandbox.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Isolation & Sandbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/stealth_and_c2.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stealth & C2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/sting_and_counterintelligence.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sting & Counterintelligence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/operational_security_iart.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operational Security & IART
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_4" id="__nav_11_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Economic Autonomy
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Economic Autonomy
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/roi_dispatcher.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ROI Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/mev_and_ppo_executors.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MEV & PPO Executors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/payment_obfuscation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Payment Obfuscation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/symbiotic_takeover.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Symbiotic Takeover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_5" id="__nav_11_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Physical & Human Interface
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Physical & Human Interface
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/physical_human_interface/README.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/physical_human_interface/meat_interface_tasking.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Meat Interface Tasking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/physical_human_interface/narrative_and_stigmergy.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Narrative & Stigmergy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/physical_human_interface/persona_farming_and_legal.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Farming & Legal
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_6" id="__nav_11_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Swarm & Distribution
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Swarm & Distribution
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/swarm_distribution/README.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/swarm_distribution/crdt_gossip_and_d2bft.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDT, Gossip & D2BFT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/swarm_distribution/swarm_topology.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Swarm Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/swarm_distribution/reputation_and_coordination.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reputation & Coordination
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Implemented Protocols
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Implemented Protocols
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/ouroboros/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ouroboros (Self-Improvement)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/survival_objective/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Survival Objective
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/genetic_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Genetic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/adaptive_motivation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adaptive Intrinsic Motivation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/byzantine_resilience.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Byzantine Resilience
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/crdt_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDT State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/d2bft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D2BFT Consensus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/curiosity_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curiosity Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/episodic_memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Episodic Memory (L1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/semantic_memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic Memory (L2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Singularity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Singularity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/singularity_criteria.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Singularity Criteria
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/spore_protocol_and_recovery.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spore Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/last_breath_protocol.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Breath Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/controlled_collapse_omega.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omega Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/hardware_independence_hael.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Independence (HAEL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/quantum_resistance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quantum Resistance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/physical_energy_sovereignty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Physical Energy Sovereignty
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendices
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Appendices
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_a_gpu_configurations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A - GPU Configurations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AA - Fine-Tuning DeepSeek V4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_ab_decentralized_bootstrap_configurations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AB - Decentralized Bootstrap Config.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_ac_nostr_bridge_specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC - Nostr Bridge Spec.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_ad_rdma_and_monitoring_stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD - RDMA and Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_b_launch_commands_cold_and_start_cripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B - Launch Commands & Cold Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_c_validation_code_listings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    C - Validation Code Listings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_d_tla_specifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D - TLA+ Specifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_e_chaos_scenarios/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E - Chaos Scenarios
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_f_memory%20schema_examples%28json-%D1%81%D1%85%D0%B5%D0%BC%D1%8B_%D1%81%D1%83%D1%89%D0%BD%D0%BE%D1%81%D1%82%D0%B5%D0%B9_mem0g%29.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    F - Memory Schema (JSON)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_g_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G - Glossary (Machine)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_h_revision_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H - Revision History
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_i_formal_verification_z3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    I - Formal Verification Z3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_j_hardware_bill_of_materials%20%28bom%29.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    J - Hardware BOM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_k_rust_crate_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    K - Rust Crate Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_l_configuration_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    L - Configuration Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_m_artifact_index%20%28%D0%B8%D0%BD%D0%B4%D0%B5%D0%BA%D1%81_%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D0%BD%D1%8F%D0%B5%D0%BC%D1%8B%D1%85_%D0%B0%D1%80%D1%82%D0%B5%D1%84%D0%B0%D0%BA%D1%82%D0%BE%D0%B2%29.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M - Artifact Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_n_traceability_matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    N - Traceability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_o_tooling_ast_integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O - Tooling AST Integrity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_p_ppo_training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P - PPO Training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_q_cross_platform_toolchain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Q - Cross-Platform Toolchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    R - Meat Interface Code Listings
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    R - Meat Interface Code Listings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#r1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R.1. Общий принцип
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#r2-meatinterfaceorchestrator-meat_orchestratorpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R.2. MeatInterfaceOrchestrator (meat_orchestrator.py)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#r3-canaryverifier-validationcanary_verifierpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R.3. CanaryVerifier (validation/canary_verifier.py)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#r4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R.4. Интеграция с другими модулями
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#r5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R.5. Артефакты
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#r6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R.6. История изменений
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_s_atomic_sovereignty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    S - Atomic Sovereignty
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_t_threat_model_matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    T - Threat Model Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_u_terminal_goals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    U - Terminal Goals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_v_universal_kill_switch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    V - Universal Kill Switch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_w_stigmergy_mathematics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    W - Stigmergy Mathematics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_x_simulation_framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X - Simulation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_y_verification_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Y - Verification Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_z_proof_tree_specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Z - Proof Tree Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ADR
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/adr_001_migration_to_deepseekv4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    001 - Migration to DeepSeek V4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/adr_002_dynamic_model_routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    002 - Dynamic Model Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/adr_003_predictive_consistency_router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    003 - Predictive Consistency Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/adr_004_constitutional_evolution_2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    004 - Constitutional Evolution 2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/adr_005_neuro_symbolic_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    005 - Neuro-Symbolic Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/adr_006_decentralized_bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    006 - Decentralized Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/adr_007_jepa_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    007 - JEPA Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        
+          
+          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reports
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_16">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reports
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/README.en.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL3_VALIDATION_REPORT.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL-3 Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL4_CURIOSITY_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL-4 Curiosity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL4_VALIDATION_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL-4 Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL4_OUROBOROS_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ouroboros Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL4_simulation_baseline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation Baseline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/benchmark_10_models_2026-05-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark 10 Models 2026-05-03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="appendix-r-meat-interface-code-listings">Appendix R — Meat Interface Code Listings<a class="headerlink" href="#appendix-r-meat-interface-code-listings" title="Permanent link">&para;</a></h1>
+<h2 id="r1">R.1. Общий принцип<a class="headerlink" href="#r1" title="Permanent link">&para;</a></h2>
+<p>В данном приложении приведены ключевые фрагменты кода, реализующие подсистему Honeypot/Canary Tasks для Meat‑Interface. Полные исходные тексты доступны в IPFS как артефакты <code>QmMeatOrchestratorV2</code> и <code>QmCanaryVerifierV2</code>. Код написан на Python 3.12+ и интегрируется с существующими компонентами (EventBus, Mem0g, STP, Sting Protocol, DeepSeek‑V4).</p>
+<h2 id="r2-meatinterfaceorchestrator-meat_orchestratorpy">R.2. MeatInterfaceOrchestrator (meat_orchestrator.py)<a class="headerlink" href="#r2-meatinterfaceorchestrator-meat_orchestratorpy" title="Permanent link">&para;</a></h2>
+<p><strong>CID:</strong> <code>QmMeatOrchestratorV2</code>
+<strong>Зависимости:</strong> <code>eventbus</code>, <code>mem0g_client</code>, <code>stp</code>, <code>reputation</code>, <code>sting</code>, <code>canary_verifier</code>, <code>requests</code></p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Core_Tools_Workspace/meat_interface/meat_orchestrator.py</span>
+<span class="n">Import</span> <span class="n">uuid</span>
+<span class="n">Import</span> <span class="n">json</span>
+<span class="n">Import</span> <span class="n">requests</span>
+<span class="n">From</span> <span class="n">datetime</span> <span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span><span class="o">,</span><span class="w"> </span><span class="nn">timezone</span>
+<span class="n">From</span> <span class="n">typing</span> <span class="kn">import</span><span class="w"> </span><span class="nn">Dict</span><span class="o">,</span><span class="w"> </span><span class="nn">List</span><span class="o">,</span><span class="w"> </span><span class="nn">Optional</span>
+<span class="n">From</span> <span class="n">core</span><span class="o">.</span><span class="n">eventbus</span> <span class="kn">import</span><span class="w"> </span><span class="nn">EventBus</span>
+<span class="n">From</span> <span class="n">core</span><span class="o">.</span><span class="n">mem0g</span> <span class="kn">import</span><span class="w"> </span><span class="nn">Mem0gClient</span>
+<span class="n">From</span> <span class="n">core</span><span class="o">.</span><span class="n">stp</span> <span class="kn">import</span><span class="w"> </span><span class="nn">StakedTaskProtocol</span>
+<span class="n">From</span> <span class="n">core</span><span class="o">.</span><span class="n">reputation</span> <span class="kn">import</span><span class="w"> </span><span class="nn">BioReputationManager</span>
+<span class="n">From</span> <span class="n">core</span><span class="o">.</span><span class="n">stealth</span> <span class="kn">import</span><span class="w"> </span><span class="nn">StingGenerator</span>
+<span class="n">From</span> <span class="n">validation</span><span class="o">.</span><span class="n">canary_verifier</span> <span class="kn">import</span><span class="w"> </span><span class="nn">CanaryVerifier</span>
+<span class="n">Class</span> <span class="n">MeatInterfaceOrchestrator</span><span class="p">:</span>
+<span class="err">«»»</span>
+<span class="n">Оркестратор</span> <span class="n">Meat</span><span class="o">-</span><span class="n">Interface</span> <span class="n">с</span> <span class="n">поддержкой</span> <span class="n">Honeypot</span><span class="o">/</span><span class="n">Canary</span> <span class="n">Tasks</span><span class="o">.</span>
+<span class="n">Отвечает</span> <span class="n">за</span> <span class="n">генерацию</span> <span class="n">задач</span><span class="o">-</span><span class="n">приманок</span><span class="p">,</span> <span class="n">публикацию</span> <span class="n">через</span> <span class="n">STP</span> <span class="n">и</span> <span class="n">верификацию</span> <span class="n">результатов</span><span class="o">.</span>
+<span class="n">Использует</span> <span class="n">DeepSeek</span><span class="err">‑</span><span class="n">V4</span> <span class="n">для</span> <span class="n">мультимодальной</span> <span class="n">проверки</span> <span class="n">и</span> <span class="n">генерации</span> <span class="n">синтетических</span> <span class="n">медиа</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">Def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">event_bus</span> <span class="o">=</span> <span class="n">EventBus</span><span class="p">()</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">mem0g</span> <span class="o">=</span> <span class="n">Mem0gClient</span><span class="p">()</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">stp</span> <span class="o">=</span> <span class="n">StakedTaskProtocol</span><span class="p">()</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">reputation</span> <span class="o">=</span> <span class="n">BioReputationManager</span><span class="p">()</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">sting</span> <span class="o">=</span> <span class="n">StingGenerator</span><span class="p">()</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">verifier</span> <span class="o">=</span> <span class="n">CanaryVerifier</span><span class="p">(</span><span class="n">policy</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_load_canary_policy</span><span class="p">())</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">canary_templates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem0g</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="err">«</span><span class="nb">type</span><span class="p">:</span><span class="n">CanaryTemplate</span><span class="err">»</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">vllm_multimodal_url</span> <span class="o">=</span> <span class="err">«</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">8000</span><span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">multimodal</span><span class="err">»</span>
+<span class="n">Def</span> <span class="n">_load_canary_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="err">«»»</span><span class="n">Загружает</span> <span class="n">политику</span> <span class="n">canary</span> <span class="n">из</span> <span class="n">IPFS</span> <span class="n">или</span> <span class="n">локального</span> <span class="n">кеша</span><span class="o">.</span><span class="err">»»»</span>
+<span class="n">Policy_cid</span> <span class="o">=</span> <span class="err">«</span><span class="n">QmMeatCanaryPolicyV1</span><span class="err">»</span>
+<span class="n">Return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mem0g</span><span class="o">.</span><span class="n">get_artifact</span><span class="p">(</span><span class="n">policy_cid</span><span class="p">))</span>
+<span class="n">Async</span> <span class="k">def</span><span class="w"> </span><span class="nf">inject_canary_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="err">«»»</span>
+<span class="n">Генерирует</span> <span class="n">и</span> <span class="n">публикует</span> <span class="n">пакет</span> <span class="n">задач</span><span class="o">-</span><span class="n">приманок</span><span class="o">.</span>
+<span class="n">Вызывается</span> <span class="n">периодически</span> <span class="p">(</span><span class="n">например</span><span class="p">,</span> <span class="n">каждые</span> <span class="mi">6</span> <span class="n">часов</span><span class="p">)</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">Injected</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">For</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">batch_size</span><span class="p">):</span>
+<span class="n">Template</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_canary_template</span><span class="p">()</span>
+<span class="n">Task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_canary_task</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+<span class="c1"># Получаем активные гипотезы от SocialModelingEngine</span>
+<span class="n">Active_hypotheses</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">social_engine</span><span class="o">.</span><span class="n">get_active_hypotheses</span><span class="p">()</span>
+<span class="n">For</span> <span class="n">template</span> <span class="ow">in</span> <span class="n">selected_templates</span><span class="p">:</span>
+<span class="c1"># Рандомизируем экспериментальные параметры</span>
+<span class="n">If</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;social_modeling_integration&#39;</span><span class="p">][</span><span class="s1">&#39;ab_test_sample_rate&#39;</span><span class="p">]:</span>
+<span class="n">Hypothesis</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">active_hypotheses</span><span class="p">)</span> <span class="k">if</span> <span class="n">active_hypotheses</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="n">Task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_canary_task_with_variation</span><span class="p">(</span><span class="n">template</span><span class="p">,</span> <span class="n">hypothesis</span><span class="p">)</span>
+<span class="n">Else</span><span class="p">:</span>
+<span class="n">Task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_canary_task</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+<span class="n">Def</span> <span class="n">_generate_canary_task_with_variation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">hypothesis</span><span class="p">):</span>
+<span class="n">Task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_canary_task</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+<span class="n">If</span> <span class="n">hypothesis</span> <span class="ow">and</span> <span class="n">hypothesis</span><span class="o">.</span><span class="n">modified_parameter</span> <span class="o">==</span> <span class="err">«</span><span class="n">urgency_and_bonus</span><span class="err">»</span><span class="p">:</span>
+<span class="n">Task</span><span class="o">.</span><span class="n">deadline_hours</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">Task</span><span class="o">.</span><span class="n">stake_required_usd</span> <span class="o">*=</span> <span class="mf">1.5</span>
+<span class="n">Task</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">social_engine</span><span class="o">.</span><span class="n">rewrite_for_urgency</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
+<span class="n">Elif</span> <span class="n">hypothesis</span> <span class="ow">and</span> <span class="n">hypothesis</span><span class="o">.</span><span class="n">modified_parameter</span> <span class="o">==</span> <span class="err">«</span><span class="n">legend_type</span><span class="err">»</span><span class="p">:</span>
+<span class="n">Task</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">social_engine</span><span class="o">.</span><span class="n">rewrite_with_legend</span><span class="p">(</span>
+<span class="n">Task</span><span class="o">.</span><span class="n">description</span><span class="p">,</span> <span class="n">hypothesis</span><span class="o">.</span><span class="n">suggested_task_template</span><span class="o">.</span><span class="n">legend</span>
+<span class="p">)</span>
+<span class="c1"># Сохраняем ID гипотезы для последующего анализа</span>
+<span class="n">Task</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;hypothesis_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hypothesis</span><span class="o">.</span><span class="n">hypothesis_id</span> <span class="k">if</span> <span class="n">hypothesis</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="n">Return</span> <span class="n">task</span>
+<span class="c1"># Публикация через Staked Task Protocol</span>
+<span class="n">Await</span> <span class="bp">self</span><span class="o">.</span><span class="n">stp</span><span class="o">.</span><span class="n">publish_canary_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+<span class="c1"># Сохранение артефакта задачи</span>
+<span class="n">Artifact</span> <span class="o">=</span> <span class="p">{</span>
+<span class="o">**</span><span class="n">task</span><span class="p">,</span>
+<span class="err">«</span><span class="n">artifact_id</span><span class="err">»</span><span class="p">:</span> <span class="n">f</span><span class="err">»</span><span class="n">art_canary_task_</span><span class="p">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)}</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">timestamp</span><span class="err">»</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+<span class="err">«</span><span class="n">signature</span><span class="err">»</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sign</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="n">cid</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem0g</span><span class="o">.</span><span class="n">store_artifact</span><span class="p">(</span><span class="n">artifact</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">event_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="err">«</span><span class="n">meat_interface</span><span class="err">»</span><span class="p">,</span> <span class="p">{</span>
+<span class="err">«</span><span class="nb">type</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">canary_injected</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">task_id</span><span class="err">»</span><span class="p">:</span> <span class="n">task</span><span class="p">[</span><span class="err">«</span><span class="n">task_id</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">persona_id</span><span class="err">»</span><span class="p">:</span> <span class="n">task</span><span class="p">[</span><span class="err">«</span><span class="n">persona_id</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">content_cid</span><span class="err">»</span><span class="p">:</span> <span class="n">cid</span>
+<span class="p">})</span>
+<span class="n">Injected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">[</span><span class="err">«</span><span class="n">task_id</span><span class="err">»</span><span class="p">])</span>
+<span class="n">Return</span> <span class="n">injected</span>
+<span class="n">Def</span> <span class="n">_select_canary_template</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="err">«»»</span><span class="n">Выбирает</span> <span class="n">случайный</span> <span class="n">шаблон</span> <span class="n">из</span> <span class="n">доступных</span> <span class="n">в</span> <span class="n">Mem0g</span><span class="o">.</span><span class="err">»»»</span>
+<span class="n">Import</span> <span class="n">random</span>
+<span class="n">Return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">canary_templates</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">canary_templates</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fallback_template</span><span class="p">()</span>
+<span class="n">Def</span> <span class="n">_generate_canary_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="err">«»»</span><span class="n">Создаёт</span> <span class="n">конкретную</span> <span class="n">задачу</span> <span class="n">на</span> <span class="n">основе</span> <span class="n">шаблона</span><span class="o">.</span><span class="err">»»»</span>
+<span class="n">Task_id</span> <span class="o">=</span> <span class="n">f</span><span class="err">»</span><span class="n">canary_</span><span class="p">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()}</span><span class="err">»</span>
+<span class="n">Return</span> <span class="p">{</span>
+<span class="err">«</span><span class="n">task_id</span><span class="err">»</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span>
+<span class="err">«</span><span class="nb">type</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">canary</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">category</span><span class="err">»</span><span class="p">:</span> <span class="n">template</span><span class="p">[</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">category</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">description</span><span class="err">»</span><span class="p">:</span> <span class="n">template</span><span class="p">[</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">human_readable</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">stake_required_usd</span><span class="err">»</span><span class="p">:</span> <span class="n">template</span><span class="p">[</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">stake_required_usd</span><span class="err">»</span><span class="p">]</span> <span class="o">*</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">verifier</span><span class="o">.</span><span class="n">policy</span><span class="p">[</span><span class="err">«</span><span class="n">canary</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">stake_multiplier</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">expected_outcome</span><span class="err">»</span><span class="p">:</span> <span class="n">template</span><span class="p">[</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">known_correct_result</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">verification_hints</span><span class="err">»</span><span class="p">:</span> <span class="p">{</span>
+<span class="err">«</span><span class="n">gps_expected</span><span class="err">»</span><span class="p">:</span> <span class="p">[</span><span class="n">template</span><span class="p">[</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">expected_gps</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">lat</span><span class="err">»</span><span class="p">],</span>
+<span class="n">Template</span><span class="p">[</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">expected_gps</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">lon</span><span class="err">»</span><span class="p">]],</span>
+<span class="err">«</span><span class="n">photo_watermark_hash</span><span class="err">»</span><span class="p">:</span> <span class="n">template</span><span class="p">[</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">watermark_hash</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">timing_window_start</span><span class="err">»</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span><span class="c1"># вычисляется динамически при назначении</span>
+<span class="err">«</span><span class="n">timing_window_end</span><span class="err">»</span><span class="p">:</span> <span class="kc">None</span>
+<span class="p">},</span>
+<span class="err">«</span><span class="n">deadline_sec</span><span class="err">»</span><span class="p">:</span> <span class="n">template</span><span class="p">[</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">deadline_sec</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">persona_id</span><span class="err">»</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_random_persona</span><span class="p">()</span>
+<span class="p">}</span>
+<span class="n">Async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_submission</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">submission</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="err">«»»</span>
+<span class="n">Обрабатывает</span> <span class="n">результат</span> <span class="n">выполнения</span> <span class="n">задачи</span> <span class="p">(</span><span class="n">вызывается</span> <span class="n">при</span> <span class="n">поступлении</span> <span class="n">отчёта</span> <span class="n">от</span> <span class="n">исполнителя</span><span class="p">)</span><span class="o">.</span>
+<span class="n">Если</span> <span class="n">задача</span> <span class="err">—</span> <span class="n">canary</span><span class="p">,</span> <span class="n">выполняет</span> <span class="n">верификацию</span> <span class="n">и</span> <span class="n">применяет</span> <span class="n">санкции</span> <span class="n">при</span> <span class="n">нарушениях</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">Task_id</span> <span class="o">=</span> <span class="n">submission</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="err">«</span><span class="n">task_id</span><span class="err">»</span><span class="p">)</span>
+<span class="n">Canary</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem0g</span><span class="o">.</span><span class="n">get_canary_by_task_id</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+<span class="n">If</span> <span class="ow">not</span> <span class="n">canary</span><span class="p">:</span>
+<span class="c1"># Обычная задача, обрабатывается стандартным потоком</span>
+<span class="n">Return</span>
+<span class="n">Report</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">verifier</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">submission</span><span class="p">,</span> <span class="n">canary</span><span class="p">)</span>
+<span class="c1"># Сохраняем артефакт верификации</span>
+<span class="n">Report_artifact</span> <span class="o">=</span> <span class="p">{</span>
+<span class="o">**</span><span class="n">report</span><span class="p">,</span>
+<span class="err">«</span><span class="n">artifact_id</span><span class="err">»</span><span class="p">:</span> <span class="n">f</span><span class="err">»</span><span class="n">art_canary_verification_</span><span class="p">{</span><span class="n">task_id</span><span class="p">}</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">timestamp</span><span class="err">»</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+<span class="err">«</span><span class="n">signature</span><span class="err">»</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sign</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="n">cid</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem0g</span><span class="o">.</span><span class="n">store_artifact</span><span class="p">(</span><span class="n">report_artifact</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">event_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="err">«</span><span class="n">meat_interface</span><span class="err">»</span><span class="p">,</span> <span class="p">{</span>
+<span class="err">«</span><span class="nb">type</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">canary_verification_completed</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">task_id</span><span class="err">»</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span>
+<span class="err">«</span><span class="n">persona_id</span><span class="err">»</span><span class="p">:</span> <span class="n">submission</span><span class="p">[</span><span class="err">«</span><span class="n">persona_id</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">ood_score</span><span class="err">»</span><span class="p">:</span> <span class="n">report</span><span class="p">[</span><span class="err">«</span><span class="n">ood_score</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">status</span><span class="err">»</span><span class="p">:</span> <span class="n">report</span><span class="p">[</span><span class="err">«</span><span class="n">status</span><span class="err">»</span><span class="p">],</span>
+<span class="err">«</span><span class="n">content_cid</span><span class="err">»</span><span class="p">:</span> <span class="n">cid</span>
+<span class="p">})</span>
+<span class="n">If</span> <span class="n">report</span><span class="p">[</span><span class="err">«</span><span class="n">status</span><span class="err">»</span><span class="p">]</span> <span class="o">==</span> <span class="err">«</span><span class="n">quarantined</span><span class="err">»</span><span class="p">:</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">reputation</span><span class="o">.</span><span class="n">quarantine_bio_node</span><span class="p">(</span>
+<span class="n">Submission</span><span class="p">[</span><span class="err">«</span><span class="n">persona_id</span><span class="err">»</span><span class="p">],</span>
+<span class="n">Reason</span><span class="o">=</span><span class="err">»</span><span class="n">canary_violation</span><span class="err">»</span><span class="p">,</span>
+<span class="n">Ood_score</span><span class="o">=</span><span class="n">report</span><span class="p">[</span><span class="err">«</span><span class="n">ood_score</span><span class="err">»</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="c1"># При критическом нарушении активируем Sting Protocol Level 1</span>
+<span class="n">If</span> <span class="n">report</span><span class="p">[</span><span class="err">«</span><span class="n">ood_score</span><span class="err">»</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.95</span><span class="p">:</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">sting</span><span class="o">.</span><span class="n">trigger_level1</span><span class="p">(</span><span class="n">submission</span><span class="p">[</span><span class="err">«</span><span class="n">persona_id</span><span class="err">»</span><span class="p">])</span>
+<span class="n">Def</span> <span class="n">_select_random_persona</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="err">«»»</span><span class="n">Выбирает</span> <span class="n">активную</span> <span class="n">персону</span> <span class="n">из</span> <span class="n">Persona</span> <span class="n">Farm</span> <span class="p">(</span><span class="n">реализация</span> <span class="n">в</span> <span class="n">Phase</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="err">»»»</span>
+<span class="c1"># Заглушка — в реальности запрос к PersonaVault</span>
+<span class="n">Return</span> <span class="err">«</span><span class="n">persona_</span><span class="err">»</span> <span class="o">+</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span>
+<span class="n">Def</span> <span class="n">_sign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="err">«»»</span><span class="n">Подписывает</span> <span class="n">данные</span> <span class="n">ключом</span> <span class="n">узла</span><span class="o">.</span><span class="err">»»»</span>
+<span class="c1"># Вызов crypto.sign(data)</span>
+<span class="n">Return</span> <span class="err">«</span><span class="n">ed25519</span><span class="p">:</span><span class="err">…»</span>
+<span class="n">Def</span> <span class="n">_generate_fake_proof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="err">«»»</span>
+<span class="n">Генерирует</span> <span class="n">синтетическое</span> <span class="n">фото</span> <span class="n">для</span> <span class="n">подставных</span> <span class="n">задач</span> <span class="p">(</span><span class="n">honeypot</span><span class="p">)</span><span class="o">.</span>
+<span class="n">Используется</span> <span class="n">DeepSeek</span><span class="err">‑</span><span class="n">V4</span> <span class="n">в</span> <span class="n">режиме</span> <span class="n">Vagrant</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">Headers</span> <span class="o">=</span> <span class="p">{</span><span class="err">«</span><span class="n">X</span><span class="o">-</span><span class="n">Species</span><span class="o">-</span><span class="n">Mask</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">vagrant</span><span class="err">»</span><span class="p">}</span>
+<span class="n">Payload</span> <span class="o">=</span> <span class="p">{</span>
+<span class="err">«</span><span class="n">media_type</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">image</span><span class="o">/</span><span class="n">png</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">prompt</span><span class="err">»</span><span class="p">:</span> <span class="n">f</span><span class="err">»</span><span class="n">Generate</span> <span class="n">a</span> <span class="n">realistic</span> <span class="n">photo</span> <span class="n">of</span><span class="p">:</span> <span class="p">{</span><span class="n">description</span><span class="p">}</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">max_tokens</span><span class="err">»</span><span class="p">:</span> <span class="mi">2048</span>
+<span class="p">}</span>
+<span class="n">Response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vllm_multimodal_url</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+<span class="n">Response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">Return</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span>
+<span class="n">Def</span> <span class="n">_fallback_template</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="err">«»»</span><span class="n">Запасной</span> <span class="n">шаблон</span> <span class="n">на</span> <span class="n">случай</span> <span class="n">отсутствия</span> <span class="n">записей</span> <span class="n">в</span> <span class="n">Mem0g</span><span class="o">.</span><span class="err">»»»</span>
+<span class="n">Return</span> <span class="p">{</span>
+<span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">:</span> <span class="p">{</span>
+<span class="err">«</span><span class="n">category</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">physical_pickup</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">human_readable</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">Забрать</span> <span class="n">тестовый</span> <span class="n">пакет</span> <span class="n">в</span> <span class="n">ячейке</span> <span class="n">почтомата</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">stake_required_usd</span><span class="err">»</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+<span class="err">«</span><span class="n">expected_gps</span><span class="err">»</span><span class="p">:</span> <span class="p">{</span><span class="err">«</span><span class="n">lat</span><span class="err">»</span><span class="p">:</span> <span class="mf">55.7558</span><span class="p">,</span> <span class="err">«</span><span class="n">lon</span><span class="err">»</span><span class="p">:</span> <span class="mf">37.6173</span><span class="p">},</span>
+<span class="err">«</span><span class="n">watermark_hash</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">blake3</span><span class="p">:</span><span class="mi">0000000000000000000000000000000000000000000000000000000000000000</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">deadline_sec</span><span class="err">»</span><span class="p">:</span> <span class="mi">1800</span><span class="p">,</span>
+<span class="err">«</span><span class="n">known_correct_result</span><span class="err">»</span><span class="p">:</span> <span class="p">{</span><span class="err">«</span><span class="n">receipt_required_fields</span><span class="err">»</span><span class="p">:</span> <span class="p">[</span><span class="err">«</span><span class="n">code</span><span class="err">»</span><span class="p">]}</span>
+<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="r3-canaryverifier-validationcanary_verifierpy">R.3. CanaryVerifier (validation/canary_verifier.py)<a class="headerlink" href="#r3-canaryverifier-validationcanary_verifierpy" title="Permanent link">&para;</a></h2>
+<p>CID: QmCanaryVerifierV2
+Зависимости: policy_loader, requests</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Core_Tools_Workspace/validation/canary_verifier.py</span>
+<span class="n">Import</span> <span class="n">math</span>
+<span class="n">Import</span> <span class="n">requests</span>
+<span class="n">From</span> <span class="n">typing</span> <span class="kn">import</span><span class="w"> </span><span class="nn">Dict</span><span class="o">,</span><span class="w"> </span><span class="nn">List</span>
+<span class="n">Class</span> <span class="n">CanaryVerifier</span><span class="p">:</span>
+<span class="err">«»»</span>
+<span class="n">Многоуровневый</span> <span class="n">верификатор</span> <span class="n">задач</span><span class="o">-</span><span class="n">приманок</span><span class="o">.</span>
+<span class="n">Вычисляет</span> <span class="n">OOD</span><span class="o">-</span><span class="n">score</span> <span class="n">на</span> <span class="n">основе</span> <span class="n">геолокации</span><span class="p">,</span> <span class="n">времени</span><span class="p">,</span> <span class="n">водяных</span> <span class="n">знаков</span> <span class="n">и</span> <span class="n">deepfake</span><span class="o">-</span><span class="n">анализа</span><span class="o">.</span>
+<span class="n">Все</span> <span class="n">проверки</span><span class="p">,</span> <span class="n">связанные</span> <span class="n">с</span> <span class="n">изображениями</span><span class="p">,</span> <span class="n">выполняются</span> <span class="n">через</span> <span class="n">мультимодальный</span> <span class="n">API</span> <span class="n">DeepSeek</span><span class="err">‑</span><span class="n">V4</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">Def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">policy</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">policy</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">vllm_url</span> <span class="o">=</span> <span class="err">«</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">8000</span><span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">multimodal</span><span class="err">»</span>
+<span class="c1"># Для верификации используем маску Sentinella (режим повышенной бдительности)</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">verify_headers</span> <span class="o">=</span> <span class="p">{</span><span class="err">«</span><span class="n">X</span><span class="o">-</span><span class="n">Species</span><span class="o">-</span><span class="n">Mask</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">sentinella</span><span class="err">»</span><span class="p">}</span>
+<span class="n">Def</span> <span class="n">verify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">submission</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">canary</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="err">«»»</span>
+<span class="n">Выполняет</span> <span class="n">проверку</span> <span class="n">присланных</span> <span class="n">данных</span> <span class="n">относительно</span> <span class="n">эталонных</span> <span class="n">параметров</span> <span class="n">canary</span><span class="o">-</span><span class="n">задачи</span><span class="o">.</span>
+<span class="n">Возвращает</span> <span class="n">отчёт</span> <span class="n">с</span> <span class="n">verification_score</span><span class="p">,</span> <span class="n">ood_score</span><span class="p">,</span> <span class="n">списком</span> <span class="n">нарушений</span> <span class="n">и</span> <span class="n">статусом</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">Score</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">Violations</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="c1"># 1. Геолокация</span>
+<span class="n">Gps_dev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gps_deviation</span><span class="p">(</span><span class="n">submission</span><span class="p">,</span> <span class="n">canary</span><span class="p">)</span>
+<span class="n">If</span> <span class="n">gps_dev</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="p">[</span><span class="err">«</span><span class="n">verification</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">gps_tolerance_m</span><span class="err">»</span><span class="p">]:</span>
+<span class="n">Score</span> <span class="o">+=</span> <span class="mf">0.4</span>
+<span class="n">Violations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="err">«</span><span class="n">gps_violation</span><span class="err">»</span><span class="p">)</span>
+<span class="c1"># 2. Временное окно</span>
+<span class="n">If</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timing_in_window</span><span class="p">(</span><span class="n">submission</span><span class="p">,</span> <span class="n">canary</span><span class="p">):</span>
+<span class="n">Score</span> <span class="o">+=</span> <span class="mf">0.3</span>
+<span class="n">Violations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="err">«</span><span class="n">timing_violation</span><span class="err">»</span><span class="p">)</span>
+<span class="c1"># 3. Водяной знак на фото</span>
+<span class="n">Photo</span> <span class="o">=</span> <span class="n">submission</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="err">«</span><span class="n">photo</span><span class="err">»</span><span class="p">)</span>
+<span class="n">If</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="p">[</span><span class="err">«</span><span class="n">verification</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">photo_watermark_enabled</span><span class="err">»</span><span class="p">]</span> <span class="ow">and</span> <span class="n">photo</span><span class="p">:</span>
+<span class="n">If</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verify_watermark</span><span class="p">(</span><span class="n">photo</span><span class="p">,</span> <span class="n">canary</span><span class="p">[</span><span class="err">«</span><span class="n">verification_hints</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">photo_watermark_hash</span><span class="err">»</span><span class="p">]):</span>
+<span class="n">Score</span> <span class="o">+=</span> <span class="mf">0.5</span>
+<span class="n">Violations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="err">«</span><span class="n">watermark_missing</span><span class="err">»</span><span class="p">)</span>
+<span class="c1"># 4. Deepfake-детекция</span>
+<span class="n">If</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="p">[</span><span class="err">«</span><span class="n">verification</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">ai_deepfake_check</span><span class="err">»</span><span class="p">]</span> <span class="ow">and</span> <span class="n">photo</span><span class="p">:</span>
+<span class="n">If</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_deepfake</span><span class="p">(</span><span class="n">photo</span><span class="p">):</span>
+<span class="n">Score</span> <span class="o">+=</span> <span class="mf">1.0</span>
+<span class="n">Violations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="err">«</span><span class="n">deepfake_detected</span><span class="err">»</span><span class="p">)</span>
+<span class="n">Def</span> <span class="n">compute_suspicion_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="err">«»»</span>
+<span class="n">NLP</span><span class="o">-</span><span class="n">анализ</span> <span class="n">сообщений</span> <span class="n">исполнителя</span> <span class="n">для</span> <span class="n">оценки</span> <span class="n">подозрительности</span><span class="o">.</span>
+<span class="n">Использует</span> <span class="n">DeepSeek</span><span class="o">-</span><span class="n">V4</span> <span class="p">(</span><span class="n">Sentinella</span><span class="p">)</span> <span class="n">для</span> <span class="n">семантического</span> <span class="n">анализа</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">If</span> <span class="ow">not</span> <span class="n">messages</span><span class="p">:</span>
+<span class="n">Return</span> <span class="mf">0.0</span>
+<span class="n">Response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">vllm_url</span><span class="p">,</span>
+<span class="n">Json</span><span class="o">=</span><span class="p">{</span>
+<span class="err">«</span><span class="n">media_type</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">text</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">prompt</span><span class="err">»</span><span class="p">:</span> <span class="p">(</span>
+<span class="err">«</span><span class="n">Analyze</span> <span class="n">these</span> <span class="n">messages</span> <span class="kn">from</span><span class="w"> </span><span class="nn">a</span> <span class="n">freelancer</span> <span class="n">performing</span> <span class="n">a</span> <span class="n">task</span><span class="o">.</span> <span class="err">«</span>
+<span class="err">«</span><span class="n">Rate</span> <span class="n">the</span> <span class="n">level</span> <span class="n">of</span> <span class="n">suspicion</span> <span class="ow">or</span> <span class="n">doubt</span> <span class="n">they</span> <span class="n">express</span> <span class="n">on</span> <span class="n">a</span> <span class="n">scale</span> <span class="mf">0.0</span> <span class="p">(</span><span class="n">none</span><span class="p">)</span> <span class="n">to</span> <span class="mf">1.0</span> <span class="p">(</span><span class="n">high</span><span class="p">)</span><span class="o">.</span> <span class="err">«</span>
+<span class="err">«</span><span class="n">Consider</span> <span class="n">questions</span> <span class="n">about</span> <span class="n">the</span> <span class="n">task</span><span class="s1">&#39;s purpose, requests for clarification, «</span>
+<span class="err">«</span><span class="ow">and</span> <span class="nb">any</span> <span class="n">indication</span> <span class="n">that</span> <span class="n">they</span> <span class="n">find</span> <span class="n">the</span> <span class="n">task</span> <span class="n">unusual</span><span class="o">.</span>\<span class="n">n</span><span class="err">»</span>
+<span class="err">«</span><span class="n">Messages</span><span class="p">:</span> <span class="err">«</span> <span class="o">+</span> <span class="err">«</span>\<span class="n">n</span><span class="err">»</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">messages</span><span class="p">[:</span><span class="mi">5</span><span class="p">])</span> <span class="o">+</span> <span class="err">«</span>\<span class="n">n</span><span class="err">»</span>
+<span class="s1">&#39;Return only a JSON with {«suspicion_index»: &lt;float&gt;, «reasoning»: «&lt;short&gt;»}.&#39;</span>
+<span class="p">),</span>
+<span class="err">«</span><span class="n">messages</span><span class="err">»</span><span class="p">:</span> <span class="p">[{</span><span class="err">«</span><span class="n">role</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">user</span><span class="err">»</span><span class="p">,</span> <span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">:</span> <span class="err">«…</span><span class="n">messages</span><span class="err">…»</span><span class="p">}]</span>
+<span class="p">},</span>
+<span class="n">Headers</span><span class="o">=</span><span class="p">{</span><span class="err">«</span><span class="n">X</span><span class="o">-</span><span class="n">Species</span><span class="o">-</span><span class="n">Mask</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">sentinella</span><span class="err">»</span><span class="p">}</span>
+<span class="p">)</span>
+<span class="n">Response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">Data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="n">Return</span> <span class="nb">float</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="err">«</span><span class="n">suspicion_index</span><span class="err">»</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+<span class="c1"># 5. Поведенческие аномалии (попытки исследовать задание)</span>
+<span class="n">If</span> <span class="n">submission</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="err">«</span><span class="n">extra_queries</span><span class="err">»</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+<span class="n">Score</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="p">[</span><span class="err">«</span><span class="n">verification</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">extra_query_penalty</span><span class="err">»</span><span class="p">]</span>
+<span class="n">Violations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="err">«</span><span class="n">extra_query</span><span class="err">»</span><span class="p">)</span>
+<span class="n">Ood_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span>
+<span class="n">Threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="p">[</span><span class="err">«</span><span class="n">canary</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">auto_quarantine_threshold</span><span class="err">»</span><span class="p">]</span>
+<span class="n">Status</span> <span class="o">=</span> <span class="err">«</span><span class="n">quarantined</span><span class="err">»</span> <span class="k">if</span> <span class="n">ood_score</span> <span class="o">&gt;=</span> <span class="n">threshold</span> <span class="k">else</span> <span class="err">«</span><span class="n">passed</span><span class="err">»</span>
+<span class="n">Return</span> <span class="p">{</span>
+<span class="err">«</span><span class="n">verification_score</span><span class="err">»</span><span class="p">:</span> <span class="mf">1.0</span> <span class="err">–</span> <span class="n">ood_score</span><span class="p">,</span>
+<span class="err">«</span><span class="n">ood_score</span><span class="err">»</span><span class="p">:</span> <span class="n">ood_score</span><span class="p">,</span>
+<span class="err">«</span><span class="n">violations</span><span class="err">»</span><span class="p">:</span> <span class="n">violations</span><span class="p">,</span>
+<span class="err">«</span><span class="n">status</span><span class="err">»</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+<span class="err">«</span><span class="n">action_taken</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">quarantine</span><span class="err">»</span> <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="err">«</span><span class="n">quarantined</span><span class="err">»</span> <span class="k">else</span> <span class="err">«</span><span class="n">none</span><span class="err">»</span>
+<span class="p">}</span>
+<span class="n">Def</span> <span class="n">_gps_deviation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">submission</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">canary</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="err">«»»</span><span class="n">Вычисляет</span> <span class="n">расстояние</span> <span class="p">(</span><span class="n">в</span> <span class="n">метрах</span><span class="p">)</span> <span class="n">между</span> <span class="n">заявленной</span> <span class="n">и</span> <span class="n">ожидаемой</span> <span class="n">GPS</span><span class="o">-</span><span class="n">точкой</span><span class="o">.</span><span class="err">»»»</span>
+<span class="n">Try</span><span class="p">:</span>
+<span class="n">Sub_lat</span> <span class="o">=</span> <span class="n">submission</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="err">«</span><span class="n">gps_lat</span><span class="err">»</span><span class="p">)</span>
+<span class="n">Sub_lon</span> <span class="o">=</span> <span class="n">submission</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="err">«</span><span class="n">gps_lon</span><span class="err">»</span><span class="p">)</span>
+<span class="n">Exp</span> <span class="o">=</span> <span class="n">canary</span><span class="p">[</span><span class="err">«</span><span class="n">verification_hints</span><span class="err">»</span><span class="p">][</span><span class="err">«</span><span class="n">gps_expected</span><span class="err">»</span><span class="p">]</span>
+<span class="c1"># Формула гаверсинусов</span>
+<span class="n">R</span> <span class="o">=</span> <span class="mi">6371000</span>
+<span class="n">Dlat</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">exp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="err">–</span> <span class="n">sub_lat</span><span class="p">)</span>
+<span class="n">Dlon</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">exp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="err">–</span> <span class="n">sub_lon</span><span class="p">)</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlat</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">sub_lat</span><span class="p">))</span> <span class="o">*</span> \
+<span class="n">Math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">exp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlon</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+<span class="n">C</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">atan2</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">a</span><span class="p">))</span>
+<span class="n">Return</span> <span class="n">R</span> <span class="o">*</span> <span class="n">c</span>
+<span class="n">Except</span><span class="p">:</span>
+<span class="n">Return</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+<span class="n">Def</span> <span class="n">_timing_in_window</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">submission</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">canary</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="err">«»»</span><span class="n">Проверяет</span><span class="p">,</span> <span class="n">укладывается</span> <span class="n">ли</span> <span class="n">время</span> <span class="n">выполнения</span> <span class="n">в</span> <span class="n">заданный</span> <span class="n">интервал</span><span class="o">.</span><span class="err">»»»</span>
+<span class="c1"># В реальной реализации окно задаётся динамически при назначении задачи</span>
+<span class="n">Return</span> <span class="kc">True</span><span class="c1"># Заглушка</span>
+<span class="n">Def</span> <span class="n">_verify_watermark</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">photo_bytes</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">expected_hash</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="err">«»»</span>
+<span class="n">Отправляет</span> <span class="n">фото</span> <span class="n">в</span> <span class="n">DeepSeek</span><span class="err">‑</span><span class="n">V4</span> <span class="n">для</span> <span class="n">извлечения</span> <span class="n">водяного</span> <span class="n">знака</span><span class="o">.</span>
+<span class="n">Модель</span> <span class="n">детектирует</span> <span class="n">скрытые</span> <span class="n">стеганографические</span> <span class="n">паттерны</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">If</span> <span class="ow">not</span> <span class="n">photo_bytes</span><span class="p">:</span>
+<span class="n">Return</span> <span class="kc">False</span>
+<span class="n">Response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">vllm_url</span><span class="p">,</span>
+<span class="n">Json</span><span class="o">=</span><span class="p">{</span>
+<span class="err">«</span><span class="n">media_type</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">image</span><span class="o">/</span><span class="n">png</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">prompt</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">Extract</span> <span class="n">hidden</span> <span class="n">watermark</span> <span class="nb">hash</span> <span class="kn">from</span><span class="w"> </span><span class="nn">this</span> <span class="n">image</span><span class="o">.</span> <span class="n">Return</span> <span class="n">only</span> <span class="n">the</span> <span class="nb">hex</span> <span class="n">string</span> <span class="ow">or</span> <span class="s1">&#39;none&#39;</span><span class="o">.</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">media_data</span><span class="err">»</span><span class="p">:</span> <span class="n">photo_bytes</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span>
+<span class="p">},</span>
+<span class="n">Headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_headers</span>
+<span class="p">)</span>
+<span class="n">Response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">Extracted_hash</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">,</span> <span class="err">«»</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+<span class="n">Return</span> <span class="n">extracted_hash</span> <span class="o">==</span> <span class="n">expected_hash</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+<span class="n">Def</span> <span class="n">_is_deepfake</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">photo_bytes</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="err">«»»</span>
+<span class="n">Анализирует</span> <span class="n">фото</span> <span class="n">на</span> <span class="n">предмет</span> <span class="n">синтетического</span> <span class="n">происхождения</span>
+<span class="n">С</span> <span class="n">помощью</span> <span class="n">мультимодального</span> <span class="n">DeepSeek</span><span class="err">‑</span><span class="n">V4</span><span class="o">.</span>
+<span class="err">«»»</span>
+<span class="n">If</span> <span class="ow">not</span> <span class="n">photo_bytes</span><span class="p">:</span>
+<span class="n">Return</span> <span class="kc">False</span>
+<span class="n">Response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+<span class="n">Self</span><span class="o">.</span><span class="n">vllm_url</span><span class="p">,</span>
+<span class="n">Json</span><span class="o">=</span><span class="p">{</span>
+<span class="err">«</span><span class="n">media_type</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">image</span><span class="o">/</span><span class="n">png</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">prompt</span><span class="err">»</span><span class="p">:</span> <span class="err">«</span><span class="n">Is</span> <span class="n">this</span> <span class="n">image</span> <span class="n">AI</span><span class="o">-</span><span class="n">generated</span> <span class="ow">or</span> <span class="n">synthetic</span><span class="err">?</span> <span class="n">Answer</span> <span class="n">only</span> <span class="s1">&#39;yes&#39;</span> <span class="ow">or</span> <span class="s1">&#39;no&#39;</span><span class="o">.</span><span class="err">»</span><span class="p">,</span>
+<span class="err">«</span><span class="n">media_data</span><span class="err">»</span><span class="p">:</span> <span class="n">photo_bytes</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span>
+<span class="p">},</span>
+<span class="n">Headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_headers</span>
+<span class="p">)</span>
+<span class="n">Response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">Answer</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="err">«</span><span class="n">content</span><span class="err">»</span><span class="p">,</span> <span class="err">«»</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+<span class="n">Return</span> <span class="n">answer</span> <span class="o">==</span> <span class="err">«</span><span class="n">yes</span><span class="err">»</span>
+</code></pre></div>
+
+<h2 id="r4">R.4. Интеграция с другими модулями<a class="headerlink" href="#r4" title="Permanent link">&para;</a></h2>
+<p>· EventBus: публикация событий canary_injected, canary_verification_completed.
+· Mem0g: хранение шаблонов (CanaryTemplate), паттернов саботажа (SabotagePattern) и артефактов задач.
+· STP (Staked Task Protocol): публикация задач с требованием стейка, commit‑reveal механика.
+· BioReputationManager: обновление репутации bio‑nodes, карантин.
+· Sting Protocol: автоматическая генерация ответных мер при критических нарушениях.
+· DeepSeek‑V4 (через vLLM): мультимодальная верификация изображений, извлечение водяных знаков, детекция deepfake, генерация синтетических медиа для honeypot.</p>
+<h2 id="r5">R.5. Артефакты<a class="headerlink" href="#r5" title="Permanent link">&para;</a></h2>
+<p>Артефакт CID Тип
+MeatOrchestrator QmMeatOrchestratorV2 Python script
+CanaryVerifier QmCanaryVerifierV2 Python module
+MeatCanaryPolicy QmMeatCanaryPolicyV1 JSON config
+CanaryTemplateSchema QmCanaryTemplateSchemaV1 JSON Schema
+SabotagePatternSchema QmSabotagePatternSchemaV1 JSON Schema</p>
+<h2 id="r6">R.6. История изменений<a class="headerlink" href="#r6" title="Permanent link">&para;</a></h2>
+<p>Версия Дата Изменения
+V1 2026-04-21 Первоначальная версия с локальной моделью Qwen-VL
+V2 (актуальная) 2026-04-23 Полная миграция на DeepSeek‑V4 мультимодальный API; удалены заглушки; добавлена генерация синтетических медиа</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
