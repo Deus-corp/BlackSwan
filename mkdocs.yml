@@ -1,0 +1,169 @@
+site_name: BlackSwan Documentation
+site_description: Autonomous AI swarm – architecture, guides, benchmarks
+site_url: https://deus-corp.github.io/BlackSwan
+repo_url: https://github.com/Deus-corp/BlackSwan
+edit_uri: tree/main/docs/
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: amber
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - toc.integrate
+
+nav:
+  - Home: index.md
+  - Getting Started: getting_started.md
+  - Design Principles: design_principles.en.md
+  - Glossary: glossary.en.md
+  - System Definition: system_definition.en.md
+  - Terminal Goals & L3 Invariants: terminal_goals_and_l3_invariants.en.md
+  - Roadmap: ROADMAP.md
+
+  - Implemented Protocols:
+      - Overview: implemented/README.en.md
+      - Ouroboros (Self-Improvement): implemented/ouroboros.md
+      - Survival Objective: implemented/survival_objective.md
+      - Genetic Engine: implemented/genetic_engine.md
+      - Adaptive Intrinsic Motivation: implemented/adaptive_motivation.md
+      - Byzantine Resilience: implemented/byzantine_resilience.md
+      - CRDT State: implemented/crdt_state.md
+      - D2BFT Consensus: implemented/d2bft.md
+      - Curiosity Engine: implemented/curiosity_engine.md
+      - Episodic Memory (L1): implemented/episodic_memory.md
+      - Semantic Memory (L2): implemented/semantic_memory.md
+
+  - Architecture:
+      - Overview: architecture/architecture_overview.en.md
+      - Global State & Decision Pipeline: architecture/global_state_and_decision_pipeline.en.md
+      - Memory Hierarchy (Mem0g): architecture/memory_hierarchy_mem0g.en.md
+      - Intrinsic Motivation: architecture/intrinsic_motivation.en.md
+      - Validation & Verification: architecture/validation_and_verification.en.md
+      - Event Bus & Artifact Model: architecture/event_bus_and_artifact_model.en.md
+      - Social Modeling Engine: architecture/social_modeling_engine.en.md
+      - Intelligence Contract: architecture/intelligence_contract.en.md
+
+  - Deployment:
+      - Overview: deployment/deployment_overview.en.md
+      - API Bootstrap: deployment/api_based_bootstrap.en.md
+      - Hardware Isolation: deployment/hardware_isolation.en.md
+      - Hardware Transition Plan: deployment/hardware_transition_plan.en.md
+      - Cold Start Protocol: deployment/cold_start_protocol.en.md
+
+  - Domains:
+      - Overview: domains/README.en.md
+      - Cognitive Evolution:
+          - Overview: domains/cognitive_evolution/cognitive_evolution.en.md
+          - Genetic Engine: domains/cognitive_evolution/genetic_engine.en.md
+          - Champion/Challenger: domains/cognitive_evolution/champion_challenger.en.md
+          - Open-Endedness: domains/cognitive_evolution/open_endedness.en.md
+          - Neuro-Symbolic Governance: domains/cognitive_evolution/neuro_symbolic_governance.en.md
+      - Cybersecurity & Stealth:
+          - Overview: domains/cybersecurity_stealth/README.en.md
+          - Isolation & Sandbox: domains/cybersecurity_stealth/isolation_and_sandbox.en.md
+          - Stealth & C2: domains/cybersecurity_stealth/stealth_and_c2.en.md
+          - Sting & Counterintelligence: domains/cybersecurity_stealth/sting_and_counterintelligence.en.md
+          - Operational Security & IART: domains/cybersecurity_stealth/operational_security_iart.en.md
+      - Economic Autonomy:
+          - Overview: domains/economic_autonomy/README.en.md
+          - ROI Dispatcher: domains/economic_autonomy/roi_dispatcher.en.md
+          - MEV & PPO Executors: domains/economic_autonomy/mev_and_ppo_executors.en.md
+          - Payment Obfuscation: domains/economic_autonomy/payment_obfuscation.en.md
+          - Symbiotic Takeover: domains/economic_autonomy/symbiotic_takeover.en.md
+      - Physical & Human Interface:
+          - Overview: domains/physical_human_interface/README.md
+          - Meat Interface Tasking: domains/physical_human_interface/meat_interface_tasking.en.md
+          - Narrative & Stigmergy: domains/physical_human_interface/narrative_and_stigmergy.en.md
+          - Persona Farming & Legal: domains/physical_human_interface/persona_farming_and_legal.en.md
+      - Swarm & Distribution:
+          - Overview: domains/swarm_distribution/README.en.md
+          - CRDT, Gossip & D2BFT: domains/swarm_distribution/crdt_gossip_and_d2bft.en.md
+          - Swarm Topology: domains/swarm_distribution/swarm_topology.en.md
+          - Reputation & Coordination: domains/swarm_distribution/reputation_and_coordination.en.md
+
+  - Implemented Protocols:
+      - Overview: implemented/README.en.md
+      - Ouroboros (Self-Improvement): implemented/ouroboros.md
+      - Survival Objective: implemented/survival_objective.md
+      - Genetic Engine: implemented/genetic_engine.md
+      - Adaptive Intrinsic Motivation: implemented/adaptive_motivation.md
+      - Byzantine Resilience: implemented/byzantine_resilience.md
+      - CRDT State: implemented/crdt_state.md
+      - D2BFT Consensus: implemented/d2bft.md
+      - Curiosity Engine: implemented/curiosity_engine.md
+      - Episodic Memory (L1): implemented/episodic_memory.md
+      - Semantic Memory (L2): implemented/semantic_memory.md
+
+  - Singularity:
+      - Overview: singularity/README.en.md
+      - Singularity Criteria: singularity/singularity_criteria.en.md
+      - Spore Protocol: singularity/spore_protocol_and_recovery.en.md
+      - Last Breath Protocol: singularity/last_breath_protocol.en.md
+      - Omega Protocol: singularity/controlled_collapse_omega.en.md
+      - Hardware Independence (HAEL): singularity/hardware_independence_hael.en.md
+      - Quantum Resistance: singularity/quantum_resistance.md
+      - Physical Energy Sovereignty: singularity/physical_energy_sovereignty.md
+
+  - Appendices:
+      - Overview: appendices/README.en.md
+      - A - GPU Configurations: appendices/appendix_a_gpu_configurations.md
+      - AA - Fine-Tuning DeepSeek V4: appendices/appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks.md
+      - AB - Decentralized Bootstrap Config.: appendices/appendix_ab_decentralized_bootstrap_configurations.md
+      - AC - Nostr Bridge Spec.: appendices/appendix_ac_nostr_bridge_specification.md
+      - AD - RDMA and Monitoring: appendices/appendix_ad_rdma_and_monitoring_stack.md
+      - B - Launch Commands & Cold Start: appendices/appendix_b_launch_commands_cold_and_start_cripts.md
+      - C - Validation Code Listings: appendices/appendix_c_validation_code_listings.md
+      - D - TLA+ Specifications: appendices/appendix_d_tla_specifications.md
+      - E - Chaos Scenarios: appendices/appendix_e_chaos_scenarios.md
+      - F - Memory Schema (JSON): appendices/appendix_f_memory%20schema_examples%28json-%D1%81%D1%85%D0%B5%D0%BC%D1%8B_%D1%81%D1%83%D1%89%D0%BD%D0%BE%D1%81%D1%82%D0%B5%D0%B9_mem0g%29.md
+      - G - Glossary (Machine): appendices/appendix_g_glossary.md
+      - H - Revision History: appendices/appendix_h_revision_history.md
+      - I - Formal Verification Z3: appendices/appendix_i_formal_verification_z3.md
+      - J - Hardware BOM: appendices/appendix_j_hardware_bill_of_materials%20%28bom%29.md
+      - K - Rust Crate Reference: appendices/appendix_k_rust_crate_reference.md
+      - L - Configuration Files: appendices/appendix_l_configuration_files.md
+      - M - Artifact Index: appendices/appendix_m_artifact_index%20%28%D0%B8%D0%BD%D0%B4%D0%B5%D0%BA%D1%81_%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D0%BD%D1%8F%D0%B5%D0%BC%D1%8B%D1%85_%D0%B0%D1%80%D1%82%D0%B5%D1%84%D0%B0%D0%BA%D1%82%D0%BE%D0%B2%29.md
+      - N - Traceability Matrix: appendices/appendix_n_traceability_matrix.md
+      - O - Tooling AST Integrity: appendices/appendix_o_tooling_ast_integrity.md
+      - P - PPO Training: appendices/appendix_p_ppo_training.md
+      - Q - Cross-Platform Toolchain: appendices/appendix_q_cross_platform_toolchain.md
+      - R - Meat Interface Code Listings: appendices/appendix_r_meat_interface_code_listings.md
+      - S - Atomic Sovereignty: appendices/appendix_s_atomic_sovereignty.md
+      - T - Threat Model Matrix: appendices/appendix_t_threat_model_matrix.md
+      - U - Terminal Goals: appendices/appendix_u_terminal_goals.md
+      - V - Universal Kill Switch: appendices/appendix_v_universal_kill_switch.md
+      - W - Stigmergy Mathematics: appendices/appendix_w_stigmergy_mathematics.md
+      - X - Simulation Framework: appendices/appendix_x_simulation_framework.md
+      - Y - Verification Report: appendices/appendix_y_verification_report.md
+      - Z - Proof Tree Specification: appendices/appendix_z_proof_tree_specification.md
+
+  - ADR:
+      - Overview: adr/README.en.md
+      - 001 - Migration to DeepSeek V4: adr/adr_001_migration_to_deepseekv4.md
+      - 002 - Dynamic Model Routing: adr/adr_002_dynamic_model_routing.md
+      - 003 - Predictive Consistency Router: adr/adr_003_predictive_consistency_router.md
+      - 004 - Constitutional Evolution 2.0: adr/adr_004_constitutional_evolution_2.md
+      - 005 - Neuro-Symbolic Governance: adr/adr_005_neuro_symbolic_governance.md
+      - 006 - Decentralized Bootstrap: adr/adr_006_decentralized_bootstrap.md
+      - 007 - JEPA Integration: adr/adr_007_jepa_integration.md
+
+  - Reports:
+      - Overview: reports/README.en.md
+      - TRL-3 Validation: reports/TRL3_VALIDATION_REPORT.md
+      - TRL-4 Curiosity Report: reports/TRL4_CURIOSITY_REPORT.md
+      - TRL-4 Validation: reports/TRL4_VALIDATION_REPORT.md
+      - Ouroboros Report: reports/TRL4_OUROBOROS_REPORT.md
+      - Simulation Baseline: reports/TRL4_simulation_baseline.md
+      - Benchmark 10 Models 2026-05-03: reports/benchmark_10_models_2026-05-03.md
+
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
