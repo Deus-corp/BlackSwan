@@ -43,7 +43,7 @@ Configuration Guide explains every environment variable.
 
 ## 5. Next Steps
 
-- Read the [Architecture Overview](../architecture/) to understand the layers and formal contracts.
-- Run the [Multi-Model Benchmark](../benchmarks/report/) to compare local LLMs.
-- Explore the [Spore Protocol](../spore/) for resilience testing.
+- Read the [Architecture Overview](architecture/architecture_overview.en.md) to understand the layers and formal contracts.
+- Run the [Multi-Model Benchmark](reports/benchmark_10_models_2026-05-03.md) to compare local LLMs.
+- Explore the [Spore Protocol](singularity/spore_protocol_and_recovery.en.md) for resilience testing.
 - Check the [Roadmap](../roadmap/) for upcoming features.
