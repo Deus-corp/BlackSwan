@@ -67,3 +67,6 @@ echo "run_model_api.py" >> .gitignorellama.zip
 llama_cpp/
 *.gguf
 .env
+docs/book/book/
+docs/book/src/
+docs/book/theme/
