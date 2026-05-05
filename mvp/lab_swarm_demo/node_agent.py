@@ -108,10 +108,11 @@ class SwarmNode:
         self.gossip: SafeGossipAdapter = SafeGossipAdapter(self.crdt)
         self.gossip.set_reputation_manager(self.reputation)
 
-        # Рыночные данные
-        self.live_market: Optional[BinanceTestnetAdapter] = None
-        if self.market_mode == "live":
-            self.live_market = BinanceTestnetAdapter(symbol=os.environ.get("TRADING_SYMBOL", "BTC/USDT"))
+        # Хранилище событий (всегда, независимо от флагов)
+        self.event_store = EventStore(
+            ledger_path=os.environ.get("EVENT_LEDGER_PATH", "./data/ledgers/events.jsonl"),
+            sqlite_path=os.environ.get("EVENT_SQLITE_PATH", "./data/ledgers/events.db"),
+        )
 
         # Рыночные данные – теперь мульти-парный адаптер
         self.market_mode: str = os.environ.get("MARKET_MODE", "sim")
