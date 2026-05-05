@@ -8,22 +8,48 @@
 
 ---
 
-## 🚀 Quick Start (local demo)
+## 🚀 Quick Start
 
-### 🎮 Swarm Control Panel
+### 1. 🎮 Console Control Panel
 
-Interactive menu to start/stop/rebuild the swarm, change models, set API keys, save logs – no Docker memorisation needed.
+Interactive menu to start/stop/rebuild the swarm, change models, set API keys, and view logs – no Docker commands needed.
 
 ```bash
+git clone https://github.com/Deus-corp/BlackSwan.git
+cd BlackSwan
 python3 swarm_control.py
 ```
-### 🌐 Web Dashboard
+
+### 2. Web Control Panel
+
+Open http://localhost:8080 in your browser to manage the swarm from a graphical interface.
+
+```bash
+pip install fastapi uvicorn python-multipart
+python3 web_control_panel.py
+```
+
+
+### 3. 🌐 Web Dashboard
 
 Open http://localhost:8000 in your browser to see real-time graphs of capital, fitness, diversity, and niche distribution. Requires fastapi and uvicorn.
 
 ```bash
 python3 web_dashboard.py
 ```
+
+### 4. Download LLM Models
+
+The swarm requires at least one local LLM model. Download the recommended ones:
+
+```bash
+# SmolLM2-1.7B (fast, low‑resource)
+curl -L "https://huggingface.co/bartowski/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf" -o llama_cpp/SmolLM2-1.7B-Instruct-Q4_K_M.gguf
+
+# DeepSeek-R1-Distill-Qwen-1.5B (best reasoning)
+curl -L "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf" -o llama_cpp/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf
+```
+Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 
 ---
 
@@ -63,6 +89,10 @@ python3 web_dashboard.py
 ### Market & Trading
 - 🧪 Binance Testnet Adapter – live price feed via CCXT, bid/ask pricing, market hours filter, multi‑symbol support
 - 🧪 Web3 Testnet Adapter (stub) – prepared for Arbitrum Sepolia integration
+
+- 🌐 **Multi‑Pair Trading** – single node trades BTC/USDT, ETH/USDT, SOL/USDT simultaneously.
+- 🧠 **Internet Researcher** – gathers crypto news (sentiment) and on‑chain data for LLM context.
+- 🖥️ **Web Control Panel** – fully manage the swarm from a browser (start/stop, logs, model switching).
 
 ### Documentation & Reports
 - 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
