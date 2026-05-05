@@ -94,6 +94,9 @@ class SwarmNode:
         self.internet_researcher: InternetResearcher = InternetResearcher(
             memory_api=self.memory_api if self.memory_api_enabled else None
         )
+        self.onchain_analyzer = OnChainAnalyzer(
+            api_key=os.environ.get("ETHERSCAN_API_KEY", "")
+        )
 
         self.crdt: CRDTAdapter = CRDTAdapter(
             node_id=self.node_id,
