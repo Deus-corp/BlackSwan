@@ -25,6 +25,7 @@ from src.core.events import Event
 from src.core.event_store import EventStore
 from src.security.key_manager import KeyManager
 from src.intelligence.internet_researcher import InternetResearcher
+from adapters.multi_pair_adapter import MultiPairAdapter
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -115,11 +116,15 @@ class SwarmNode:
         if self.market_mode == "live":
             self.live_market = BinanceTestnetAdapter(symbol=os.environ.get("TRADING_SYMBOL", "BTC/USDT"))
 
-        # Хранилище событий
-        self.event_store = EventStore(
-            ledger_path=os.environ.get("EVENT_LEDGER_PATH", "./data/ledgers/events.jsonl"),
-            sqlite_path=os.environ.get("EVENT_SQLITE_PATH", "./data/ledgers/events.db"),
+        # Рыночные данные – теперь мульти-парный адаптер
+        self.market_mode: str = os.environ.get("MARKET_MODE", "sim")
+        trading_symbols = os.environ.get("TRADING_SYMBOLS", "BTC/USDT")
+        symbols_list = [s.strip() for s in trading_symbols.split(",") if s.strip()]
+        self.market_adapter = MultiPairAdapter(
+            symbols=symbols_list,
+            market_mode=self.market_mode
         )
+        self.primary_symbol = symbols_list[0] if symbols_list else "BTC/USDT"
 
         # ========== INTELLIGENCE LAYER (BRAIN) ==========
         # Генетический движок и стратегии
@@ -287,17 +292,17 @@ Respond ONLY with the adjusted parameters in JSON format, like:
     # ------------------------------------------------------------
     # Market
     # ------------------------------------------------------------
-    async def get_market_tick(self, session: aiohttp.ClientSession) -> dict:
-        if self.market_mode == "live" and self.live_market:
-            tick = await self.live_market.get_ticker()
-            if tick is not None:
-                # Масштабируем цену
-                scale = float(os.environ.get("PRICE_SCALE", 10000))
-                tick['price'] = tick.get('price', tick.get('ask', 50000))  # fallback
-                tick['price'] = tick['price'] / scale
-                return tick
-            # Иначе рынок закрыт – fallback к симуляции
-        # Старое поведение (симуляция)
+    async def get_market_tick(self, session: aiohttp.ClientSession, symbol: str = "BTC/USDT") -> dict:
+        if self.market_mode == "live" and self.market_adapter:
+            adapter = self.market_adapter.get_adapter(symbol)
+            if adapter:
+                tick = await adapter.get_ticker()
+                if tick is not None:
+                    scale = float(os.environ.get("PRICE_SCALE", 10000))
+                    tick['price'] = tick.get('price', tick.get('ask', 50000))
+                    tick['price'] = tick['price'] / scale
+                    return tick
+        # fallback – симуляция
         if self.market_url:
             try:
                 async with session.get(self.market_url, timeout=1) as resp:
@@ -334,7 +339,22 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     logger.info(f"[{self.node_id}] failed")
                     sys.exit(1)
 
-                market = await self.get_market_tick(session)
+                # Получаем тики для всех пар
+                all_tickers = await self.market_adapter.fetch_all_tickers()
+                best_symbol = None
+                best_expected_return = -1
+                best_market = None
+                for sym, tick in all_tickers.items():
+                    expected = tick.get("price", 0.0) * EXPECTED_RETURN_RATE
+                    if expected > best_expected_return:
+                        best_expected_return = expected
+                        best_symbol = sym
+                        best_market = tick
+                if best_market is None:
+                    best_market = {"price": random.uniform(90, 110)}
+                    best_symbol = self.primary_symbol
+
+                market = best_market
                 self.capital -= self.burn_rate
                 if self.capital <= 0:
                     logger.info(f"[{self.node_id}] died")
@@ -353,7 +373,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         # Логирование сделки
                         logger.debug(
                             f"[{self.node_id}] TRADE | step={self.step_count} "
-                            f"price={market['price']:.2f} fraction={fraction:.4f} "
+                            f"symbol={best_symbol} price={market['price']:.2f} fraction={fraction:.4f} "
                             f"ret={ret:.6f} capital_before={prev_capital:.2f} "
                             f"capital_after={self.capital:.2f} dq={self.survival.dq:.3f} "
                             f"params={self.current_params}"
@@ -365,6 +385,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             event_type="trade_executed",
                             payload={
                                 "step": self.step_count,
+                                "symbol": best_symbol,
                                 "price": market["price"],
                                 "fraction": fraction,
                                 "ret": ret,
@@ -451,7 +472,6 @@ Respond ONLY with the adjusted parameters in JSON format, like:
 
                         # --- отправка с подписью или без ---
                         if os.environ.get("GOSSIP_SIGNING_ENABLED", "false").lower() == "true":
-                            # Собираем подписанный конверт
                             self.gossip_seq_no += 1
                             self.gossip_lamport_ts += 1
                             meta = {
@@ -475,7 +495,6 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             envelope = sign_envelope(genome_dict, meta, self.gossip_private_key)
                             await self.crdt.add_genome(envelope.model_dump(mode='json'))
                         else:
-                            # Старое поведение
                             payload = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
                             genome_dict["signature"] = self.crypto.sign(payload)
                             genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
@@ -484,13 +503,11 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     # LLM-мутация чемпиона (каждые 200 шагов)
                     if self.step_count % 200 == 0:
                         external_context = ""
-                        # Собираем внешние данные, если включён интернет-режим
                         if os.environ.get("INTERNET_RESEARCHER_ENABLED", "false").lower() == "true":
                             try:
                                 external_context = await self.internet_researcher.gather_context()
                             except Exception:
                                 external_context = ""
-                        
                         context = (
                             f"volatility={self._current_volatility():.3f}, "
                             f"dq={self.survival.dq:.3f}, "
@@ -498,7 +515,6 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         )
                         if external_context:
                             context += "\n" + external_context
-                        
                         new_params = self._llm_mutate(self.engine.champion[0], context)
                         if new_params != self.engine.champion[0]:
                             genome = self.dict_to_genome({"params": new_params})
@@ -533,10 +549,9 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         f"llm_muts={llm_muts} avg_llm_impact={avg_impact:+.2f}"
                     )
 
-                    # Сохраняем сводку в новую память, если API включено
                     if self.memory_api_enabled:
                         record = MemoryRecord(
-                            id="",  # будет сгенерирован автоматически
+                            id="",
                             kind="summary",
                             scope="local",
                             payload={
@@ -589,7 +604,6 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             claimed_fit = sample.get("fitness", 0.0)
                             self.reputation.update(pubkey, claimed_fit, actual_fit)
 
-                    # Статистика новой памяти (если включено)
                     if self.memory_api_enabled:
                         stats = await self.memory_api.compress()
                         logger.info(f"Memory stats: {stats}")
@@ -602,21 +616,20 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     }.values())
                     if len(self.memory.records) > self.memory.max_size:
                         self.memory.records = self.memory.records[-self.memory.max_size:]
-                    
+
                     if self.memory_api_enabled:
                         await self.memory_api.save_to_db()
-                    self.event_store.append(Event.create(
-                        node_id=self.node_id,
-                        event_type="memory_snapshot_created",
-                        payload={
-                            "step": self.step_count,
-                            "records_count": len(self.memory_api._records),
-                            "trace_id": self._trace_id,
-                        },
-                        parent_id=self._trace_id,
-                    ))
+                        self.event_store.append(Event.create(
+                            node_id=self.node_id,
+                            event_type="memory_snapshot_created",
+                            payload={
+                                "step": self.step_count,
+                                "records_count": len(self.memory_api._records),
+                                "trace_id": self._trace_id,
+                            },
+                            parent_id=self._trace_id,
+                        ))
 
-                # ---- добавляем сюда ----
                 update_llm_impact(self.capital)
 
                 await asyncio.sleep(0.5)
