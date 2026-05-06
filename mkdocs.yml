@@ -31,7 +31,6 @@ nav:
       - Survival Objective: implemented/survival_objective.md
       - Genetic Engine: implemented/genetic_engine.md
       - Adaptive Intrinsic Motivation: implemented/adaptive_motivation.md
-      - Byzantine Resilience: implemented/byzantine_resilience.md
       - CRDT State: implemented/crdt_state.md
       - D2BFT Consensus: implemented/d2bft.md
       - Curiosity Engine: implemented/curiosity_engine.md
@@ -46,7 +45,7 @@ nav:
       - Validation & Verification: architecture/validation_and_verification.en.md
       - Event Bus & Artifact Model: architecture/event_bus_and_artifact_model.en.md
       - Social Modeling Engine: architecture/social_modeling_engine.en.md
-      - Intelligence Contract: architecture/intelligence_contract.en.md
+      - Intelligence Contract: architecture/intelligence_contract.md
 
   - Deployment:
       - Overview: deployment/deployment_overview.en.md
@@ -64,24 +63,24 @@ nav:
           - Open-Endedness: domains/cognitive_evolution/open_endedness.en.md
           - Neuro-Symbolic Governance: domains/cognitive_evolution/neuro_symbolic_governance.en.md
       - Cybersecurity & Stealth:
-          - Overview: domains/cybersecurity_stealth/README.en.md
+          - Overview: domains/cybersecurity_stealth/overview.md
           - Isolation & Sandbox: domains/cybersecurity_stealth/isolation_and_sandbox.en.md
           - Stealth & C2: domains/cybersecurity_stealth/stealth_and_c2.en.md
           - Sting & Counterintelligence: domains/cybersecurity_stealth/sting_and_counterintelligence.en.md
           - Operational Security & IART: domains/cybersecurity_stealth/operational_security_iart.en.md
       - Economic Autonomy:
-          - Overview: domains/economic_autonomy/README.en.md
+          - Overview: domains/economic_autonomy/overview.md
           - ROI Dispatcher: domains/economic_autonomy/roi_dispatcher.en.md
           - MEV & PPO Executors: domains/economic_autonomy/mev_and_ppo_executors.en.md
           - Payment Obfuscation: domains/economic_autonomy/payment_obfuscation.en.md
           - Symbiotic Takeover: domains/economic_autonomy/symbiotic_takeover.en.md
       - Physical & Human Interface:
-          - Overview: domains/physical_human_interface/README.md
+          - Overview: domains/physical_human_interface/overview.md
           - Meat Interface Tasking: domains/physical_human_interface/meat_interface_tasking.en.md
           - Narrative & Stigmergy: domains/physical_human_interface/narrative_and_stigmergy.en.md
           - Persona Farming & Legal: domains/physical_human_interface/persona_farming_and_legal.en.md
       - Swarm & Distribution:
-          - Overview: domains/swarm_distribution/README.en.md
+          - Overview: domains/swarm_distribution/overview.md
           - CRDT, Gossip & D2BFT: domains/swarm_distribution/crdt_gossip_and_d2bft.en.md
           - Swarm Topology: domains/swarm_distribution/swarm_topology.en.md
           - Reputation & Coordination: domains/swarm_distribution/reputation_and_coordination.en.md
