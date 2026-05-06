@@ -15,8 +15,7 @@ COMPOSE_FILE = PROJECT_ROOT / "mvp" / "lab_swarm_demo" / "docker-compose.async.y
 
 app = FastAPI(title="BlackSwan Control Panel")
 
-HTML_TEMPLATE = """
-<!DOCTYPE html>
+HTML_HEADER = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -28,13 +27,25 @@ HTML_TEMPLATE = """
         button, input[type=submit] { background: #e94560; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; margin-right: 0.5rem; }
         button:hover { background: #c23152; }
         input[type=text], select { padding: 0.5rem; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; margin-right: 0.5rem; }
-        pre { background: #0d1117; padding: 1rem; border-radius: 8px; overflow-x: auto; max-height: 300px; }
+        pre { background: #0d1117; padding: 1rem; border-radius: 8px; overflow-x: auto; max-height: 400px; }
         .row { display: flex; align-items: center; margin-bottom: 0.5rem; }
         .row label { width: 300px; }
     </style>
 </head>
 <body>
     <h1>🦢 BlackSwan Control Panel</h1>
+"""
+
+HTML_FOOTER = """</body>
+</html>"""
+
+def render_page(message: str = "") -> str:
+    """Собирает HTML-страницу с переданным сообщением."""
+    msg_section = ""
+    if message:
+        msg_section = f"""<section><h3>Result</h3><pre>{message}</pre></section>"""
+    
+    return f"""{HTML_HEADER}
     <section>
         <h2>Swarm Actions</h2>
         <form action="/api/start" method="post" style="display:inline">
@@ -45,6 +56,15 @@ HTML_TEMPLATE = """
         </form>
         <form action="/api/rebuild" method="post" style="display:inline">
             <button type="submit">🔄 Rebuild & Start</button>
+        </form>
+    </section>
+    <section>
+        <h2>Monitoring</h2>
+        <form action="/api/logs" method="get" style="display:inline">
+            <button type="submit">📜 Show Last Logs</button>
+        </form>
+        <form action="/api/save_logs" method="post" style="display:inline">
+            <button type="submit">💾 Save Logs to File</button>
         </form>
     </section>
     <section>
@@ -72,29 +92,22 @@ HTML_TEMPLATE = """
             <button type="submit">💾 Save & Restart</button>
         </form>
     </section>
-    {% if message %}
-    <section>
-        <h3>Result</h3>
-        <pre>{{ message }}</pre>
-    </section>
-    {% endif %}
-</body>
-</html>
-"""
+    {msg_section}
+    {HTML_FOOTER}"""
 
 @app.get("/", response_class=HTMLResponse)
-def index(message: str = ""):
-    return HTML_TEMPLATE.replace("{{ message }}", message)
+def index():
+    return render_page()
 
 @app.post("/api/start")
 async def start_swarm():
     result = subprocess.run(f"docker compose -f {COMPOSE_FILE} up -d --scale node=4", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
-    return HTML_TEMPLATE.replace("{{ message }}", result.stdout or result.stderr)
+    return render_page(result.stdout or result.stderr)
 
 @app.post("/api/stop")
 async def stop_swarm():
     result = subprocess.run(f"docker compose -f {COMPOSE_FILE} down", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
-    return HTML_TEMPLATE.replace("{{ message }}", result.stdout or result.stderr)
+    return render_page(result.stdout or result.stderr)
 
 @app.post("/api/rebuild")
 async def rebuild_swarm():
@@ -102,7 +115,24 @@ async def rebuild_swarm():
     build = subprocess.run(f"docker compose -f {COMPOSE_FILE} build --no-cache", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
     start = subprocess.run(f"docker compose -f {COMPOSE_FILE} up -d --scale node=4", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
     msg = f"STOP:\n{stop.stdout}\nBUILD:\n{build.stdout}\nSTART:\n{start.stdout}"
-    return HTML_TEMPLATE.replace("{{ message }}", msg)
+    return render_page(msg)
+
+@app.get("/api/logs", response_class=HTMLResponse)
+async def show_logs():
+    result = subprocess.run(f"docker compose -f {COMPOSE_FILE} logs --tail 50", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
+    return render_page(result.stdout or result.stderr)
+
+@app.post("/api/save_logs", response_class=HTMLResponse)
+async def save_logs():
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    dest_dir = PROJECT_ROOT / "logs" / f"swarm_logs_{timestamp}"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    for i in range(1, 5):
+        log = subprocess.run(f"docker logs lab_swarm_demo-node-{i} 2>&1", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
+        (dest_dir / f"node-{i}.log").write_text(log.stdout)
+    combined = subprocess.run(f"docker compose -f {COMPOSE_FILE} logs --no-color 2>&1", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
+    (dest_dir / "all_nodes.log").write_text(combined.stdout)
+    return render_page(f"Logs saved to {dest_dir}")
 
 @app.post("/api/update_config")
 async def update_config(
@@ -126,9 +156,7 @@ async def update_config(
     HEDGE_ENABLED: str = Form(...),
     HEDGE_RATIO: str = Form(...),
 ):
-    # Читаем текущий compose-файл
     content = COMPOSE_FILE.read_text()
-    # Заменяем значения переменных (ищем строки вида - VAR=... и заменяем на новое значение)
     replacements = {
         "LLM_MODEL=": f"LLM_MODEL={LLM_MODEL}",
         "BURN_RATE=": f"BURN_RATE={BURN_RATE}",
@@ -151,13 +179,12 @@ async def update_config(
         "HEDGE_RATIO=": f"HEDGE_RATIO={HEDGE_RATIO}",
     }
     for old_prefix, new_line in replacements.items():
-        content = content.replace(old_prefix, f"#{old_prefix}")  # временно комментируем
-        content = content.replace(f"#{old_prefix}", new_line, 1)  # вставляем новое значение
+        content = content.replace(old_prefix, f"#{old_prefix}")
+        content = content.replace(f"#{old_prefix}", new_line, 1)
     COMPOSE_FILE.write_text(content)
-    # Останавливаем и запускаем рой (без пересборки)
     subprocess.run(f"docker compose -f {COMPOSE_FILE} down", shell=True, capture_output=True, cwd=PROJECT_ROOT)
     subprocess.run(f"docker compose -f {COMPOSE_FILE} up -d --scale node=4", shell=True, capture_output=True, cwd=PROJECT_ROOT)
-    return HTML_TEMPLATE.replace("{{ message }}", "Configuration saved and swarm restarted.")
+    return render_page("Configuration saved and swarm restarted.")
 
 if __name__ == "__main__":
     print("🌐 Панель управления запущена на http://localhost:8080")
