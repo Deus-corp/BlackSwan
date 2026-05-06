@@ -8,7 +8,7 @@ import logging
 from typing import Dict, List, Optional
 
 from adapters.live_market import BinanceTestnetAdapter
-# from adapters.web3_testnet import Web3TestnetAdapter  # раскомментировать позже
+from adapters.futures_adapter import FuturesAdapter
 
 logger = logging.getLogger(__name__)
 
