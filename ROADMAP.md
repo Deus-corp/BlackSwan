@@ -74,6 +74,11 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 - Complete Web3 testnet adapter for Arbitrum Sepolia.
 - Compare single‑pair vs multi‑pair strategy performance over long runs.
 - Add Prometheus/Grafana dashboards for live metrics.
+- ✅ Web3 adapter with Uniswap V3 integration (Arbitrum Sepolia).
+- ✅ Binance Futures adapter with stop‑loss and dynamic leverage.
+- ✅ Spot/Futures hedging for risk mitigation.
+- ✅ Order Book analysis and TradingView webhooks.
+- ✅ Web Control Panel for full swarm management.
 
 ---
 

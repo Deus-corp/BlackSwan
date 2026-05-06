@@ -92,7 +92,12 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 
 - 🌐 **Multi‑Pair Trading** – single node trades BTC/USDT, ETH/USDT, SOL/USDT simultaneously.
 - 🧠 **Internet Researcher** – gathers crypto news (sentiment) and on‑chain data for LLM context.
-- 🖥️ **Web Control Panel** – fully manage the swarm from a browser (start/stop, logs, model switching).
+- 📈 **Binance Futures** – long/short trading with configurable leverage, stop‑loss, and dynamic leverage adjustment.
+- 🛡️ **Spot/Futures Hedging** – automatic hedging of futures positions with spot orders (configurable ratio).
+- 📊 **Order Book Analysis** – real‑time imbalance and delta volume for smarter entries.
+- 📡 **TradingView Webhooks** – external trading signals injected directly into LLM context.
+- 🌐 **Web3 Adapter** – Uniswap V3 price quotes and swap execution on Arbitrum Sepolia.
+- 🖥️ **Web Control Panel** – full swarm management from browser (start/stop, config, logs, model switching).
 
 ### Documentation & Reports
 - 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
