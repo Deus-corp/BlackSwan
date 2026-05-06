@@ -20,25 +20,16 @@ cd BlackSwan
 python3 swarm_control.py
 ```
 
-### 2. Web Control Panel
+### 2. 🌐 Web Control Panel
 
-Open http://localhost:8080 in your browser to manage the swarm from a graphical interface.
+Open http://localhost:8080 in your browser to manage the swarm and see real‑time charts.
 
 ```bash
 pip install fastapi uvicorn python-multipart
 python3 web_control_panel.py
 ```
 
-
-### 3. 🌐 Web Dashboard
-
-Open http://localhost:8000 in your browser to see real-time graphs of capital, fitness, diversity, and niche distribution. Requires fastapi and uvicorn.
-
-```bash
-python3 web_dashboard.py
-```
-
-### 4. Download LLM Models
+### 3. Download LLM Models
 
 The swarm requires at least one local LLM model. Download the recommended ones:
 
