@@ -1,27 +1,59 @@
 #!/usr/bin/env python3
 """
-BlackSwan Web Control Panel – полное управление роем через браузер.
+BlackSwan Web Control Panel – полное управление роем и дашборд в браузере.
 Запуск: python3 web_control_panel.py (откроется на http://localhost:8080)
 """
 import subprocess
 import time
+import re
+from collections import defaultdict
 from pathlib import Path
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 import uvicorn
+import docker
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 COMPOSE_FILE = PROJECT_ROOT / "mvp" / "lab_swarm_demo" / "docker-compose.async.yml"
 
 app = FastAPI(title="BlackSwan Control Panel")
 
+# ---------- Метрики для дашборда ----------
+client = docker.from_env()
+LOG_PATTERN = re.compile(
+    r'SwarmNode:\[([^\]]+)\]\s+step=(\d+)\s+capital=([\d.]+)\s+dq=[\d.]+\s+fitness=([\d.]+)\s+diversity=([\d.]+)\s+crdt_size=(\d+)\s+niche=(\w+)'
+)
+
+def collect_metrics():
+    metrics = defaultdict(dict)
+    containers = client.containers.list(filters={"name": "lab_swarm_demo-node", "status": "running"})
+    for c in containers:
+        try:
+            log = c.logs(tail=200).decode('utf-8')
+        except docker.errors.APIError:
+            continue
+        matches = LOG_PATTERN.findall(log)
+        if matches:
+            last = matches[-1]
+            node = c.name.replace("lab_swarm_demo-", "")
+            metrics[node] = {
+                "step": int(last[1]),
+                "capital": float(last[2]),
+                "fitness": float(last[3]),
+                "diversity": float(last[4]),
+                "crdt_size": int(last[5]),
+                "niche": last[6],
+            }
+    return metrics
+
+# ---------- HTML-шаблоны ----------
 HTML_HEADER = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <title>BlackSwan Control Panel</title>
     <style>
-        body { font-family: sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background: #1a1a2e; color: #e0e0e0; }
+        body { font-family: sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; background: #1a1a2e; color: #e0e0e0; }
         h1 { color: #f0c000; }
         section { background: #16213e; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
         button, input[type=submit] { background: #e94560; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; margin-right: 0.5rem; }
@@ -30,21 +62,107 @@ HTML_HEADER = """<!DOCTYPE html>
         pre { background: #0d1117; padding: 1rem; border-radius: 8px; overflow-x: auto; max-height: 400px; }
         .row { display: flex; align-items: center; margin-bottom: 0.5rem; }
         .row label { width: 300px; }
+        .tabs { display: flex; gap: 1rem; margin-bottom: 1rem; }
+        .tabs a { color: #f0c000; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; background: #16213e; }
+        .tabs a.active { background: #e94560; color: white; }
     </style>
 </head>
 <body>
     <h1>🦢 BlackSwan Control Panel</h1>
+    <div class="tabs">
+        <a href="/" class="active">⚙️ Control</a>
+        <a href="/dashboard">📊 Dashboard</a>
+    </div>
 """
 
 HTML_FOOTER = """</body>
 </html>"""
 
+DASHBOARD_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BlackSwan Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #1a1a2e; color: #e0e0e0; margin: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: #16213e; border-radius: 12px; padding: 15px; }
+        canvas { max-height: 300px; }
+        h2 { margin-top: 0; }
+        .tabs { display: flex; gap: 1rem; margin-bottom: 1rem; }
+        .tabs a { color: #f0c000; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; background: #16213e; }
+        .tabs a.active { background: #e94560; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🦢 BlackSwan Swarm Dashboard</h1>
+    <div class="tabs">
+        <a href="/">⚙️ Control</a>
+        <a href="/dashboard" class="active">📊 Dashboard</a>
+    </div>
+    <div class="grid">
+        <div class="card"><h2>Capital</h2><canvas id="capitalChart"></canvas></div>
+        <div class="card"><h2>Fitness</h2><canvas id="fitnessChart"></canvas></div>
+        <div class="card"><h2>Diversity & CRDT Size</h2><canvas id="diversityChart"></canvas></div>
+        <div class="card"><h2>Niche Distribution</h2><canvas id="nicheChart"></canvas></div>
+    </div>
+<script>
+  let charts = {};
+  async function fetchMetrics() {
+    const res = await fetch('/api/metrics');
+    const data = await res.json();
+    const labels = Object.keys(data);
+
+    // Capital
+    if (charts.capital) charts.capital.destroy();
+    charts.capital = new Chart(document.getElementById('capitalChart'), {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Capital', data: labels.map(l => data[l].capital), backgroundColor: '#e94560' }] },
+      options: { plugins: { legend: { display: false } } }
+    });
+    // Fitness
+    if (charts.fitness) charts.fitness.destroy();
+    charts.fitness = new Chart(document.getElementById('fitnessChart'), {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Fitness', data: labels.map(l => data[l].fitness), backgroundColor: '#0f3460' }] },
+      options: { plugins: { legend: { display: false } } }
+    });
+    // Diversity & CRDT Size
+    if (charts.diversity) charts.diversity.destroy();
+    charts.diversity = new Chart(document.getElementById('diversityChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Diversity', data: labels.map(l => data[l].diversity), backgroundColor: '#16c79a' },
+          { label: 'CRDT Size', data: labels.map(l => data[l].crdt_size), backgroundColor: '#fca311' }
+        ]
+      }
+    });
+    // Niche pie
+    if (charts.niche) charts.niche.destroy();
+    const niches = labels.map(l => data[l].niche);
+    const nicheCounts = {};
+    niches.forEach(n => nicheCounts[n] = (nicheCounts[n] || 0) + 1);
+    charts.niche = new Chart(document.getElementById('nicheChart'), {
+      type: 'pie',
+      data: {
+        labels: Object.keys(nicheCounts),
+        datasets: [{ data: Object.values(nicheCounts), backgroundColor: ['#e94560', '#0f3460', '#16c79a'] }]
+      }
+    });
+  }
+  fetchMetrics();
+  setInterval(fetchMetrics, 5000);
+</script>
+</body>
+</html>
+"""
+
 def render_page(message: str = "") -> str:
-    """Собирает HTML-страницу с переданным сообщением."""
-    msg_section = ""
-    if message:
-        msg_section = f"""<section><h3>Result</h3><pre>{message}</pre></section>"""
-    
+    msg_section = f"""<section><h3>Result</h3><pre>{message}</pre></section>""" if message else ""
     return f"""{HTML_HEADER}
     <section>
         <h2>Swarm Actions</h2>
@@ -95,19 +213,28 @@ def render_page(message: str = "") -> str:
     {msg_section}
     {HTML_FOOTER}"""
 
+# ---------- Эндпоинты панели управления ----------
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return render_page()
+    return HTMLResponse(render_page())
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard():
+    return HTMLResponse(DASHBOARD_HTML)
+
+@app.get("/api/metrics")
+def api_metrics():
+    return collect_metrics()
 
 @app.post("/api/start")
 async def start_swarm():
     result = subprocess.run(f"docker compose -f {COMPOSE_FILE} up -d --scale node=4", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
-    return render_page(result.stdout or result.stderr)
+    return HTMLResponse(render_page(result.stdout or result.stderr))
 
 @app.post("/api/stop")
 async def stop_swarm():
     result = subprocess.run(f"docker compose -f {COMPOSE_FILE} down", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
-    return render_page(result.stdout or result.stderr)
+    return HTMLResponse(render_page(result.stdout or result.stderr))
 
 @app.post("/api/rebuild")
 async def rebuild_swarm():
@@ -115,12 +242,12 @@ async def rebuild_swarm():
     build = subprocess.run(f"docker compose -f {COMPOSE_FILE} build --no-cache", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
     start = subprocess.run(f"docker compose -f {COMPOSE_FILE} up -d --scale node=4", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
     msg = f"STOP:\n{stop.stdout}\nBUILD:\n{build.stdout}\nSTART:\n{start.stdout}"
-    return render_page(msg)
+    return HTMLResponse(render_page(msg))
 
 @app.get("/api/logs", response_class=HTMLResponse)
 async def show_logs():
     result = subprocess.run(f"docker compose -f {COMPOSE_FILE} logs --tail 50", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
-    return render_page(result.stdout or result.stderr)
+    return HTMLResponse(render_page(result.stdout or result.stderr))
 
 @app.post("/api/save_logs", response_class=HTMLResponse)
 async def save_logs():
@@ -132,7 +259,7 @@ async def save_logs():
         (dest_dir / f"node-{i}.log").write_text(log.stdout)
     combined = subprocess.run(f"docker compose -f {COMPOSE_FILE} logs --no-color 2>&1", shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT)
     (dest_dir / "all_nodes.log").write_text(combined.stdout)
-    return render_page(f"Logs saved to {dest_dir}")
+    return HTMLResponse(render_page(f"Logs saved to {dest_dir}"))
 
 @app.post("/api/update_config")
 async def update_config(
@@ -157,7 +284,7 @@ async def update_config(
     HEDGE_RATIO: str = Form(...),
 ):
     content = COMPOSE_FILE.read_text()
-    replacements = {
+    repl = {
         "LLM_MODEL=": f"LLM_MODEL={LLM_MODEL}",
         "BURN_RATE=": f"BURN_RATE={BURN_RATE}",
         "FAILURE_PROB=": f"FAILURE_PROB={FAILURE_PROB}",
@@ -178,14 +305,14 @@ async def update_config(
         "HEDGE_ENABLED=": f"HEDGE_ENABLED={HEDGE_ENABLED}",
         "HEDGE_RATIO=": f"HEDGE_RATIO={HEDGE_RATIO}",
     }
-    for old_prefix, new_line in replacements.items():
+    for old_prefix, new_line in repl.items():
         content = content.replace(old_prefix, f"#{old_prefix}")
         content = content.replace(f"#{old_prefix}", new_line, 1)
     COMPOSE_FILE.write_text(content)
     subprocess.run(f"docker compose -f {COMPOSE_FILE} down", shell=True, capture_output=True, cwd=PROJECT_ROOT)
     subprocess.run(f"docker compose -f {COMPOSE_FILE} up -d --scale node=4", shell=True, capture_output=True, cwd=PROJECT_ROOT)
-    return render_page("Configuration saved and swarm restarted.")
+    return HTMLResponse(render_page("Configuration saved and swarm restarted."))
 
 if __name__ == "__main__":
-    print("🌐 Панель управления запущена на http://localhost:8080")
+    print("🌐 Панель управления с дашбордом запущена на http://localhost:8080")
     uvicorn.run(app, host="0.0.0.0", port=8080, log_level="info")
