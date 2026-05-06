@@ -27,6 +27,7 @@ from src.security.key_manager import KeyManager
 from adapters.multi_pair_adapter import MultiPairAdapter
 from src.intelligence.internet_researcher import InternetResearcher
 from adapters.tradingview_webhook import TradingViewWebhook
+from adapters.orderbook_analyzer import OrderBookAnalyzer
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -130,6 +131,15 @@ class SwarmNode:
         self.tradingview_webhook = None
         if self.tradingview_enabled:
             self.tradingview_webhook = TradingViewWebhook(port=int(os.environ.get("TRADINGVIEW_WEBHOOK_PORT", 8888)))
+
+                # OrderBook анализ (если включён)
+        self.orderbook_enabled = os.environ.get("ORDERBOOK_ANALYSIS_ENABLED", "false").lower() == "true"
+        self.orderbook_analyzers: Dict[str, OrderBookAnalyzer] = {}
+        if self.orderbook_enabled:
+            for sym in symbols_list:
+                adapter = self.market_adapter.get_adapter(sym)
+                if adapter:
+                    self.orderbook_analyzers[sym] = OrderBookAnalyzer(adapter)
 
         # ========== INTELLIGENCE LAYER (BRAIN) ==========
         # Генетический движок и стратегии
@@ -539,6 +549,13 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         if self.tradingview_enabled and self.tradingview_webhook.latest_signal:
                             signal = self.tradingview_webhook.latest_signal
                             external_context += f"\nTradingView signal: {signal}\n"
+
+                        # OrderBook анализ (добавляем до сборки context)
+                        if self.orderbook_enabled:
+                            for sym, analyzer in self.orderbook_analyzers.items():
+                                metrics = await analyzer.update()
+                                if metrics:
+                                    external_context += f"\n{sym} OrderBook: {analyzer.get_context_string()}"
 
                         context = (
                             f"volatility={self._current_volatility():.3f}, "
