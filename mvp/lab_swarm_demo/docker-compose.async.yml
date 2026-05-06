@@ -25,6 +25,8 @@ services:
       - LOG_LEVEL=INFO   # или DEBUG для детальных трейдов
       - INTERNET_RESEARCHER_ENABLED=true
       - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY}
+      - TRADINGVIEW_WEBHOOK_ENABLED=true   # true для включения
+      - TRADINGVIEW_WEBHOOK_PORT=8888
     ports:
       - "9777"
     deploy:
