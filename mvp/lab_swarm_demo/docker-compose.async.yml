@@ -13,7 +13,7 @@ services:
       - LLM_MODEL=smollm17
       - GOSSIP_SIGNING_ENABLED=false
       - MEMORY_API_ENABLED=true
-      - MARKET_MODE=futures
+      - MARKET_MODE=live
       - FUTURES_LEVERAGE=2
       - STOP_LOSS_PERCENT=2.0   # процент от капитала, при котором закрываем позицию
       - MAX_LEVERAGE=5
