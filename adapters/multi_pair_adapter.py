@@ -32,13 +32,13 @@ class MultiPairAdapter:
         key = f"{symbol}_{account}"
         return self.adapters.get(key)
 
-    def fetch_all_tickers(self):
-        """Возвращает словарь тикеров для всех адаптеров (ключ = символ)."""
+    async def fetch_all_tickers(self):
+        """Асинхронно получает тикеры для всех адаптеров."""
         results = {}
         for key, adapter in self.adapters.items():
             sym = key.split("_")[0]  # извлекаем символ из ключа
             try:
-                ticker = adapter.get_ticker()
+                ticker = await adapter.get_ticker()
                 if ticker:
                     results[sym] = ticker
             except Exception as e:
