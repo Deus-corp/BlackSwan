@@ -27,6 +27,7 @@ services:
       - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY}
       - TRADINGVIEW_WEBHOOK_ENABLED=true   # true для включения
       - TRADINGVIEW_WEBHOOK_PORT=8888
+      - ORDERBOOK_ANALYSIS_ENABLED=true   # true для включения
     ports:
       - "9777"
     deploy:
