@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 BlackSwan Telegram Monitor Bot
-Отправляет метрики роя по запросу через Telegram.
+Commands: /start, /help, /status, /nodes, /memory, /logs, /capital
 """
 import os
 import re
-import asyncio
 from collections import defaultdict
+from typing import Dict, Optional
 
 import docker
 from telegram import Update
@@ -18,20 +18,20 @@ PREFIX = "lab_swarm_demo-node"
 client = docker.from_env()
 
 # ---------- СБОР ДАННЫХ ----------
-def fetch_node_metrics():
+LOG_PATTERN = re.compile(
+    r'SwarmNode:\[([^\]]+)\]\s+step=(\d+)\s+capital=([\d.]+)\s+dq=[\d.]+\s+fitness=([\d.]+)\s+diversity=([\d.]+)\s+crdt_size=(\d+)\s+niche=(\w+)\s+dominant=(\w+)\s+llm_muts=(\d+)\s+avg_llm_impact=([+-]?[\d.]+)'
+)
+
+def fetch_node_metrics() -> Dict[str, dict]:
     """Собирает последние метрики из логов каждого узла."""
     nodes = {}
     containers = client.containers.list(filters={"name": PREFIX, "status": "running"})
     for c in containers:
         try:
-            log = c.logs(tail=200).decode('utf-8')
+            log = c.logs(tail=300).decode('utf-8')
         except docker.errors.APIError:
             continue
-        # Ищем последнюю строку метрик
-        matches = re.findall(
-            r'SwarmNode:\[([^\]]+)\]\s+step=(\d+)\s+capital=([\d.]+)\s+dq=[\d.]+\s+fitness=([\d.]+)\s+diversity=([\d.]+)\s+crdt_size=(\d+)\s+niche=(\w+)\s+dominant=(\w+)\s+llm_muts=(\d+)\s+avg_llm_impact=([+-]?[\d.]+)',
-            log
-        )
+        matches = LOG_PATTERN.findall(log)
         if matches:
             last = matches[-1]
             nodes[c.name] = {
@@ -47,7 +47,7 @@ def fetch_node_metrics():
             }
     return nodes
 
-def fetch_memory_stats():
+def fetch_memory_stats() -> Optional[str]:
     """Ищет в логах последнюю строку Memory stats."""
     containers = client.containers.list(filters={"name": PREFIX, "status": "running"})
     for c in containers:
@@ -60,6 +60,20 @@ def fetch_memory_stats():
             return match.group(1)
     return None
 
+def fetch_recent_logs(lines: int = 10) -> str:
+    """Возвращает последние N строк логов из всех узлов."""
+    parts = []
+    containers = client.containers.list(filters={"name": PREFIX, "status": "running"})
+    for c in containers:
+        try:
+            log = c.logs(tail=lines).decode('utf-8')
+        except docker.errors.APIError:
+            continue
+        short_name = c.name.replace(PREFIX + "-", "n")
+        parts.append(f"--- {short_name} ---")
+        parts.append(log.strip())
+    return "\n".join(parts) if parts else "No logs available."
+
 # ---------- ОБРАБОТЧИКИ КОМАНД ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🦢 BlackSwan Monitor Bot is running. Type /help for commands.")
@@ -69,29 +83,31 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/status – краткая сводка по рою\n"
         "/nodes – детальная информация по каждому узлу\n"
         "/memory – статистика памяти\n"
+        "/logs – последние 10 строк логов\n"
+        "/capital – только капитал по узлам\n"
         "/help – это сообщение"
     )
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    nodes = fetch_node_metrics()
-    if not nodes:
+    data = fetch_node_metrics()
+    if not data:
         await update.message.reply_text("❌ Нет данных. Рой запущен?")
         return
     lines = []
-    total_capital = sum(n['capital'] for n in nodes.values())
-    lines.append(f"Всего узлов: {len(nodes)}")
-    lines.append(f"Суммарный капитал: {total_capital:,.2f}")
-    for name, m in nodes.items():
+    total_capital = sum(n['capital'] for n in data.values())
+    lines.append(f"All nodes: {len(data)}")
+    lines.append(f"Total capital: {total_capital:,.2f}")
+    for name, m in data.items():
         short = name.replace(PREFIX + "-", "n")
-        lines.append(f"{short}: шаг={m['step']} кап={m['capital']:,.2f} фит={m['fitness']:.4f} ниша={m['niche']}")
+        lines.append(f"{short}: step {m['step']}, cap {m['capital']:,.2f}, fit {m['fitness']:.4f}, niche {m['niche']}")
     await update.message.reply_text("\n".join(lines))
 
 async def nodes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    nodes = fetch_node_metrics()
-    if not nodes:
-        await update.message.reply_text("❌ Нет данных.")
+    data = fetch_node_metrics()
+    if not data:
+        await update.message.reply_text("❌ No data.")
         return
-    for name, m in nodes.items():
+    for name, m in data.items():
         short = name.replace(PREFIX + "-", "n")
         text = (
             f"📦 {short}\n"
@@ -110,12 +126,30 @@ async def memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if stats:
         await update.message.reply_text(f"Memory stats: {stats}")
     else:
-        await update.message.reply_text("❌ Нет данных о памяти. Возможно, MEMORY_API_ENABLED=false.")
+        await update.message.reply_text("❌ No memory stats. Is MEMORY_API_ENABLED=true?")
+
+async def logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = fetch_recent_logs(10)
+    # Telegram ограничивает длину сообщения
+    if len(text) > 4000:
+        text = text[:4000] + "\n...truncated"
+    await update.message.reply_text(f"📄 Recent logs:\n<pre>{text}</pre>", parse_mode="HTML")
+
+async def capital(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = fetch_node_metrics()
+    if not data:
+        await update.message.reply_text("❌ No data.")
+        return
+    lines = ["💰 Capital per node:"]
+    for name, m in data.items():
+        short = name.replace(PREFIX + "-", "n")
+        lines.append(f"{short}: {m['capital']:,.2f}")
+    await update.message.reply_text("\n".join(lines))
 
 # ---------- ЗАПУСК ----------
 def main():
     if not TOKEN:
-        print("❌ TELEGRAM_BOT_TOKEN не задан. Проверьте .env")
+        print("❌ TELEGRAM_BOT_TOKEN is not set. Check .env")
         return
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -123,7 +157,9 @@ def main():
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("nodes", nodes))
     app.add_handler(CommandHandler("memory", memory))
-    print("🤖 Telegram бот запущен...")
+    app.add_handler(CommandHandler("logs", logs))
+    app.add_handler(CommandHandler("capital", capital))
+    print("🤖 Telegram bot started...")
     app.run_polling()
 
 if __name__ == "__main__":
