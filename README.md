@@ -123,17 +123,26 @@ You can customise the swarm through environment variables in `docker-compose.asy
 | `FAILURE_PROB` | Probability of node failure per step (Spore test) | `0.0` |
 | `TOTAL_NODES` | Number of peers expected in the swarm | `4` |
 | `BURN_RATE` | Capital burned per step (cost of living) | `0.1` |
-| `MARKET_MODE` | `sim` (simulated) or `live` (Binance Testnet) or `web3` (stub) | `sim` |
-| `TRADING_SYMBOL` | Trading pair for live market | `BTC/USDT` |
+| `MARKET_MODE` | `sim` (simulated), `live` (Binance Testnet), `futures` (Binance Testnet Futures), or `web3` (Arbitrum Sepolia) | `sim` |
+| `TRADING_SYMBOLS` | Comma-separated list of trading pairs | `BTC/USDT,ETH/USDT,SOL/USDT` |
 | `PRICE_SCALE` | Divider for live prices to fit strategy range | `10000` |
-| `MARKET_OPEN` / `MARKET_CLOSE` | Trading hours filter (UTC, HH:MM) | `00:00` / `23:59` |
-| `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_API_SECRET` | API credentials for live trading (store in `.env`) | – |
+| `FUTURES_LEVERAGE` | Leverage for futures trading | `2` |
+| `STOP_LOSS_PERCENT` | Maximum loss before stop-loss (percent) | `2.0` |
+| `MAX_LEVERAGE` / `MIN_LEVERAGE` | Dynamic leverage range | `5` / `1` |
+| `HEDGE_ENABLED` | Enable spot/futures hedging | `false` |
+| `HEDGE_RATIO` | Portion of futures position to hedge with spot | `0.5` |
+| `INTERNET_RESEARCHER_ENABLED` | Fetch crypto news and on-chain data | `false` |
+| `ORDERBOOK_ANALYSIS_ENABLED` | Analyse order book imbalance | `false` |
+| `TRADINGVIEW_WEBHOOK_ENABLED` / `TRADINGVIEW_WEBHOOK_PORT` | Enable TradingView signal webhook | `false` / `8888` |
+| `WEB3_RPC_URL` | RPC endpoint for Web3 adapter | `https://sepolia-rollup.arbitrum.io/rpc` |
+| `WEB3_PRIVATE_KEY` | Private key for Web3 transactions (store in `.env`) | – |
+| `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_API_SECRET` | API credentials for live/futures trading (store in `.env`) | – |
+| `ETHERSCAN_API_KEY` | API key for Internet Researcher (store in `.env`) | – |
 | `MEMORY_API_ENABLED` | Enable layered persistent memory (`LocalMemoryAPI`) | `false` |
 | `LOG_LEVEL` | Python logging level (`INFO`, `DEBUG`) | `INFO` |
 | `EVENT_LEDGER_PATH` | Path to append-only event journal | `./data/ledgers/events.jsonl` |
 | `EVENT_SQLITE_PATH` | Optional SQLite index for events | `./data/ledgers/events.db` |
-| `TELEGRAM_BOT_TOKEN` | Token for Telegram monitoring bot (optional) | – |
-| `WEB3_PRIVATE_KEY` | Private key for Web3 testnet (future) | – |
+| `TELEGRAM_BOT_TOKEN` | Token for Telegram monitoring bot (store in `.env`) | – |
 
 ## 🧪 Model Benchmark
 
@@ -143,8 +152,8 @@ python tools/model_benchmark.py   # automatically tests all local LLMs and saves
 
 ## 🤖 Telegram Bot
 
-Commands: /status, /nodes, /memory, /help.
-The bot answers with real-time swarm metrics from running nodes.
+Commands: `/status`, `/nodes`, `/memory`, `/logs`, `/capital`, `/help`.
+The bot answers with real-time swarm metrics and recent logs from running nodes.
 
 ```bash
 export TELEGRAM_BOT_TOKEN=your_token  # or add to .env
