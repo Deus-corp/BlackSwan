@@ -4,6 +4,7 @@ import logging
 from typing import Dict, List, Optional
 from adapters.live_market import BinanceTestnetAdapter
 from adapters.futures_adapter import FuturesAdapter
+from adapters.web3_testnet import Web3TestnetAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class MultiPairAdapter:
                     # добавляем спотовый адаптер для хеджирования
                     self.adapters[f"{sym}_spot"] = BinanceTestnetAdapter(symbol=sym)
             elif market_mode == "web3":
-                self.adapters[f"{sym}_spot"] = BinanceTestnetAdapter(symbol=sym)  # заглушка
+                self.adapters[f"{sym}_spot"] = Web3TestnetAdapter(symbol=sym)
             else:  # sim
                 self.adapters[f"{sym}_spot"] = BinanceTestnetAdapter(symbol=sym)
 
