@@ -47,7 +47,7 @@ def show_status():
 def save_logs():
     """Save logs of all nodes into docs/logs/ with a timestamp."""
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    dest_dir = PROJECT_ROOT / "docs" / "logs" / f"swarm_logs_{timestamp}"
+    dest_dir = PROJECT_ROOT / "logs" / f"swarm_logs_{timestamp}"
     dest_dir.mkdir(parents=True, exist_ok=True)
     print(f"\n💾 Saving logs to {dest_dir} ...")
     for i in range(1, 5):
