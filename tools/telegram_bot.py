@@ -5,12 +5,27 @@ Commands: /start, /help, /status, /nodes, /memory, /logs, /capital
 """
 import os
 import re
+from pathlib import Path          # <-- вот эта строка
 from collections import defaultdict
 from typing import Dict, Optional
 
 import docker
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+
+# Автоматически загружаем переменные из .env (если есть)
+env_path = Path(__file__).resolve().parent.parent / ".env"
+if env_path.exists():
+    with env_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and value and key not in os.environ:
+                os.environ[key] = value
 
 # ---------- НАСТРОЙКИ ----------
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -80,12 +95,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "/status – краткая сводка по рою\n"
-        "/nodes – детальная информация по каждому узлу\n"
-        "/memory – статистика памяти\n"
-        "/logs – последние 10 строк логов\n"
-        "/capital – только капитал по узлам\n"
-        "/help – это сообщение"
+        "/status – a brief summary of the swarm\n"
+        "/nodes – detailed information for each node\n"
+        "/memory – memory statistics\n"
+        "/logs – the last 10 lines of logs\n"
+        "/capital – only capital by node\n"
+        "/help – this message"
     )
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
