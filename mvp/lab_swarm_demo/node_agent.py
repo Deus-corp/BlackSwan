@@ -369,7 +369,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     best_market = {"price": random.uniform(90, 110)}
                     best_symbol = self.primary_symbol
 
-                                # Проверка стоп-лосса для фьючерсных позиций
+                # Проверка стоп‑лосса для фьючерсных позиций
                 if self.market_mode == "futures":
                     adapter = self.market_adapter.get_adapter(best_symbol)
                     if adapter and hasattr(adapter, 'check_stop_loss'):
@@ -377,18 +377,25 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             positions = adapter.exchange.fetch_positions([best_symbol])
                             if positions and len(positions) > 0:
                                 pos = positions[0]
-                                if float(pos['contracts'] > 0):
+                                if float(pos['contracts']) > 0:   # ← исправлена скобка
                                     entry_price = float(pos['entryPrice'])
                                     current_price = best_market['price']
                                     side = 'long' if pos['side'] == 'long' else 'short'
                                     if adapter.check_stop_loss(entry_price, current_price, side):
-                                        logger.info(f"Stop-loss triggered for {best_symbol}")
+                                        logger.info(f"Stop‑loss triggered for {best_symbol}")
                                         adapter.close_position(best_symbol)
+
+                                        # Закрытие хеджа только при срабатывании стоп‑лосса
+                                        if self.market_adapter.hedge_enabled:
+                                            spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
+                                            if spot_adapter:
+                                                try:
+                                                    spot_adapter.close_position(best_symbol)
+                                                    logger.info("Hedge position closed")
+                                                except:
+                                                    pass
                         except Exception:
                             pass
-
-                market = best_market
-                self.capital -= self.burn_rate
 
                 market = best_market
                 self.capital -= self.burn_rate
@@ -414,6 +421,21 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             f"capital_after={self.capital:.2f} dq={self.survival.dq:.3f} "
                             f"params={self.current_params}"
                         )
+
+                        # Хеджирование: если открыта фьючерсная позиция, открываем противоположную спотовую
+                        if self.market_mode == "futures" and self.market_adapter.hedge_enabled:
+                            hedge_ratio = float(os.environ.get("HEDGE_RATIO", 0.5))
+                            spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
+                            futures_adapter = self.market_adapter.get_adapter(best_symbol, "futures")
+                            if spot_adapter and futures_adapter:
+                                # Определяем направление хеджа
+                                side = 'sell' if fraction > 0 else 'buy'  # противоположно основной позиции
+                                hedge_amount = abs(fraction) * hedge_ratio * self.capital / market['price']
+                                try:
+                                    spot_adapter.place_order(side, hedge_amount)
+                                    logger.info(f"Hedge order placed: {side} {hedge_amount} {best_symbol}")
+                                except Exception as e:
+                                    logger.error(f"Hedge order failed: {e}")
 
                         # Запись события сделки
                         self.event_store.append(Event.create(
