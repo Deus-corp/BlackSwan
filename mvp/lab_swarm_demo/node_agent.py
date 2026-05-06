@@ -28,6 +28,7 @@ from adapters.multi_pair_adapter import MultiPairAdapter
 from src.intelligence.internet_researcher import InternetResearcher
 from adapters.tradingview_webhook import TradingViewWebhook
 from adapters.orderbook_analyzer import OrderBookAnalyzer
+from src.observability.telegram_notifier import TelegramNotifier
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -97,6 +98,8 @@ class SwarmNode:
         self.internet_researcher: InternetResearcher = InternetResearcher(
             memory_api=self.memory_api if self.memory_api_enabled else None
         )
+                # Telegram уведомления
+        self.telegram_notifier = TelegramNotifier()
 
         self.crdt: CRDTAdapter = CRDTAdapter(
             node_id=self.node_id,
@@ -385,6 +388,12 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                                         logger.info(f"Stop‑loss triggered for {best_symbol}")
                                         adapter.close_position(best_symbol)
 
+                                        await self.telegram_notifier.send(
+                                            f"🛑 <b>Stop‑loss triggered</b>\n"
+                                            f"Node: {self.node_id}\n"
+                                            f"Symbol: {best_symbol}\n"
+                                            f"Capital: {self.capital:.2f}"
+                                        )
                                         # Закрытие хеджа только при срабатывании стоп‑лосса
                                         if self.market_adapter.hedge_enabled:
                                             spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
@@ -455,6 +464,15 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             },
                             parent_id=self._trace_id,
                         ))
+                                               # Отправка уведомления в Telegram
+                        await self.telegram_notifier.send(
+                            f"🦢 <b>Trade</b>\n"
+                            f"Node: {self.node_id}\n"
+                            f"Step: {self.step_count}\n"
+                            f"Symbol: {best_symbol}\n"
+                            f"Price: {market['price']:.2f}\n"
+                            f"Capital: {self.capital:.2f}"
+                        )
 
                 # ---- import genomes ----
                 if self.step_count - self.last_import_step > self.import_cooldown:
