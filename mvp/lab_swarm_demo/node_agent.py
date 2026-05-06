@@ -352,6 +352,27 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     best_market = {"price": random.uniform(90, 110)}
                     best_symbol = self.primary_symbol
 
+                                # Проверка стоп-лосса для фьючерсных позиций
+                if self.market_mode == "futures":
+                    adapter = self.market_adapter.get_adapter(best_symbol)
+                    if adapter and hasattr(adapter, 'check_stop_loss'):
+                        try:
+                            positions = adapter.exchange.fetch_positions([best_symbol])
+                            if positions and len(positions) > 0:
+                                pos = positions[0]
+                                if float(pos['contracts'] > 0):
+                                    entry_price = float(pos['entryPrice'])
+                                    current_price = best_market['price']
+                                    side = 'long' if pos['side'] == 'long' else 'short'
+                                    if adapter.check_stop_loss(entry_price, current_price, side):
+                                        logger.info(f"Stop-loss triggered for {best_symbol}")
+                                        adapter.close_position(best_symbol)
+                        except Exception:
+                            pass
+
+                market = best_market
+                self.capital -= self.burn_rate
+
                 market = best_market
                 self.capital -= self.burn_rate
                 if self.capital <= 0:
@@ -570,6 +591,14 @@ Respond ONLY with the adjusted parameters in JSON format, like:
 
                 # ---- curiosity + meta ----
                 if self.step_count % 100 == 0:
+                    # Динамическое плечо для фьючерсов
+                    if self.market_mode == "futures":
+                        vol = self._current_volatility()
+                        for sym in self.market_adapter.symbols:
+                            adapter = self.market_adapter.get_adapter(sym)
+                            if adapter and hasattr(adapter, 'adjust_leverage'):
+                                await adapter.adjust_leverage(vol)
+
                     hypothesis = self.curiosity.update(market)
                     if hypothesis:
                         self.engine.add_genome(self.dict_to_genome(hypothesis))
@@ -655,13 +684,6 @@ Respond ONLY with the adjusted parameters in JSON format, like:
 
     async def start(self) -> None:
         logger.info(f"[{self.node_id}] port={self.port} peers={self.peers}")
-        await asyncio.gather(
-            self.gossip.start(),
-            self.main_loop(),
-        )
-
-    async def start(self) -> None:
-        logger.info(f"[{self.node_id}] port={self.port} peers={self.peers}")
 
         loop = asyncio.get_running_loop()
         shutdown_event = asyncio.Event()
@@ -688,7 +710,6 @@ Respond ONLY with the adjusted parameters in JSON format, like:
             self.main_loop(),
             _shutdown_waiter(),
         )
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
