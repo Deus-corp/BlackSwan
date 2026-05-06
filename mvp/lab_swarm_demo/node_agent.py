@@ -26,6 +26,7 @@ from src.core.event_store import EventStore
 from src.security.key_manager import KeyManager
 from adapters.multi_pair_adapter import MultiPairAdapter
 from src.intelligence.internet_researcher import InternetResearcher
+from adapters.tradingview_webhook import TradingViewWebhook
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -123,6 +124,12 @@ class SwarmNode:
             market_mode=self.market_mode
         )
         self.primary_symbol = symbols_list[0] if symbols_list else "BTC/USDT"
+
+                # TradingView webhook (если включен)
+        self.tradingview_enabled = os.environ.get("TRADINGVIEW_WEBHOOK_ENABLED", "false").lower() == "true"
+        self.tradingview_webhook = None
+        if self.tradingview_enabled:
+            self.tradingview_webhook = TradingViewWebhook(port=int(os.environ.get("TRADINGVIEW_WEBHOOK_PORT", 8888)))
 
         # ========== INTELLIGENCE LAYER (BRAIN) ==========
         # Генетический движок и стратегии
@@ -540,6 +547,10 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             self.engine.add_genome(genome)
                             note_llm_mutation()
 
+                        if self.tradingview_enabled and self.tradingview_webhook.latest_signal:
+                            signal = self.tradingview_webhook.latest_signal
+                            external_context += f"\nTradingView signal: {signal}\n"
+
                     if self.engine.champion[1] > self.engine._fitness(self.current_params):
                         self.current_params = self.engine.champion[0]
                         self.dispatcher = ROIDispatcher(config=self.current_params)
@@ -688,6 +699,9 @@ Respond ONLY with the adjusted parameters in JSON format, like:
         loop = asyncio.get_running_loop()
         shutdown_event = asyncio.Event()
 
+        if self.tradingview_enabled:
+            await self.tradingview_webhook.start()
+
         def _shutdown():
             logger.info(f"[{self.node_id}] received signal, shutting down gracefully")
             shutdown_event.set()
@@ -704,6 +718,9 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                 await self.memory_api.save_to_db()
                 logger.info(f"[{self.node_id}] memory saved before exit")
             raise SystemExit(0)
+        
+        if self.tradingview_enabled:
+                await self.tradingview_webhook.stop()
 
         await asyncio.gather(
             self.gossip.start(),
