@@ -30,7 +30,7 @@ services:
       - TRADINGVIEW_WEBHOOK_ENABLED=true   # true для включения
       - TRADINGVIEW_WEBHOOK_PORT=8888
       - ORDERBOOK_ANALYSIS_ENABLED=true   # true для включения
-      - HEDGE_ENABLED=false
+      - HEDGE_ENABLED=true
       - HEDGE_RATIO=0.5
     ports:
       - "9777"
