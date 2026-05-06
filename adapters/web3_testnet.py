@@ -7,7 +7,7 @@ import os
 import logging
 from typing import Dict, Optional
 from web3 import Web3
-from web3.middleware import geth_poa_middleware
+from web3.middleware import ExtraDataToPOAMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +70,8 @@ class Web3TestnetAdapter:
             logger.warning("WEB3_PRIVATE_KEY not set. Web3 adapter will run in read-only mode.")
 
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
-        # Arbitrum требует PoA middleware
-        self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+        # Обязательный middleware для Arbitrum (PoA сеть)
+        self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
         if self.private_key:
             self.account = self.w3.eth.account.from_key(self.private_key)
