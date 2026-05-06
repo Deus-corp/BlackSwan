@@ -534,6 +534,12 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                                 external_context = await self.internet_researcher.gather_context()
                             except Exception:
                                 external_context = ""
+
+                        # TradingView signal (если включён и есть свежий сигнал)
+                        if self.tradingview_enabled and self.tradingview_webhook.latest_signal:
+                            signal = self.tradingview_webhook.latest_signal
+                            external_context += f"\nTradingView signal: {signal}\n"
+
                         context = (
                             f"volatility={self._current_volatility():.3f}, "
                             f"dq={self.survival.dq:.3f}, "
@@ -541,15 +547,12 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         )
                         if external_context:
                             context += "\n" + external_context
+
                         new_params = self._llm_mutate(self.engine.champion[0], context)
                         if new_params != self.engine.champion[0]:
                             genome = self.dict_to_genome({"params": new_params})
                             self.engine.add_genome(genome)
                             note_llm_mutation()
-
-                        if self.tradingview_enabled and self.tradingview_webhook.latest_signal:
-                            signal = self.tradingview_webhook.latest_signal
-                            external_context += f"\nTradingView signal: {signal}\n"
 
                     if self.engine.champion[1] > self.engine._fitness(self.current_params):
                         self.current_params = self.engine.champion[0]
