@@ -13,7 +13,8 @@ services:
       - LLM_MODEL=smollm17
       - GOSSIP_SIGNING_ENABLED=false
       - MEMORY_API_ENABLED=true
-      - MARKET_MODE=sim
+      - MARKET_MODE=futures
+      - FUTURES_LEVERAGE=2
       - PRICE_SCALE=10000   # можно добавить, если хочешь менять
       - TRADING_SYMBOLS=BTC/USDT,ETH/USDT,SOL/USDT
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}

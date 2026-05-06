@@ -22,14 +22,13 @@ class MultiPairAdapter:
         for sym in symbols:
             if market_mode == "live":
                 self.adapters[sym] = BinanceTestnetAdapter(symbol=sym)
+            elif market_mode == "futures":
+                self.adapters[sym] = FuturesAdapter(symbol=sym)
             elif market_mode == "web3":
-                # self.adapters[sym] = Web3TestnetAdapter(symbol=sym)
-                logger.warning("Web3 adapter not yet implemented, using sim")
-                self.adapters[sym] = BinanceTestnetAdapter(symbol=sym)  # fallback
+                # заглушка
+                self.adapters[sym] = BinanceTestnetAdapter(symbol=sym)
             else:  # sim
                 self.adapters[sym] = BinanceTestnetAdapter(symbol=sym)
-                # В режиме sim они всё равно будут возвращать случайные цены,
-                # но можно добавить отдельный SimulatedAdapter позже.
 
     async def fetch_all_tickers(self) -> Dict[str, dict]:
         """Возвращает словарь {symbol: ticker} для всех пар."""
