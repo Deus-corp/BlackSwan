@@ -13,13 +13,13 @@ services:
       - LLM_MODEL=smollm17
       - GOSSIP_SIGNING_ENABLED=false
       - MEMORY_API_ENABLED=true
-      - MARKET_MODE=live
+      - MARKET_MODE=web3
       - FUTURES_LEVERAGE=2
       - STOP_LOSS_PERCENT=2.0   # процент от капитала, при котором закрываем позицию
       - MAX_LEVERAGE=5
       - MIN_LEVERAGE=1
       - PRICE_SCALE=10000   # можно добавить, если хочешь менять
-      - TRADING_SYMBOLS=BTC/USDT,ETH/USDT,SOL/USDT
+      - TRADING_SYMBOLS=WETH/USDC
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
       - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
       - WEB3_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
