@@ -51,3 +51,5 @@ services:
     volumes:
       - ../../llama_cpp:/app/llama_cpp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    env_file:
+      - ../../.env
