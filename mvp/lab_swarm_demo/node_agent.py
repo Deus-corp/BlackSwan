@@ -729,6 +729,15 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         ))
 
                 update_llm_impact(self.capital)
+                            # Алерт при падении капитала ниже порога
+                alert_threshold = float(os.environ.get("CAPITAL_ALERT_THRESHOLD", 100.0))
+                if self.capital < alert_threshold:
+                    await self.telegram_notifier.send(
+                        f"⚠️ <b>Low capital alert</b>\n"
+                        f"Node: {self.node_id}\n"
+                        f"Step: {self.step_count}\n"
+                        f"Capital: {self.capital:.2f} (threshold: {alert_threshold})"
+                    )
 
                 await asyncio.sleep(0.5)
 
