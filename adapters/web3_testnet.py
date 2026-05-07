@@ -1,7 +1,6 @@
 # adapters/web3_testnet.py
 """
-Web3 Testnet Adapter (Arbitrum Sepolia) — реальная работа с Uniswap V3.
-Подключается через web3.py, запрашивает цену через Quoter, выполняет свопы.
+Web3 Testnet Adapter (Ethereum Sepolia) – Uniswap V3 community deployment.
 """
 import os
 import logging
@@ -11,11 +10,11 @@ from web3.middleware import ExtraDataToPOAMiddleware
 
 logger = logging.getLogger(__name__)
 
-# Актуальные адреса контрактов Uniswap V3 в Arbitrum Sepolia
-UNISWAP_QUOTER_ADDRESS = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"   # Quoter V2
-UNISWAP_SWAP_ROUTER_ADDRESS = "0xE592427A0AEce92De3Edee1F18E0157C05861564"  # SwapRouter02
+# Адреса контрактов (проверены сообществом Uniswap для Sepolia)
+QUOTER_ADDRESS = "0xd64686fa7549534ecb1b5cdd772d60c3cf02af3c"
+ROUTER_ADDRESS = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E"
 
-# ABI для Quoter V2 (фрагмент)
+# Минимальный ABI для quoteExactInput (возвращает ТОЛЬКО amountOut)
 QUOTER_ABI = [
     {
         "inputs": [
@@ -23,18 +22,12 @@ QUOTER_ABI = [
             {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
         ],
         "name": "quoteExactInput",
-        "outputs": [
-            {"internalType": "uint256", "name": "amountOut", "type": "uint256"},
-            {"internalType": "uint160[]", "name": "sqrtPriceX96AfterList", "type": "uint160[]"},
-            {"internalType": "uint32[]", "name": "initializedTicksCrossedList", "type": "uint32[]"},
-            {"internalType": "uint256", "name": "gasEstimate", "type": "uint256"},
-        ],
+        "outputs": [{"internalType": "uint256", "name": "amountOut", "type": "uint256"}],
         "stateMutability": "nonpayable",
         "type": "function",
     }
 ]
 
-# ABI для SwapRouter02 (фрагмент)
 ROUTER_ABI = [
     {
         "inputs": [
@@ -62,21 +55,14 @@ ROUTER_ABI = [
 ]
 
 class Web3TestnetAdapter:
-    """Адаптер для Uniswap V3 на Ethereum Sepolia (community deployment)."""
+    """Адаптер для Uniswap V3 на Ethereum Sepolia."""
 
     def __init__(self, symbol: str = "WETH/USDC"):
         self.symbol = symbol
         self.rpc_url = os.environ.get("WEB3_RPC_URL", "https://ethereum-sepolia.publicnode.com")
+        # Приватный ключ читается ПРЯМО из переменной окружения
         self.private_key = os.environ.get("WEB3_PRIVATE_KEY")
-        
-        # Community-verified contract addresses for Sepolia
-        # Quoter V2: 0xd64686fa7549534ecb1b5cdd772d60c3cf02af3c
-        # SwapRouter02: 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E
-        self.quoter_address = os.environ.get("UNISWAP_QUOTER_ADDRESS", "0xd64686fa7549534ecb1b5cdd772d60c3cf02af3c")
-        self.router_address = os.environ.get("UNISWAP_ROUTER_ADDRESS", "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E")
-        
-        # WETH and USDC on Sepolia
-        self.token_in = os.environ.get("WEB3_TOKEN_IN", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14")  # WETH
+        self.token_in = os.environ.get("WEB3_TOKEN_IN", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14")   # WETH
         self.token_out = os.environ.get("WEB3_TOKEN_OUT", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")  # USDC
 
         if not self.private_key:
@@ -91,8 +77,14 @@ class Web3TestnetAdapter:
         else:
             self.account = None
 
-        self.quoter = self.w3.eth.contract(address=self.w3.to_checksum_address(self.quoter_address), abi=QUOTER_ABI)
-        self.router = self.w3.eth.contract(address=self.w3.to_checksum_address(self.router_address), abi=ROUTER_ABI)
+        self.quoter = self.w3.eth.contract(
+            address=self.w3.to_checksum_address(QUOTER_ADDRESS),
+            abi=QUOTER_ABI,
+        )
+        self.router = self.w3.eth.contract(
+            address=self.w3.to_checksum_address(ROUTER_ADDRESS),
+            abi=ROUTER_ABI,
+        )
 
     async def get_ticker(self) -> Optional[Dict[str, float]]:
         """Возвращает цену через Quoter (симуляция обмена 1 WETH на USDC)."""
@@ -100,18 +92,12 @@ class Web3TestnetAdapter:
             amount_in = self.w3.to_wei(1, "ether")
             path = (
                 self.w3.to_bytes(hexstr=self.token_in).rjust(20, b'\0')
-                + (3000).to_bytes(3, 'big')
+                + (3000).to_bytes(3, 'big')                         # fee = 0.3%
                 + self.w3.to_bytes(hexstr=self.token_out).rjust(20, b'\0')
             )
-            # Вызываем quoteExactInput – он возвращает кортеж (amountOut, ...)
-            result = self.quoter.functions.quoteExactInput(path, amount_in).call()
-            amount_out = result[0]  # первый элемент – amountOut
+            amount_out = self.quoter.functions.quoteExactInput(path, amount_in).call()
             price = amount_out / 10**6  # USDC имеет 6 десятичных знаков
-            return {
-                "price": price,
-                "symbol": self.symbol,
-                "timestamp": None,
-            }
+            return {"price": price, "symbol": self.symbol, "timestamp": None}
         except Exception as e:
             logger.error(f"Web3 get_ticker failed: {e}")
             return None
@@ -120,23 +106,11 @@ class Web3TestnetAdapter:
         """Выполняет своп через SwapRouter."""
         if not self.account:
             return {"error": "WEB3_PRIVATE_KEY not set"}
-
         try:
-            amount_in = self.w3.to_wei(amount, "ether") if side == "buy" else self.w3.to_wei(amount * (price or 1), "ether")
-            amount_out_minimum = 0
+            amount_in = self.w3.to_wei(amount, "ether") if side != "sell" else self.w3.to_wei(amount * (price or 1), "ether")
             deadline = self.w3.eth.get_block('latest')['timestamp'] + 600
-
             txn = self.router.functions.exactInputSingle(
-                (
-                    self.token_in,
-                    self.token_out,
-                    3000,
-                    self.account.address,
-                    deadline,
-                    amount_in,
-                    amount_out_minimum,
-                    0,
-                )
+                (self.token_in, self.token_out, 3000, self.account.address, deadline, amount_in, 0, 0)
             ).build_transaction({
                 'from': self.account.address,
                 'gas': 300000,
@@ -144,7 +118,6 @@ class Web3TestnetAdapter:
                 'maxPriorityFeePerGas': self.w3.eth.max_priority_fee,
                 'nonce': self.w3.eth.get_transaction_count(self.account.address),
             })
-
             signed_txn = self.w3.eth.account.sign_transaction(txn, private_key=self.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
             return {"tx_hash": self.w3.to_hex(tx_hash)}
