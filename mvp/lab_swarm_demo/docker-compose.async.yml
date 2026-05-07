@@ -29,7 +29,7 @@ services:
       - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY}
       - TRADINGVIEW_WEBHOOK_ENABLED=true   # true для включения
       - TRADINGVIEW_WEBHOOK_PORT=8888
-      - ORDERBOOK_ANALYSIS_ENABLED=true   # true для включения
+      - ORDERBOOK_ANALYSIS_ENABLED=false   # true для включения
       - HEDGE_ENABLED=true
       - HEDGE_RATIO=0.5
       - CAPITAL_ALERT_THRESHOLD=100.0
