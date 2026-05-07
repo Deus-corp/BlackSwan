@@ -62,19 +62,21 @@ ROUTER_ABI = [
 ]
 
 class Web3TestnetAdapter:
-    """Адаптер для Uniswap V3 на Arbitrum Sepolia."""
-
+    """Адаптер для Uniswap V3 на Ethereum Sepolia."""
     def __init__(self, symbol: str = "WETH/USDC"):
         self.symbol = symbol
-        self.rpc_url = os.environ.get("WEB3_RPC_URL", "https://sepolia-rollup.arbitrum.io/rpc")
+        # RPC для Ethereum Sepolia
+        self.rpc_url = os.environ.get("WEB3_RPC_URL", "https://rpc.sepolia.org")
         self.private_key = os.environ.get("WEB3_PRIVATE_KEY")
-        self.token_in = os.environ.get("WEB3_TOKEN_IN", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1")  # WETH
-        self.token_out = os.environ.get("WEB3_TOKEN_OUT", "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8")  # USDC
+        # Адреса токенов в Ethereum Sepolia
+        self.token_in = os.environ.get("WEB3_TOKEN_IN", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14")  # WETH Sepolia
+        self.token_out = os.environ.get("WEB3_TOKEN_OUT", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")  # USDC Sepolia
 
         if not self.private_key:
             logger.warning("WEB3_PRIVATE_KEY not set. Web3 adapter will run in read-only mode.")
 
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+        # Sepolia – PoS, не нужен ExtraDataToPOAMiddleware, но он не помешает
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
         if self.private_key:
@@ -83,6 +85,7 @@ class Web3TestnetAdapter:
         else:
             self.account = None
 
+        # Контракты Uniswap V3 для Sepolia
         self.quoter = self.w3.eth.contract(
             address=self.w3.to_checksum_address(UNISWAP_QUOTER_ADDRESS),
             abi=QUOTER_ABI,
