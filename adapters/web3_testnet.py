@@ -4,6 +4,7 @@ Web3 Testnet Adapter (Ethereum Sepolia) – Uniswap V3 community deployment.
 """
 import os
 import logging
+import time
 from typing import Dict, Optional
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
@@ -92,15 +93,29 @@ class Web3TestnetAdapter:
             amount_in = self.w3.to_wei(1, "ether")
             path = (
                 self.w3.to_bytes(hexstr=self.token_in).rjust(20, b'\0')
-                + (3000).to_bytes(3, 'big')                         # fee = 0.3%
+                + (3000).to_bytes(3, 'big')
                 + self.w3.to_bytes(hexstr=self.token_out).rjust(20, b'\0')
             )
             amount_out = self.quoter.functions.quoteExactInput(path, amount_in).call()
-            price = amount_out / 10**6  # USDC имеет 6 десятичных знаков
+            price = amount_out / 10**6
             return {"price": price, "symbol": self.symbol, "timestamp": None}
         except Exception as e:
-            logger.error(f"Web3 get_ticker failed: {e}")
-            return None
+            err_str = str(e)
+            # Обработка ошибки 429 – ожидание и повторная попытка
+            if '429' in err_str:
+                logger.warning(f"Rate-limited by RPC, sleeping 10 seconds...")
+                time.sleep(10)
+                # Повторная попытка
+                try:
+                    amount_out = self.quoter.functions.quoteExactInput(path, amount_in).call()
+                    price = amount_out / 10**6
+                    return {"price": price, "symbol": self.symbol, "timestamp": None}
+                except Exception as retry_e:
+                    logger.error(f"Web3 get_ticker failed after retry: {retry_e}")
+                    return None
+            else:
+                logger.error(f"Web3 get_ticker failed: {e}")
+                return None
 
     def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict:
         """Выполняет своп через SwapRouter."""
