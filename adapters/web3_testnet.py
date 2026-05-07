@@ -62,21 +62,27 @@ ROUTER_ABI = [
 ]
 
 class Web3TestnetAdapter:
-    """Адаптер для Uniswap V3 на Ethereum Sepolia."""
+    """Адаптер для Uniswap V3 на Ethereum Sepolia (community deployment)."""
+
     def __init__(self, symbol: str = "WETH/USDC"):
         self.symbol = symbol
-        # RPC для Ethereum Sepolia
-        self.rpc_url = os.environ.get("WEB3_RPC_URL", "https://rpc.sepolia.org")
+        self.rpc_url = os.environ.get("WEB3_RPC_URL", "https://ethereum-sepolia.publicnode.com")
         self.private_key = os.environ.get("WEB3_PRIVATE_KEY")
-        # Адреса токенов в Ethereum Sepolia
-        self.token_in = os.environ.get("WEB3_TOKEN_IN", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14")  # WETH Sepolia
-        self.token_out = os.environ.get("WEB3_TOKEN_OUT", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")  # USDC Sepolia
+        
+        # Community-verified contract addresses for Sepolia
+        # Quoter V2: 0xd64686fa7549534ecb1b5cdd772d60c3cf02af3c
+        # SwapRouter02: 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E
+        self.quoter_address = os.environ.get("UNISWAP_QUOTER_ADDRESS", "0xd64686fa7549534ecb1b5cdd772d60c3cf02af3c")
+        self.router_address = os.environ.get("UNISWAP_ROUTER_ADDRESS", "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E")
+        
+        # WETH and USDC on Sepolia
+        self.token_in = os.environ.get("WEB3_TOKEN_IN", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14")  # WETH
+        self.token_out = os.environ.get("WEB3_TOKEN_OUT", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")  # USDC
 
         if not self.private_key:
             logger.warning("WEB3_PRIVATE_KEY not set. Web3 adapter will run in read-only mode.")
 
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
-        # Sepolia – PoS, не нужен ExtraDataToPOAMiddleware, но он не помешает
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
         if self.private_key:
@@ -85,15 +91,8 @@ class Web3TestnetAdapter:
         else:
             self.account = None
 
-        # Контракты Uniswap V3 для Sepolia
-        self.quoter = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(UNISWAP_QUOTER_ADDRESS),
-            abi=QUOTER_ABI,
-        )
-        self.router = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(UNISWAP_SWAP_ROUTER_ADDRESS),
-            abi=ROUTER_ABI,
-        )
+        self.quoter = self.w3.eth.contract(address=self.w3.to_checksum_address(self.quoter_address), abi=QUOTER_ABI)
+        self.router = self.w3.eth.contract(address=self.w3.to_checksum_address(self.router_address), abi=ROUTER_ABI)
 
     async def get_ticker(self) -> Optional[Dict[str, float]]:
         """Возвращает цену через Quoter (симуляция обмена 1 WETH на USDC)."""
