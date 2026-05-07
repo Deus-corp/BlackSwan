@@ -70,3 +70,7 @@ llama_cpp/
 docs/book/book/
 docs/book/src/
 docs/book/theme/
+
+.env
+.env.local
+.env.production
