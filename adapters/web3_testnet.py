@@ -11,11 +11,11 @@ from web3.middleware import ExtraDataToPOAMiddleware
 
 logger = logging.getLogger(__name__)
 
-# Адреса контрактов Uniswap V3 в Arbitrum Sepolia
-UNISWAP_QUOTER_ADDRESS = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
-UNISWAP_SWAP_ROUTER_ADDRESS = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+# Актуальные адреса контрактов Uniswap V3 в Arbitrum Sepolia
+UNISWAP_QUOTER_ADDRESS = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"   # Quoter V2
+UNISWAP_SWAP_ROUTER_ADDRESS = "0xE592427A0AEce92De3Edee1F18E0157C05861564"  # SwapRouter02
 
-# ABI для Quoter V2
+# ABI для Quoter V2 (фрагмент)
 QUOTER_ABI = [
     {
         "inputs": [
@@ -23,13 +23,18 @@ QUOTER_ABI = [
             {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
         ],
         "name": "quoteExactInput",
-        "outputs": [{"internalType": "uint256", "name": "amountOut", "type": "uint256"}],
+        "outputs": [
+            {"internalType": "uint256", "name": "amountOut", "type": "uint256"},
+            {"internalType": "uint160[]", "name": "sqrtPriceX96AfterList", "type": "uint160[]"},
+            {"internalType": "uint32[]", "name": "initializedTicksCrossedList", "type": "uint32[]"},
+            {"internalType": "uint256", "name": "gasEstimate", "type": "uint256"},
+        ],
         "stateMutability": "nonpayable",
         "type": "function",
     }
 ]
 
-# ABI для SwapRouter02 (упрощённый)
+# ABI для SwapRouter02 (фрагмент)
 ROUTER_ABI = [
     {
         "inputs": [
@@ -70,7 +75,6 @@ class Web3TestnetAdapter:
             logger.warning("WEB3_PRIVATE_KEY not set. Web3 adapter will run in read-only mode.")
 
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
-        # Обязательный middleware для Arbitrum (PoA сеть)
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
         if self.private_key:
@@ -79,7 +83,6 @@ class Web3TestnetAdapter:
         else:
             self.account = None
 
-        # Контракты
         self.quoter = self.w3.eth.contract(
             address=self.w3.to_checksum_address(UNISWAP_QUOTER_ADDRESS),
             abi=QUOTER_ABI,
@@ -90,17 +93,17 @@ class Web3TestnetAdapter:
         )
 
     async def get_ticker(self) -> Optional[Dict[str, float]]:
-        """Возвращает цену через Uniswap Quoter (симулируем обмен 1 WETH на USDC)."""
+        """Возвращает цену через Quoter (симуляция обмена 1 WETH на USDC)."""
         try:
-            # 1 WETH = 10**18 wei
             amount_in = self.w3.to_wei(1, "ether")
-            # Кодируем путь: token_in (20 байт) + fee (3 байта) + token_out (20 байт)
             path = (
                 self.w3.to_bytes(hexstr=self.token_in).rjust(20, b'\0')
-                + (3000).to_bytes(3, 'big')  # fee = 0.3%
+                + (3000).to_bytes(3, 'big')
                 + self.w3.to_bytes(hexstr=self.token_out).rjust(20, b'\0')
             )
-            amount_out = self.quoter.functions.quoteExactInput(path, amount_in).call()
+            # Вызываем quoteExactInput – он возвращает кортеж (amountOut, ...)
+            result = self.quoter.functions.quoteExactInput(path, amount_in).call()
+            amount_out = result[0]  # первый элемент – amountOut
             price = amount_out / 10**6  # USDC имеет 6 десятичных знаков
             return {
                 "price": price,
@@ -112,15 +115,14 @@ class Web3TestnetAdapter:
             return None
 
     def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict:
-        """Выполняет своп через Uniswap SwapRouter."""
+        """Выполняет своп через SwapRouter."""
         if not self.account:
             return {"error": "WEB3_PRIVATE_KEY not set"}
 
         try:
             amount_in = self.w3.to_wei(amount, "ether") if side == "buy" else self.w3.to_wei(amount * (price or 1), "ether")
-            # amount_out_minimum – в реальности должно рассчитываться с учётом slippage
             amount_out_minimum = 0
-            deadline = self.w3.eth.get_block('latest')['timestamp'] + 600  # 10 минут
+            deadline = self.w3.eth.get_block('latest')['timestamp'] + 600
 
             txn = self.router.functions.exactInputSingle(
                 (
