@@ -5,34 +5,33 @@ services:
     image: blackswan-node:latest
     entrypoint: ["/app/mvp/lab_swarm_demo/node_entrypoint_async.sh"]
     environment:
-      - BURN_RATE=0.2
+      - BURN_RATE=0.01
       - FAILURE_PROB=0.0
       - GOSSIP_PORT=9777
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
-      - LLM_MODEL=smollm17
+      - LLM_MODEL=deepseek
       - GOSSIP_SIGNING_ENABLED=false
       - MEMORY_API_ENABLED=true
       - MARKET_MODE=web3
-      - FUTURES_LEVERAGE=2
-      - STOP_LOSS_PERCENT=2.0
-      - MAX_LEVERAGE=5
-      - MIN_LEVERAGE=1
+      - TEST_WEB3_SWAP_AMOUNT=0.001
       - PRICE_SCALE=10000
       - TRADING_SYMBOLS=WETH/USDC
-      - BINANCE_TESTNET_API_KEY
-      - BINANCE_TESTNET_API_SECRET
-      - WEB3_RPC_URL=https://ethereum-sepolia.publicnode.com
-      - WEB3_PRIVATE_KEY
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=DEBUG   # ← для диагностики (потом можно INFO)
       - INTERNET_RESEARCHER_ENABLED=true
-      - ETHERSCAN_API_KEY
       - TRADINGVIEW_WEBHOOK_ENABLED=true
       - TRADINGVIEW_WEBHOOK_PORT=8888
       - ORDERBOOK_ANALYSIS_ENABLED=false
       - HEDGE_ENABLED=true
       - HEDGE_RATIO=0.5
       - CAPITAL_ALERT_THRESHOLD=100.0
+      # Секреты — через подстановку из .env (файл должен лежать рядом с этим compose-файлом)
+      - WEB3_PRIVATE_KEY=${WEB3_PRIVATE_KEY}
+      - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
+      - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
+      - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
     ports:
       - "9777"
     deploy:
@@ -40,7 +39,7 @@ services:
       restart_policy:
         condition: on-failure
         delay: 5s
-        max_attempts: 0   # 0 = unlimited
+        max_attempts: 0
       resources:
         limits:
           cpus: '0.8'
@@ -51,5 +50,3 @@ services:
     volumes:
       - ../../llama_cpp:/app/llama_cpp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    env_file:
-      - ../../.env
