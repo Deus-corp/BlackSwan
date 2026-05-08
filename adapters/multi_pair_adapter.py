@@ -8,6 +8,8 @@ from adapters.web3_testnet import Web3TestnetAdapter
 
 logger = logging.getLogger(__name__)
 
+PRICE_SCALE = float(os.environ.get("PRICE_SCALE", 10000))
+
 class MultiPairAdapter:
     def __init__(self, symbols: List[str], market_mode: str = "sim"):
         self.symbols = symbols
@@ -21,7 +23,6 @@ class MultiPairAdapter:
             elif market_mode == "futures":
                 self.adapters[f"{sym}_futures"] = FuturesAdapter(symbol=sym)
                 if self.hedge_enabled:
-                    # добавляем спотовый адаптер для хеджирования
                     self.adapters[f"{sym}_spot"] = BinanceTestnetAdapter(symbol=sym)
             elif market_mode == "web3":
                 self.adapters[f"{sym}_spot"] = Web3TestnetAdapter(symbol=sym)
@@ -34,13 +35,17 @@ class MultiPairAdapter:
         return self.adapters.get(key)
 
     async def fetch_all_tickers(self):
-        """Асинхронно получает тикеры для всех адаптеров."""
+        """Асинхронно получает тикеры для всех адаптеров и нормализует цену."""
         results = {}
         for key, adapter in self.adapters.items():
             sym = key.split("_")[0]  # извлекаем символ из ключа
             try:
                 ticker = await adapter.get_ticker()
                 if ticker:
+                    # Нормализация цены для всех режимов, кроме sim
+                    if self.market_mode != "sim":
+                        raw_price = ticker.get("price", ticker.get("ask", 50000))
+                        ticker["price"] = raw_price / PRICE_SCALE
                     results[sym] = ticker
             except Exception as e:
                 logger.error(f"Failed to fetch ticker for {key}: {e}")
