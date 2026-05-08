@@ -414,9 +414,6 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                 logger.debug(f"Survival check: expected={expected:.4f} approved={approved}")  # ← новая
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
-                    # ========== ВРЕМЕННАЯ ПРИНУДИТЕЛЬНАЯ ОТПРАВКА ==========
-                    fraction = 0.001   # раскомментировать для теста, потом удалить
-                    # =====================================================
                     if fraction > 0:
                         # --- Реальный своп ---
                         if self.market_mode in ("web3", "live"):
