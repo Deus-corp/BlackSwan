@@ -168,7 +168,7 @@ class Web3TestnetAdapter:
                     **self._get_gas_params(),
                 })
                 signed_tx = self.w3.eth.account.sign_transaction(tx, self.private_key)
-                tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+                tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
                 logger.info(f"Approve tx sent: {tx_hash.hex()}")
                 receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
                 if receipt.status == 1:
@@ -307,7 +307,7 @@ class Web3TestnetAdapter:
             })
 
             signed_txn = self.w3.eth.account.sign_transaction(txn, private_key=self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
             logger.info(f"Swap tx sent: {tx_hash.hex()}")
 
             # Ожидаем подтверждение

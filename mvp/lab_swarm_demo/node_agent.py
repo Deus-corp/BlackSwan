@@ -415,25 +415,27 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
                     if fraction > 0:
-                        # ========== Вставка реального трейда ==========
+                        # ========== Реальный трейд ==========
                         if self.market_mode in ("web3", "live"):
                             adapter = self.market_adapter.get_adapter(best_symbol)
                             if adapter and hasattr(adapter, "place_order"):
                                 test_amount = float(os.environ.get("TEST_WEB3_SWAP_AMOUNT", 0.0))
                                 if test_amount > 0:
-                                    # Buy WETH (ожидаем рост цены)
-                                    side = "buy"
+                                    # Направление свопа задаётся через переменную окружения (buy/sell)
+                                    side = os.environ.get("TEST_WEB3_SWAP_SIDE", "buy")
                                     try:
                                         result = adapter.place_order(side, test_amount, price=market.get("price"))
                                         logger.info(f"📡 Real swap attempted — {side} {test_amount} {best_symbol} → {result}")
                                     except Exception as e:
                                         logger.error(f"Real swap error: {e}")
-                        # ==============================================
+                        # ======================================
+
                         ret = market["price"] * fraction * 0.1
                         prev_capital = self.capital
                         self.capital *= (1 + ret)
                         self.capital -= 1.0
                         self.survival.dq = min(1.0, self.survival.dq + 0.001)
+
                         # Логирование сделки
                         logger.debug(
                             f"[{self.node_id}] TRADE | step={self.step_count} "
