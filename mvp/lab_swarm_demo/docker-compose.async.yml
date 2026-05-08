@@ -16,6 +16,7 @@ services:
       - MARKET_MODE=web3
       - TEST_WEB3_SWAP_AMOUNT=0.001
       - TEST_WEB3_SWAP_SIDE=sell
+      - WEB3_POOL_FEE=3000
       - PRICE_SCALE=10000
       - TRADING_SYMBOLS=WETH/USDC
       - LOG_LEVEL=DEBUG   # ← для диагностики (потом можно INFO)
