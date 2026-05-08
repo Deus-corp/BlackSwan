@@ -103,7 +103,7 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 1. **Get testnet ETH & WETH** – use Sepolia faucets to fund your wallet.
 2. **Create a `.env` file** in `mvp/lab_swarm_demo/`:
    ```ini
-   WEB3_PRIVATE_KEY=ваш_приватный_ключ
+   WEB3_PRIVATE_KEY=your_private_key
    MARKET_MODE=web3
    TRADING_SYMBOLS=WETH/USDC
    TEST_WEB3_SWAP_AMOUNT=0.001
