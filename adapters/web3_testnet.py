@@ -41,7 +41,6 @@ ROUTER_ABI = [
                     {"internalType": "address", "name": "tokenOut", "type": "address"},
                     {"internalType": "uint24", "name": "fee", "type": "uint24"},
                     {"internalType": "address", "name": "recipient", "type": "address"},
-                    {"internalType": "uint256", "name": "deadline", "type": "uint256"},
                     {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
                     {"internalType": "uint256", "name": "amountOutMinimum", "type": "uint256"},
                     {"internalType": "uint160", "name": "sqrtPriceLimitX96", "type": "uint160"},
@@ -219,64 +218,59 @@ class Web3TestnetAdapter:
             logger.error(f"Sync get_ticker failed: {e}")
             return None
 
-def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict:
-    if not self.account:
-        return {"error": "WEB3_PRIVATE_KEY not set"}
+    def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict:
+        if not self.account:
+            return {"error": "WEB3_PRIVATE_KEY not set"}
 
-    try:
-        fee = int(os.environ.get("WEB3_POOL_FEE", 3000))
+        try:
+            fee = int(os.environ.get("WEB3_POOL_FEE", 3000))
 
-        # sell 0.001 WETH
-        token_in = WETH_ADDRESS
-        token_out = USDC_ADDRESS
-        amount_in_wei = self.w3.to_wei(amount, "ether")
-        amount_out_min = 0
+            # Для теста всегда продаём WETH
+            token_in = self.w3.to_checksum_address(WETH_ADDRESS)
+            token_out = self.w3.to_checksum_address(USDC_ADDRESS)
+            amount_in_wei = self.w3.to_wei(amount, "ether")
+            amount_out_min = 0
+            deadline = self.w3.eth.get_block("latest")["timestamp"] + 600
 
-        # Проверка allowance (уже max)
-        weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=ERC20_ABI)
-        if weth.functions.allowance(self.account.address, ROUTER_ADDRESS).call() < amount_in_wei:
-            logger.error("Insufficient allowance")
-            return {"error": "Insufficient allowance"}
+            # Проверка allowance
+            weth = self.w3.eth.contract(address=token_in, abi=ERC20_ABI)
+            if weth.functions.allowance(self.account.address, ROUTER_ADDRESS).call() < amount_in_wei:
+                return {"error": "Insufficient allowance"}
 
-        eth_balance = self.w3.from_wei(self.w3.eth.get_balance(self.account.address), "ether")
-        logger.info(f"Place order: side=sell, amount={amount} WETH, token_in={token_in}, amount_in_wei={amount_in_wei}, ETH balance={eth_balance}")
+            # Порядок полей в кортеже согласно ABI (из Etherscan):
+            # tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96
+            swap_tuple = (
+                token_in,
+                token_out,
+                fee,
+                self.account.address,
+                amount_in_wei,
+                amount_out_min,
+                0,                     # sqrtPriceLimitX96
+            )
 
-        deadline = self.w3.eth.get_block("latest")["timestamp"] + 600
+            nonce = self.w3.eth.get_transaction_count(self.account.address, "pending")
+            tx = self.router.functions.exactInputSingle(swap_tuple).build_transaction({
+                "from": self.account.address,
+                "gas": 300000,
+                "gasPrice": self.w3.eth.gas_price,
+                "nonce": nonce,
+            })
 
-        # Параметры как в Etherscan: кортеж с checksum-адресами
-        swap_tuple = (
-            self.w3.to_checksum_address(token_in),
-            self.w3.to_checksum_address(token_out),
-            fee,
-            self.account.address,
-            deadline,
-            amount_in_wei,
-            amount_out_min,
-            0  # sqrtPriceLimitX96
-        )
+            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"Swap tx sent: {tx_hash.hex()}")
 
-        nonce = self.w3.eth.get_transaction_count(self.account.address, "pending")
-        tx = self.router.functions.exactInputSingle(swap_tuple).build_transaction({
-            "from": self.account.address,
-            "gas": 300000,
-            "gasPrice": self.w3.eth.gas_price,
-            "nonce": nonce,
-        })
-
-        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        logger.info(f"Swap tx sent: {tx_hash.hex()}")
-
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
-        if receipt.status == 1:
-            logger.info(f"✅ Swap successful! Tx: {tx_hash.hex()}, gas used: {receipt.gasUsed}")
-            return {"tx_hash": tx_hash.hex(), "status": "success", "gas_used": receipt.gasUsed}
-        else:
-            logger.error(f"❌ Swap tx failed (status=0). Tx: {tx_hash.hex()}")
-            return {"tx_hash": tx_hash.hex(), "status": "failed", "error": "Transaction reverted"}
-    except Exception as e:
-        logger.error(f"Web3 swap failed: {e}")
-        return {"error": str(e)}
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
+            if receipt.status == 1:
+                logger.info(f"✅ Swap successful! Tx: {tx_hash.hex()}")
+                return {"tx_hash": tx_hash.hex(), "status": "success"}
+            else:
+                logger.error(f"❌ Swap reverted. Tx: {tx_hash.hex()}")
+                return {"tx_hash": tx_hash.hex(), "status": "failed"}
+        except Exception as e:
+            logger.error(f"Swap exception: {e}")
+            return {"error": str(e)}
 
     def fetch_balance(self) -> Dict[str, float]:
         if not self.account:
