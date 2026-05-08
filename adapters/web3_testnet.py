@@ -225,28 +225,40 @@ class Web3TestnetAdapter:
         try:
             fee = int(os.environ.get("WEB3_POOL_FEE", 3000))
 
-            # Для теста всегда продаём WETH
-            token_in = self.w3.to_checksum_address(WETH_ADDRESS)
-            token_out = self.w3.to_checksum_address(USDC_ADDRESS)
-            amount_in_wei = self.w3.to_wei(amount, "ether")
-            amount_out_min = 0
-            deadline = self.w3.eth.get_block("latest")["timestamp"] + 600
+            if side.lower() == "sell":
+                token_in = WETH_ADDRESS
+                token_out = USDC_ADDRESS
+                amount_in_wei = self.w3.to_wei(amount, "ether")
+                amount_out_min = 0
+            else:  # buy
+                token_in = USDC_ADDRESS
+                token_out = WETH_ADDRESS
+                tick = self._get_ticker_sync()
+                usdc_needed = amount * (tick["price"] if tick else 2000)
+                amount_in_wei = int(usdc_needed * 10**6)
+                amount_out_min = 0
 
-            # Проверка allowance
-            weth = self.w3.eth.contract(address=token_in, abi=ERC20_ABI)
-            if weth.functions.allowance(self.account.address, ROUTER_ADDRESS).call() < amount_in_wei:
+            # --- Проверка баланса ---
+            token_balance = self._get_token_balance(token_in)
+            if token_balance < amount:
+                logger.warning(f"Insufficient {token_in} balance ({token_balance} < {amount}). Skipping swap.")
+                return {"error": "Insufficient balance"}
+
+            # Проверка allowance (обычно max, но на всякий случай)
+            token_contract = self.w3.eth.contract(address=self.w3.to_checksum_address(token_in), abi=ERC20_ABI)
+            if token_contract.functions.allowance(self.account.address, ROUTER_ADDRESS).call() < amount_in_wei:
+                logger.error("Insufficient allowance")
                 return {"error": "Insufficient allowance"}
 
-            # Порядок полей в кортеже согласно ABI (из Etherscan):
-            # tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96
+            deadline = self.w3.eth.get_block("latest")["timestamp"] + 600
             swap_tuple = (
-                token_in,
-                token_out,
+                self.w3.to_checksum_address(token_in),
+                self.w3.to_checksum_address(token_out),
                 fee,
                 self.account.address,
                 amount_in_wei,
                 amount_out_min,
-                0,                     # sqrtPriceLimitX96
+                0  # sqrtPriceLimitX96
             )
 
             nonce = self.w3.eth.get_transaction_count(self.account.address, "pending")
