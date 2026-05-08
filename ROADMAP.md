@@ -34,6 +34,7 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 🔑 Key Manager now centralizes all private keys; keys are never exposed in logs.
 📜 Intelligence Contract v1.0 defines strict boundaries between Infrastructure and Intelligence layers.
 📊 Gold Filter pipeline extracts successful trading episodes into JSONL datasets for future LoRA training.
+✅ *Web3 trading on Ethereum Sepolia validated; first on-chain swap performed.*
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
@@ -69,12 +70,11 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 - Activate `GOSSIP_SIGNING_ENABLED=true` and verify signed genome exchange without failures.
 - Begin design of LocalMemoryAPI (working/episodic/semantic/policy layers).
 - Prepare adapter for Binance Testnet (CCXT integration).
-- Begin Web3 testnet integration (Arbitrum Sepolia) via `Web3TestnetAdapter` stub.
 - Validate gold‑filter output with real profitable episodes; prepare first fine‑tuning dataset.
-- Complete Web3 testnet adapter for Arbitrum Sepolia.
 - Compare single‑pair vs multi‑pair strategy performance over long runs.
 - Add Prometheus/Grafana dashboards for live metrics.
-- ✅ Web3 adapter with Uniswap V3 integration (Arbitrum Sepolia).
+- ✅ Complete Web3 testnet adapter for Ethereum Sepolia (Uniswap V3).
+- ✅ Real swap executed: first AI-driven transaction confirmed.
 - ✅ Binance Futures adapter with stop‑loss and dynamic leverage.
 - ✅ Spot/Futures hedging for risk mitigation.
 - ✅ Order Book analysis and TradingView webhooks.

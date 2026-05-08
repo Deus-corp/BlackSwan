@@ -5,6 +5,7 @@
 [![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen)](https://deus-corp.github.io/BlackSwan/)
+![First AI Swap Success](https://sepolia.etherscan.io/tx/0xba457b54f9f674cd2118ba25a8caa342a3cf69c5685523eac814916739825213)
 
 ---
 
@@ -79,7 +80,8 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 
 ### Market & Trading
 - 🧪 Binance Testnet Adapter – live price feed via CCXT, bid/ask pricing, market hours filter, multi‑symbol support
-- 🧪 Web3 Testnet Adapter (stub) – prepared for Arbitrum Sepolia integration
+- ✅ **Web3 Testnet Adapter** – full Uniswap V3 integration on Ethereum Sepolia, including automatic token approval, dynamic pool fee selection, and real swap execution.
+- 📡 **Web3 Adapter** – on-chain swaps via Uniswap V3 on Ethereum Sepolia; successfully executed first AI-driven swap (25 gas used per tx).
 
 - 🌐 **Multi‑Pair Trading** – single node trades BTC/USDT, ETH/USDT, SOL/USDT simultaneously.
 - 🧠 **Internet Researcher** – gathers crypto news (sentiment) and on‑chain data for LLM context.
@@ -87,7 +89,6 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 - 🛡️ **Spot/Futures Hedging** – automatic hedging of futures positions with spot orders (configurable ratio).
 - 📊 **Order Book Analysis** – real‑time imbalance and delta volume for smarter entries.
 - 📡 **TradingView Webhooks** – external trading signals injected directly into LLM context.
-- 🌐 **Web3 Adapter** – Uniswap V3 price quotes and swap execution on Arbitrum Sepolia.
 - 🖥️ **Web Control Panel** – full swarm management from browser (start/stop, config, logs, model switching).
 
 ### Documentation & Reports
@@ -95,6 +96,29 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 - 📖 [Full TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
 - 🗺 [Roadmap](ROADMAP.md)
 
+---
+
+## ⚡ Quick Start: Real Web3 Trading on Sepolia
+
+1. **Get testnet ETH & WETH** – use Sepolia faucets to fund your wallet.
+2. **Create a `.env` file** in `mvp/lab_swarm_demo/`:
+   ```ini
+   WEB3_PRIVATE_KEY=ваш_приватный_ключ
+   MARKET_MODE=web3
+   TRADING_SYMBOLS=WETH/USDC
+   TEST_WEB3_SWAP_AMOUNT=0.001
+   TEST_WEB3_SWAP_SIDE=sell
+   WEB3_POOL_FEE=3000
+   ```
+3. Run the swarm:
+```bash
+cd mvp/lab_swarm_demo
+docker-compose -f docker-compose.async.yml up -d --scale node=1
+```
+4. Watch logs – within minutes, you'll see ✅ Swap successful! in the output.
+```text
+🦢 The very first AI‑driven on‑chain swap occurred at tx 0xba457b54.... The strategy evolves via genetic algorithms and can repeat profitable trades.
+```
 ---
 
 ## 🧬 Key Features
