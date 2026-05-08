@@ -414,21 +414,24 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                 logger.debug(f"Survival check: expected={expected:.4f} approved={approved}")  # ← новая
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
+                    # ========== ВРЕМЕННАЯ ПРИНУДИТЕЛЬНАЯ ОТПРАВКА ==========
+                    fraction = 0.001   # раскомментировать для теста, потом удалить
+                    # =====================================================
                     if fraction > 0:
-                        # ========== Реальный трейд ==========
+                        # --- Реальный своп ---
                         if self.market_mode in ("web3", "live"):
                             adapter = self.market_adapter.get_adapter(best_symbol)
                             if adapter and hasattr(adapter, "place_order"):
                                 test_amount = float(os.environ.get("TEST_WEB3_SWAP_AMOUNT", 0.0))
                                 if test_amount > 0:
-                                    # Направление свопа задаётся через переменную окружения (buy/sell)
                                     side = os.environ.get("TEST_WEB3_SWAP_SIDE", "buy")
+                                    logger.info(f"Attempting real swap: {side} {test_amount} {best_symbol}")
                                     try:
                                         result = adapter.place_order(side, test_amount, price=market.get("price"))
-                                        logger.info(f"📡 Real swap attempted — {side} {test_amount} {best_symbol} → {result}")
+                                        logger.info(f"📡 Real swap result: {result}")
                                     except Exception as e:
                                         logger.error(f"Real swap error: {e}")
-                        # ======================================
+                        # --- конец блока ---
 
                         ret = market["price"] * fraction * 0.1
                         prev_capital = self.capital
