@@ -68,9 +68,6 @@ class SwarmNode:
 
         self.market_url: Optional[str] = os.environ.get("MARKET_URL")
         self.market_mode: str = os.environ.get("MARKET_MODE", "sim")
-        self.live_market: Optional[BinanceTestnetAdapter] = None
-        if self.market_mode == "live":
-            self.live_market = BinanceTestnetAdapter(symbol=os.environ.get("TRADING_SYMBOL", "BTC/USDT"))
 
         self.burn_rate: float = float(os.environ.get("BURN_RATE", 0.5))
         self.failure_prob: float = float(os.environ.get("FAILURE_PROB", 0.0))
@@ -380,7 +377,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             positions = adapter.exchange.fetch_positions([best_symbol])
                             if positions and len(positions) > 0:
                                 pos = positions[0]
-                                if float(pos['contracts']) > 0:   # ← исправлена скобка
+                                if float(pos['contracts']) > 0:  # верно
                                     entry_price = float(pos['entryPrice'])
                                     current_price = best_market['price']
                                     side = 'long' if pos['side'] == 'long' else 'short'
@@ -414,9 +411,24 @@ Respond ONLY with the adjusted parameters in JSON format, like:
 
                 expected = market["price"] * EXPECTED_RETURN_RATE
                 _, approved = self.survival.evaluate_trade(self.capital, expected)
+                logger.debug(f"Survival check: expected={expected:.4f} approved={approved}")  # ← новая
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
                     if fraction > 0:
+                        # ========== Вставка реального трейда ==========
+                        if self.market_mode in ("web3", "live"):
+                            adapter = self.market_adapter.get_adapter(best_symbol)
+                            if adapter and hasattr(adapter, "place_order"):
+                                test_amount = float(os.environ.get("TEST_WEB3_SWAP_AMOUNT", 0.0))
+                                if test_amount > 0:
+                                    # Buy WETH (ожидаем рост цены)
+                                    side = "buy"
+                                    try:
+                                        result = adapter.place_order(side, test_amount, price=market.get("price"))
+                                        logger.info(f"📡 Real swap attempted — {side} {test_amount} {best_symbol} → {result}")
+                                    except Exception as e:
+                                        logger.error(f"Real swap error: {e}")
+                        # ==============================================
                         ret = market["price"] * fraction * 0.1
                         prev_capital = self.capital
                         self.capital *= (1 + ret)
@@ -577,7 +589,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                             await self.crdt.add_genome(genome_dict)
 
                     # LLM-мутация чемпиона (каждые 200 шагов)
-                    if self.step_count % 200 == 0:
+                    if self.step_count % 100 == 0:
                         external_context = ""
                         if os.environ.get("INTERNET_RESEARCHER_ENABLED", "false").lower() == "true":
                             try:
