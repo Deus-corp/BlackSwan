@@ -14,7 +14,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Автоматически загружаем переменные из .env (если есть)
-env_path = Path(__file__).resolve().parent.parent / ".env"
+env_path = Path(__file__).resolve().parent.parent / "mvp" / "lab_swarm_demo" / ".env"
 if env_path.exists():
     with env_path.open("r", encoding="utf-8") as f:
         for line in f:
