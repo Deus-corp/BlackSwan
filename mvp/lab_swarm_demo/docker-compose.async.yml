@@ -57,5 +57,35 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - node_nonce_data:/app/nonce_data
 
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ../../prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_CONTENT_SECURITY_POLICY=frame-ancestors 'self' http://localhost:8080
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+
 volumes:
   node_nonce_data:
+  prometheus_data:
+  grafana_data:
