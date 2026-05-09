@@ -87,8 +87,14 @@ ERC20_ABI = [
     },
 ]
 
+WETH9_ABI = [
+    {"constant":False,"inputs":[],"name":"deposit","outputs":[],"type":"function"},
+    {"constant":False,"inputs":[{"name":"wad","type":"uint256"}],"name":"withdraw","outputs":[],"type":"function"},
+]
+
 class Web3TestnetAdapter:
-    def __init__(self, symbol: str = "WETH/USDC"):
+    def __init__(self, symbol: str = "WETH/USDC", crdt_adapter=None):
+        self.crdt = crdt_adapter
         self.symbol = symbol
         self.rpc_url = os.environ.get("WEB3_RPC_URL", "https://ethereum-sepolia.publicnode.com")
         self.private_key = os.environ.get("WEB3_PRIVATE_KEY")
@@ -217,8 +223,73 @@ class Web3TestnetAdapter:
         except Exception as e:
             logger.error(f"Sync get_ticker failed: {e}")
             return None
+        
+    def wrap_eth(self, amount_eth: float) -> Optional[str]:
+        #"""Конвертирует ETH в WETH, возвращает tx_hash или None при ошибке."""
+        try:
+            weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=WETH9_ABI)
+            value = self.w3.to_wei(amount_eth, 'ether')
+            tx = weth.functions.deposit().build_transaction({
+                'from': self.account.address,
+                'value': value,
+                'gas': 50000,
+                'nonce': self.w3.eth.get_transaction_count(self.account.address, 'pending'),
+                'gasPrice': self.w3.eth.gas_price,
+            })
+            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"Wrap {amount_eth} ETH → WETH, tx: {tx_hash.hex()}")
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+            if receipt.status == 1:
+                logger.info("✅ Wrap successful")
+                return tx_hash.hex()
+            else:
+                logger.error("❌ Wrap reverted")
+                return None
+        except Exception as e:
+            logger.error(f"Wrap exception: {e}")
+            return None
 
-    def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict:
+    def unwrap_weth(self, amount_weth: float) -> Optional[str]:
+        #"""Разворачивает WETH в ETH, возвращает tx_hash или None при ошибке."""
+        try:
+            weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=WETH9_ABI)
+            value = self.w3.to_wei(amount_weth, 'ether')
+            tx = weth.functions.withdraw(value).build_transaction({
+                'from': self.account.address,
+                'gas': 50000,
+                'nonce': self.w3.eth.get_transaction_count(self.account.address, 'pending'),
+                'gasPrice': self.w3.eth.gas_price,
+            })
+            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"Unwrap {amount_weth} WETH → ETH, tx: {tx_hash.hex()}")
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+            if receipt.status == 1:
+                logger.info("✅ Unwrap successful")
+                return tx_hash.hex()
+            else:
+                logger.error("❌ Unwrap reverted")
+                return None
+        except Exception as e:
+            logger.error(f"Unwrap exception: {e}")
+            return None
+        
+    def _read_nonce_file(self) -> int:
+        path = "/app/nonce_data/last_nonce.txt"
+        try:
+            with open(path, "r") as f:
+                return int(f.read().strip())
+        except (FileNotFoundError, ValueError):
+            return self.w3.eth.get_transaction_count(self.account.address, "latest")
+
+    def _write_nonce_file(self, nonce: int) -> None:
+        path = "/app/nonce_data/last_nonce.txt"
+        os.makedirs("/app/nonce_data", exist_ok=True)
+        with open(path, "w") as f:
+            f.write(str(nonce))
+
+    async def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict:
         if not self.account:
             return {"error": "WEB3_PRIVATE_KEY not set"}
 
@@ -244,11 +315,35 @@ class Web3TestnetAdapter:
                 logger.warning(f"Insufficient {token_in} balance ({token_balance} < {amount}). Skipping swap.")
                 return {"error": "Insufficient balance"}
 
-            # Проверка allowance (обычно max, но на всякий случай)
+            # --- Проверка, что предыдущая транзакция подтвердилась ---
+            pending = self.w3.eth.get_transaction_count(self.account.address, "pending")
+            confirmed = self.w3.eth.get_transaction_count(self.account.address, "latest")
+            if pending != confirmed:
+                logger.warning(f"Nonce conflict (pending={pending}, confirmed={confirmed}). Skipping swap.")
+                return {"error": "Nonce conflict, try again later"}
+
+            # Проверка allowance
             token_contract = self.w3.eth.contract(address=self.w3.to_checksum_address(token_in), abi=ERC20_ABI)
             if token_contract.functions.allowance(self.account.address, ROUTER_ADDRESS).call() < amount_in_wei:
                 logger.error("Insufficient allowance")
                 return {"error": "Insufficient allowance"}
+
+            # --- атомарный nonce через SQLite ---
+            import sqlite3
+            nonce_db = "/app/nonce_data/nonce.db"
+            os.makedirs("/app/nonce_data", exist_ok=True)
+            conn = sqlite3.connect(nonce_db)
+            conn.execute("CREATE TABLE IF NOT EXISTS nonce (addr TEXT PRIMARY KEY, last_nonce INTEGER)")
+            onchain = self.w3.eth.get_transaction_count(self.account.address, "pending")
+            # атомарная операция: получить и увеличить
+            with conn:
+                conn.execute("INSERT OR IGNORE INTO nonce (addr, last_nonce) VALUES (?, ?)",
+                             (self.account.address, onchain))
+                cur = conn.execute("SELECT last_nonce FROM nonce WHERE addr=?", (self.account.address,))
+                db_nonce = cur.fetchone()[0]
+                safe_nonce = max(onchain, db_nonce)
+                conn.execute("UPDATE nonce SET last_nonce=? WHERE addr=?", (safe_nonce + 1, self.account.address))
+            conn.close()
 
             deadline = self.w3.eth.get_block("latest")["timestamp"] + 600
             swap_tuple = (
@@ -261,12 +356,11 @@ class Web3TestnetAdapter:
                 0  # sqrtPriceLimitX96
             )
 
-            nonce = self.w3.eth.get_transaction_count(self.account.address, "pending")
             tx = self.router.functions.exactInputSingle(swap_tuple).build_transaction({
                 "from": self.account.address,
                 "gas": 300000,
                 "gasPrice": self.w3.eth.gas_price,
-                "nonce": nonce,
+                "nonce": safe_nonce,   # 👈 используем синхронизированный nonce
             })
 
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
@@ -283,7 +377,7 @@ class Web3TestnetAdapter:
         except Exception as e:
             logger.error(f"Swap exception: {e}")
             return {"error": str(e)}
-
+        
     def fetch_balance(self) -> Dict[str, float]:
         if not self.account:
             return {}

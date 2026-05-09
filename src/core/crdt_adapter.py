@@ -122,6 +122,26 @@ class CRDTAdapter:
         for gid, genome in remote_items.items():
             self.crdt.upsert(gid, genome)
 
+    async def get_nonce(self, account: str) -> int:
+        """Возвращает сохранённый nonce для аккаунта или 0."""
+        gid = f"nonce:{account}"
+        state = self.crdt.state()
+        record = state.get(gid)
+        if record and isinstance(record, dict):
+            return record.get("value", 0)
+        return 0
+
+    async def set_nonce(self, account: str, nonce: int) -> None:
+        """Сохраняет новый nonce через CRDT upsert."""
+        gid = f"nonce:{account}"
+        data = {
+            "key": gid,
+            "value": nonce,
+            "timestamp": time.time(),
+            "node_id": self.node_id,
+        }
+        self.crdt.upsert(gid, data)
+
     async def get_delta(self, known_versions: Dict[str, int]) -> Dict[str, Dict[str, Any]]:
         all_state = self.crdt.state()
         delta = {}

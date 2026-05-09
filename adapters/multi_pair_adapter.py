@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 PRICE_SCALE = float(os.environ.get("PRICE_SCALE", 10000))
 
 class MultiPairAdapter:
-    def __init__(self, symbols: List[str], market_mode: str = "sim"):
+    def __init__(self, symbols: List[str], market_mode: str = "sim", crdt_adapter=None):
         self.symbols = symbols
         self.market_mode = market_mode
         self.hedge_enabled = os.environ.get("HEDGE_ENABLED", "false").lower() == "true"
@@ -25,7 +25,8 @@ class MultiPairAdapter:
                 if self.hedge_enabled:
                     self.adapters[f"{sym}_spot"] = BinanceTestnetAdapter(symbol=sym)
             elif market_mode == "web3":
-                self.adapters[f"{sym}_spot"] = Web3TestnetAdapter(symbol=sym)
+                # 👇 вот здесь передаём CRDT
+                self.adapters[f"{sym}_spot"] = Web3TestnetAdapter(symbol=sym, crdt_adapter=crdt_adapter)
             else:  # sim
                 self.adapters[f"{sym}_spot"] = BinanceTestnetAdapter(symbol=sym)
 

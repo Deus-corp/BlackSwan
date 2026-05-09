@@ -25,6 +25,7 @@ from src.core.events import Event
 from src.core.event_store import EventStore
 from src.security.key_manager import KeyManager
 from adapters.multi_pair_adapter import MultiPairAdapter
+from adapters.web3_testnet import WETH_ADDRESS, USDC_ADDRESS
 from src.intelligence.internet_researcher import InternetResearcher
 from adapters.tradingview_webhook import TradingViewWebhook
 from adapters.orderbook_analyzer import OrderBookAnalyzer
@@ -122,8 +123,16 @@ class SwarmNode:
         symbols_list = [s.strip() for s in trading_symbols.split(",") if s.strip()]
         self.market_adapter = MultiPairAdapter(
             symbols=symbols_list,
-            market_mode=self.market_mode
+            market_mode=self.market_mode,
+            crdt_adapter=self.crdt if self.market_mode == "web3" else None
         )
+        # --- принудительно прокидываем CRDT в web3 адаптер ---
+        if self.market_mode == "web3":
+            for sym in symbols_list:
+                adapter = self.market_adapter.get_adapter(sym)
+                if adapter and hasattr(adapter, 'crdt'):
+                    adapter.crdt = self.crdt
+
         self.primary_symbol = symbols_list[0] if symbols_list else "BTC/USDT"
 
                 # TradingView webhook (если включен)
@@ -369,6 +378,38 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                     best_market = {"price": random.uniform(90, 110)}
                     best_symbol = self.primary_symbol
 
+                # Внутри main_loop, после получения market и до approved
+                if self.market_mode == "web3":
+                    adapter = self.market_adapter.get_adapter(best_symbol)
+                    if adapter:
+                        weth_bal = adapter._get_token_balance(WETH_ADDRESS)
+                        eth_bal = adapter.w3.from_wei(adapter.w3.eth.get_balance(adapter.account.address), 'ether')
+                        usdc_bal = adapter._get_token_balance(USDC_ADDRESS)
+
+                        min_weth = float(os.environ.get('MIN_WETH_BALANCE', 0.001))
+                        min_eth = float(os.environ.get('MIN_ETH_BALANCE', 0.002))
+                        max_usdc = float(os.environ.get('MAX_USDC_BALANCE', 1000.0))  # порог, после которого продаём USDC
+
+                        # 1. Если не хватает WETH, но есть ETH — wrap
+                        if weth_bal < min_weth and eth_bal > min_eth + 0.0005:
+                            logger.info(f"WETH low ({weth_bal}), wrapping 0.0005 ETH to WETH")
+                            adapter.wrap_eth(0.005)
+
+                        # 2. Если не хватает ETH на газ, но есть WETH — unwrap
+                        elif eth_bal < min_eth and weth_bal > min_weth + 0.0005:
+                            logger.info(f"ETH low ({eth_bal}), unwrapping 0.0005 WETH to ETH")
+                            adapter.unwrap_weth(0.0005)
+
+                        # 3. Если USDC слишком много, а WETH мало — покупаем WETH за USDC
+                        elif usdc_bal > max_usdc and weth_bal < min_weth:
+                            logger.info(f"USDC surplus ({usdc_bal}), buying WETH with USDC")
+                            try:
+                                # amount указываем в WETH, которое хотим купить, здесь ~0.0005
+                                result = adapter.place_order("buy", 0.0005)
+                                logger.info(f"USDC->WETH swap result: {result}")
+                            except Exception as e:
+                                logger.error(f"USDC->WETH swap error: {e}")
+
                 # Проверка стоп‑лосса для фьючерсных позиций
                 if self.market_mode == "futures":
                     adapter = self.market_adapter.get_adapter(best_symbol)
@@ -424,7 +465,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                                     side = os.environ.get("TEST_WEB3_SWAP_SIDE", "buy")
                                     logger.info(f"Attempting real swap: {side} {test_amount} {best_symbol}")
                                     try:
-                                        result = adapter.place_order(side, test_amount, price=market.get("price"))
+                                        result = await adapter.place_order(side, test_amount, price=market.get("price"))
                                         logger.info(f"📡 Real swap result: {result}")
                                     except Exception as e:
                                         logger.error(f"Real swap error: {e}")

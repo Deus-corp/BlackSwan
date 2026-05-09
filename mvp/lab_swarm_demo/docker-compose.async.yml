@@ -14,12 +14,15 @@ services:
       - GOSSIP_SIGNING_ENABLED=false
       - MEMORY_API_ENABLED=true
       - MARKET_MODE=web3
-      - TEST_WEB3_SWAP_AMOUNT=0.0001
+      - TEST_WEB3_SWAP_AMOUNT=0.001
       - TEST_WEB3_SWAP_SIDE=sell
       - WEB3_POOL_FEE=3000
       - PRICE_SCALE=10000
+      - MIN_WETH_BALANCE=0.001
+      - MIN_ETH_BALANCE=0.002
+      - MAX_USDC_BALANCE=1000.0
       - TRADING_SYMBOLS=WETH/USDC
-      - LOG_LEVEL=INFO   # ← DEBUG для диагностики (потом можно INFO)
+      - LOG_LEVEL=INFO
       - INTERNET_RESEARCHER_ENABLED=true
       - TRADINGVIEW_WEBHOOK_ENABLED=true
       - TRADINGVIEW_WEBHOOK_PORT=8888
@@ -27,7 +30,7 @@ services:
       - HEDGE_ENABLED=true
       - HEDGE_RATIO=0.5
       - CAPITAL_ALERT_THRESHOLD=100.0
-      # Секреты — через подстановку из .env (файл должен лежать рядом с этим compose-файлом)
+      # Секреты
       - WEB3_PRIVATE_KEY=${WEB3_PRIVATE_KEY}
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
       - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
@@ -52,3 +55,7 @@ services:
     volumes:
       - ../../llama_cpp:/app/llama_cpp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - node_nonce_data:/app/nonce_data
+
+volumes:
+  node_nonce_data:
