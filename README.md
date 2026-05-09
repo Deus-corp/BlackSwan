@@ -36,7 +36,19 @@ python dashboard/app.py
 ⚙️ Settings – edit all compose variables and secrets without editing files
 📜 Logs – dedicated logs viewer with container status and save to disk
 
-### 3. Download LLM Models
+### 3. Prometheus + Grafana (optional)
+
+The project includes Prometheus and Grafana for advanced monitoring.  
+Start them alongside the swarm:
+
+```bash
+docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml up -d prometheus grafana
+```
+
+- Prometheus scrapes metrics from http://localhost:8080/metrics
+- Grafana (http://localhost:3000, admin/admin) visualizes them. Import the dashboard from grafana/dashboards/blackswan-swarm.json.
+
+### 4. Download LLM Models
 
 The swarm requires at least one local LLM model. Download the recommended ones:
 
