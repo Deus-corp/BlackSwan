@@ -390,25 +390,22 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         min_eth = float(os.environ.get('MIN_ETH_BALANCE', 0.002))
                         max_usdc = float(os.environ.get('MAX_USDC_BALANCE', 1000.0))  # порог, после которого продаём USDC
 
-                        # 1. Если не хватает WETH, но есть ETH — wrap
-                        if weth_bal < min_weth and eth_bal > min_eth + 0.0005:
-                            logger.info(f"WETH low ({weth_bal}), wrapping 0.0005 ETH to WETH")
-                            adapter.wrap_eth(0.005)
-
-                        # 2. Если не хватает ETH на газ, но есть WETH — unwrap
-                        elif eth_bal < min_eth and weth_bal > min_weth + 0.0005:
-                            logger.info(f"ETH low ({eth_bal}), unwrapping 0.0005 WETH to ETH")
-                            adapter.unwrap_weth(0.0005)
-
-                        # 3. Если USDC слишком много, а WETH мало — покупаем WETH за USDC
-                        elif usdc_bal > max_usdc and weth_bal < min_weth:
+                        # Приоритет: избыток USDC → покупаем WETH
+                        if usdc_bal > max_usdc and weth_bal < min_weth:
                             logger.info(f"USDC surplus ({usdc_bal}), buying WETH with USDC")
                             try:
-                                # amount указываем в WETH, которое хотим купить, здесь ~0.0005
-                                result = adapter.place_order("buy", 0.0005)
+                                result = await adapter.place_order("buy", 0.0005)
                                 logger.info(f"USDC->WETH swap result: {result}")
                             except Exception as e:
                                 logger.error(f"USDC->WETH swap error: {e}")
+                        # Если не хватает WETH, но есть ETH — wrap
+                        elif weth_bal < min_weth and eth_bal > min_eth + 0.0005:
+                            logger.info(f"WETH low ({weth_bal}), wrapping 0.0005 ETH to WETH")
+                            adapter.wrap_eth(0.0005)
+                        # Если не хватает ETH на газ, но есть WETH — unwrap
+                        elif eth_bal < min_eth and weth_bal > min_weth + 0.0005:
+                            logger.info(f"ETH low ({eth_bal}), unwrapping 0.0005 WETH to ETH")
+                            adapter.unwrap_weth(0.0005)
 
                 # Проверка стоп‑лосса для фьючерсных позиций
                 if self.market_mode == "futures":
