@@ -40,6 +40,9 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ **Web3 Testnet Adapter** – Uniswap V3 integration on Ethereum Sepolia, real AI‑driven swaps executed.  
 ✅ **Autonomous Token Management** – auto‑wrap ETH, auto‑convert USDC↔WETH based on configurable thresholds.  
 ✅ **Multi‑node Nonce Synchronization** – SQLite‑based coordination for conflict‑free parallel swaps.
+✅ **Prometheus + Grafana integration** – professional metrics & dashboards  
+✅ **Embedded Grafana dashboard** in Web Control Panel  
+✅ **Settings page** for all compose variables and secrets  
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
