@@ -12,13 +12,12 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 
 ## 📍 Current Status (May 2026)
 
-**Overall readiness level: TRL‑4+**
-*Components and subsystems validated in a laboratory environment; key components upgraded to industrial-grade.*
+**Overall readiness level: TRL‑5 (laboratory‑validated system with real on‑chain execution)**
 
 ✅ Formal verification (TLA+): 8 protocols (Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation, etc.).  
 ✅ Economic simulator: multi‑agent sweep, stability zone discovered.  
-✅ Laboratory swarm: Docker Compose with 4 nodes, fully decentralized (no Redis).
-✅ **Multinode DeepSeek Swarm (v2.13)** – 4–5 nodes running DeepSeek-R1-Distill-Qwen-1.5B, model shared via read‑only volume, resource limits for 8 GB RAM PCs. 
+✅ Laboratory swarm: Docker Compose with 4 nodes, fully decentralized (no Redis).  
+✅ **Multinode DeepSeek Swarm (v2.13)** – 4–5 nodes running DeepSeek-R1-Distill-Qwen-1.5B, model shared via read‑only volume, resource limits for 8 GB RAM PCs.  
 ✅ **Industrial CRDT layer** – operation‑based CRDT with SQLite persistence, version vectors, and deterministic LWW merge.  
 ✅ **Secure Gossip protocol** – HMAC‑signed envelopes, replay protection, peer backoff and scoring.  
 ✅ **Speciated Genetic Engine** – genome dataclass, species formation, adaptive mutation, fitness cache.  
@@ -26,15 +25,21 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ Survival Objective integrated into every node (conscious risk avoidance).  
 ✅ Adaptive Intrinsic Motivation: Meta‑POMDP agent switches between scenarios.  
 ✅ Curiosity Engine: proactive exploration of market anomalies.  
-✅ CI/CD: unit tests, formal verification (local + GitHub Actions). 
-✅ **Multi-model benchmark completed** – 10 models evaluated, top performer: SmolLM2-1.7B-Instruct (fitness 0.898).
-✅ Spore protocol stress‑test completed (4 nodes, high failure rate, automatic recovery).
-✅ Signed GossipEnvelope implemented – genome exchange cryptographically signed.
-✅ Signed genome exchange with Ed25519 verified and tested in live swarm.
-🔑 Key Manager now centralizes all private keys; keys are never exposed in logs.
-📜 Intelligence Contract v1.0 defines strict boundaries between Infrastructure and Intelligence layers.
-📊 Gold Filter pipeline extracts successful trading episodes into JSONL datasets for future LoRA training.
-✅ *Web3 trading on Ethereum Sepolia validated; first on-chain swap performed.*
+✅ CI/CD: unit tests, formal verification (local + GitHub Actions).  
+✅ **Multi‑model benchmark completed** – 10 models evaluated, top performer: SmolLM2-1.7B-Instruct (fitness 0.898).  
+✅ Spore protocol stress‑test completed (4 nodes, high failure rate, automatic recovery).  
+✅ Signed GossipEnvelope implemented – genome exchange cryptographically signed.  
+✅ Signed genome exchange with Ed25519 verified and tested in live swarm.  
+🔑 Key Manager now centralizes all private keys; keys are never exposed in logs.  
+📜 Intelligence Contract v1.0 defines strict boundaries between Infrastructure and Intelligence layers.  
+📊 Gold Filter pipeline extracts successful trading episodes into JSONL datasets for future LoRA training.  
+✅ Binance Futures adapter with stop‑loss and dynamic leverage.  
+✅ Spot/Futures hedging for risk mitigation.  
+✅ Order Book analysis and TradingView webhooks.  
+✅ Web Control Panel for full swarm management.  
+✅ **Web3 Testnet Adapter** – Uniswap V3 integration on Ethereum Sepolia, real AI‑driven swaps executed.  
+✅ **Autonomous Token Management** – auto‑wrap ETH, auto‑convert USDC↔WETH based on configurable thresholds.  
+✅ **Multi‑node Nonce Synchronization** – SQLite‑based coordination for conflict‑free parallel swaps.
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
@@ -73,12 +78,6 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 - Validate gold‑filter output with real profitable episodes; prepare first fine‑tuning dataset.
 - Compare single‑pair vs multi‑pair strategy performance over long runs.
 - Add Prometheus/Grafana dashboards for live metrics.
-- ✅ Complete Web3 testnet adapter for Ethereum Sepolia (Uniswap V3).
-- ✅ Real swap executed: first AI-driven transaction confirmed.
-- ✅ Binance Futures adapter with stop‑loss and dynamic leverage.
-- ✅ Spot/Futures hedging for risk mitigation.
-- ✅ Order Book analysis and TradingView webhooks.
-- ✅ Web Control Panel for full swarm management.
 
 ---
 
