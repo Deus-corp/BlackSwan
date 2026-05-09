@@ -23,12 +23,18 @@ python3 swarm_control.py
 
 ### 2. 🌐 Web Control Panel
 
-Open http://localhost:8080 in your browser to manage the swarm and see real‑time charts.
+Open `http://localhost:8080` in your browser to manage the swarm, view real‑time charts, edit configuration, and approve tokens.
 
 ```bash
-pip install fastapi uvicorn python-multipart
-python3 web_control_panel.py
+pip install fastapi uvicorn docker plotly
+python dashboard/app.py
 ```
+
+**The dashboard includes:**
+🏠 Main – start/stop/rebuild swarm, live logs with auto‑refresh
+📊 Dashboard – interactive charts (capital, fitness, diversity, niche)
+⚙️ Settings – edit all compose variables and secrets without editing files
+📜 Logs – dedicated logs viewer with container status and save to disk
 
 ### 3. Download LLM Models
 

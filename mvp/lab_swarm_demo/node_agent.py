@@ -791,7 +791,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         f"Capital: {self.capital:.2f} (threshold: {alert_threshold})"
                     )
 
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)
 
     @staticmethod
     def _recombine(g1: dict, g2: dict) -> dict:
