@@ -1,0 +1,44 @@
+{
+  "title": "BlackSwan Swarm",
+  "tags": [],
+  "panels": [
+    {
+      "title": "Capital",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "swarm_capital",
+          "legendFormat": "{{node}}"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "title": "Fitness",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "swarm_fitness",
+          "legendFormat": "{{node}}"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "title": "Diversity & CRDT Size",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "swarm_diversity",
+          "legendFormat": "{{node}} diversity"
+        },
+        {
+          "expr": "swarm_crdt_size",
+          "legendFormat": "{{node}} crdt"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+    }
+  ],
+  "schemaVersion": 1
+}
