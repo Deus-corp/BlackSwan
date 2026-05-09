@@ -5,7 +5,7 @@
 [![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen)](https://deus-corp.github.io/BlackSwan/)
-🌐 [First AI-driven swap on Sepolia](https://sepolia.etherscan.io/tx/0xba457b54f9f674cd2118ba25a8caa342a3cf69c5685523eac814916739825213)
+[![First AI Swap](https://img.shields.io/badge/Sepolia%20swap-success-brightgreen)](https://sepolia.etherscan.io/tx/0xba457b54f9f674cd2118ba25a8caa342a3cf69c5685523eac814916739825213)
 
 ---
 
@@ -80,8 +80,10 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 
 ### Market & Trading
 - 🧪 Binance Testnet Adapter – live price feed via CCXT, bid/ask pricing, market hours filter, multi‑symbol support
-- ✅ **Web3 Testnet Adapter** – full Uniswap V3 integration on Ethereum Sepolia, including automatic token approval, dynamic pool fee selection, and real swap execution.
-- 📡 **Web3 Adapter** – on-chain swaps via Uniswap V3 on Ethereum Sepolia; successfully executed first AI-driven swap (25 gas used per tx).
+- ✅ **Web3 Testnet Adapter** – fully autonomous Uniswap V3 swaps on Ethereum Sepolia.
+- 🔁 **Autonomous Token Manager** – auto-wrap ETH, auto-convert USDC↔WETH.
+- 🔗 **Multi‑node Nonce Sync** – SQLite‑based nonce coordination for parallel swaps.
+- 🏆 **First AI‑driven swap** – executed 0xba457b54... (see Sepolia Etherscan).
 
 - 🌐 **Multi‑Pair Trading** – single node trades BTC/USDT, ETH/USDT, SOL/USDT simultaneously.
 - 🧠 **Internet Researcher** – gathers crypto news (sentiment) and on‑chain data for LLM context.
@@ -90,11 +92,6 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 - 📊 **Order Book Analysis** – real‑time imbalance and delta volume for smarter entries.
 - 📡 **TradingView Webhooks** – external trading signals injected directly into LLM context.
 - 🖥️ **Web Control Panel** – full swarm management from browser (start/stop, config, logs, model switching).
-
-### Documentation & Reports
-- 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
-- 📖 [Full TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
-- 🗺 [Roadmap](ROADMAP.md)
 
 ---
 
@@ -184,14 +181,15 @@ export TELEGRAM_BOT_TOKEN=your_token  # or add to .env
 python3 tools/telegram_bot.py
 ```
 
-## 📚 Documentation
+## 📚 Documentation & Reports
 
-- [Documentation site](https://deus-corp.github.io/BlackSwan/)
-- [Architecture decisions](docs/architecture/)
-- [Formal verification](formal/tla/)
-- [Simulation report](docs/TRL4_simulation_baseline.md)
-- [TRL‑4 Validation](docs/TRL4_VALIDATION_REPORT.md)
-- [Ouroboros Report](docs/TRL4_OUROBOROS_REPORT.md)
+- 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
+- 📖 [Architecture decisions](docs/architecture/)
+- 📖 [Formal verification](formal/tla/)
+- 📖 [Simulation report](docs/TRL4_simulation_baseline.md)
+- 📖 [Full TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
+- 📖 [Ouroboros Report](docs/TRL4_OUROBOROS_REPORT.md)
+- 🗺 [Roadmap](ROADMAP.md)
 
 ---
 
