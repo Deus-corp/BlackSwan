@@ -40,3 +40,14 @@ async function unpauseContainer() {
 
 // Загрузка состояния при открытии страницы (опционально)
 fetchContainerStats();
+
+async function fetchContainerStatus() {
+    const res = await fetch('/api/container_status_json');
+    const data = await res.json();
+    let text = '';
+    data.forEach(c => {
+        text += `${c.name}: ${c.status}\n`;
+    });
+    document.getElementById('container-status').textContent = text || 'No containers found.';
+}
+fetchContainerStatus(); // автоматически при загрузке
