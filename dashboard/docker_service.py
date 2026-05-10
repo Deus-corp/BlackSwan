@@ -42,15 +42,31 @@ def save_logs_to_disk():
     return f"Logs saved to {dest_dir}"
 
 def update_config(new_values: dict) -> str:
-    """Заменяет значения переменных в COMPOSE_FILE на новые и перезапускает рой."""
-    content = COMPOSE_FILE.read_text()
+    """Заменяет значения переменных в COMPOSE_FILE, не дублируя строки."""
+    lines = COMPOSE_FILE.read_text().splitlines()
+    updated_keys = set()
+    new_lines = []
+    for line in lines:
+        replaced = False
+        for key, value in new_values.items():
+            # Ищем строку, которая начинается с "key=" или "  - key=" (учитывая пробелы)
+            if line.strip().startswith(f"- {key}=") or line.strip().startswith(f"{key}="):
+                # Сохраняем отступы
+                indent = line[:len(line) - len(line.lstrip())]
+                new_lines.append(f"{indent}- {key}={value}")
+                updated_keys.add(key)
+                replaced = True
+                break
+        if not replaced:
+            # Если строка начинается с секретов (не трогаем их)
+            if not any(line.strip().startswith(f"- {k}=") or line.strip().startswith(f"{k}=") for k in new_values):
+                new_lines.append(line)
+    # Добавляем ключи, которых не было в файле, в конец секции environment (если нужно)
     for key, value in new_values.items():
-        # ищем строку, начинающуюся с "key=" (учитывая возможные пробелы)
-        content = content.replace(f"{key}=", f"{key}={value}")
-    COMPOSE_FILE.write_text(content)
-    stop_swarm()
-    start_swarm()
-    return "Configuration updated and swarm restarted."
+        if key not in updated_keys:
+            new_lines.append(f"      - {key}={value}")
+    COMPOSE_FILE.write_text("\n".join(new_lines) + "\n")
+    return "Configuration updated successfully."
 
 def get_current_config() -> dict:
     content = COMPOSE_FILE.read_text()
