@@ -337,8 +337,9 @@ class Web3TestnetAdapter:
             import sqlite3
             nonce_db = "/app/nonce_data/nonce.db"
             os.makedirs("/app/nonce_data", exist_ok=True)
-            conn = sqlite3.connect(nonce_db)
+            conn = sqlite3.connect(nonce_db, timeout=10)
             conn.execute("CREATE TABLE IF NOT EXISTS nonce (addr TEXT PRIMARY KEY, last_nonce INTEGER)")
+            conn.execute("PRAGMA journal_mode=WAL;")
             onchain = self.w3.eth.get_transaction_count(self.account.address, "pending")
             # атомарная операция: получить и увеличить
             with conn:

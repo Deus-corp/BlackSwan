@@ -340,6 +340,8 @@ Respond ONLY with the adjusted parameters in JSON format, like:
     # ------------------------------------------------------------
     async def main_loop(self) -> None:
         async with aiohttp.ClientSession() as session:
+            if os.path.exists("/app/nonce_data/nonce.db"):
+                os.remove("/app/nonce_data/nonce.db")
             if self.memory_api_enabled:
                 await self.memory_api.load_from_db()
             while True:
