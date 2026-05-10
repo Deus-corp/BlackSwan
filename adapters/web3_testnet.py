@@ -163,16 +163,19 @@ class Web3TestnetAdapter:
             return False
 
     def _get_gas_params(self) -> dict:
+        """Возвращает газовые параметры EIP‑1559 с двойным запасом."""
         try:
             fee_history = self.w3.eth.fee_history(1, "latest", reward_percentiles=[50])
             base_fee = fee_history["baseFeePerGas"][0]
             max_priority_fee = self.w3.eth.max_priority_fee or self.w3.to_wei(2, "gwei")
+            # Удвоенная базовая комиссия + приоритет
             return {
-                "maxFeePerGas": base_fee + max_priority_fee,
+                "maxFeePerGas": base_fee * 2 + max_priority_fee,
                 "maxPriorityFeePerGas": max_priority_fee,
             }
         except Exception:
-            return {"gasPrice": self.w3.eth.gas_price}
+            # Fallback – legacy газ с запасом
+            return {"gasPrice": int(self.w3.eth.gas_price * 2.0)}
 
     async def get_ticker(self) -> Optional[Dict[str, float]]:
         try:
@@ -229,12 +232,13 @@ class Web3TestnetAdapter:
         try:
             weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=WETH9_ABI)
             value = self.w3.to_wei(amount_eth, 'ether')
+            gas_params = self._get_gas_params()
             tx = weth.functions.deposit().build_transaction({
                 'from': self.account.address,
                 'value': value,
                 'gas': 50000,
                 'nonce': self.w3.eth.get_transaction_count(self.account.address, 'pending'),
-                'gasPrice': self.w3.eth.gas_price,
+                **gas_params,
             })
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
@@ -255,11 +259,12 @@ class Web3TestnetAdapter:
         try:
             weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=WETH9_ABI)
             value = self.w3.to_wei(amount_weth, 'ether')
+            gas_params = self._get_gas_params()
             tx = weth.functions.withdraw(value).build_transaction({
                 'from': self.account.address,
                 'gas': 50000,
                 'nonce': self.w3.eth.get_transaction_count(self.account.address, 'pending'),
-                'gasPrice': self.w3.eth.gas_price,
+                **gas_params,
             })
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
@@ -356,11 +361,12 @@ class Web3TestnetAdapter:
                 0  # sqrtPriceLimitX96
             )
 
+            gas_params = self._get_gas_params()
             tx = self.router.functions.exactInputSingle(swap_tuple).build_transaction({
                 "from": self.account.address,
                 "gas": 300000,
-                "gasPrice": self.w3.eth.gas_price,
-                "nonce": safe_nonce,   # 👈 используем синхронизированный nonce
+                "nonce": safe_nonce,
+                **gas_params,
             })
 
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)

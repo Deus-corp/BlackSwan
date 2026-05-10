@@ -30,6 +30,7 @@ services:
       - HEDGE_ENABLED=true
       - HEDGE_RATIO=0.5
       - CAPITAL_ALERT_THRESHOLD=100.0
+      - WEB3_RPC_URL=${WEB3_RPC_URL}
       # Секреты
       - WEB3_PRIVATE_KEY=${WEB3_PRIVATE_KEY}
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
@@ -67,6 +68,11 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
 
   grafana:
     image: grafana/grafana:latest
@@ -84,6 +90,11 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SECURITY_CONTENT_SECURITY_POLICY=frame-ancestors 'self' http://localhost:8080
       - GF_SERVER_ROOT_URL=http://localhost:3000
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
 
 volumes:
   node_nonce_data:

@@ -1,0 +1,110 @@
+/* === BlackSwan Dashboard – Calm Dark Theme === */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    background: #0d1117;
+    color: #c9d1d9;
+}
+h1 { color: #8b949e; font-weight: 600; }
+section {
+    background: #161b22;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #21262d;
+}
+
+/* Buttons */
+button, input[type=submit], .btn {
+    background: #21262d;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+button:hover, input[type=submit]:hover, .btn:hover {
+    background: #30363d;
+}
+button:active, input[type=submit]:active, .btn:active {
+    transform: scale(0.97);
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.4);
+}
+
+/* Danger buttons (Stop, Rebuild) */
+.btn-danger {
+    background: #da3633;
+    border-color: #f85149;
+    color: white;
+}
+.btn-danger:hover { background: #f85149; }
+
+/* Success buttons (Start) */
+.btn-success {
+    background: #238636;
+    border-color: #2ea043;
+    color: white;
+}
+.btn-success:hover { background: #2ea043; }
+
+/* Inputs */
+input[type=text], input[type=password], select, input[type=number] {
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #30363d;
+    background: #0d1117;
+    color: #c9d1d9;
+    margin-right: 0.5rem;
+}
+pre {
+    background: #0d1117;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #21262d;
+    overflow-x: auto;
+    max-height: 600px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #c9d1d9;
+}
+.row { display: flex; align-items: center; margin-bottom: 0.5rem; }
+.row label { width: 300px; color: #8b949e; }
+
+/* Tabs */
+.tabs { display: flex; gap: 1rem; margin-bottom: 1rem; }
+.tabs a {
+    color: #8b949e;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    background: #161b22;
+    border: 1px solid #21262d;
+    transition: background 0.2s;
+}
+.tabs a:hover { background: #21262d; }
+.tabs a.active { background: #1f6feb; color: white; border-color: #1f6feb; }
+
+/* Iframe container */
+.iframe-container { width: 100%; height: 100vh; border: none; }
+
+/* Tables (Trades) */
+table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #21262d; }
+th { color: #8b949e; background: #161b22; font-weight: 600; }
+tr:hover { background: #1c2128; }
+.status-success { color: #238636; }
+.status-failed { color: #da3633; }
+
+/* Trade row animation */
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.trade-row-new {
+    animation: fadeInSlide 0.3s ease-out;
+}
