@@ -20,11 +20,10 @@ def start_swarm(scale: int = 1) -> str:
 def stop_swarm():
     return run_command(f"docker compose -f {COMPOSE_FILE} down")
 
-def rebuild_swarm():
-    stop = stop_swarm()
-    build = run_command(f"docker compose -f {COMPOSE_FILE} build --no-cache")
-    start = start_swarm()
-    return f"STOP:\n{stop}\nBUILD:\n{build}\nSTART:\n{start}"
+def rebuild_swarm(scale: int = 1):
+    stop_swarm()
+    run_command(f"docker compose -f {COMPOSE_FILE} build --no-cache")
+    return start_swarm(scale)
 
 def get_logs(tail: int = 50):
     return run_command(f"docker compose -f {COMPOSE_FILE} logs --tail {tail}")

@@ -108,3 +108,15 @@ tr:hover { background: #1c2128; }
 .trade-row-new {
     animation: fadeInSlide 0.3s ease-out;
 }
+
+#status-icon {
+    margin-right: 0.5rem;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+#status-icon .spinning {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
