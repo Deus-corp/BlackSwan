@@ -11,20 +11,24 @@
 
 ## 🚀 Quick Start
 
-### 1. 🎮 Web Control Panel
-
-Open `http://localhost:8080` in your browser to manage the swarm, view real‑time charts, edit configuration, and approve tokens.
+### 1. 🌐 Web Control Panel
 
 ```bash
-pip install fastapi uvicorn docker plotly
+pip install fastapi uvicorn docker
 python dashboard/app.py
 ```
 
-**The dashboard includes:**
-🏠 Main – start/stop/rebuild swarm, live logs with auto‑refresh
-📊 Dashboard – interactive charts (capital, fitness, diversity, niche)
-⚙️ Settings – edit all compose variables and secrets without editing files
-📜 Logs – dedicated logs viewer with container status and save to disk
+Open `http://localhost:8080` to manage the entire swarm:
+
+| Tab | Description |
+|-----|-------------|
+| 🏠 **Main** | Start/stop nodes, container management (stats, inspect, pause) |
+| 📈 **Trades** | Real-time feed of all on-chain swaps with tx links |
+| 📜 **Logs** | Filtered swarm logs with auto-refresh and save to disk |
+| 📊 **Dashboard** | Embedded Grafana with capital, fitness, diversity charts |
+| ⚙️ **Settings** | Edit all compose variables, secrets, and one-click token approval |
+
+![Dashboard](assets/dashboard.gif)
 
 ### 2. Prometheus + Grafana (optional)
 
@@ -37,6 +41,7 @@ docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml up -d prometheus g
 
 - Prometheus scrapes metrics from http://localhost:8080/metrics
 - Grafana (http://localhost:3000, admin/admin) visualizes them. Import the dashboard from grafana/dashboards/blackswan-swarm.json.
+Grafana dashboard is also embedded directly in the Web Control Panel (📊 Dashboard tab) in kiosk mode.
 
 ### 3. Download LLM Models
 
@@ -87,11 +92,12 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 - 🤖 Telegram Bot – remote monitoring via /status, /nodes, /memory
 
 ### Market & Trading
-- 🧪 Binance Testnet Adapter – live price feed via CCXT, bid/ask pricing, market hours filter, multi‑symbol support
-- ✅ **Web3 Testnet Adapter** – fully autonomous Uniswap V3 swaps on Ethereum Sepolia.
-- 🔁 **Autonomous Token Manager** – auto-wrap ETH, auto-convert USDC↔WETH.
-- 🔗 **Multi‑node Nonce Sync** – SQLite‑based nonce coordination for parallel swaps.
-- 🏆 **First AI‑driven swap** – executed 0xba457b54... (see Sepolia Etherscan).
+- ✅ **Web3 Testnet Adapter** – fully autonomous Uniswap V3 swaps on Ethereum Sepolia (Alchemy RPC).
+- 🔁 **Autonomous Token Manager** – auto-wrap ETH, auto-convert USDC↔WETH based on configurable thresholds.
+- 🔗 **Multi‑node Nonce Sync** – SQLite with WAL mode, conflict-free parallel swaps.
+- 🏆 **First AI‑driven swap** – [0xba457b54...](https://sepolia.etherscan.io/tx/0xba457b54f9f674cd2118ba25a8caa342a3cf69c5685523eac814916739825213)
+- 🌐 **Web Control Panel** – multi‑tab dashboard with trades feed, Grafana, container management.
+- 📊 **Prometheus + Grafana** – professional metrics and embedded monitoring dashboards.
 
 - 🌐 **Multi‑Pair Trading** – single node trades BTC/USDT, ETH/USDT, SOL/USDT simultaneously.
 - 🧠 **Internet Researcher** – gathers crypto news (sentiment) and on‑chain data for LLM context.
@@ -99,7 +105,7 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 - 🛡️ **Spot/Futures Hedging** – automatic hedging of futures positions with spot orders (configurable ratio).
 - 📊 **Order Book Analysis** – real‑time imbalance and delta volume for smarter entries.
 - 📡 **TradingView Webhooks** – external trading signals injected directly into LLM context.
-- 🖥️ **Web Control Panel** – full swarm management from browser (start/stop, config, logs, model switching).
+
 
 ---
 
@@ -114,6 +120,7 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
    TEST_WEB3_SWAP_AMOUNT=0.001
    TEST_WEB3_SWAP_SIDE=sell
    WEB3_POOL_FEE=3000
+   WEB3_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY   # ← Alchemy
    ```
 3. Run the swarm:
 ```bash
