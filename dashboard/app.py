@@ -18,6 +18,11 @@ from dashboard.routes.control import router as control_router
 # Создаём экземпляр приложения
 app = FastAPI(title="BlackSwan Control Panel")
 
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="dashboard/static"), name="static")
+from dashboard.routes.trades import router as trades_router
+app.include_router(trades_router)
+
 # Подключаем роутеры
 app.include_router(main_router)
 app.include_router(dashboard_router)

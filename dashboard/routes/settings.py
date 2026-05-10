@@ -13,23 +13,13 @@ SETTINGS_HTML = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <title>Settings</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦢</text></svg>">
-    <style>
-        body { font-family: sans-serif; background: #1a1a2e; color: #e0e0e0; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
-        section { background: #16213e; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
-        button { background: #e94560; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; margin-right: 0.5rem; }
-        button:hover { background: #c23152; }
-        input[type=text], input[type=password], select { padding: 0.5rem; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; margin-right: 0.5rem; }
-        .row { display: flex; align-items: center; margin-bottom: 0.5rem; }
-        .row label { width: 300px; }
-        .tabs { display: flex; gap: 1rem; margin-bottom: 1rem; }
-        .tabs a { color: #f0c000; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; background: #16213e; }
-        .tabs a.active { background: #e94560; color: white; }
-    </style>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <h1>🦢 Settings</h1>
     <div class="tabs">
         <a href="/">🏠 Main</a>
+        <a href="/trades">📈 Trades</a>
         <a href="/logs">📜 Logs</a>
         <a href="/dashboard">📊 Dashboard</a>
         <a href="/settings" class="active">⚙️ Settings</a>

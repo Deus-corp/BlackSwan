@@ -11,17 +11,7 @@
 
 ## 🚀 Quick Start
 
-### 1. 🎮 Console Control Panel
-
-Interactive menu to start/stop/rebuild the swarm, change models, set API keys, and view logs – no Docker commands needed.
-
-```bash
-git clone https://github.com/Deus-corp/BlackSwan.git
-cd BlackSwan
-python3 swarm_control.py
-```
-
-### 2. 🌐 Web Control Panel
+### 1. 🎮 Web Control Panel
 
 Open `http://localhost:8080` in your browser to manage the swarm, view real‑time charts, edit configuration, and approve tokens.
 
@@ -36,7 +26,7 @@ python dashboard/app.py
 ⚙️ Settings – edit all compose variables and secrets without editing files
 📜 Logs – dedicated logs viewer with container status and save to disk
 
-### 3. Prometheus + Grafana (optional)
+### 2. Prometheus + Grafana (optional)
 
 The project includes Prometheus and Grafana for advanced monitoring.  
 Start them alongside the swarm:
@@ -48,7 +38,7 @@ docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml up -d prometheus g
 - Prometheus scrapes metrics from http://localhost:8080/metrics
 - Grafana (http://localhost:3000, admin/admin) visualizes them. Import the dashboard from grafana/dashboards/blackswan-swarm.json.
 
-### 4. Download LLM Models
+### 3. Download LLM Models
 
 The swarm requires at least one local LLM model. Download the recommended ones:
 
