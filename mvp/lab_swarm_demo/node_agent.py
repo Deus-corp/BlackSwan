@@ -396,7 +396,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         if usdc_bal > max_usdc and weth_bal < min_weth:
                             logger.info(f"USDC surplus ({usdc_bal}), buying WETH with USDC")
                             try:
-                                result = await adapter.place_order("buy", 0.0005)
+                                result = await adapter.place_order("buy", 0.001)
                                 logger.info(f"USDC->WETH swap result: {result}")
                             except Exception as e:
                                 logger.error(f"USDC->WETH swap error: {e}")

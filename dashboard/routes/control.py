@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from dashboard.docker_service import start_swarm, stop_swarm, rebuild_swarm, update_config
 from dashboard.routes.main import render_main
-
+import subprocess
 from dashboard.docker_service import get_container_stats, inspect_container, pause_container, unpause_container
 from fastapi.responses import PlainTextResponse
 
@@ -27,8 +27,10 @@ async def api_restart():
     return HTMLResponse(render_main(message=msg))
 
 @router.post("/api/rebuild")
-async def api_rebuild():
-    msg = rebuild_swarm()
+async def api_rebuild(request: Request):
+    form = await request.form()
+    scale = int(form.get("scale", 1))
+    msg = rebuild_swarm(scale)
     return HTMLResponse(render_main(message=msg))
 
 @router.post("/api/container_stats")

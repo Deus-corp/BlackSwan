@@ -12,6 +12,10 @@ HTML_HEADER = """<!DOCTYPE html>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+    <div id="global-status" style="display:none; background:#21262d; border:1px solid #30363d; border-radius:8px; padding:0.75rem 1.5rem; margin-bottom:1rem; color:#c9d1d9;">
+        <span id="status-icon"></span>
+        <span id="status-message"></span>
+    </div>
     <h1>🦢 BlackSwan Control Panel</h1>
     <div class="tabs">
         <a href="/" class="active">🏠 Main</a>
@@ -41,6 +45,7 @@ def render_main(message: str = "", logs_text: str = "Logs will appear here...") 
             <button class="btn" type="submit">🔄 Restart</button>
         </form>
         <form action="/api/rebuild" method="post" style="display:inline">
+            <input type="number" name="scale" value="1" min="1" max="10" style="width:60px">
             <button class="btn" type="submit">🔄 Rebuild & Start</button>
         </form>
     </section>

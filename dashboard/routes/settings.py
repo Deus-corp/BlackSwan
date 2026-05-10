@@ -64,6 +64,7 @@ SETTINGS_HTML = """<!DOCTYPE html>
             <div class="row"><label>TELEGRAM_BOT_TOKEN</label><input type="password" name="TELEGRAM_BOT_TOKEN"></div>
             <div class="row"><label>TELEGRAM_CHAT_ID</label><input type="text" name="TELEGRAM_CHAT_ID"></div>
             <div class="row"><label>ETHERSCAN_API_KEY</label><input type="password" name="ETHERSCAN_API_KEY"></div>
+            <div class="row"><label>WEB3_RPC_URL</label><input type="text" name="WEB3_RPC_URL" placeholder="https://..."></div>
             <button type="submit">💾 Update Secrets</button>
         </form>
     </section>
@@ -127,6 +128,7 @@ async def update_secrets(
     TELEGRAM_BOT_TOKEN: str = Form(""),
     TELEGRAM_CHAT_ID: str = Form(""),
     ETHERSCAN_API_KEY: str = Form(""),
+    WEB3_RPC_URL: str = Form(""),
 ):
     env_path = Path(__file__).resolve().parent.parent.parent / "mvp" / "lab_swarm_demo" / ".env"
     lines = env_path.read_text().splitlines()
@@ -139,6 +141,7 @@ async def update_secrets(
         "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
         "TELEGRAM_CHAT_ID": TELEGRAM_CHAT_ID,
         "ETHERSCAN_API_KEY": ETHERSCAN_API_KEY,
+        "WEB3_RPC_URL": WEB3_RPC_URL,
     }
     new_lines = []
     for line in lines:
