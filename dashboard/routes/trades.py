@@ -14,10 +14,9 @@ SWAP_PATTERNS = [
 ]
 
 def collect_trades(tail: int = 500) -> list:
-    """Собирает последние свопы из логов всех узлов."""
+    trades = []
     client = docker.from_env()
     containers = client.containers.list(filters={"name": "lab_swarm_demo-node", "status": "running"})
-    trades = []
     for c in containers:
         try:
             log = c.logs(tail=tail).decode('utf-8', errors='ignore')
@@ -25,39 +24,40 @@ def collect_trades(tail: int = 500) -> list:
             continue
         lines = log.splitlines()
         for line in lines:
-            # Пример строки: INFO:SwarmNode:📡 Real swap result: {'tx_hash': '0x...', 'status': 'success'}
-            if 'Real swap result' in line or 'Swap successful' in line or 'Swap reverted' in line or 'Swap failed' in line:
-                # Извлекаем tx_hash и статус
-                tx_hash = None
-                status = None
-                # Паттерн 1
-                m = re.search(r"'tx_hash': '([^']+)'.*'status': '([^']+)'", line)
+            # Извлекаем side и amount
+            side_match = re.search(r'Attempting real swap: (\w+) ([\d.]+) (\S+)', line)
+            side = side_match.group(1) if side_match else 'unknown'
+            amount = side_match.group(2) if side_match else ''
+            symbol = side_match.group(3) if side_match else ''
+
+            # Ищем tx_hash и статус
+            tx_hash = None
+            status = None
+            m = re.search(r"'tx_hash': '([^']+)'.*'status': '([^']+)'", line)
+            if m:
+                tx_hash = m.group(1)
+                status = m.group(2)
+            else:
+                m = re.search(r'✅ Swap successful! Tx: (\S+)', line)
                 if m:
                     tx_hash = m.group(1)
-                    status = m.group(2)
+                    status = 'success'
                 else:
-                    # Паттерн 2
-                    m = re.search(r'✅ Swap successful! Tx: (\S+)', line)
+                    m = re.search(r'❌ Swap (reverted|failed).*Tx: (\S+)', line)
                     if m:
-                        tx_hash = m.group(1)
-                        status = 'success'
-                    else:
-                        # Паттерн 3
-                        m = re.search(r'❌ Swap (reverted|failed).*Tx: (\S+)', line)
-                        if m:
-                            tx_hash = m.group(2)
-                            status = 'failed'
-
-                if tx_hash:
-                    trades.append({
-                        "node": c.name.replace("lab_swarm_demo-", ""),
-                        "tx_hash": tx_hash,
-                        "status": status,
-                        "timestamp": "recent",  # можно добавить точное время из лога позже
-                    })
-    # Сортируем по времени (последние сверху)
+                        tx_hash = m.group(2)
+                        status = 'failed'
+            if tx_hash:
+                trades.append({
+                    "node": c.name.replace("lab_swarm_demo-", ""),
+                    "side": side,
+                    "amount": amount,
+                    "symbol": symbol,
+                    "tx_hash": tx_hash,
+                    "status": status,
+                })
     trades.reverse()
-    return trades[:50]  # последние 50 свопов
+    return trades[:50]
 
 TRADES_HTML = """
 <!DOCTYPE html>
@@ -82,16 +82,16 @@ TRADES_HTML = """
             <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()"> Auto-refresh (10s)
         </label>
     </section>
-    <table id="trades-table">
-        <thead>
-            <tr>
-                <th>Node</th>
-                <th>Transaction Hash</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+<thead>
+    <tr>
+        <th>Node</th>
+        <th>Side</th>
+        <th>Amount</th>
+        <th>Symbol</th>
+        <th>Transaction Hash</th>
+        <th>Status</th>
+    </tr>
+</thead>
 
     <script src="/static/js/trades.js"></script>
 </body>

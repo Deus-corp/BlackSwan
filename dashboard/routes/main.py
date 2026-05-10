@@ -52,6 +52,11 @@ def render_main(message: str = "", logs_text: str = "Logs will appear here...") 
         <button class="btn" onclick="unpauseContainer()">▶️ Unpause</button>
         <pre id="container-output" style="margin-top:1rem;">Click a button...</pre>
     </section>
+    <section>
+        <h2>Container Status</h2>
+        <pre id="container-status">Loading...</pre>
+        <button class="btn" onclick="fetchContainerStatus()">🔄 Refresh</button>
+    </section>
     {msg_section}
 <script src="/static/js/main.js"></script>
     {HTML_FOOTER}"""
