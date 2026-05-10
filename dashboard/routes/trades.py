@@ -23,41 +23,54 @@ def collect_trades(tail: int = 500) -> list:
         except docker.errors.APIError:
             continue
         lines = log.splitlines()
+        # Кеш для хранения временных данных между строками
+        pending_side = 'unknown'
+        pending_amount = ''
+        pending_symbol = ''
         for line in lines:
-            # Извлекаем side и amount
-            side_match = re.search(r'Attempting real swap: (\w+) ([\d.]+) (\S+)', line)
-            side = side_match.group(1) if side_match else 'unknown'
-            amount = side_match.group(2) if side_match else ''
-            symbol = side_match.group(3) if side_match else ''
-
-            # Ищем tx_hash и статус
-            tx_hash = None
-            status = None
-            m = re.search(r"'tx_hash': '([^']+)'.*'status': '([^']+)'", line)
-            if m:
-                tx_hash = m.group(1)
-                status = m.group(2)
-            else:
-                m = re.search(r'✅ Swap successful! Tx: (\S+)', line)
-                if m:
-                    tx_hash = m.group(1)
-                    status = 'success'
-                else:
-                    m = re.search(r'❌ Swap (reverted|failed).*Tx: (\S+)', line)
-                    if m:
-                        tx_hash = m.group(2)
-                        status = 'failed'
-            if tx_hash:
-                trades.append({
-                    "node": c.name.replace("lab_swarm_demo-", ""),
-                    "side": side,
-                    "amount": amount,
-                    "symbol": symbol,
-                    "tx_hash": tx_hash,
-                    "status": status,
-                })
+            # Ловим начало свопа
+            if 'Attempting real swap' in line:
+                # Пример: "INFO:SwarmNode:Attempting real swap: sell 0.001 WETH/USDC"
+                parts = line.split()
+                if len(parts) >= 5:
+                    pending_side = parts[-3] if len(parts) > 2 else 'unknown'
+                    pending_amount = parts[-2] if len(parts) > 1 else ''
+                    pending_symbol = parts[-1] if parts else ''
+            # Фиксируем успешный своп
+            elif '✅ Swap successful!' in line:
+                tx_hash_match = re.search(r'Tx: (\S+)', line)
+                if tx_hash_match:
+                    tx_hash = tx_hash_match.group(1)
+                    trades.append({
+                        "node": c.name.replace("lab_swarm_demo-", ""),
+                        "side": pending_side,
+                        "amount": pending_amount,
+                        "symbol": pending_symbol,
+                        "tx_hash": tx_hash,
+                        "status": "success",
+                    })
+            # Или проваленный
+            elif '❌ Swap reverted' in line or '❌ Swap failed' in line:
+                tx_hash_match = re.search(r'Tx: (\S+)', line)
+                if tx_hash_match:
+                    tx_hash = tx_hash_match.group(1)
+                    trades.append({
+                        "node": c.name.replace("lab_swarm_demo-", ""),
+                        "side": pending_side,
+                        "amount": pending_amount,
+                        "symbol": pending_symbol,
+                        "tx_hash": tx_hash,
+                        "status": "failed",
+                    })
     trades.reverse()
-    return trades[:50]
+    # Убираем дубли по tx_hash (оставляем первое вхождение)
+    seen = set()
+    unique_trades = []
+    for t in trades:
+        if t['tx_hash'] not in seen:
+            seen.add(t['tx_hash'])
+            unique_trades.append(t)
+    return unique_trades[:50]
 
 TRADES_HTML = """
 <!DOCTYPE html>
@@ -82,18 +95,21 @@ TRADES_HTML = """
             <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()"> Auto-refresh (10s)
         </label>
     </section>
-<thead>
-    <tr>
-        <th>Node</th>
-        <th>Side</th>
-        <th>Amount</th>
-        <th>Symbol</th>
-        <th>Transaction Hash</th>
-        <th>Status</th>
-    </tr>
-</thead>
+    <table id="trades-table">
+        <thead>
+            <tr>
+                <th>Node</th>
+                <th>Side</th>
+                <th>Amount</th>
+                <th>Symbol</th>
+                <th>Transaction Hash</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 
-    <script src="/static/js/trades.js"></script>
+    <script src="/static/js/trades.js?v=2"></script>
 </body>
 </html>
 """
