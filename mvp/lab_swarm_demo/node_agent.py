@@ -1,4 +1,4 @@
-import time, random, uuid, hashlib, asyncio, logging, sys, signal, json
+import os, time, random, uuid, hashlib, asyncio, logging, sys, signal, json, socket
 from typing import Dict, Any, Optional, List, Tuple
 
 import aiohttp
@@ -68,6 +68,17 @@ class SwarmNode:
         self.node_id: str = config.NODE_ID
         self.port: int = config.PORT
         self.peers: List[str] = config.PEERS
+
+        self.node_index = abs(hash(socket.gethostname())) % config.total_nodes
+        logger.info(f"Node index: {self.node_index}/{config.total_nodes}")
+
+        self.gossip_seq_no = 0
+        self.gossip_lamport_ts = 0
+
+                # Gossip signing keys
+        self.gossip_private_key = Ed25519PrivateKey.generate()
+        self.gossip_public_bytes = self.gossip_private_key.public_key().public_bytes_raw()
+        self.gossip_key_id = hashlib.sha256(self.gossip_public_bytes).hexdigest()[:16]
 
         self.market_url: Optional[str] = config.MARKET_URL
         self.market_mode: str = config.market_mode
@@ -184,6 +195,10 @@ class SwarmNode:
         self._prev_prev_price: float = 100.0
 
         self._seed_from_memory()
+
+    def is_leader(self, block_number: int) -> bool:
+        leader_index = abs(hash(f"{self.node_id}:{block_number}")) % config.total_nodes
+        return self.node_index == leader_index
 
     #------------------------------------------------------------
     def _llm_mutate(self, params: Dict[str, float], context: str) -> Dict[str, float]:
@@ -391,9 +406,10 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                 if self.market_mode == "web3":
                     adapter = self.market_adapter.get_adapter(best_symbol)
                     if adapter:
-                        weth_bal = adapter._get_token_balance(WETH_ADDRESS)
-                        eth_bal = adapter.w3.from_wei(adapter.w3.eth.get_balance(adapter.account.address), 'ether')
-                        usdc_bal = adapter._get_token_balance(USDC_ADDRESS)
+                        weth_bal = await adapter._get_token_balance(WETH_ADDRESS)
+                        eth_wei = await adapter.w3.eth.get_balance(adapter.account.address)
+                        eth_bal = adapter.w3.from_wei(eth_wei, 'ether')
+                        usdc_bal = await adapter._get_token_balance(USDC_ADDRESS)
 
                         min_weth = config.trading.min_weth_balance
                         min_eth = config.trading.min_eth_balance
@@ -401,27 +417,39 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
 
                         # Приоритет: избыток USDC → покупаем WETH
                         if usdc_bal > max_usdc and weth_bal < min_weth:
-                            logger.info(f"USDC surplus ({usdc_bal}), buying WETH with USDC")
-                            try:
-                                result = await adapter.place_order("buy", 0.002)
-                                logger.info(f"USDC->WETH swap result: {result}")
-                            except Exception as e:
-                                logger.error(f"USDC->WETH swap error: {e}")
-                        # Если не хватает WETH, но есть ETH — wrap
+                            block_number = await adapter.w3.eth.block_number
+                            if self.is_leader(block_number):
+                                logger.info(f"USDC surplus, buying WETH")
+                                try:
+                                    result = await adapter.place_order("buy", 0.002)
+                                    logger.info(f"USDC->WETH swap result: {result}")
+                                except Exception as e:
+                                    logger.error(f"USDC->WETH swap error: {e}")
+                            else:
+                                logger.debug("Not leader, skipping USDC conversion")
+                        # Если не хватает WETH, но есть ETH — wrap (только лидер)
                         elif weth_bal < min_weth and eth_bal > min_eth + 0.0005:
-                            logger.info(f"WETH low ({weth_bal}), wrapping 0.0005 ETH to WETH")
-                            try:
-                                await adapter.wrap_eth(0.0005)   # асинхронно
-                            except Exception as e:
-                                logger.error(f"Wrap error: {e}")
-                        # Если не хватает ETH на газ, но есть WETH — unwrap
+                            block_number = await adapter.w3.eth.block_number
+                            if self.is_leader(block_number):
+                                logger.info(f"WETH low ({weth_bal}), wrapping 0.0005 ETH to WETH")
+                                try:
+                                    await adapter.wrap_eth(0.0005)
+                                except Exception as e:
+                                    logger.error(f"Wrap error: {e}")
+                            else:
+                                logger.debug(f"Not leader for block {block_number}, skipping wrap")
+                        # Если не хватает ETH на газ, но есть WETH — unwrap (только лидер)
                         elif eth_bal < min_eth and weth_bal > min_weth + 0.0005:
-                            logger.info(f"ETH low ({eth_bal}), unwrapping 0.0005 WETH to ETH")
-                            try:
-                                await adapter.unwrap_weth(0.0005)  # асинхронно
-                            except Exception as e:
-                                logger.error(f"Unwrap error: {e}")
-
+                            block_number = await adapter.w3.eth.block_number
+                            if self.is_leader(block_number):
+                                logger.info(f"ETH low ({eth_bal}), unwrapping 0.0005 WETH to ETH")
+                                try:
+                                    await adapter.unwrap_weth(0.0005)
+                                except Exception as e:
+                                    logger.error(f"Unwrap error: {e}")
+                            else:
+                                logger.debug(f"Not leader for block {block_number}, skipping unwrap")
+                                
                 # Проверка стоп‑лосса для фьючерсных позиций
                 if self.market_mode == "futures":
                     adapter = self.market_adapter.get_adapter(best_symbol)
@@ -430,7 +458,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                             positions = adapter.exchange.fetch_positions([best_symbol])
                             if positions and len(positions) > 0:
                                 pos = positions[0]
-                                if float(pos['contracts']) > 0:  # верно
+                                if float(pos['contracts']) > 0:
                                     entry_price = float(pos['entryPrice'])
                                     current_price = best_market['price']
                                     side = 'long' if pos['side'] == 'long' else 'short'
@@ -444,7 +472,6 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                                             f"Symbol: {best_symbol}\n"
                                             f"Capital: {self.capital:.2f}"
                                         )
-                                        # Закрытие хеджа только при срабатывании стоп‑лосса
                                         if self.market_adapter.hedge_enabled:
                                             spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
                                             if spot_adapter:
@@ -464,7 +491,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
 
                 expected = market["price"] * EXPECTED_RETURN_RATE
                 _, approved = self.survival.evaluate_trade(self.capital, expected)
-                logger.debug(f"Survival check: expected={expected:.4f} approved={approved}")  # ← новая
+                logger.debug(f"Survival check: expected={expected:.4f} approved={approved}")
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
                     if fraction > 0:
@@ -475,12 +502,14 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                                 test_amount = config.trading.test_web3_swap_amount
                                 if test_amount > 0:
                                     side = config.trading.test_web3_swap_side
-                                    logger.info(f"Attempting real swap: {side} {test_amount} {best_symbol}")
-                                    try:
-                                        result = await adapter.place_order(side, test_amount, price=market.get("price"))
-                                        logger.info(f"📡 Real swap result: {result}")
-                                    except Exception as e:
-                                        logger.error(f"Real swap error: {e}")
+                                    block_number = await adapter.w3.eth.block_number
+                                    if self.is_leader(block_number):
+                                        logger.info(f"Leader, swap: {side} {test_amount} {best_symbol}")
+                                        try:
+                                            result = await adapter.place_order(side, test_amount, price=market.get("price"))
+                                            logger.info(f"📡 Real swap result: {result}")
+                                        except Exception as e:
+                                            logger.error(f"Real swap error: {e}")
                         # --- конец блока ---
 
                         ret = market["price"] * fraction * 0.1
@@ -489,7 +518,6 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                         self.capital -= 1.0
                         self.survival.dq = min(1.0, self.survival.dq + 0.001)
 
-                        # Логирование сделки
                         logger.debug(
                             f"[{self.node_id}] TRADE | step={self.step_count} "
                             f"symbol={best_symbol} price={market['price']:.2f} fraction={fraction:.4f} "
@@ -498,14 +526,12 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                             f"params={self.current_params}"
                         )
 
-                        # Хеджирование: если открыта фьючерсная позиция, открываем противоположную спотовую
                         if self.market_mode == "futures" and self.market_adapter.hedge_enabled:
                             hedge_ratio = config.hedge_ratio
                             spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
                             futures_adapter = self.market_adapter.get_adapter(best_symbol, "futures")
                             if spot_adapter and futures_adapter:
-                                # Определяем направление хеджа
-                                side = 'sell' if fraction > 0 else 'buy'  # противоположно основной позиции
+                                side = 'sell' if fraction > 0 else 'buy'
                                 hedge_amount = abs(fraction) * hedge_ratio * self.capital / market['price']
                                 try:
                                     spot_adapter.place_order(side, hedge_amount)
@@ -513,7 +539,6 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                                 except Exception as e:
                                     logger.error(f"Hedge order failed: {e}")
 
-                        # Запись события сделки
                         self.event_store.append(Event.create(
                             node_id=self.node_id,
                             event_type="trade_executed",
@@ -531,7 +556,6 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                             },
                             parent_id=self._trace_id,
                         ))
-                                               # Отправка уведомления в Telegram
                         await self.telegram_notifier.send(
                             f"🦢 <b>Trade</b>\n"
                             f"Node: {self.node_id}\n"
@@ -613,8 +637,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                         )
                         genome_dict = self.make_genome(params_to_publish, self.engine.champion[1])
 
-                        # --- отправка с подписью или без ---
-                        if config.internet_researcher_enabled:
+                        if config.gossip_signing_enabled:
                             self.gossip_seq_no += 1
                             self.gossip_lamport_ts += 1
                             meta = {
@@ -643,21 +666,18 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                             genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
                             await self.crdt.add_genome(genome_dict)
 
-                    # LLM-мутация чемпиона (каждые 200 шагов)
                     if self.step_count % 100 == 0:
                         external_context = ""
-                        if os.environ.get("INTERNET_RESEARCHER_ENABLED", "false").lower() == "true":
+                        if config.internet_researcher_enabled:
                             try:
                                 external_context = await self.internet_researcher.gather_context()
                             except Exception:
                                 external_context = ""
 
-                        # TradingView signal (если включён и есть свежий сигнал)
                         if self.tradingview_enabled and self.tradingview_webhook.latest_signal:
                             signal = self.tradingview_webhook.latest_signal
                             external_context += f"\nTradingView signal: {signal}\n"
 
-                        # OrderBook анализ (добавляем до сборки context)
                         if self.orderbook_enabled:
                             for sym, analyzer in self.orderbook_analyzers.items():
                                 metrics = await analyzer.update()
@@ -729,7 +749,6 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
 
                 # ---- curiosity + meta ----
                 if self.step_count % 100 == 0:
-                    # Динамическое плечо для фьючерсов
                     if self.market_mode == "futures":
                         vol = self._current_volatility()
                         for sym in self.market_adapter.symbols:
@@ -796,7 +815,6 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                         ))
 
                 update_llm_impact(self.capital)
-                            # Алерт при падении капитала ниже порога
                 alert_threshold = config.capital_alert_threshold
                 if self.capital < alert_threshold:
                     await self.telegram_notifier.send(

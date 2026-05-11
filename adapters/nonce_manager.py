@@ -1,9 +1,7 @@
 """
 NonceManager — async-safe управление nonce через SQLite (WAL-режим).
 """
-import sqlite3
-import time
-import asyncio
+import sqlite3, time, asyncio
 from pathlib import Path
 from typing import Optional
 from loguru import logger
@@ -43,7 +41,6 @@ class NonceManager:
 
     def _get_next_nonce(self, onchain_nonce: int) -> int:
         with self._get_connection() as conn:
-            # атомарно читаем и увеличиваем
             conn.execute("INSERT OR IGNORE INTO nonces (address, nonce, last_updated) VALUES (?, ?, ?)",
                          (self.account_address, onchain_nonce, time.time()))
             cur = conn.execute("SELECT nonce FROM nonces WHERE address = ?", (self.account_address,))
@@ -60,8 +57,6 @@ class NonceManager:
         return await asyncio.to_thread(self._update_nonce, receipt_or_tx_hash)
 
     def _update_nonce(self, receipt_or_tx_hash) -> int:
-        # Если передан хеш, получить receipt (но мы будем вызывать уже с receipt)
-        # Для async-версии будем передавать receipt
         if isinstance(receipt_or_tx_hash, dict) and receipt_or_tx_hash.get('status') == 1:
             new_nonce = receipt_or_tx_hash['nonce'] + 1
             with self._get_connection() as conn:
@@ -81,3 +76,26 @@ class NonceManager:
                          (self.account_address, onchain_nonce, time.time()))
             conn.commit()
         logger.info(f"Nonce synced with chain: {onchain_nonce}")
+
+    async def reserve_nonce(self, w3) -> int:
+        """Атомарно резервирует следующий nonce, гарантируя уникальность."""
+        checksum_address = w3.to_checksum_address(self.account_address)
+        while True:
+            onchain = await w3.eth.get_transaction_count(checksum_address, "pending")
+            with self._get_connection() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                cur = conn.execute("SELECT nonce FROM nonces WHERE address = ?", (self.account_address,))
+                row = cur.fetchone()
+                db_nonce = row[0] if row else onchain
+                use_nonce = max(onchain, db_nonce)
+                next_nonce = use_nonce + 1
+                conn.execute(
+                    "UPDATE nonces SET nonce = ?, last_updated = ? WHERE address = ? AND nonce = ?",
+                    (next_nonce, time.time(), self.account_address, db_nonce)
+                )
+                if conn.total_changes == 0:
+                    conn.rollback()
+                    await asyncio.sleep(0.02)
+                    continue
+                conn.commit()
+                return use_nonce
