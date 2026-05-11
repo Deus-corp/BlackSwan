@@ -32,6 +32,8 @@ from adapters.orderbook_analyzer import OrderBookAnalyzer
 from src.observability.telegram_notifier import TelegramNotifier
 from src.intelligence.strategy_schema import StrategyParams
 from swarm_config import config
+from src.core.trading_controller import TradingController
+from src.evolution.mutation_engine import MutationEngine
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -196,45 +198,12 @@ class SwarmNode:
 
         self._seed_from_memory()
 
+        self.trading_controller = TradingController(self.node_id)
+        self.mutation_engine = MutationEngine(self.llm)
+
     def is_leader(self, block_number: int) -> bool:
         leader_index = abs(hash(f"{self.node_id}:{block_number}")) % config.total_nodes
         return self.node_index == leader_index
-
-    #------------------------------------------------------------
-    def _llm_mutate(self, params: Dict[str, float], context: str) -> Dict[str, float]:
-        """Улучшенная LLM-мутация с structured output и retry."""
-        prompt = f"""You are an expert trading strategy optimizer for the Kelly criterion.
-
-Current market context:
-{context}
-
-Current strategy parameters:
-{json.dumps(params, indent=2)}
-
-Suggest a small, conservative adjustment. Return ONLY valid JSON like:
-{{"max_risk_per_trade": 0.02, "phi_llm": 0.4}}"""
-
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                response = self.llm.generate(prompt, max_tokens=200, temperature=0.35)
-                # Пытаемся спарсить через Pydantic
-                try:
-                    new_strat = StrategyParams.model_validate_json(response)
-                    return new_strat.to_dict()
-                except Exception:
-                    # Fallback: ищем JSON вручную
-                    import re
-                    match = re.search(r'\{.*\}', response, re.DOTALL)
-                    if match:
-                        data = json.loads(match.group(0))
-                        new_strat = StrategyParams(**data)
-                        return new_strat.to_dict()
-            except Exception as e:
-                logger.warning(f"LLM mutation attempt {attempt+1} failed: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(0.3 * (attempt + 1))
-        return params  # fallback
 
     # ------------------------------------------------------------
     # Helpers
@@ -402,54 +371,13 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                     best_market = {"price": random.uniform(90, 110)}
                     best_symbol = self.primary_symbol
 
-                # Внутри main_loop, после получения market и до approved
+                # === Планирование операций (накопление pending) ===
                 if self.market_mode == "web3":
                     adapter = self.market_adapter.get_adapter(best_symbol)
                     if adapter:
-                        weth_bal = await adapter._get_token_balance(WETH_ADDRESS)
-                        eth_wei = await adapter.w3.eth.get_balance(adapter.account.address)
-                        eth_bal = adapter.w3.from_wei(eth_wei, 'ether')
-                        usdc_bal = await adapter._get_token_balance(USDC_ADDRESS)
+                        # Авто-конвертация USDC/WETH/ETH (добавляет операции в pending)
+                        await self.trading_controller.check_and_rebalance(adapter)
 
-                        min_weth = config.trading.min_weth_balance
-                        min_eth = config.trading.min_eth_balance
-                        max_usdc = config.trading.max_usdc_balance
-
-                        # Приоритет: избыток USDC → покупаем WETH
-                        if usdc_bal > max_usdc and weth_bal < min_weth:
-                            block_number = await adapter.w3.eth.block_number
-                            if self.is_leader(block_number):
-                                logger.info(f"USDC surplus, buying WETH")
-                                try:
-                                    result = await adapter.place_order("buy", 0.002)
-                                    logger.info(f"USDC->WETH swap result: {result}")
-                                except Exception as e:
-                                    logger.error(f"USDC->WETH swap error: {e}")
-                            else:
-                                logger.debug("Not leader, skipping USDC conversion")
-                        # Если не хватает WETH, но есть ETH — wrap (только лидер)
-                        elif weth_bal < min_weth and eth_bal > min_eth + 0.0005:
-                            block_number = await adapter.w3.eth.block_number
-                            if self.is_leader(block_number):
-                                logger.info(f"WETH low ({weth_bal}), wrapping 0.0005 ETH to WETH")
-                                try:
-                                    await adapter.wrap_eth(0.0005)
-                                except Exception as e:
-                                    logger.error(f"Wrap error: {e}")
-                            else:
-                                logger.debug(f"Not leader for block {block_number}, skipping wrap")
-                        # Если не хватает ETH на газ, но есть WETH — unwrap (только лидер)
-                        elif eth_bal < min_eth and weth_bal > min_weth + 0.0005:
-                            block_number = await adapter.w3.eth.block_number
-                            if self.is_leader(block_number):
-                                logger.info(f"ETH low ({eth_bal}), unwrapping 0.0005 WETH to ETH")
-                                try:
-                                    await adapter.unwrap_weth(0.0005)
-                                except Exception as e:
-                                    logger.error(f"Unwrap error: {e}")
-                            else:
-                                logger.debug(f"Not leader for block {block_number}, skipping unwrap")
-                                
                 # Проверка стоп‑лосса для фьючерсных позиций
                 if self.market_mode == "futures":
                     adapter = self.market_adapter.get_adapter(best_symbol)
@@ -495,22 +423,14 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
                     if fraction > 0:
-                        # --- Реальный своп ---
+                        # Планируем sell‑своп (добавляется в pending)
                         if self.market_mode in ("web3", "live"):
                             adapter = self.market_adapter.get_adapter(best_symbol)
                             if adapter and hasattr(adapter, "place_order"):
                                 test_amount = config.trading.test_web3_swap_amount
                                 if test_amount > 0:
                                     side = config.trading.test_web3_swap_side
-                                    block_number = await adapter.w3.eth.block_number
-                                    if self.is_leader(block_number):
-                                        logger.info(f"Leader, swap: {side} {test_amount} {best_symbol}")
-                                        try:
-                                            result = await adapter.place_order(side, test_amount, price=market.get("price"))
-                                            logger.info(f"📡 Real swap result: {result}")
-                                        except Exception as e:
-                                            logger.error(f"Real swap error: {e}")
-                        # --- конец блока ---
+                                    self.trading_controller.plan_swap(side, test_amount, market.get("price"))
 
                         ret = market["price"] * fraction * 0.1
                         prev_capital = self.capital
@@ -564,6 +484,16 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                             f"Price: {market['price']:.2f}\n"
                             f"Capital: {self.capital:.2f}"
                         )
+
+                # === Выполнение батча (только лидер, один раз в конце итерации) ===
+                if self.market_mode == "web3":
+                    adapter = self.market_adapter.get_adapter(best_symbol)
+                    if adapter:
+                        block_number = await adapter.w3.eth.block_number
+                        if self.is_leader(block_number) and self.trading_controller.pending_swaps:
+                            logger.info(f"[{self.node_id}] Leader, executing batch")
+                            batch_result = await self.trading_controller.execute_pending_batch(adapter)
+                            logger.info(f"📡 Batch result: {batch_result}")
 
                 # ---- import genomes ----
                 if self.step_count - self.last_import_step > self.import_cooldown:
@@ -692,7 +622,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                         if external_context:
                             context += "\n" + external_context
 
-                        new_params = self._llm_mutate(self.engine.champion[0], context)
+                        new_params = self.mutation_engine.mutate(self.engine.champion[0], context)
                         if new_params != self.engine.champion[0]:
                             genome = self.dict_to_genome({"params": new_params})
                             self.engine.add_genome(genome)

@@ -311,3 +311,73 @@ class Web3TestnetAdapter:
                     await self.w3.eth.get_transaction_count(self.account.address, "pending")
                 )
             return {"error": str(e)}
+        
+    async def batch_swap(self, swaps: list) -> dict:
+        """
+        Выполняет несколько свопов через Multicall (tryAggregate).
+        swaps: [{"token_in": str, "token_out": str, "fee": int, "amount_in_wei": int, "amount_out_min": int}, ...]
+        """
+        if not self.account or not self.nonce_manager:
+            return {"error": "Not initialized"}
+
+        # Адрес Multicall3 на Sepolia
+        MULTICALL_ADDRESS = self.w3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
+        MULTICALL_ABI = [
+            {
+                "inputs": [
+                    {"internalType": "bool", "name": "requireSuccess", "type": "bool"},
+                    {"components": [
+                        {"internalType": "address", "name": "target", "type": "address"},
+                        {"internalType": "bytes", "name": "callData", "type": "bytes"}
+                    ], "internalType": "struct Multicall3.Call[]", "name": "calls", "type": "tuple[]"}
+                ],
+                "name": "tryAggregate",
+                "outputs": [
+                    {"components": [
+                        {"internalType": "bool", "name": "success", "type": "bool"},
+                        {"internalType": "bytes", "name": "returnData", "type": "bytes"}
+                    ], "internalType": "struct Multicall3.Result[]", "name": "returnData", "type": "tuple[]"}
+                ],
+                "stateMutability": "payable",
+                "type": "function"
+            }
+        ]
+        multicall = self.w3.eth.contract(address=MULTICALL_ADDRESS, abi=MULTICALL_ABI)
+
+        calls = []
+        for s in swaps:
+            swap_params = (
+                self.w3.to_checksum_address(s["token_in"]),
+                self.w3.to_checksum_address(s["token_out"]),
+                s["fee"],
+                self.account.address,
+                s["amount_in_wei"],
+                s["amount_out_min"],
+                0
+            )
+            call_data = self.router.encode_abi('exactInputSingle', args=[swap_params])
+            calls.append((self.router.address, call_data))
+
+        safe_nonce = await self.nonce_manager.reserve_nonce(self.w3)
+        gas_params = await self._get_gas_params()
+        tx = await multicall.functions.tryAggregate(False, calls).build_transaction({
+            "from": self.account.address,
+            "gas": 300000 * len(swaps),  # газ зависит от количества свопов
+            "nonce": safe_nonce,
+            **gas_params,
+        })
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+        tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        logger.info(f"Batch swap tx sent: {tx_hash.hex()} with {len(swaps)} swaps")
+
+        receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+        if receipt.status == 1:
+            logger.success(f"✅ Batch swap successful! Tx: {tx_hash.hex()}")
+            await self.nonce_manager.update_nonce_async(receipt)
+            return {"tx_hash": tx_hash.hex(), "status": "success"}
+        else:
+            logger.error(f"❌ Batch swap reverted. Tx: {tx_hash.hex()}")
+            await self.nonce_manager.sync_with_chain_async(
+                await self.w3.eth.get_transaction_count(self.account.address, "pending")
+            )
+            return {"tx_hash": tx_hash.hex(), "status": "failed"}
