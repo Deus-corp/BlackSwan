@@ -145,6 +145,15 @@ docker-compose -f docker-compose.async.yml up -d --scale node=1
 - **Defense in Depth** – multi‑layer isolation, traffic obfuscation.
 - **Control Panel** – interactive CLI menu to start/stop/configure the swarm without Docker commands.
 
+### Current State (11 May 2026)
+- Fully autonomous swarm trading WETH/USDC on Uniswap V3 (Sepolia)
+- Async Web3 adapter with NonceManager (SQLite/WAL) – no more nonce collisions
+- Leader election: only one node sends transactions per block
+- Centralized config via Pydantic Settings (swarm_config.py)
+- Professional dashboards (FastAPI, Grafana, Prometheus)
+- LLM mutations with Pydantic validation and retry
+- Multi-node gossip with signing
+
 ---
 
 ## 🛠️ Swarm Configuration Guide
