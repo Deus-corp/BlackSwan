@@ -121,9 +121,7 @@ class Web3TestnetAdapter:
         if current >= amount:
             return True
         logger.info(f"Approving {spender} for max allowance...")
-        nonce_n = await self.nonce_manager.get_nonce_async(
-            await self.w3.eth.get_transaction_count(self.account.address, "pending")
-        )
+        nonce_n = await self.nonce_manager.reserve_nonce(self.w3)
         gas_params = await self._get_gas_params()
         tx = await token.functions.approve(spender, 2**256 - 1).build_transaction({
             "from": self.account.address,
@@ -134,9 +132,7 @@ class Web3TestnetAdapter:
         signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
         tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
         logger.info(f"Approve tx: {tx_hash.hex()}")
-        receipt = await asyncio.to_thread(
-            self.w3.eth.wait_for_transaction_receipt, tx_hash, timeout=120, poll_latency=1.0
-        )
+        receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180, poll_latency=1.0)
         if receipt.status == 1:
             logger.info("Approve successful")
             return True
@@ -189,9 +185,7 @@ class Web3TestnetAdapter:
         try:
             weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=WETH9_ABI)
             value = self.w3.to_wei(amount_eth, 'ether')
-            nonce = await self.nonce_manager.get_nonce_async(
-                await self.w3.eth.get_transaction_count(self.account.address, "pending")
-            )
+            nonce = await self.nonce_manager.reserve_nonce(self.w3)
             gas_params = await self._get_gas_params()
             tx = await weth.functions.deposit().build_transaction({
                 'from': self.account.address,
@@ -203,7 +197,7 @@ class Web3TestnetAdapter:
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
             tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"Wrap {amount_eth} ETH → WETH, tx: {tx_hash.hex()}")
-            receipt = await asyncio.to_thread(self.w3.eth.wait_for_transaction_receipt, tx_hash, timeout=120)
+            receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
             if receipt.status == 1:
                 logger.success("✅ Wrap successful")
                 return tx_hash.hex()
@@ -218,9 +212,7 @@ class Web3TestnetAdapter:
         try:
             weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=WETH9_ABI)
             value = self.w3.to_wei(amount_weth, 'ether')
-            nonce = await self.nonce_manager.get_nonce_async(
-                await self.w3.eth.get_transaction_count(self.account.address, "pending")
-            )
+            nonce = await self.nonce_manager.reserve_nonce(self.w3)
             gas_params = await self._get_gas_params()
             tx = await weth.functions.withdraw(value).build_transaction({
                 'from': self.account.address,
@@ -231,7 +223,7 @@ class Web3TestnetAdapter:
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
             tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"Unwrap {amount_weth} WETH → ETH, tx: {tx_hash.hex()}")
-            receipt = await asyncio.to_thread(self.w3.eth.wait_for_transaction_receipt, tx_hash, timeout=120)
+            receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
             if receipt.status == 1:
                 logger.success("✅ Unwrap successful")
                 return tx_hash.hex()
@@ -270,19 +262,12 @@ class Web3TestnetAdapter:
                 logger.warning(f"Insufficient {token_in} balance ({balance} < {amount})")
                 return {"error": "Insufficient balance"}
 
-            # Проверка nonce-конфликта
-            pending_nonce = await self.w3.eth.get_transaction_count(self.account.address, "pending")
-            confirmed_nonce = await self.w3.eth.get_transaction_count(self.account.address, "latest")
-            if pending_nonce != confirmed_nonce:
-                logger.warning("Pending transaction detected, skipping swap to avoid nonce collision")
-                return {"error": "Nonce conflict, try again later"}
-
             # Allowance
             if not await self._ensure_allowance(token_in, ROUTER_ADDRESS, amount_in_wei):
                 return {"error": "Insufficient allowance"}
 
             # Безопасный nonce
-            safe_nonce = await self.nonce_manager.get_nonce_async(pending_nonce)
+            safe_nonce = await self.nonce_manager.reserve_nonce(self.w3)
 
             # Параметры ExactInputSingle
             swap_tuple = (
@@ -307,9 +292,7 @@ class Web3TestnetAdapter:
             tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"Swap tx sent: {tx_hash.hex()}")
 
-            receipt = await asyncio.to_thread(
-                self.w3.eth.wait_for_transaction_receipt, tx_hash, timeout=180, poll_latency=1.0
-            )
+            receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180, poll_latency=1.0)
 
             if receipt.status == 1:
                 logger.success(f"✅ Swap successful! Tx: {tx_hash.hex()}")

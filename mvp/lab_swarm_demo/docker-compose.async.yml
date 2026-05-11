@@ -38,6 +38,7 @@ services:
       - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - NODE_INDEX=${NODE_INDEX:-0}
     ports:
       - "9777"
     deploy:

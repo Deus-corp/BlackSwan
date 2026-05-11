@@ -106,14 +106,7 @@ class SwarmConfig(BaseSettings):
     security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     # ----- Парсер PEERS -----
-    peers: List[str] = Field(default_factory=list, alias="PEERS")
-
-    @field_validator("peers", mode="before")
-    @classmethod
-    def parse_peers(cls, v):
-        if isinstance(v, str):
-            return [p.strip() for p in v.split(",") if p.strip()]
-        return v
+    peers_raw: str = Field(default="", alias="PEERS")
 
     # ----- Совместимость со старым кодом (псвеонимы) -----
     @property
@@ -126,7 +119,7 @@ class SwarmConfig(BaseSettings):
 
     @property
     def PEERS(self) -> List[str]:
-        return self.peers
+        return [p.strip() for p in self.peers_raw.split(",") if p.strip()]
 
     @property
     def MARKET_URL(self) -> Optional[str]:
@@ -175,7 +168,7 @@ class SwarmConfig(BaseSettings):
     def print_summary(self):
         from loguru import logger
         logger.info(f"Node ID: {self.node_id[:8]}... | Env: {self.environment}")
-        logger.info(f"Peers: {len(self.peers)} | RPC: {self.web3_rpc_url}")
+        logger.info(f"Peers: {len(self.PEERS)} | RPC: {self.web3_rpc_url}")
         logger.info(f"LLM: {self.llm.model_name} | Risk: {self.trading.max_risk_per_trade}")
 
 

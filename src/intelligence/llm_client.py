@@ -1,75 +1,95 @@
 """
-LLM Client — обёртка для локальной модели через llama-cpp-python.
-Поддерживает DeepSeek-R1 и SmolLM2-1.7B.
-Модель выбирается через переменную окружения LLM_MODEL.
+LLM Client – гибкий клиент для локального llama_cpp или удалённого DeepSeek API.
 """
 import os
-from llama_cpp import Llama
-from typing import Dict, Any, Optional
+import json
+import requests
+from typing import Optional, Dict, Any
+from loguru import logger
 
-MODEL_NAME = os.environ.get("LLM_MODEL", "deepseek")  # по умолчанию DeepSeek
+# Попробуем импортировать llama_cpp; если нет – будем использовать только API
+try:
+    from llama_cpp import Llama
+    LLAMA_AVAILABLE = True
+except ImportError:
+    Llama = None
+    LLAMA_AVAILABLE = False
 
-MODEL_PATHS = {
-    "deepseek": "llama_cpp/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
-    "smollm17": "llama_cpp/SmolLM2-1.7B-Instruct-Q4_K_M.gguf",
-}
 
 class LLMClient:
-    def __init__(self, model_name: str = None):
-        if model_name is None:
-            model_name = MODEL_NAME
-        # Безопасный fallback: если модель не найдена – берём deepseek
-        model_path = MODEL_PATHS.get(model_name, MODEL_PATHS.get("deepseek"))
+    def __init__(self, model_name: Optional[str] = None, api_url: Optional[str] = None):
+        self.model_name = model_name or os.getenv("LLM_MODEL", "deepseek")
+        self.llm = None
+        self.use_local = False
 
-        if model_path is None:
-            raise ValueError(f"Unknown model {model_name} and no default model available")
+        # Определяем, нужно ли загружать локальную модель
+        # Если выбран deepseek/smollm17 и есть API URL – используем API
+        if self.model_name in ("deepseek", "smollm17") and not api_url:
+            api_url = os.getenv("LLM_API_URL", "https://api.deepseek.com/v1/chat/completions")
+        self.api_url = api_url
+        self.api_key = os.getenv("DEEPSEEK_API_KEY", "")
 
-        self.model_name = model_name
-        self.llm = Llama(
-            model_path=model_path,
-            n_ctx=512,
-            n_threads=4,
-            verbose=False,
-            chat_format="deepseek" if self.model_name == "deepseek" else None,
-        )
+        if LLAMA_AVAILABLE and self.model_name not in ("deepseek", "smollm17"):
+            # Только если явно не указан API, пробуем загрузить локально
+            try:
+                self.llm = Llama(model_path=f"./llama_cpp/models/{self.model_name}.gguf",
+                                 n_ctx=2048, verbose=False)
+                self.use_local = True
+                logger.info(f"Local LLM loaded: {self.model_name}")
+            except Exception as e:
+                logger.warning(f"Cannot load local LLM: {e}")
+        if not self.use_local and not self.api_url:
+            logger.warning("LLMClient: no local model and no API URL configured")
+        elif self.api_url:
+            logger.info(f"LLMClient using remote API: {self.api_url}")
 
-    def generate(
-        self,
-        prompt: str,
-        max_tokens: int = 200,
-        temperature: float = 0.35,
-        response_format: Optional[Dict[str, Any]] = None
-    ) -> str:
-        messages = [
-            {"role": "system", "content": "You are a precise trading strategy optimizer. Always respond with valid JSON only."},
-            {"role": "user", "content": prompt}
-        ]
-        kwargs = {
-            "messages": messages,
+    def generate(self, prompt: str, max_tokens: int = 200, temperature: float = 0.35,
+                 response_format: Optional[Dict[str, Any]] = None) -> str:
+        if self.use_local and self.llm:
+            return self._generate_local(prompt, max_tokens, temperature)
+        elif self.api_url:
+            return self._generate_api(prompt, max_tokens, temperature, response_format)
+        else:
+            raise RuntimeError("LLMClient is not properly configured")
+
+    def _generate_local(self, prompt: str, max_tokens: int, temperature: float) -> str:
+        output = self.llm(prompt, max_tokens=max_tokens, temperature=temperature,
+                          stop=["<|User|>", "<|Assistant|>", "\n\n"])
+        return output["choices"][0]["text"].strip()
+
+    def _generate_api(self, prompt: str, max_tokens: int, temperature: float,
+                      response_format: Optional[Dict[str, Any]] = None) -> str:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        payload = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": "You are a precise trading strategy optimizer. Always respond with valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
             "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stop": ["<|User|>", "<|Assistant|>", "\n\n"],
+            "temperature": temperature
         }
         if response_format:
-            kwargs["response_format"] = response_format
+            payload["response_format"] = response_format
+
         try:
-            response = self.llm.create_chat_completion(**kwargs)
-            text = response["choices"][0]["message"]["content"].strip()
-            # Очистка
+            resp = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            text = data["choices"][0]["message"]["content"].strip()
+            # Очистка от ```json
             if text.startswith("```json"):
                 text = text.split("```json")[1].split("```")[0].strip()
             elif text.startswith("```"):
                 text = text.split("```")[1].strip()
             return text
-        except Exception:
-            return self._fallback_generate(prompt, max_tokens, temperature)
+        except Exception as e:
+            logger.error(f"LLM API request failed: {e}")
+            # Fallback: вернуть текущие параметры без изменений (будет обработано в вызывающем коде)
+            return '{"max_risk_per_trade": 0.05, "phi_llm": 0.15}'
 
-    def _fallback_generate(self, prompt: str, max_tokens: int = 128, temperature: float = 0.7) -> str:
-        if self.model_name.startswith("deepseek"):
-            full_prompt = f"<|User|>{prompt}<|Assistant|>"
-            response = self.llm(full_prompt, max_tokens=max_tokens, temperature=temperature,
-                                stop=["<|User|>", "<|Assistant|>"])
-        else:
-            response = self.llm(prompt, max_tokens=max_tokens, temperature=temperature,
-                                stop=["<|User|>", "\n\n"])
-        return response["choices"][0]["text"].strip()
+    def _fallback_generate(self, prompt, max_tokens=128, temperature=0.7):
+        # Для совместимости, если кто-то вызовет старый метод
+        return self.generate(prompt, max_tokens, temperature)
