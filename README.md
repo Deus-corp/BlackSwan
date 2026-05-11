@@ -1,6 +1,7 @@
 # BlackSwan 🦢
 
-**Autonomous, self‑improving AI swarm with distributed evolution, economic sovereignty, and formally verified core.**
+**A self‑sovereign, evolutionary multi‑agent system that trades autonomously on Uniswap V3.**
+**Built with genetic algorithms, LLM‑powered mutations, formal verification, and professional observability.**
 
 [![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
@@ -106,6 +107,26 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 - 📊 **Order Book Analysis** – real‑time imbalance and delta volume for smarter entries.
 - 📡 **TradingView Webhooks** – external trading signals injected directly into LLM context.
 
+## 🧬 Key Features
+
+- **Self‑Sovereign Economy** – built‑in market and Kelly‑criterion capital dispatcher.
+- **Ouroboros Self‑Improvement** – genetic search for optimal strategies, genome exchange in the swarm, Champion/Challenger.
+- **Survival Objective** – each node evaluates detection risk and refuses dangerous actions.
+- **Adaptive Intrinsic Motivation** – dynamic balancing of capital, stealth, and curiosity via Meta‑POMDP.
+- **Curiosity Engine** – autonomous detection of market anomalies and generation of research hypotheses.
+- **Swarm Resilience** – automatic failure detection and Spore Protocol (node rebirth).
+- **Formally Verified Core** – critical invariants proven in TLA+.
+- **Defense in Depth** – multi‑layer isolation, traffic obfuscation.
+- **Control Panel** – interactive CLI menu to start/stop/configure the swarm without Docker commands.
+
+### Current State (11 May 2026)
+- Fully autonomous swarm trading WETH/USDC on Uniswap V3 (Sepolia)
+- Async Web3 adapter with NonceManager (SQLite/WAL) – no more nonce collisions
+- Leader election: only one node sends transactions per block
+- Centralized config via Pydantic Settings (swarm_config.py)
+- Professional dashboards (FastAPI, Grafana, Prometheus)
+- LLM mutations with Pydantic validation and retry
+- Multi-node gossip with signing
 
 ---
 
@@ -131,28 +152,6 @@ docker-compose -f docker-compose.async.yml up -d --scale node=1
 ```text
 🦢 The very first AI‑driven on‑chain swap occurred at tx 0xba457b54.... The strategy evolves via genetic algorithms and can repeat profitable trades.
 ```
----
-
-## 🧬 Key Features
-
-- **Self‑Sovereign Economy** – built‑in market and Kelly‑criterion capital dispatcher.
-- **Ouroboros Self‑Improvement** – genetic search for optimal strategies, genome exchange in the swarm, Champion/Challenger.
-- **Survival Objective** – each node evaluates detection risk and refuses dangerous actions.
-- **Adaptive Intrinsic Motivation** – dynamic balancing of capital, stealth, and curiosity via Meta‑POMDP.
-- **Curiosity Engine** – autonomous detection of market anomalies and generation of research hypotheses.
-- **Swarm Resilience** – automatic failure detection and Spore Protocol (node rebirth).
-- **Formally Verified Core** – critical invariants proven in TLA+.
-- **Defense in Depth** – multi‑layer isolation, traffic obfuscation.
-- **Control Panel** – interactive CLI menu to start/stop/configure the swarm without Docker commands.
-
-### Current State (11 May 2026)
-- Fully autonomous swarm trading WETH/USDC on Uniswap V3 (Sepolia)
-- Async Web3 adapter with NonceManager (SQLite/WAL) – no more nonce collisions
-- Leader election: only one node sends transactions per block
-- Centralized config via Pydantic Settings (swarm_config.py)
-- Professional dashboards (FastAPI, Grafana, Prometheus)
-- LLM mutations with Pydantic validation and retry
-- Multi-node gossip with signing
 
 ---
 
