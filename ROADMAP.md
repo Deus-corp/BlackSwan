@@ -42,7 +42,15 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 ✅ **Multi‑node Nonce Synchronization** – SQLite‑based coordination for conflict‑free parallel swaps.
 ✅ **Prometheus + Grafana integration** – professional metrics & dashboards  
 ✅ **Embedded Grafana dashboard** in Web Control Panel  
-✅ **Settings page** for all compose variables and secrets  
+✅ **Settings page** for all compose variables and secrets
+- [x] Centralized configuration (Pydantic)
+- [x] Async Web3 + NonceManager
+- [x] Leader election
+- [ ] Batched transactions (multi-swap)
+- [ ] TradingController refactoring
+- [ ] MutationEngine refactoring
+- [ ] Scale to 10+ nodes
+- [ ] Paper trading / Simulation mode
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
