@@ -17,32 +17,27 @@ function showGlobalStatus(message, isError = false) {
 }
 
 // Универсальная обёртка для длительных операций
-async function performAction(url, method = 'POST', body = null, originalBtn = null) {
-    if (originalBtn) {
-        originalBtn.disabled = true;
-        const originalText = originalBtn.innerHTML;
-        originalBtn.innerHTML = '⏳ Processing...';
-        try {
-            showGlobalStatus('Operation in progress, please wait...');
-            const res = await fetch(url, {
-                method,
-                headers: body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {},
-                body
-            });
-            const text = await res.text();
-            containerOutput.textContent = text;
-            showGlobalStatus('', false);
-        } catch (err) {
-            showGlobalStatus('Error: ' + err.message, true);
-        } finally {
-            if (originalBtn) {
-                originalBtn.innerHTML = originalText;
-                originalBtn.disabled = false;
-            }
-            setTimeout(() => showGlobalStatus('', false), 10000);
+async function performAction(url, method, body, btn) {
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+    }
+    showGlobalStatus('Operation in progress, please wait...');
+    try {
+        const response = await fetch(url, { method, headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || response.statusText);
         }
-    } else {
-        return fetch(url, { method, headers: body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}, body });
+        showGlobalStatus('', false);
+    } catch (err) {
+        showGlobalStatus('Error: ' + err.message, true);
+        throw err; // пробрасываем, чтобы вызывающий код знал об ошибке
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
     }
 }
 
@@ -55,15 +50,12 @@ document.querySelectorAll('form').forEach(form => {
         const method = form.getAttribute('method') || 'post';
         const formData = new FormData(form);
         const params = new URLSearchParams(formData);
-        // Для действий с роем – просто отправляем и перезагружаем страницу
         if (url.includes('/api/start') || url.includes('/api/stop') || url.includes('/api/restart') || url.includes('/api/rebuild')) {
             try {
-                showGlobalStatus('Operation in progress, please wait...');
-                await fetch(url, { method, headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
-                showGlobalStatus('', false);
+                await performAction(url, method, params.toString(), btn);
                 location.reload();
-            } catch (err) {
-                showGlobalStatus('Error: ' + err.message, true);
+            } catch (error) {
+                // Ошибка уже обработана в performAction
             }
         } else {
             await performAction(url, method, params.toString(), btn);
