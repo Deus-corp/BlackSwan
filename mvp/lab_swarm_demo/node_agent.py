@@ -1,4 +1,4 @@
-import os, time, random, uuid, hashlib, asyncio, logging, sys, signal
+import os, time, random, uuid, hashlib, asyncio, logging, sys, signal, json
 from typing import Dict, Any, Optional, List, Tuple
 
 import aiohttp
@@ -30,6 +30,7 @@ from src.intelligence.internet_researcher import InternetResearcher
 from adapters.tradingview_webhook import TradingViewWebhook
 from adapters.orderbook_analyzer import OrderBookAnalyzer
 from src.observability.telegram_notifier import TelegramNotifier
+from src.intelligence.strategy_schema import StrategyParams
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -184,33 +185,39 @@ class SwarmNode:
 
     #------------------------------------------------------------
     def _llm_mutate(self, params: Dict[str, float], context: str) -> Dict[str, float]:
-        """Мутация параметров через LLM."""
-        prompt = f"""You are a trading strategy optimizer for the Kelly criterion.
+        """Улучшенная LLM-мутация с structured output и retry."""
+        prompt = f"""You are an expert trading strategy optimizer for the Kelly criterion.
 
 Current market context:
 {context}
 
 Current strategy parameters:
-{params}
+{json.dumps(params, indent=2)}
 
-Suggest a small adjustment to these parameters that could improve the strategy.
-Respond ONLY with the adjusted parameters in JSON format, like:
-{{"max_risk_per_trade": X, "phi_llm": Y}}"""
-        
-        try:
-            response = self.llm.generate(prompt, max_tokens=64)
-            # Парсим JSON из ответа
-            import json
-            start = response.find("{")
-            end = response.rfind("}") + 1
-            if start != -1 and end > start:
-                new_params = json.loads(response[start:end])
-                for k in new_params:
-                    new_params[k] = max(0.0001, min(1.0, float(new_params[k])))
-                return new_params
-        except Exception:
-            pass
-        return params  # fallback: возвращаем исходные параметры
+Suggest a small, conservative adjustment. Return ONLY valid JSON like:
+{{"max_risk_per_trade": 0.02, "phi_llm": 0.4}}"""
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = self.llm.generate(prompt, max_tokens=200, temperature=0.35)
+                # Пытаемся спарсить через Pydantic
+                try:
+                    new_strat = StrategyParams.model_validate_json(response)
+                    return new_strat.to_dict()
+                except Exception:
+                    # Fallback: ищем JSON вручную
+                    import re
+                    match = re.search(r'\{.*\}', response, re.DOTALL)
+                    if match:
+                        data = json.loads(match.group(0))
+                        new_strat = StrategyParams(**data)
+                        return new_strat.to_dict()
+            except Exception as e:
+                logger.warning(f"LLM mutation attempt {attempt+1} failed: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(0.3 * (attempt + 1))
+        return params  # fallback
 
     # ------------------------------------------------------------
     # Helpers
@@ -396,7 +403,7 @@ Respond ONLY with the adjusted parameters in JSON format, like:
                         if usdc_bal > max_usdc and weth_bal < min_weth:
                             logger.info(f"USDC surplus ({usdc_bal}), buying WETH with USDC")
                             try:
-                                result = await adapter.place_order("buy", 0.001)
+                                result = await adapter.place_order("buy", 0.002)
                                 logger.info(f"USDC->WETH swap result: {result}")
                             except Exception as e:
                                 logger.error(f"USDC->WETH swap error: {e}")

@@ -11,7 +11,7 @@ services:
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
       - LLM_MODEL=deepseek
-      - GOSSIP_SIGNING_ENABLED=false
+      - GOSSIP_SIGNING_ENABLED=true
       - MEMORY_API_ENABLED=true
       - MARKET_MODE=web3
       - TEST_WEB3_SWAP_AMOUNT=0.001
