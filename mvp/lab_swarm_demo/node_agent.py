@@ -1,4 +1,4 @@
-import os, time, random, uuid, hashlib, asyncio, logging, sys, signal, json
+import time, random, uuid, hashlib, asyncio, logging, sys, signal, json
 from typing import Dict, Any, Optional, List, Tuple
 
 import aiohttp
@@ -31,15 +31,16 @@ from adapters.tradingview_webhook import TradingViewWebhook
 from adapters.orderbook_analyzer import OrderBookAnalyzer
 from src.observability.telegram_notifier import TelegramNotifier
 from src.intelligence.strategy_schema import StrategyParams
+from swarm_config import config
 
 import logging
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
 # Уровень устанавливается из переменной окружения LOG_LEVEL (по умолчанию INFO)
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
+logging.basicConfig(level=config.log_level)
 
-EXPECTED_RETURN_RATE = 0.1 * 0.05
-MAX_NORMALIZED_CAPITAL = 10000.0
+EXPECTED_RETURN_RATE = config.expected_return_rate
+MAX_NORMALIZED_CAPITAL = config.max_normalized_capital
 
 # LLM mutation counters (глобально, т.к. в каждом процессе они независимы)
 _llm_mutation_count = 0
@@ -64,20 +65,20 @@ def get_llm_stats() -> Tuple[int, float]:
 class SwarmNode:
     def __init__(self) -> None:
         # конфигурация
-        self.node_id: str = os.environ.get("NODE_ID", str(uuid.uuid4()))
-        self.port: int = int(os.environ.get("PORT", 8000))
-        self.peers: List[str] = [p for p in os.environ.get("PEERS", "").split(",") if p]
+        self.node_id: str = config.NODE_ID
+        self.port: int = config.PORT
+        self.peers: List[str] = config.PEERS
 
-        self.market_url: Optional[str] = os.environ.get("MARKET_URL")
-        self.market_mode: str = os.environ.get("MARKET_MODE", "sim")
+        self.market_url: Optional[str] = config.MARKET_URL
+        self.market_mode: str = config.market_mode
 
-        self.burn_rate: float = float(os.environ.get("BURN_RATE", 0.5))
-        self.failure_prob: float = float(os.environ.get("FAILURE_PROB", 0.0))
-        self.gossip_interval: float = 1.5
-        self.max_state: int = 200
-        self.ttl: int = 300
-        self.max_import: int = 2
-        self.import_cooldown: int = 5
+        self.burn_rate: float = config.BURN_RATE
+        self.failure_prob: float = config.FAILURE_PROB
+        self.gossip_interval: float = config.GOSSIP_INTERVAL
+        self.max_state: int = config.MAX_STATE
+        self.ttl: int = config.TTL
+        self.max_import: int = config.MAX_IMPORT
+        self.import_cooldown: int = config.IMPORT_COOLDOWN
 
         # ========== INFRASTRUCTURE LAYER (BODY) ==========
         # Криптография и безопасность
@@ -88,7 +89,7 @@ class SwarmNode:
         self.reputation: ReputationManager = ReputationManager()
         self.reputation_blacklist_threshold: float = 0.3
 
-        self.memory_api_enabled: bool = os.environ.get("MEMORY_API_ENABLED", "false").lower() == "true"
+        self.memory_api_enabled: bool = config.memory_api_enabled
         self.memory_api: LocalMemoryAPI = LocalMemoryAPI(
             node_id=self.node_id,
             storage=None  # будет подключён после создания CRDT
@@ -120,8 +121,9 @@ class SwarmNode:
 
         # Рыночные данные – теперь мульти-парный адаптер
         self.market_mode: str = os.environ.get("MARKET_MODE", "sim")
-        trading_symbols = os.environ.get("TRADING_SYMBOLS", "BTC/USDT")
+        trading_symbols = config.trading_symbols
         symbols_list = [s.strip() for s in trading_symbols.split(",") if s.strip()]
+        self.symbols_list = symbols_list   # сохраняем для использования в start()
         self.market_adapter = MultiPairAdapter(
             symbols=symbols_list,
             market_mode=self.market_mode,
@@ -137,13 +139,13 @@ class SwarmNode:
         self.primary_symbol = symbols_list[0] if symbols_list else "BTC/USDT"
 
                 # TradingView webhook (если включен)
-        self.tradingview_enabled = os.environ.get("TRADINGVIEW_WEBHOOK_ENABLED", "false").lower() == "true"
+        self.tradingview_enabled = config.tradingview_webhook_enabled
         self.tradingview_webhook = None
         if self.tradingview_enabled:
-            self.tradingview_webhook = TradingViewWebhook(port=int(os.environ.get("TRADINGVIEW_WEBHOOK_PORT", 8888)))
+            self.tradingview_webhook = TradingViewWebhook(port=config.tradingview_webhook_port)
 
                 # OrderBook анализ (если включён)
-        self.orderbook_enabled = os.environ.get("ORDERBOOK_ANALYSIS_ENABLED", "false").lower() == "true"
+        self.orderbook_enabled = config.orderbook_analysis_enabled
         self.orderbook_analyzers: Dict[str, OrderBookAnalyzer] = {}
         if self.orderbook_enabled:
             for sym in symbols_list:
@@ -329,7 +331,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
             if adapter:
                 tick = await adapter.get_ticker()
                 if tick is not None:
-                    scale = float(os.environ.get("PRICE_SCALE", 10000))
+                    scale = config.trading.price_scale
                     tick['price'] = tick.get('price', tick.get('ask', 50000))
                     tick['price'] = tick['price'] / scale
                     return tick
@@ -347,8 +349,6 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
     # ------------------------------------------------------------
     async def main_loop(self) -> None:
         async with aiohttp.ClientSession() as session:
-            if os.path.exists("/app/nonce_data/nonce.db"):
-                os.remove("/app/nonce_data/nonce.db")
             if self.memory_api_enabled:
                 await self.memory_api.load_from_db()
             while True:
@@ -395,9 +395,9 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                         eth_bal = adapter.w3.from_wei(adapter.w3.eth.get_balance(adapter.account.address), 'ether')
                         usdc_bal = adapter._get_token_balance(USDC_ADDRESS)
 
-                        min_weth = float(os.environ.get('MIN_WETH_BALANCE', 0.001))
-                        min_eth = float(os.environ.get('MIN_ETH_BALANCE', 0.002))
-                        max_usdc = float(os.environ.get('MAX_USDC_BALANCE', 1000.0))  # порог, после которого продаём USDC
+                        min_weth = config.trading.min_weth_balance
+                        min_eth = config.trading.min_eth_balance
+                        max_usdc = config.trading.max_usdc_balance
 
                         # Приоритет: избыток USDC → покупаем WETH
                         if usdc_bal > max_usdc and weth_bal < min_weth:
@@ -410,11 +410,17 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                         # Если не хватает WETH, но есть ETH — wrap
                         elif weth_bal < min_weth and eth_bal > min_eth + 0.0005:
                             logger.info(f"WETH low ({weth_bal}), wrapping 0.0005 ETH to WETH")
-                            adapter.wrap_eth(0.0005)
+                            try:
+                                await adapter.wrap_eth(0.0005)   # асинхронно
+                            except Exception as e:
+                                logger.error(f"Wrap error: {e}")
                         # Если не хватает ETH на газ, но есть WETH — unwrap
                         elif eth_bal < min_eth and weth_bal > min_weth + 0.0005:
                             logger.info(f"ETH low ({eth_bal}), unwrapping 0.0005 WETH to ETH")
-                            adapter.unwrap_weth(0.0005)
+                            try:
+                                await adapter.unwrap_weth(0.0005)  # асинхронно
+                            except Exception as e:
+                                logger.error(f"Unwrap error: {e}")
 
                 # Проверка стоп‑лосса для фьючерсных позиций
                 if self.market_mode == "futures":
@@ -466,9 +472,9 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                         if self.market_mode in ("web3", "live"):
                             adapter = self.market_adapter.get_adapter(best_symbol)
                             if adapter and hasattr(adapter, "place_order"):
-                                test_amount = float(os.environ.get("TEST_WEB3_SWAP_AMOUNT", 0.0))
+                                test_amount = config.trading.test_web3_swap_amount
                                 if test_amount > 0:
-                                    side = os.environ.get("TEST_WEB3_SWAP_SIDE", "buy")
+                                    side = config.trading.test_web3_swap_side
                                     logger.info(f"Attempting real swap: {side} {test_amount} {best_symbol}")
                                     try:
                                         result = await adapter.place_order(side, test_amount, price=market.get("price"))
@@ -494,7 +500,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
 
                         # Хеджирование: если открыта фьючерсная позиция, открываем противоположную спотовую
                         if self.market_mode == "futures" and self.market_adapter.hedge_enabled:
-                            hedge_ratio = float(os.environ.get("HEDGE_RATIO", 0.5))
+                            hedge_ratio = config.hedge_ratio
                             spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
                             futures_adapter = self.market_adapter.get_adapter(best_symbol, "futures")
                             if spot_adapter and futures_adapter:
@@ -608,7 +614,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
                         genome_dict = self.make_genome(params_to_publish, self.engine.champion[1])
 
                         # --- отправка с подписью или без ---
-                        if os.environ.get("GOSSIP_SIGNING_ENABLED", "false").lower() == "true":
+                        if config.internet_researcher_enabled:
                             self.gossip_seq_no += 1
                             self.gossip_lamport_ts += 1
                             meta = {
@@ -791,7 +797,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
 
                 update_llm_impact(self.capital)
                             # Алерт при падении капитала ниже порога
-                alert_threshold = float(os.environ.get("CAPITAL_ALERT_THRESHOLD", 100.0))
+                alert_threshold = config.capital_alert_threshold
                 if self.capital < alert_threshold:
                     await self.telegram_notifier.send(
                         f"⚠️ <b>Low capital alert</b>\n"
@@ -819,7 +825,7 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
             "params": child,
             "fitness": 0.0,
             "niche": g1.get("niche", "mixed") if random.random() < 0.5 else g2.get("niche", "mixed"),
-            "lineage": (g1.get("lineage", [])[-5:] + [os.environ.get("NODE_ID", "unknown")]),
+            "lineage": (g1.get("lineage", [])[-5:] + [self.node_id]),
             "ts": time.time(),
         }
 
@@ -851,6 +857,14 @@ Suggest a small, conservative adjustment. Return ONLY valid JSON like:
         
         if self.tradingview_enabled:
                 await self.tradingview_webhook.stop()
+
+                # Инициализация web3-адаптеров, если в режиме web3
+        if self.market_mode == "web3":
+            for sym in self.symbols_list:
+                adapter = self.market_adapter.get_adapter(sym)
+                if adapter and hasattr(adapter, 'initialize'):
+                    logger.info(f"Initializing web3 adapter for {sym} ...")
+                    await adapter.initialize()
 
         await asyncio.gather(
             self.gossip.start(),
