@@ -1,90 +1,49 @@
-# adapters/web3_testnet.py
 """
-Web3 Testnet Adapter (Ethereum Sepolia) – Uniswap V3 community deployment.
-
-Полностью автономный: автоматический approve, диагностика, выбор fee.
+Web3 Testnet Adapter (Ethereum Sepolia) – полностью асинхронный Uniswap V3 адаптер.
+Использует AsyncWeb3, NonceManager и новый конфиг.
 """
-import os
+import asyncio
 import logging
-import time
 from typing import Dict, Optional
-from web3 import Web3
-from web3.exceptions import TransactionNotFound
+from web3 import AsyncWeb3
+from web3.providers import AsyncHTTPProvider
 from web3.middleware import ExtraDataToPOAMiddleware
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from swarm_config import config
+from adapters.nonce_manager import NonceManager
 
+# ---------- Константы Uniswap V3 Sepolia ----------
 QUOTER_ADDRESS = "0xd64686fa7549534ecb1b5cdd772d60c3cf02af3c"
 ROUTER_ADDRESS = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E"
 WETH_ADDRESS = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
 USDC_ADDRESS = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
 
 QUOTER_ABI = [
-    {
-        "inputs": [
-            {"internalType": "bytes", "name": "path", "type": "bytes"},
-            {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
-        ],
-        "name": "quoteExactInput",
-        "outputs": [{"internalType": "uint256", "name": "amountOut", "type": "uint256"}],
-        "stateMutability": "nonpayable",
-        "type": "function",
-    }
+    {"inputs": [{"internalType": "bytes","name": "path","type": "bytes"},
+                {"internalType": "uint256","name": "amountIn","type": "uint256"}],
+     "name": "quoteExactInput","outputs": [{"internalType": "uint256","name": "amountOut","type": "uint256"}],
+     "stateMutability": "nonpayable","type": "function"}
 ]
 
 ROUTER_ABI = [
-    {
-        "inputs": [
-            {
-                "components": [
-                    {"internalType": "address", "name": "tokenIn", "type": "address"},
-                    {"internalType": "address", "name": "tokenOut", "type": "address"},
-                    {"internalType": "uint24", "name": "fee", "type": "uint24"},
-                    {"internalType": "address", "name": "recipient", "type": "address"},
-                    {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
-                    {"internalType": "uint256", "name": "amountOutMinimum", "type": "uint256"},
-                    {"internalType": "uint160", "name": "sqrtPriceLimitX96", "type": "uint160"},
-                ],
-                "internalType": "struct ISwapRouter.ExactInputSingleParams",
-                "name": "params",
-                "type": "tuple",
-            }
-        ],
-        "name": "exactInputSingle",
-        "outputs": [{"internalType": "uint256", "name": "amountOut", "type": "uint256"}],
-        "stateMutability": "payable",
-        "type": "function",
-    }
+    {"inputs": [{"components": [
+        {"internalType": "address","name": "tokenIn","type": "address"},
+        {"internalType": "address","name": "tokenOut","type": "address"},
+        {"internalType": "uint24","name": "fee","type": "uint24"},
+        {"internalType": "address","name": "recipient","type": "address"},
+        {"internalType": "uint256","name": "amountIn","type": "uint256"},
+        {"internalType": "uint256","name": "amountOutMinimum","type": "uint256"},
+        {"internalType": "uint160","name": "sqrtPriceLimitX96","type": "uint160"}
+    ],"internalType": "struct ISwapRouter.ExactInputSingleParams","name": "params","type": "tuple"}],
+     "name": "exactInputSingle","outputs": [{"internalType": "uint256","name": "amountOut","type": "uint256"}],
+     "stateMutability": "payable","type": "function"}
 ]
 
 ERC20_ABI = [
-    {
-        "constant": True,
-        "inputs": [{"name": "_owner", "type": "address"}],
-        "name": "balanceOf",
-        "outputs": [{"name": "balance", "type": "uint256"}],
-        "type": "function",
-    },
-    {
-        "constant": True,
-        "inputs": [
-            {"name": "_owner", "type": "address"},
-            {"name": "_spender", "type": "address"},
-        ],
-        "name": "allowance",
-        "outputs": [{"name": "", "type": "uint256"}],
-        "type": "function",
-    },
-    {
-        "constant": False,
-        "inputs": [
-            {"name": "_spender", "type": "address"},
-            {"name": "_value", "type": "uint256"},
-        ],
-        "name": "approve",
-        "outputs": [{"name": "", "type": "bool"}],
-        "type": "function",
-    },
+    {"constant":True,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},
+    {"constant":True,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+    {"constant":False,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},
 ]
 
 WETH9_ABI = [
@@ -92,214 +51,204 @@ WETH9_ABI = [
     {"constant":False,"inputs":[{"name":"wad","type":"uint256"}],"name":"withdraw","outputs":[],"type":"function"},
 ]
 
+
 class Web3TestnetAdapter:
     def __init__(self, symbol: str = "WETH/USDC", crdt_adapter=None):
         self.crdt = crdt_adapter
         self.symbol = symbol
-        self.rpc_url = os.environ.get("WEB3_RPC_URL", "https://ethereum-sepolia.publicnode.com")
-        self.private_key = os.environ.get("WEB3_PRIVATE_KEY")
-        self.token_in_env = os.environ.get("WEB3_TOKEN_IN", WETH_ADDRESS)
-        self.token_out_env = os.environ.get("WEB3_TOKEN_OUT", USDC_ADDRESS)
+        self.rpc_url = config.web3_rpc_url
+        self.private_key = config.security.web3_private_key.get_secret_value() if config.security.web3_private_key else None
+        self.token_in_env = WETH_ADDRESS
+        self.token_out_env = USDC_ADDRESS
 
         if not self.private_key:
             logger.warning("WEB3_PRIVATE_KEY not set. Web3 adapter will run in read-only mode.")
 
-        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+        # Async Web3
+        self.w3 = AsyncWeb3(AsyncHTTPProvider(self.rpc_url, request_kwargs={"timeout": 60}))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+
+        self.account = None
+        self.nonce_manager = None
+        self.quoter = None
+        self.router = None
+        self.weth_contract = None
+        self.usdc_contract = None
+
+    async def initialize(self):
+        """Асинхронная инициализация (вызывать при старте ноды)."""
+        chain_id = await self.w3.eth.chain_id
+        logger.info(f"Connected to chain ID {chain_id}")
 
         if self.private_key:
             self.account = self.w3.eth.account.from_key(self.private_key)
-            logger.info(f"Web3 adapter initialized for address: {self.account.address}")
+            self.nonce_manager = NonceManager(self.account.address)
             self.w3.eth.default_account = self.account.address
-        else:
-            self.account = None
+            logger.info(f"Wallet: {self.account.address[:8]}...")
 
-        self.quoter = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(QUOTER_ADDRESS),
-            abi=QUOTER_ABI,
-        )
-        self.router = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(ROUTER_ADDRESS),
-            abi=ROUTER_ABI,
-        )
-        self.weth_contract = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(WETH_ADDRESS),
-            abi=ERC20_ABI,
-        )
-        self.usdc_contract = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(USDC_ADDRESS),
-            abi=ERC20_ABI,
-        )
+        # Инициализируем контракты (адреса с checksum)
+        checksum_quoter = self.w3.to_checksum_address(QUOTER_ADDRESS)
+        checksum_router = self.w3.to_checksum_address(ROUTER_ADDRESS)
+        checksum_weth = self.w3.to_checksum_address(WETH_ADDRESS)
+        checksum_usdc = self.w3.to_checksum_address(USDC_ADDRESS)
 
-    def _ensure_allowance(self, token_address: str, spender: str, amount: int) -> bool:
-        """Проверяет и при необходимости выполняет approve."""
-        token_contract = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(token_address),
-            abi=ERC20_ABI,
-        )
+        self.quoter = self.w3.eth.contract(address=checksum_quoter, abi=QUOTER_ABI)
+        self.router = self.w3.eth.contract(address=checksum_router, abi=ROUTER_ABI)
+        self.weth_contract = self.w3.eth.contract(address=checksum_weth, abi=ERC20_ABI)
+        self.usdc_contract = self.w3.eth.contract(address=checksum_usdc, abi=ERC20_ABI)
+
+        logger.success("Web3TestnetAdapter initialized (async)")
+
+    # ---------- Помощники ----------
+    async def _get_gas_params(self) -> dict:
         try:
-            current = token_contract.functions.allowance(self.account.address, spender).call()
-            if current >= amount:
-                return True
-            logger.info(f"Allowance too low ({current} < {amount}), approving max...")
-            tx = token_contract.functions.approve(spender, 2**256 - 1).build_transaction({
-                "from": self.account.address,
-                "gas": 100000,
-                "nonce": self.w3.eth.get_transaction_count(self.account.address),
-                **self._get_gas_params(),
-            })
-            signed = self.w3.eth.account.sign_transaction(tx, private_key=self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-            logger.info(f"Approve tx sent: {tx_hash.hex()}")
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-            if receipt.status == 1:
-                logger.info("Approve successful")
-                return True
-            else:
-                logger.error("Approve failed")
-                return False
-        except Exception as e:
-            logger.error(f"Approve exception: {e}")
-            return False
-
-    def _get_gas_params(self) -> dict:
-        """Возвращает газовые параметры EIP‑1559 с двойным запасом."""
-        try:
-            fee_history = self.w3.eth.fee_history(1, "latest", reward_percentiles=[50])
+            fee_history = await self.w3.eth.fee_history(1, "latest", reward_percentiles=[50])
             base_fee = fee_history["baseFeePerGas"][0]
-            max_priority_fee = self.w3.eth.max_priority_fee or self.w3.to_wei(2, "gwei")
-            # Удвоенная базовая комиссия + приоритет
+            max_priority_fee = await self.w3.eth.max_priority_fee
+            if max_priority_fee is None:
+                max_priority_fee = self.w3.to_wei(2, "gwei")
             return {
                 "maxFeePerGas": base_fee * 2 + max_priority_fee,
                 "maxPriorityFeePerGas": max_priority_fee,
             }
         except Exception:
-            # Fallback – legacy газ с запасом
-            return {"gasPrice": int(self.w3.eth.gas_price * 2.0)}
+            gas_price = await self.w3.eth.gas_price
+            return {"gasPrice": int(gas_price * 2.0)}
 
+    async def _ensure_allowance(self, token_address: str, spender: str, amount: int) -> bool:
+        token = self.w3.eth.contract(address=self.w3.to_checksum_address(token_address), abi=ERC20_ABI)
+        current = await token.functions.allowance(self.account.address, spender).call()
+        if current >= amount:
+            return True
+        logger.info(f"Approving {spender} for max allowance...")
+        nonce_n = await self.nonce_manager.get_nonce_async(
+            await self.w3.eth.get_transaction_count(self.account.address, "pending")
+        )
+        gas_params = await self._get_gas_params()
+        tx = await token.functions.approve(spender, 2**256 - 1).build_transaction({
+            "from": self.account.address,
+            "gas": 100000,
+            "nonce": nonce_n,
+            **gas_params,
+        })
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+        tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        logger.info(f"Approve tx: {tx_hash.hex()}")
+        receipt = await asyncio.to_thread(
+            self.w3.eth.wait_for_transaction_receipt, tx_hash, timeout=120, poll_latency=1.0
+        )
+        if receipt.status == 1:
+            logger.info("Approve successful")
+            return True
+        else:
+            logger.error("Approve failed")
+            return False
+
+    # ---------- Получение данных ----------
     async def get_ticker(self) -> Optional[Dict[str, float]]:
         try:
             amount_in = self.w3.to_wei(1, "ether")
-            fee = int(os.environ.get("WEB3_POOL_FEE", 500))
+            fee = config.trading.web3_pool_fee
             path = (
                 self.w3.to_bytes(hexstr=WETH_ADDRESS).rjust(20, b"\0")
                 + fee.to_bytes(3, "big")
                 + self.w3.to_bytes(hexstr=USDC_ADDRESS).rjust(20, b"\0")
             )
-            amount_out = self.quoter.functions.quoteExactInput(path, amount_in).call()
+            amount_out = await self.quoter.functions.quoteExactInput(path, amount_in).call()
             price = amount_out / 10**6
-            return {"price": price, "symbol": self.symbol, "timestamp": None}
+            return {"price": price, "symbol": self.symbol}
         except Exception as e:
             if "429" in str(e):
-                time.sleep(10)
+                await asyncio.sleep(10)
                 try:
-                    amount_out = self.quoter.functions.quoteExactInput(path, amount_in).call()
+                    amount_out = await self.quoter.functions.quoteExactInput(path, amount_in).call()
                     price = amount_out / 10**6
-                    return {"price": price, "symbol": self.symbol, "timestamp": None}
+                    return {"price": price, "symbol": self.symbol}
                 except Exception as retry_e:
-                    logger.error(f"Web3 get_ticker failed after retry: {retry_e}")
+                    logger.error(f"get_ticker retry failed: {retry_e}")
                     return None
-            logger.error(f"Web3 get_ticker failed: {e}")
+            logger.error(f"get_ticker failed: {e}")
             return None
 
-    def _get_token_balance(self, token_address: str) -> float:
-        contract = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(token_address),
-            abi=ERC20_ABI,
-        )
-        balance_wei = contract.functions.balanceOf(self.account.address).call()
+    async def _get_token_balance(self, token_address: str) -> float:
+        contract = self.w3.eth.contract(address=self.w3.to_checksum_address(token_address), abi=ERC20_ABI)
+        balance_wei = await contract.functions.balanceOf(self.account.address).call()
         decimals = 18 if token_address.lower() == WETH_ADDRESS.lower() else 6
         return balance_wei / (10**decimals)
 
-    def _get_ticker_sync(self) -> Optional[Dict[str, float]]:
-        try:
-            fee = int(os.environ.get("WEB3_POOL_FEE", 500))
-            amount_in = self.w3.to_wei(1, "ether")
-            path = (
-                self.w3.to_bytes(hexstr=WETH_ADDRESS).rjust(20, b"\0")
-                + fee.to_bytes(3, "big")
-                + self.w3.to_bytes(hexstr=USDC_ADDRESS).rjust(20, b"\0")
-            )
-            amount_out = self.quoter.functions.quoteExactInput(path, amount_in).call()
-            price = amount_out / 10**6
-            return {"price": price, "symbol": self.symbol, "timestamp": None}
-        except Exception as e:
-            logger.error(f"Sync get_ticker failed: {e}")
-            return None
-        
-    def wrap_eth(self, amount_eth: float) -> Optional[str]:
-        #"""Конвертирует ETH в WETH, возвращает tx_hash или None при ошибке."""
+    async def fetch_balance(self) -> Dict[str, float]:
+        if not self.account:
+            return {}
+        eth_balance = self.w3.from_wei(await self.w3.eth.get_balance(self.account.address), "ether")
+        weth_balance = await self._get_token_balance(WETH_ADDRESS)
+        usdc_balance = await self._get_token_balance(USDC_ADDRESS)
+        return {"ETH": eth_balance, "WETH": weth_balance, "USDC": usdc_balance}
+
+    # ---------- Wrap / Unwrap ----------
+    async def wrap_eth(self, amount_eth: float) -> Optional[str]:
         try:
             weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=WETH9_ABI)
             value = self.w3.to_wei(amount_eth, 'ether')
-            gas_params = self._get_gas_params()
-            tx = weth.functions.deposit().build_transaction({
+            nonce = await self.nonce_manager.get_nonce_async(
+                await self.w3.eth.get_transaction_count(self.account.address, "pending")
+            )
+            gas_params = await self._get_gas_params()
+            tx = await weth.functions.deposit().build_transaction({
                 'from': self.account.address,
                 'value': value,
                 'gas': 50000,
-                'nonce': self.w3.eth.get_transaction_count(self.account.address, 'pending'),
+                'nonce': nonce,
                 **gas_params,
             })
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"Wrap {amount_eth} ETH → WETH, tx: {tx_hash.hex()}")
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+            receipt = await asyncio.to_thread(self.w3.eth.wait_for_transaction_receipt, tx_hash, timeout=120)
             if receipt.status == 1:
-                logger.info("✅ Wrap successful")
+                logger.success("✅ Wrap successful")
                 return tx_hash.hex()
             else:
                 logger.error("❌ Wrap reverted")
                 return None
         except Exception as e:
-            logger.error(f"Wrap exception: {e}")
+            logger.error(f"Wrap error: {e}")
             return None
 
-    def unwrap_weth(self, amount_weth: float) -> Optional[str]:
-        #"""Разворачивает WETH в ETH, возвращает tx_hash или None при ошибке."""
+    async def unwrap_weth(self, amount_weth: float) -> Optional[str]:
         try:
             weth = self.w3.eth.contract(address=self.w3.to_checksum_address(WETH_ADDRESS), abi=WETH9_ABI)
             value = self.w3.to_wei(amount_weth, 'ether')
-            gas_params = self._get_gas_params()
-            tx = weth.functions.withdraw(value).build_transaction({
+            nonce = await self.nonce_manager.get_nonce_async(
+                await self.w3.eth.get_transaction_count(self.account.address, "pending")
+            )
+            gas_params = await self._get_gas_params()
+            tx = await weth.functions.withdraw(value).build_transaction({
                 'from': self.account.address,
                 'gas': 50000,
-                'nonce': self.w3.eth.get_transaction_count(self.account.address, 'pending'),
+                'nonce': nonce,
                 **gas_params,
             })
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"Unwrap {amount_weth} WETH → ETH, tx: {tx_hash.hex()}")
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+            receipt = await asyncio.to_thread(self.w3.eth.wait_for_transaction_receipt, tx_hash, timeout=120)
             if receipt.status == 1:
-                logger.info("✅ Unwrap successful")
+                logger.success("✅ Unwrap successful")
                 return tx_hash.hex()
             else:
                 logger.error("❌ Unwrap reverted")
                 return None
         except Exception as e:
-            logger.error(f"Unwrap exception: {e}")
+            logger.error(f"Unwrap error: {e}")
             return None
-        
-    def _read_nonce_file(self) -> int:
-        path = "/app/nonce_data/last_nonce.txt"
-        try:
-            with open(path, "r") as f:
-                return int(f.read().strip())
-        except (FileNotFoundError, ValueError):
-            return self.w3.eth.get_transaction_count(self.account.address, "latest")
 
-    def _write_nonce_file(self, nonce: int) -> None:
-        path = "/app/nonce_data/last_nonce.txt"
-        os.makedirs("/app/nonce_data", exist_ok=True)
-        with open(path, "w") as f:
-            f.write(str(nonce))
-
+    # ---------- Основной своп ----------
     async def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict:
-        if not self.account:
-            return {"error": "WEB3_PRIVATE_KEY not set"}
+        if not self.account or not self.nonce_manager:
+            return {"error": "WEB3_PRIVATE_KEY not set or not initialized"}
 
         try:
-            fee = int(os.environ.get("WEB3_POOL_FEE", 3000))
+            fee = config.trading.web3_pool_fee
 
             if side.lower() == "sell":
                 token_in = WETH_ADDRESS
@@ -309,49 +258,33 @@ class Web3TestnetAdapter:
             else:  # buy
                 token_in = USDC_ADDRESS
                 token_out = WETH_ADDRESS
-                tick = self._get_ticker_sync()
+                # Используем асинхронный get_ticker для получения цены
+                tick = await self.get_ticker()
                 usdc_needed = amount * (tick["price"] if tick else 2000)
                 amount_in_wei = int(usdc_needed * 10**6)
                 amount_out_min = 0
 
-            # --- Проверка баланса ---
-            token_balance = self._get_token_balance(token_in)
-            if token_balance < amount:
-                logger.warning(f"Insufficient {token_in} balance ({token_balance} < {amount}). Skipping swap.")
+            # Проверка баланса (асинхронно)
+            balance = await self._get_token_balance(token_in)
+            if balance < amount:
+                logger.warning(f"Insufficient {token_in} balance ({balance} < {amount})")
                 return {"error": "Insufficient balance"}
 
-            # --- Проверка, что предыдущая транзакция подтвердилась ---
-            pending = self.w3.eth.get_transaction_count(self.account.address, "pending")
-            confirmed = self.w3.eth.get_transaction_count(self.account.address, "latest")
-            if pending != confirmed:
-                logger.warning(f"Nonce conflict (pending={pending}, confirmed={confirmed}). Skipping swap.")
+            # Проверка nonce-конфликта
+            pending_nonce = await self.w3.eth.get_transaction_count(self.account.address, "pending")
+            confirmed_nonce = await self.w3.eth.get_transaction_count(self.account.address, "latest")
+            if pending_nonce != confirmed_nonce:
+                logger.warning("Pending transaction detected, skipping swap to avoid nonce collision")
                 return {"error": "Nonce conflict, try again later"}
 
-            # Проверка allowance
-            token_contract = self.w3.eth.contract(address=self.w3.to_checksum_address(token_in), abi=ERC20_ABI)
-            if token_contract.functions.allowance(self.account.address, ROUTER_ADDRESS).call() < amount_in_wei:
-                logger.error("Insufficient allowance")
+            # Allowance
+            if not await self._ensure_allowance(token_in, ROUTER_ADDRESS, amount_in_wei):
                 return {"error": "Insufficient allowance"}
 
-            # --- атомарный nonce через SQLite ---
-            import sqlite3
-            nonce_db = "/app/nonce_data/nonce.db"
-            os.makedirs("/app/nonce_data", exist_ok=True)
-            conn = sqlite3.connect(nonce_db, timeout=10)
-            conn.execute("CREATE TABLE IF NOT EXISTS nonce (addr TEXT PRIMARY KEY, last_nonce INTEGER)")
-            conn.execute("PRAGMA journal_mode=WAL;")
-            onchain = self.w3.eth.get_transaction_count(self.account.address, "pending")
-            # атомарная операция: получить и увеличить
-            with conn:
-                conn.execute("INSERT OR IGNORE INTO nonce (addr, last_nonce) VALUES (?, ?)",
-                             (self.account.address, onchain))
-                cur = conn.execute("SELECT last_nonce FROM nonce WHERE addr=?", (self.account.address,))
-                db_nonce = cur.fetchone()[0]
-                safe_nonce = max(onchain, db_nonce)
-                conn.execute("UPDATE nonce SET last_nonce=? WHERE addr=?", (safe_nonce + 1, self.account.address))
-            conn.close()
+            # Безопасный nonce
+            safe_nonce = await self.nonce_manager.get_nonce_async(pending_nonce)
 
-            deadline = self.w3.eth.get_block("latest")["timestamp"] + 600
+            # Параметры ExactInputSingle
             swap_tuple = (
                 self.w3.to_checksum_address(token_in),
                 self.w3.to_checksum_address(token_out),
@@ -359,11 +292,11 @@ class Web3TestnetAdapter:
                 self.account.address,
                 amount_in_wei,
                 amount_out_min,
-                0  # sqrtPriceLimitX96
+                0
             )
 
-            gas_params = self._get_gas_params()
-            tx = self.router.functions.exactInputSingle(swap_tuple).build_transaction({
+            gas_params = await self._get_gas_params()
+            tx = await self.router.functions.exactInputSingle(swap_tuple).build_transaction({
                 "from": self.account.address,
                 "gas": 300000,
                 "nonce": safe_nonce,
@@ -371,28 +304,27 @@ class Web3TestnetAdapter:
             })
 
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"Swap tx sent: {tx_hash.hex()}")
 
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
+            receipt = await asyncio.to_thread(
+                self.w3.eth.wait_for_transaction_receipt, tx_hash, timeout=180, poll_latency=1.0
+            )
+
             if receipt.status == 1:
-                logger.info(f"✅ Swap successful! Tx: {tx_hash.hex()}")
+                logger.success(f"✅ Swap successful! Tx: {tx_hash.hex()}")
+                # Обновим nonce
+                await self.nonce_manager.update_nonce_async(receipt)
                 return {"tx_hash": tx_hash.hex(), "status": "success"}
             else:
                 logger.error(f"❌ Swap reverted. Tx: {tx_hash.hex()}")
+                await self.nonce_manager.sync_with_chain_async(await self.w3.eth.get_transaction_count(self.account.address, "pending"))
                 return {"tx_hash": tx_hash.hex(), "status": "failed"}
         except Exception as e:
             logger.error(f"Swap exception: {e}")
+            # Синхронизируем nonce после ошибки
+            if self.nonce_manager:
+                await self.nonce_manager.sync_with_chain_async(
+                    await self.w3.eth.get_transaction_count(self.account.address, "pending")
+                )
             return {"error": str(e)}
-        
-    def fetch_balance(self) -> Dict[str, float]:
-        if not self.account:
-            return {}
-        try:
-            eth_balance = self.w3.from_wei(self.w3.eth.get_balance(self.account.address), "ether")
-            weth_balance = self._get_token_balance(WETH_ADDRESS)
-            usdc_balance = self._get_token_balance(USDC_ADDRESS)
-            return {"ETH": eth_balance, "WETH": weth_balance, "USDC": usdc_balance}
-        except Exception as e:
-            logger.error(f"Web3 balance fetch failed: {e}")
-            return {}
