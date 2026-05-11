@@ -5,6 +5,7 @@ LLM Client — обёртка для локальной модели через 
 """
 import os
 from llama_cpp import Llama
+from typing import Dict, Any, Optional
 
 MODEL_NAME = os.environ.get("LLM_MODEL", "deepseek")  # по умолчанию DeepSeek
 
@@ -32,16 +33,43 @@ class LLMClient:
             chat_format="deepseek" if self.model_name == "deepseek" else None,
         )
 
-    def generate(self, prompt: str, max_tokens: int = 128, temperature: float = 0.7) -> str:
-        if self.model_name == "deepseek":
+    def generate(
+        self,
+        prompt: str,
+        max_tokens: int = 200,
+        temperature: float = 0.35,
+        response_format: Optional[Dict[str, Any]] = None
+    ) -> str:
+        messages = [
+            {"role": "system", "content": "You are a precise trading strategy optimizer. Always respond with valid JSON only."},
+            {"role": "user", "content": prompt}
+        ]
+        kwargs = {
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stop": ["<|User|>", "<|Assistant|>", "\n\n"],
+        }
+        if response_format:
+            kwargs["response_format"] = response_format
+        try:
+            response = self.llm.create_chat_completion(**kwargs)
+            text = response["choices"][0]["message"]["content"].strip()
+            # Очистка
+            if text.startswith("```json"):
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif text.startswith("```"):
+                text = text.split("```")[1].strip()
+            return text
+        except Exception:
+            return self._fallback_generate(prompt, max_tokens, temperature)
+
+    def _fallback_generate(self, prompt: str, max_tokens: int = 128, temperature: float = 0.7) -> str:
+        if self.model_name.startswith("deepseek"):
             full_prompt = f"<|User|>{prompt}<|Assistant|>"
             response = self.llm(full_prompt, max_tokens=max_tokens, temperature=temperature,
                                 stop=["<|User|>", "<|Assistant|>"])
-            text = response["choices"][0]["text"]
-            if ":" in text:
-                text = text.split(" response:")[-1]
-            return text.strip()
         else:
             response = self.llm(prompt, max_tokens=max_tokens, temperature=temperature,
                                 stop=["<|User|>", "\n\n"])
-            return response["choices"][0]["text"].strip()
+        return response["choices"][0]["text"].strip()
