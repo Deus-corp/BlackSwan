@@ -420,12 +420,38 @@ class SwarmNode:
                                                     pass
                         except Exception:
                             pass
-
+                
                 market = best_market
                 self.capital -= self.burn_rate
                 if self.capital <= 0:
                     logger.info(f"[{self.node_id}] died")
                     return
+
+                # -- получаем ордербук для выбранного инструмента --
+                ob_imbalance = 0.0
+                ob_delta_volume = 0.0
+                if self.orderbook_enabled and best_symbol in self.orderbook_analyzers:
+                    analyzer = self.orderbook_analyzers[best_symbol]
+                    metrics = await analyzer.update()  # обновим и получим словарь
+                    if metrics:
+                        ob_imbalance = metrics.get("imbalance", 0.0)
+                        ob_delta_volume = metrics.get("delta_volume", 0.0)
+
+                # -- расширенный контекст для мутации (обновляется редко, но можно хранить последний) --
+                self._last_orderbook_context = {
+                    "imbalance": ob_imbalance,
+                    "delta_volume": ob_delta_volume,
+                    "symbol": best_symbol
+                }
+
+                action = self.trading_controller.decide_action(
+                    market=market,
+                    current_params=self.current_params,
+                    capital=self.capital,
+                    step=self.step_count,
+                    orderbook_imbalance=ob_imbalance,
+                    orderbook_delta_volume=ob_delta_volume
+                )
 
                 expected = market["price"] * EXPECTED_RETURN_RATE
                 _, approved = self.survival.evaluate_trade(self.capital, expected)

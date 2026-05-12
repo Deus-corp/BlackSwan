@@ -1,5 +1,6 @@
 """
-TradingController — ончейн-торговля: свопы, авто-конвертация USDC, wrap/unwrap.
+TradingController — ончейн-торговля: свопы, авто-конвертация USDC, wrap/unwrap,
+принятие решений о входе с учётом ордербука.
 """
 from typing import Dict, Optional
 from loguru import logger
@@ -11,6 +12,9 @@ class TradingController:
     def __init__(self, node_id: str):
         self.node_id = node_id
 
+    # ------------------------------------------------------------
+    # Вспомогательные методы
+    # ------------------------------------------------------------
     async def check_and_rebalance(self, adapter) -> bool:
         """
         Проверяет балансы и при необходимости выполняет конвертацию или wrap/unwrap.
@@ -61,3 +65,51 @@ class TradingController:
         except Exception as e:
             logger.error(f"[{self.node_id}] Swap exception: {e}")
             return {"error": str(e)}
+
+    # ------------------------------------------------------------
+    # Принятие торгового решения (вызывается из основного цикла)
+    # ------------------------------------------------------------
+    def decide_action(
+        self,
+        market: Dict,
+        current_params: Dict[str, float],
+        capital: float,
+        step: int,
+        orderbook_imbalance: float = 0.0,
+        orderbook_delta_volume: float = 0.0,
+    ) -> Dict:
+        """
+        Возвращает словарь с ключами 'action' (buy/sell) и 'amount'.
+        Учитывает рыночную цену, параметры стратегии и ордербук.
+        """
+        price = market.get("price", 100.0)
+        max_risk = current_params.get("max_risk_per_trade", 0.05)
+
+        # Простейшая эвристика: если ожидаемая доходность положительна – buy, иначе sell.
+        # Это можно заменить более сложной логикой в будущем.
+        expected_return = price * config.expected_return_rate  # конфиг, аналогичный узлу
+        side = "buy" if expected_return > price * 0.001 else "sell"
+
+        # Базовый размер позиции: доля капитала, делённая на цену
+        amount = (capital * max_risk) / price
+
+        # --- Корректировка по ордербуку ---
+        # Если imbalance сильно против нашего направления – уменьшаем позицию.
+        if side == "buy" and orderbook_imbalance < -0.1:
+            logger.debug(
+                f"[{self.node_id}] Orderbook: strong sell pressure, reducing buy amount"
+            )
+            amount *= 0.6
+        elif side == "sell" and orderbook_imbalance > 0.1:
+            logger.debug(
+                f"[{self.node_id}] Orderbook: strong buy pressure, reducing sell amount"
+            )
+            amount *= 0.6
+
+        # Защита от слишком маленьких или отрицательных значений
+        amount = max(0.0, amount)
+
+        return {
+            "action": side,
+            "amount": amount,
+        }
