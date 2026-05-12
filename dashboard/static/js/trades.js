@@ -1,30 +1,44 @@
-// trades.js – страница сделок с анимацией
-
-const tbody = document.querySelector('#trades-table tbody');
-let interval;
+// trades.js – загрузка и отображение списка трейдов с анимацией
+let autoRefreshInterval = null;
 
 async function fetchTrades() {
-    const res = await fetch('/api/trades');
-    const data = await res.json();
-    tbody.innerHTML = data.map((trade, index) =>
-        `<tr class="trade-row-new" style="animation-delay:${index * 0.03}s">
-            <td>${trade.node}</td>
-            <td>${trade.side || ''}</td>
-            <td>${trade.amount || ''}</td>
-            <td>${trade.symbol || ''}</td>
-            <td><a href="https://sepolia.etherscan.io/tx/${trade.tx_hash}" target="_blank" style="color:#58a6ff">${trade.tx_hash.substring(0,10)}...</a></td>
-            <td class="status-${trade.status}">${trade.status}</td>
-        </tr>`
-    ).join('');
-}
-
-function toggleAutoRefresh() {
-    if (document.getElementById('autoRefresh').checked) {
-        fetchTrades();
-        interval = setInterval(fetchTrades, 10000);
-    } else if (interval) {
-        clearInterval(interval);
+    const tbody = document.querySelector('#trades-table tbody');
+    if (!tbody) return;
+    try {
+        const res = await fetch('/api/trades');
+        const data = await res.json();
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="6">No trades found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map((t, idx) => {
+            const txHash = t.tx_hash || 'N/A';
+            const truncated = txHash.substring(0, 10) + '...';
+            const link = txHash !== 'N/A' ? `<a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank">${truncated}</a>` : truncated;
+            const amount = t.amount || '—';
+            return `<tr class="trade-row-new" style="animation-delay:${idx * 0.03}s">
+                <td>${t.node || 'unknown'}</td>
+                <td>${t.side || 'unknown'}</td>
+                <td>${amount}</td>
+                <td>${t.symbol || 'WETH/USDC'}</td>
+                <td>${link}</td>
+                <td class="status-${t.status}">${t.status || 'unknown'}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        console.error('Error fetching trades:', e);
     }
 }
 
+function toggleAutoRefresh() {
+    const checkbox = document.getElementById('autoRefresh');
+    if (checkbox && checkbox.checked) {
+        autoRefreshInterval = setInterval(fetchTrades, 10000);
+    } else if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
+
+// Первая загрузка
 fetchTrades();

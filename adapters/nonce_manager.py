@@ -2,6 +2,7 @@
 NonceManager — async-safe управление nonce через SQLite (WAL-режим).
 """
 import sqlite3, time, asyncio
+import json
 from pathlib import Path
 from typing import Optional
 from loguru import logger
@@ -28,6 +29,16 @@ class NonceManager:
                     address TEXT PRIMARY KEY,
                     nonce INTEGER DEFAULT 0,
                     last_updated REAL DEFAULT 0
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS mutation_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    node_id TEXT,
+                    timestamp REAL,
+                    old_params TEXT,
+                    new_params TEXT,
+                    context TEXT
                 )
             """)
             conn.commit()
@@ -99,3 +110,11 @@ class NonceManager:
                     continue
                 conn.commit()
                 return use_nonce
+            
+    def save_mutation(self, node_id: str, old_params: dict, new_params: dict, context: str):
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT INTO mutation_history (node_id, timestamp, old_params, new_params, context) VALUES (?, ?, ?, ?, ?)",
+                (node_id, time.time(), json.dumps(old_params), json.dumps(new_params), context)
+            )
+            conn.commit()

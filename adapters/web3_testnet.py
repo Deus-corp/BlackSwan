@@ -362,7 +362,7 @@ class Web3TestnetAdapter:
         gas_params = await self._get_gas_params()
         tx = await multicall.functions.tryAggregate(False, calls).build_transaction({
             "from": self.account.address,
-            "gas": 300000 * len(swaps),  # газ зависит от количества свопов
+            "gas": 500000 * len(swaps),
             "nonce": safe_nonce,
             **gas_params,
         })

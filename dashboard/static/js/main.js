@@ -1,15 +1,19 @@
-// main.js – управление контейнерами и действиями на главной странице
+// main.js – безопасная версия для всех страниц
 
-const containerOutput = document.getElementById('container-output');
+// Все обращения к DOM выполняем только если элементы существуют
+function getElementSafe(id) {
+    return document.getElementById(id);
+}
 
 // ---------- Глобальный индикатор состояния ----------
 function showGlobalStatus(message, isError = false) {
-    const box = document.getElementById('global-status');
-    const icon = document.getElementById('status-icon');
-    const msg = document.getElementById('status-message');
+    const box = getElementSafe('global-status');
+    if (!box) return;
+    const icon = getElementSafe('status-icon');
+    const msg = getElementSafe('status-message');
     if (message) {
-        icon.innerHTML = isError ? '❌' : '<span class="spinning">⏳</span>';
-        msg.textContent = message;
+        if (icon) icon.innerHTML = isError ? '❌' : '<span class="spinning">⏳</span>';
+        if (msg) msg.textContent = message;
         box.style.display = 'block';
     } else {
         box.style.display = 'none';
@@ -23,16 +27,23 @@ async function performAction(url, method, body, btn) {
         btn.classList.add('loading');
     }
     showGlobalStatus('Operation in progress, please wait...');
+    const containerOutput = getElementSafe('container-output');
     try {
         const response = await fetch(url, { method, headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
         if (!response.ok) {
             const text = await response.text();
             throw new Error(text || response.statusText);
         }
+        const text = await response.text();
+        if (containerOutput) {
+            containerOutput.textContent = text;
+        }
         showGlobalStatus('', false);
     } catch (err) {
         showGlobalStatus('Error: ' + err.message, true);
-        throw err; // пробрасываем, чтобы вызывающий код знал об ошибке
+        if (containerOutput) {
+            containerOutput.textContent = 'Error: ' + err.message;
+        }
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -50,15 +61,9 @@ document.querySelectorAll('form').forEach(form => {
         const method = form.getAttribute('method') || 'post';
         const formData = new FormData(form);
         const params = new URLSearchParams(formData);
+        await performAction(url, method, params.toString(), btn);
         if (url.includes('/api/start') || url.includes('/api/stop') || url.includes('/api/restart') || url.includes('/api/rebuild')) {
-            try {
-                await performAction(url, method, params.toString(), btn);
-                location.reload();
-            } catch (error) {
-                // Ошибка уже обработана в performAction
-            }
-        } else {
-            await performAction(url, method, params.toString(), btn);
+            location.reload();
         }
     });
 });
@@ -84,15 +89,21 @@ async function unpauseContainer() {
     await performAction('/api/container_unpause', 'POST', 'container=lab_swarm_demo-node-1', btn);
 }
 
-// ---------- Статус контейнеров (автообновление) ----------
+// ---------- Статус контейнеров (только если элемент существует) ----------
 async function fetchContainerStatus() {
-    const res = await fetch('/api/container_status_json');
-    const data = await res.json();
-    let text = '';
-    data.forEach(c => {
-        text += `${c.name}: ${c.status}\n`;
-    });
-    document.getElementById('container-status').textContent = text || 'No containers found.';
+    const el = getElementSafe('container-status');
+    if (!el) return;
+    try {
+        const res = await fetch('/api/container_status_json');
+        const data = await res.json();
+        let text = '';
+        data.forEach(c => { text += `${c.name}: ${c.status}\n`; });
+        el.textContent = text || 'No containers found.';
+    } catch (e) {
+        console.error(e);
+    }
 }
-fetchContainerStatus();
-setInterval(fetchContainerStatus, 30000);
+if (getElementSafe('container-status')) {
+    fetchContainerStatus();
+    setInterval(fetchContainerStatus, 30000);
+}

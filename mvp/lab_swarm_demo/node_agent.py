@@ -34,6 +34,7 @@ from src.intelligence.strategy_schema import StrategyParams
 from swarm_config import config
 from src.core.trading_controller import TradingController
 from src.evolution.mutation_engine import MutationEngine
+from prometheus_client import Counter, Gauge
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -49,9 +50,13 @@ _llm_mutation_count = 0
 _llm_mutation_total_impact = 0.0
 _last_capital = None          # запоминаем предыдущий капитал для расчёта impact
 
+mutation_counter = Counter('swarm_mutations_total', 'Total number of LLM mutations')
+mutation_impact_gauge = Gauge('swarm_mutation_impact', 'Average impact of mutations on capital')
+
 def note_llm_mutation():
     global _llm_mutation_count
     _llm_mutation_count += 1
+    mutation_counter.inc()
 
 def update_llm_impact(current_capital: float):
     global _llm_mutation_total_impact, _last_capital
@@ -59,6 +64,9 @@ def update_llm_impact(current_capital: float):
         impact = current_capital - _last_capital
         _llm_mutation_total_impact += impact
     _last_capital = current_capital
+    # Обновляем средний impact (можно обновлять не каждый раз, а при чтении, но так проще)
+    avg = _llm_mutation_total_impact / _llm_mutation_count if _llm_mutation_count else 0.0
+    mutation_impact_gauge.set(avg)
 
 def get_llm_stats() -> Tuple[int, float]:
     avg = _llm_mutation_total_impact / _llm_mutation_count if _llm_mutation_count else 0.0
@@ -199,7 +207,8 @@ class SwarmNode:
         self._seed_from_memory()
 
         self.trading_controller = TradingController(self.node_id)
-        self.mutation_engine = MutationEngine(self.llm)
+        self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id)
+        self.nonce_manager = None   # будет инициализирован после создания адаптера
 
     def is_leader(self, block_number: int) -> bool:
         leader_index = abs(hash(f"{self.node_id}:{block_number}")) % config.total_nodes
@@ -371,12 +380,13 @@ class SwarmNode:
                     best_market = {"price": random.uniform(90, 110)}
                     best_symbol = self.primary_symbol
 
-                # === Планирование операций (накопление pending) ===
+                # Авто-конвертация USDC/WETH/ETH (выполняет только лидер)
                 if self.market_mode == "web3":
                     adapter = self.market_adapter.get_adapter(best_symbol)
                     if adapter:
-                        # Авто-конвертация USDC/WETH/ETH (добавляет операции в pending)
-                        await self.trading_controller.check_and_rebalance(adapter)
+                        block_number = await adapter.w3.eth.block_number
+                        if self.is_leader(block_number):
+                            await self.trading_controller.check_and_rebalance(adapter)
 
                 # Проверка стоп‑лосса для фьючерсных позиций
                 if self.market_mode == "futures":
@@ -423,14 +433,22 @@ class SwarmNode:
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
                     if fraction > 0:
-                        # Планируем sell‑своп (добавляется в pending)
+                        swap_result = None
+                        test_amount = config.trading.test_web3_swap_amount
+                        side = config.trading.test_web3_swap_side
+                        # --- Реальный своп (sell) ---
                         if self.market_mode in ("web3", "live"):
                             adapter = self.market_adapter.get_adapter(best_symbol)
-                            if adapter and hasattr(adapter, "place_order"):
-                                test_amount = config.trading.test_web3_swap_amount
-                                if test_amount > 0:
-                                    side = config.trading.test_web3_swap_side
-                                    self.trading_controller.plan_swap(side, test_amount, market.get("price"))
+                            if adapter and hasattr(adapter, "place_order") and test_amount > 0:
+                                block_number = await adapter.w3.eth.block_number
+                                if self.is_leader(block_number):
+                                    logger.info(f"Leader, swap: {side} {test_amount} {best_symbol}")
+                                    try:
+                                        swap_result = await adapter.place_order(side, test_amount, price=market.get("price"))
+                                        logger.info(f"📡 Real swap result: {swap_result}")
+                                    except Exception as e:
+                                        logger.error(f"Real swap error: {e}")
+                                        swap_result = {"error": str(e)}
 
                         ret = market["price"] * fraction * 0.1
                         prev_capital = self.capital
@@ -459,23 +477,25 @@ class SwarmNode:
                                 except Exception as e:
                                     logger.error(f"Hedge order failed: {e}")
 
-                        self.event_store.append(Event.create(
-                            node_id=self.node_id,
-                            event_type="trade_executed",
-                            payload={
-                                "step": self.step_count,
-                                "symbol": best_symbol,
-                                "price": market["price"],
-                                "fraction": fraction,
-                                "ret": ret,
-                                "capital_before": prev_capital,
-                                "capital_after": self.capital,
-                                "dq": self.survival.dq,
-                                "params": self.current_params,
-                                "trace_id": self._trace_id,
-                            },
-                            parent_id=self._trace_id,
-                        ))
+                        # Запись события сделки
+                        if swap_result and isinstance(swap_result, dict):
+                            self.event_store.append(Event.create(
+                                node_id=self.node_id,
+                                event_type="trade_executed",
+                                payload={
+                                    "step": self.step_count,
+                                    "symbol": best_symbol,
+                                    "side": side,
+                                    "amount": test_amount,
+                                    "tx_hash": swap_result.get("tx_hash", ""),
+                                    "status": swap_result.get("status", "unknown"),
+                                    "capital_before": prev_capital,
+                                    "capital_after": self.capital,
+                                    "trace_id": self._trace_id,
+                                },
+                                parent_id=self._trace_id,
+                            ))
+
                         await self.telegram_notifier.send(
                             f"🦢 <b>Trade</b>\n"
                             f"Node: {self.node_id}\n"
@@ -484,16 +504,6 @@ class SwarmNode:
                             f"Price: {market['price']:.2f}\n"
                             f"Capital: {self.capital:.2f}"
                         )
-
-                # === Выполнение батча (только лидер, один раз в конце итерации) ===
-                if self.market_mode == "web3":
-                    adapter = self.market_adapter.get_adapter(best_symbol)
-                    if adapter:
-                        block_number = await adapter.w3.eth.block_number
-                        if self.is_leader(block_number) and self.trading_controller.pending_swaps:
-                            logger.info(f"[{self.node_id}] Leader, executing batch")
-                            batch_result = await self.trading_controller.execute_pending_batch(adapter)
-                            logger.info(f"📡 Batch result: {batch_result}")
 
                 # ---- import genomes ----
                 if self.step_count - self.last_import_step > self.import_cooldown:
@@ -813,6 +823,9 @@ class SwarmNode:
                 if adapter and hasattr(adapter, 'initialize'):
                     logger.info(f"Initializing web3 adapter for {sym} ...")
                     await adapter.initialize()
+                if adapter:
+                    self.nonce_manager = adapter.nonce_manager
+                    self.mutation_engine.nonce_manager = self.nonce_manager
 
         await asyncio.gather(
             self.gossip.start(),

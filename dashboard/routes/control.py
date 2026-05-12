@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from dashboard.docker_service import start_swarm, stop_swarm, rebuild_swarm, update_config
-from dashboard.routes.main import render_main
-import subprocess
+from dashboard.routes.base_template import render_page
+from dashboard.routes.main import MAIN_CONTENT
 from dashboard.docker_service import get_container_stats, inspect_container, pause_container, unpause_container
 from fastapi.responses import PlainTextResponse
 
@@ -13,25 +13,29 @@ async def api_start(request: Request):
     form = await request.form()
     scale = int(form.get("scale", 1))
     msg = start_swarm(scale)
-    return HTMLResponse(render_main(message=msg))
+    content = f'<section><h3>Result</h3><pre>{msg}</pre></section>' + MAIN_CONTENT
+    return HTMLResponse(render_page(request, content))
 
 @router.post("/api/stop")
-async def api_stop():
+async def api_stop(request: Request):
     msg = stop_swarm()
-    return HTMLResponse(render_main(message=msg))
+    content = f'<section><h3>Result</h3><pre>{msg}</pre></section>' + MAIN_CONTENT
+    return HTMLResponse(render_page(request, content))
 
 @router.post("/api/restart")
-async def api_restart():
+async def api_restart(request: Request):
     stop_swarm()
     msg = start_swarm()
-    return HTMLResponse(render_main(message=msg))
+    content = f'<section><h3>Result</h3><pre>{msg}</pre></section>' + MAIN_CONTENT
+    return HTMLResponse(render_page(request, content))
 
 @router.post("/api/rebuild")
 async def api_rebuild(request: Request):
     form = await request.form()
     scale = int(form.get("scale", 1))
     msg = rebuild_swarm(scale)
-    return HTMLResponse(render_main(message=msg))
+    content = f'<section><h3>Result</h3><pre>{msg}</pre></section>' + MAIN_CONTENT
+    return HTMLResponse(render_page(request, content))
 
 @router.post("/api/container_stats")
 async def api_container_stats(request: Request):
