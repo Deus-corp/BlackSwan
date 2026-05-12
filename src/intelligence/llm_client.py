@@ -4,6 +4,7 @@ LLM Client – гибкий клиент для локального llama_cpp �
 import os
 import json
 import requests
+import random
 from typing import Optional, Dict, Any
 from loguru import logger
 
@@ -57,11 +58,11 @@ class LLMClient:
                           stop=["<|User|>", "<|Assistant|>", "\n\n"])
         return output["choices"][0]["text"].strip()
 
-    def _generate_api(self, prompt: str, max_tokens: int, temperature: float,
-                      response_format: Optional[Dict[str, Any]] = None) -> str:
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+    def _generate_api(self, prompt, max_tokens, temperature, response_format=None):
+        if not self.api_key:
+            logger.warning("No DEEPSEEK_API_KEY set, using fallback params")
+            return '{"max_risk_per_trade": 0.05, "phi_llm": 0.15}'
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
         payload = {
             "model": self.model_name,
             "messages": [
@@ -73,13 +74,11 @@ class LLMClient:
         }
         if response_format:
             payload["response_format"] = response_format
-
         try:
             resp = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
             resp.raise_for_status()
             data = resp.json()
             text = data["choices"][0]["message"]["content"].strip()
-            # Очистка от ```json
             if text.startswith("```json"):
                 text = text.split("```json")[1].split("```")[0].strip()
             elif text.startswith("```"):
@@ -87,8 +86,14 @@ class LLMClient:
             return text
         except Exception as e:
             logger.error(f"LLM API request failed: {e}")
-            # Fallback: вернуть текущие параметры без изменений (будет обработано в вызывающем коде)
-            return '{"max_risk_per_trade": 0.05, "phi_llm": 0.15}'
+            return json.dumps({
+                "max_risk_per_trade": round(random.uniform(0.01, 0.3), 4),
+                "phi_llm": round(random.uniform(0.01, 1.0), 4),
+                "stop_loss_ratio": round(random.uniform(0.001, 0.2), 4),
+                "trailing_stop_ratio": round(random.uniform(0.0, 0.1), 4),
+                "momentum_window": random.randint(2, 50),
+                "volatility_threshold": round(random.uniform(0.001, 0.3), 4),
+            })
 
     def _fallback_generate(self, prompt, max_tokens=128, temperature=0.7):
         # Для совместимости, если кто-то вызовет старый метод

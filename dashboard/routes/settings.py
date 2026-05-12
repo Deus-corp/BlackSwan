@@ -1,29 +1,13 @@
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
-from dashboard.docker_service import get_current_config, update_config
+from dashboard.docker_service import update_config
+from dashboard.routes.base_template import render_page
 from pathlib import Path
-import os
 import subprocess
 
 router = APIRouter()
 
-SETTINGS_HTML = """<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Settings</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦢</text></svg>">
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <h1>🦢 Settings</h1>
-    <div class="tabs">
-        <a href="/">🏠 Main</a>
-        <a href="/trades">📈 Trades</a>
-        <a href="/logs">📜 Logs</a>
-        <a href="/dashboard">📊 Dashboard</a>
-        <a href="/settings" class="active">⚙️ Settings</a>
-    </div>
+SETTINGS_CONTENT = """
     <section>
         <h2>Compose Configuration</h2>
         <form action="/api/update_config" method="post">
@@ -81,12 +65,11 @@ SETTINGS_HTML = """<!DOCTYPE html>
             document.getElementById('approve-msg').textContent = text;
         }
     </script>
-</body>
-</html>"""
+"""
 
 @router.get("/settings", response_class=HTMLResponse)
-def settings_page():
-    return HTMLResponse(SETTINGS_HTML)
+def settings_page(request: Request):
+    return HTMLResponse(render_page(request, SETTINGS_CONTENT, "Settings"))
 
 @router.post("/api/update_config")
 async def update_config_form(
@@ -133,7 +116,6 @@ async def update_secrets(
     env_path = Path(__file__).resolve().parent.parent.parent / "mvp" / "lab_swarm_demo" / ".env"
     lines = env_path.read_text().splitlines()
     updated_keys = set()
-    # Словарь, чтобы сопоставлять имена полей с ключами в .env
     secret_map = {
         "WEB3_PRIVATE_KEY": WEB3_PRIVATE_KEY,
         "BINANCE_TESTNET_API_KEY": BINANCE_TESTNET_API_KEY,
@@ -154,7 +136,6 @@ async def update_secrets(
                 break
         if not replaced:
             new_lines.append(line)
-    # Добавляем ключи, которых не было в файле
     for key, value in secret_map.items():
         if key not in updated_keys:
             new_lines.append(f"{key}={value}")

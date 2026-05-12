@@ -1,34 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
+from dashboard.routes.base_template import render_page
 
 router = APIRouter()
 
-# Ваш идентификатор дашборда (можно заменить на любой другой)
-DASHBOARD_ID = "adxhpc6"
-DASHBOARD_SLUG = "blackswan-swarm"
-
-DASHBOARD_HTML = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>BlackSwan Dashboard</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <div class="tabs">
-        <a href="/">🏠 Main</a>
-        <a href="/trades">📈 Trades</a>
-        <a href="/logs">📜 Logs</a>
-        <a href="/dashboard" class="active">📊 Dashboard</a>
-        <a href="/settings">⚙️ Settings</a>
-    </div>
+DASHBOARD_CONTENT = """
     <iframe class="iframe-container"
-            src="http://localhost:3000/d/{DASHBOARD_ID}/{DASHBOARD_SLUG}?orgId=1&refresh=10s&kiosk"
-            frameborder="0">
+            src="http://localhost:3000/d/adxhpc6/blackswan-swarm?orgId=1&refresh=10s&kiosk"
+            frameborder="0" style="width:100%; height:800px;">
     </iframe>
-</body>
-</html>"""
+"""
 
 @router.get("/dashboard", response_class=HTMLResponse)
-def dashboard():
-    return HTMLResponse(DASHBOARD_HTML)
+def dashboard_page(request: Request):
+    return HTMLResponse(render_page(request, DASHBOARD_CONTENT, "BlackSwan Dashboard"))

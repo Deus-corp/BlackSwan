@@ -57,7 +57,7 @@ services:
     volumes:
       - ../../llama_cpp:/app/llama_cpp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - node_nonce_data:/app/nonce_data
+      - ../../data/nonce:/app/nonce_data
 
   prometheus:
     image: prom/prometheus:latest

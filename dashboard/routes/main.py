@@ -1,37 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
+from dashboard.routes.base_template import render_page
 
 router = APIRouter()
 
-HTML_HEADER = """<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>BlackSwan Control Panel</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦢</text></svg>">
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <div id="global-status" style="display:none; background:#21262d; border:1px solid #30363d; border-radius:8px; padding:0.75rem 1.5rem; margin-bottom:1rem; color:#c9d1d9;">
-        <span id="status-icon"></span>
-        <span id="status-message"></span>
-    </div>
-    <h1>🦢 BlackSwan Control Panel</h1>
-    <div class="tabs">
-        <a href="/" class="active">🏠 Main</a>
-        <a href="/trades">📈 Trades</a>
-        <a href="/logs">📜 Logs</a>
-        <a href="/dashboard">📊 Dashboard</a>
-        <a href="/settings">⚙️ Settings</a>
-    </div>
-"""
-
-HTML_FOOTER = """</body>
-</html>"""
-
-def render_main(message: str = "", logs_text: str = "Logs will appear here...") -> str:
-    msg_section = f"<section><h3>Result</h3><pre>{message}</pre></section>" if message else ""
-    return f"""{HTML_HEADER}
+MAIN_CONTENT = """
     <section>
         <h2>Swarm Actions</h2>
         <form action="/api/start" method="post" style="display:inline">
@@ -62,13 +35,11 @@ def render_main(message: str = "", logs_text: str = "Logs will appear here...") 
         <pre id="container-status">Loading...</pre>
         <button class="btn" onclick="fetchContainerStatus()">🔄 Refresh</button>
     </section>
-    {msg_section}
-<script src="/static/js/main.js"></script>
-    {HTML_FOOTER}"""
+"""
 
 @router.get("/", response_class=HTMLResponse)
-def index():
-    return HTMLResponse(render_main())
+def index(request: Request):
+    return HTMLResponse(render_page(request, MAIN_CONTENT))
 
 @router.get("/api/container_status_json")
 def container_status_json():
