@@ -73,7 +73,7 @@ class SwarmConfig(BaseSettings):
     import_cooldown: int = Field(default=5, alias="IMPORT_COOLDOWN")
 
     # Доп. старые поля
-    expected_return_rate: float = Field(default=0.1 * 0.05)  # без env, только код
+    expected_return_rate: float = Field(default=20.0, alias="EXPECTED_RETURN_RATE")
     max_normalized_capital: float = Field(default=10000.0)
 
     # ----- Gossip & Service -----
