@@ -80,7 +80,7 @@ class CRDTAdapter:
                 genome = envelope.payload
 
                 # --- КАРАНТИН ДЛЯ memory.fact ---
-                if self.quarantine and envelope.payload_type == "memory.fact":
+                if self.quarantine and envelope.payload_type == "memory.fact" and config.quarantine_enabled:
                     await self.quarantine.process(genome)
 
             else:
