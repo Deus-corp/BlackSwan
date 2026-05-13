@@ -93,6 +93,7 @@ class SwarmConfig(BaseSettings):
     hedge_enabled: bool = Field(default=True, alias="HEDGE_ENABLED")
     hedge_ratio: float = Field(default=0.5, alias="HEDGE_RATIO")
     capital_alert_threshold: float = Field(default=100.0, alias="CAPITAL_ALERT_THRESHOLD")
+    quarantine_enabled: bool = Field(default=False, alias="QUARANTINE_ENABLED")
 
     # ----- Web3 -----
     web3_rpc_url: str = Field(default="https://ethereum-sepolia.publicnode.com", alias="WEB3_RPC_URL")

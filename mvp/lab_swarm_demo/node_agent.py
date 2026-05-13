@@ -463,6 +463,26 @@ class SwarmNode:
                         swap_result = None
                         test_amount = config.trading.test_web3_swap_amount
                         side = config.trading.test_web3_swap_side
+
+                        # --- Динамическая корректировка объёма под баланс ---
+                        if self.market_mode in ("web3", "live"):
+                            adapter = self.market_adapter.get_adapter(best_symbol)
+                            if adapter:
+                                try:
+                                    if side == "sell":
+                                        weth_bal = await adapter._get_token_balance(WETH_ADDRESS)
+                                        if weth_bal < test_amount:
+                                            logger.warning(f"Low WETH balance ({weth_bal}), reducing swap size")
+                                            test_amount = max(weth_bal, 0.0)
+                                    elif side == "buy":
+                                        usdc_bal = await adapter._get_token_balance(USDC_ADDRESS)
+                                        # Примерная оценка: сколько WETH можем купить за USDC
+                                        max_weth = usdc_bal / market["price"] if market.get("price", 0) > 0 else 0.0
+                                        if max_weth < test_amount:
+                                            test_amount = max_weth
+                                except Exception as e:
+                                    logger.warning(f"Balance check skipped: {e}")
+                        # ----------------------------------------------------
                         # --- Реальный своп (sell) ---
                         if self.market_mode in ("web3", "live"):
                             adapter = self.market_adapter.get_adapter(best_symbol)
@@ -658,6 +678,20 @@ class SwarmNode:
                         )
                         if external_context:
                             context += "\n" + external_context
+
+                        # --- Memory replay: добавляем похожие успешные эпизоды ---
+                        if len(self.memory) > 0:
+                            vol = self._current_volatility()
+                            similar = self.memory.find_similar(vol, self.survival.dq, top_k=3)
+                            if similar:
+                                memory_lines = ["Past successful strategies in similar conditions:"]
+                                for i, rec in enumerate(similar):
+                                    params = rec.get("params", {})
+                                    fitness = rec.get("fitness", 0.0)
+                                    memory_lines.append(f"{i+1}. params={params}, fitness={fitness:.4f}")
+                                memory_context = "\n".join(memory_lines)
+                                context += "\n" + memory_context
+                        # --------------------------------------------------------
 
                         new_params = self.mutation_engine.mutate(self.engine.champion[0], context)
                         if new_params != self.engine.champion[0]:
