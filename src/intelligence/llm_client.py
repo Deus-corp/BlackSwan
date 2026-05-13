@@ -3,12 +3,11 @@ LLM Client – гибкий клиент для локального llama_cpp �
 """
 import os
 import json
-import requests
 import random
+import requests
 from typing import Optional, Dict, Any
 from loguru import logger
 
-# Попробуем импортировать llama_cpp; если нет – будем использовать только API
 try:
     from llama_cpp import Llama
     LLAMA_AVAILABLE = True
@@ -23,15 +22,12 @@ class LLMClient:
         self.llm = None
         self.use_local = False
 
-        # Определяем, нужно ли загружать локальную модель
-        # Если выбран deepseek/smollm17 и есть API URL – используем API
         if self.model_name in ("deepseek", "smollm17") and not api_url:
             api_url = os.getenv("LLM_API_URL", "https://api.deepseek.com/v1/chat/completions")
         self.api_url = api_url
         self.api_key = os.getenv("DEEPSEEK_API_KEY", "")
 
         if LLAMA_AVAILABLE and self.model_name not in ("deepseek", "smollm17"):
-            # Только если явно не указан API, пробуем загрузить локально
             try:
                 self.llm = Llama(model_path=f"./llama_cpp/models/{self.model_name}.gguf",
                                  n_ctx=2048, verbose=False)
@@ -39,8 +35,9 @@ class LLMClient:
                 logger.info(f"Local LLM loaded: {self.model_name}")
             except Exception as e:
                 logger.warning(f"Cannot load local LLM: {e}")
+
         if not self.use_local and not self.api_url:
-            logger.warning("LLMClient: no local model and no API URL configured")
+            logger.warning("LLMClient: no local model and no API URL configured – will use fallback random params")
         elif self.api_url:
             logger.info(f"LLMClient using remote API: {self.api_url}")
 
@@ -51,7 +48,8 @@ class LLMClient:
         elif self.api_url:
             return self._generate_api(prompt, max_tokens, temperature, response_format)
         else:
-            raise RuntimeError("LLMClient is not properly configured")
+            # Нет ни локальной модели, ни API – сразу возвращаем случайные новые параметры
+            return self._random_strategy_json()
 
     def _generate_local(self, prompt: str, max_tokens: int, temperature: float) -> str:
         output = self.llm(prompt, max_tokens=max_tokens, temperature=temperature,
@@ -60,8 +58,9 @@ class LLMClient:
 
     def _generate_api(self, prompt, max_tokens, temperature, response_format=None):
         if not self.api_key:
-            logger.warning("No DEEPSEEK_API_KEY set, using fallback params")
-            return '{"max_risk_per_trade": 0.05, "phi_llm": 0.15}'
+            logger.warning("No DEEPSEEK_API_KEY set, using random fallback params")
+            return self._random_strategy_json()
+
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
         payload = {
             "model": self.model_name,
@@ -86,15 +85,17 @@ class LLMClient:
             return text
         except Exception as e:
             logger.error(f"LLM API request failed: {e}")
-            return json.dumps({
-                "max_risk_per_trade": round(random.uniform(0.01, 0.3), 4),
-                "phi_llm": round(random.uniform(0.01, 1.0), 4),
-                "stop_loss_ratio": round(random.uniform(0.001, 0.2), 4),
-                "trailing_stop_ratio": round(random.uniform(0.0, 0.1), 4),
-                "momentum_window": random.randint(2, 50),
-                "volatility_threshold": round(random.uniform(0.001, 0.3), 4),
-            })
+            return self._random_strategy_json()
 
-    def _fallback_generate(self, prompt, max_tokens=128, temperature=0.7):
-        # Для совместимости, если кто-то вызовет старый метод
-        return self.generate(prompt, max_tokens, temperature)
+    def _random_strategy_json(self) -> str:
+        """Генерирует случайные, но разумные параметры стратегии в виде JSON."""
+        import random
+        params = {
+            "max_risk_per_trade": round(random.uniform(0.01, 0.3), 4),
+            "phi_llm": round(random.uniform(0.01, 1.0), 4),
+            "stop_loss_ratio": round(random.uniform(0.001, 0.2), 4),
+            "trailing_stop_ratio": round(random.uniform(0.0, 0.1), 4),
+            "momentum_window": random.randint(2, 50),
+            "volatility_threshold": round(random.uniform(0.001, 0.3), 4),
+        }
+        return json.dumps(params)

@@ -186,7 +186,7 @@ class SwarmNode:
 
         # Оценка выживания и мотивация
         self.survival: SurvivalEvaluator = SurvivalEvaluator()
-        self.survival.dq = 0.02
+        self.survival.dq = 0.03
         self.survival.liveness = 1.0
 
         self.curiosity: CuriosityEngine = CuriosityEngine(window_size=10, surprise_threshold=0.3)
@@ -207,7 +207,7 @@ class SwarmNode:
         self._seed_from_memory()
 
         self.trading_controller = TradingController(self.node_id)
-        self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id)
+        self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id, nonce_manager=None, event_store=self.event_store)
         self.nonce_manager = None   # будет инициализирован после создания адаптера
 
     def is_leader(self, block_number: int) -> bool:
@@ -455,6 +455,7 @@ class SwarmNode:
 
                 expected = market["price"] * EXPECTED_RETURN_RATE
                 _, approved = self.survival.evaluate_trade(self.capital, expected)
+                logger.info(f"[{self.node_id}] Survival approved={approved}, capital={self.capital:.2f}, expected={expected:.4f}")
                 logger.debug(f"Survival check: expected={expected:.4f} approved={approved}")
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
