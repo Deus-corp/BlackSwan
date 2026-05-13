@@ -66,7 +66,7 @@ class SwarmConfig(BaseSettings):
     market_url: Optional[str] = Field(default=None, alias="MARKET_URL")   # для обратной совместимости
     burn_rate: float = Field(default=0.5, ge=0.0, le=1.0, alias="BURN_RATE")
     failure_prob: float = Field(default=0.0, ge=0.0, le=0.3, alias="FAILURE_PROB")
-    gossip_interval: float = Field(default=1.5, ge=0.1, le=10.0, alias="GOSSIP_INTERVAL")
+    gossip_interval: float = Field(default=1.0, ge=0.1, le=10.0, alias="GOSSIP_INTERVAL")
     max_state: int = Field(default=200, alias="MAX_STATE")
     ttl: int = Field(default=300, alias="TTL")
     max_import: int = Field(default=2, alias="MAX_IMPORT")
@@ -79,7 +79,7 @@ class SwarmConfig(BaseSettings):
     # ----- Gossip & Service -----
     gossip_port: int = Field(default=9777, alias="GOSSIP_PORT")
     total_nodes: int = Field(default=4, alias="TOTAL_NODES")
-    gossip_signing_enabled: bool = Field(default=False, alias="GOSSIP_SIGNING_ENABLED")
+    gossip_signing_enabled: bool = Field(default=True, alias="GOSSIP_SIGNING_ENABLED")
     memory_api_enabled: bool = Field(default=True, alias="MEMORY_API_ENABLED")
     market_mode: str = Field(default="web3", alias="MARKET_MODE")
     trading_symbols: str = Field(default="WETH/USDC", alias="TRADING_SYMBOLS")

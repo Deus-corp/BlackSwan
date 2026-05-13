@@ -9,9 +9,10 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 from src.core.crdt_layer import GenomeCRDT, CRDTStorage
-from src.security.gossip_envelope import GossipEnvelope, verify_envelope
+from src.security.gossip_envelope import GossipEnvelope, verify_envelope, b64decode
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from src.core.gossip_filter import GossipFilter
+from swarm_config import config   # добавляем для единообразного доступа к настройкам
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class CRDTAdapter:
         self.node_id = node_id
         storage = CRDTStorage(DB_PATH)
         self.crdt = GenomeCRDT(node_id, storage=storage)
-        self.storage = storage   # для доступа к CRDTStorage извне (например, для памяти)
+        self.storage = storage
         self._seen_nonces: dict[str, set] = {}
         self._last_seq: dict[str, int] = {}
         self.memory_api = memory_api
@@ -39,7 +40,8 @@ class CRDTAdapter:
 
         # --- ПРОВЕРКА НА GOSSIP ENVELOPE ---
         if isinstance(genome, dict) and genome.get("domain") == "blackswan-gossip-v1":
-            if os.environ.get("GOSSIP_SIGNING_ENABLED", "false").lower() == "true":
+            # Используем единый источник конфигурации
+            if config.gossip_signing_enabled:
                 try:
                     envelope = GossipEnvelope(**genome)
                 except Exception:
@@ -56,13 +58,15 @@ class CRDTAdapter:
                 ):
                     logger.warning("Gossip message rejected by filter")
                     return ""
-               
-                sender_pubkey_bytes = envelope.sender_pubkey
+
+                # Декодируем публичный ключ из base64
                 try:
+                    sender_pubkey_bytes = b64decode(envelope.sender_pubkey)
                     pubkey = Ed25519PublicKey.from_public_bytes(sender_pubkey_bytes)
                 except Exception:
                     logger.warning("Invalid public key in envelope, discarding")
                     return ""
+
                 now_ms = int(time.time() * 1000)
                 seen_nonces = self._seen_nonces.setdefault(envelope.sender_node_id, set())
                 last_seq = self._last_seq.get(envelope.sender_node_id, -1)
@@ -72,7 +76,7 @@ class CRDTAdapter:
                     return ""
                 seen_nonces.add(envelope.nonce)
                 self._last_seq[envelope.sender_node_id] = envelope.seq_no
-                # Извлекаем payload
+
                 genome = envelope.payload
 
                 # --- КАРАНТИН ДЛЯ memory.fact ---
@@ -80,13 +84,13 @@ class CRDTAdapter:
                     await self.quarantine.process(genome)
 
             else:
+                # Проверка подписи отключена, но фильтр всё равно применяем
                 try:
                     envelope = GossipEnvelope(**genome)
                 except Exception:
                     logger.warning("Invalid envelope format (signing disabled), discarding")
                     return ""
 
-                # --- GOSSIP FILTER ---
                 if not self.gossip_filter.check(
                     sender_node_id=envelope.sender_node_id,
                     nonce=envelope.nonce,
@@ -99,11 +103,10 @@ class CRDTAdapter:
 
                 genome = envelope.payload
 
-                # --- КАРАНТИН ДЛЯ memory.fact ---
                 if self.quarantine and envelope.payload_type == "memory.fact":
                     await self.quarantine.process(genome)
 
-        # --- Обычная обработка genome (теперь genome – это исходные данные) ---
+        # --- Обычная обработка genome ---
         gid = genome.get("gid") or str(uuid.uuid4())
         payload = {
             "params": genome.get("params", {}),
@@ -116,14 +119,15 @@ class CRDTAdapter:
             "node": genome.get("node", self.node_id),
         }
         self.crdt.upsert(gid, payload)
+        logger.info(f"✅ Genome imported: {gid[:8]}... from {envelope.sender_node_id if 'envelope' in locals() else 'local'}")
         return gid
 
+    # ... (остальные методы без изменений)
     async def merge(self, remote_items: Dict[str, Dict[str, Any]]) -> None:
         for gid, genome in remote_items.items():
             self.crdt.upsert(gid, genome)
 
     async def get_nonce(self, account: str) -> int:
-        """Возвращает сохранённый nonce для аккаунта или 0."""
         gid = f"nonce:{account}"
         state = self.crdt.state()
         record = state.get(gid)
@@ -132,7 +136,6 @@ class CRDTAdapter:
         return 0
 
     async def set_nonce(self, account: str, nonce: int) -> None:
-        """Сохраняет новый nonce через CRDT upsert."""
         gid = f"nonce:{account}"
         data = {
             "key": gid,

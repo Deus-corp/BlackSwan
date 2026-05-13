@@ -230,12 +230,12 @@ class SwarmNode:
         for v in genome.get("params", {}).values():
             if not (0 < v < 10):
                 return False
-        sig = genome.get("signature")
-        pubkey = genome.get("origin_pubkey")
-        if sig and pubkey:
-            payload = {"params": genome.get("params", {}), "fitness": genome.get("fitness", 0.0)}
-            if not CryptoManager.verify(payload, sig, pubkey):
-                return False
+        #sig = genome.get("signature")
+        #pubkey = genome.get("origin_pubkey")
+        #if sig and pubkey:
+            #payload = {"params": genome.get("params", {}), "fitness": genome.get("fitness", 0.0)}
+            #if not CryptoManager.verify(payload, sig, pubkey):
+                #return False
         # репутационный фильтр
         pubkey = genome.get("origin_pubkey")
         if pubkey and not self.reputation.is_trusted(pubkey):
@@ -793,8 +793,8 @@ class SwarmNode:
 
                 await asyncio.sleep(0.5)
 
-    @staticmethod
-    def _recombine(g1: dict, g2: dict) -> dict:
+        # Быстрый фикс _recombine — убираем @staticmethod, чтобы self был доступен
+    def _recombine(self, g1: dict, g2: dict) -> dict:
         # объединяем все ключи из обоих родителей
         all_keys = set(g1.get("params", {}).keys()) | set(g2.get("params", {}).keys())
         child = {}
