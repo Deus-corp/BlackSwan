@@ -22,20 +22,21 @@ class LLMClient:
         self.llm = None
         self.use_local = False
 
-        if self.model_name in ("deepseek", "smollm17") and not api_url:
+        # Только "smollm17" считаем удалённым по умолчанию (если не задан api_url)
+        if self.model_name == "smollm17" and not api_url:
             api_url = os.getenv("LLM_API_URL", "https://api.deepseek.com/v1/chat/completions")
         self.api_url = api_url
         self.api_key = os.getenv("DEEPSEEK_API_KEY", "")
 
-        if LLAMA_AVAILABLE and self.model_name not in ("deepseek", "smollm17"):
+        if LLAMA_AVAILABLE and self.model_name not in ("smollm17",):
+            # Пробуем загрузить локально. Файл должен лежать в llama_cpp/<model_name>.gguf
             try:
-                self.llm = Llama(model_path=f"./llama_cpp/models/{self.model_name}.gguf",
-                                 n_ctx=2048, verbose=False)
+                self.llm = Llama(model_path=f"./llama_cpp/{self.model_name}.gguf",
+                             n_ctx=2048, verbose=False)
                 self.use_local = True
                 logger.info(f"Local LLM loaded: {self.model_name}")
             except Exception as e:
                 logger.warning(f"Cannot load local LLM: {e}")
-
         if not self.use_local and not self.api_url:
             logger.warning("LLMClient: no local model and no API URL configured – will use fallback random params")
         elif self.api_url:
