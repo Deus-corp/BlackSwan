@@ -10,7 +10,7 @@ services:
       - GOSSIP_PORT=9777
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
-      - LLM_MODEL=deepseek
+      - LLM_MODEL=DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M
       - GOSSIP_SIGNING_ENABLED=true
       - MEMORY_API_ENABLED=true
       - MARKET_MODE=web3
