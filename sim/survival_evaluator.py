@@ -12,12 +12,12 @@ class SurvivalEvaluator:
     def __init__(self, config: Optional[Dict[str, float]] = None):
         # Параметры по умолчанию
         self.config = {
-            "lambda": 0.15,                # вес капитала в полезности
-            "min_p_liveness": 0.9,      # минимально допустимая P(Liveness)
-            "max_dq": 0.05,               # максимальный Detection Quotient
-            "trade_risk_increase": 0.002, # на сколько каждая сделка повышает DQ
-            "hide_cost_factor": 0.1,      # доля капитала, тратящаяся на снижение DQ
-            "expand_cost": 50.0,          # стоимость нового узла (в единицах капитала)
+        "lambda": 0.15,
+        "min_p_liveness": 0.5,     # было 0.9 – теперь разрешаем торговать даже при сниженной живучести
+        "max_dq": 0.2,             # было 0.05 – даём больше свободы, детект-порог выше
+        "trade_risk_increase": 0.002,
+        "hide_cost_factor": 0.1,
+        "expand_cost": 50.0,
         }
         if config:
             self.config.update(config)
@@ -38,31 +38,26 @@ class SurvivalEvaluator:
         return utility
 
     def evaluate_trade(self, capital: float, expected_return: float) -> tuple[float, bool]:
-        """
-        Оценивает предложенную сделку.
-        Возвращает (новый Survival Score, одобрена ли сделка).
-        """
-        # Предполагаемое изменение DQ после сделки
+        # Безопасная копия DQ
         new_dq = self.dq + self.config["trade_risk_increase"]
-        # Временно обновляем dq для расчёта полезности
-        original_dq = self.dq
-        self.dq = new_dq
+        self.dq = new_dq   # временно применяем для расчёта
 
         if math.isnan(capital) or math.isinf(capital):
-            capital = 1000.0  # сброс к начальному значению при аварии
+            capital = 1000.0
 
         new_capital = capital + expected_return
         score = self.compute_survival_score(new_capital)
 
-        # Безопасность: если DQ превышает максимум, блокируем сделку
-        approved = True
+        # Мягкие пороги для активной торговли
         if new_dq > self.config["max_dq"]:
             approved = False
-        if self.liveness < self.config["min_p_liveness"]:
+        elif self.liveness < self.config["min_p_liveness"]:
             approved = False
+        else:
+            approved = True
 
-        # Восстанавливаем исходное dq
-        self.dq = original_dq
+        # Возвращаем DQ обратно (реальное изменение будет применено только при одобрении)
+        self.dq = self.dq - self.config["trade_risk_increase"]
         return score, approved
 
     def hide(self, capital: float) -> float:
