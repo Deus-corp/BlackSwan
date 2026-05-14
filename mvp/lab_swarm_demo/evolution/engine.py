@@ -4,8 +4,11 @@ Evolution Engine – мутации, генетика, memory replay.
 import logging
 import time
 import os
+import asyncio
 from swarm_config import config
 from src.evolution.mutation_engine import MutationEngine
+from src.security.gossip_envelope import sign_envelope
+from src.economy.roi_dispatcher import ROIDispatcher
 
 logger = logging.getLogger(__name__)
 
