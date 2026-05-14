@@ -29,7 +29,6 @@ from src.observability.telegram_notifier import TelegramNotifier
 from swarm_config import config
 from src.core.trading_controller import TradingController
 from src.evolution.mutation_engine import MutationEngine
-from prometheus_client import Counter, Gauge
 from src.economy.roi_dispatcher import ROIDispatcher
 from mvp.lab_swarm_demo.leader import select_leader
 from mvp.lab_swarm_demo.execution import build_backend
@@ -38,7 +37,8 @@ from mvp.lab_swarm_demo.capital_manager import CapitalManager
 from mvp.lab_swarm_demo.telemetry import Telemetry
 from mvp.lab_swarm_demo.evolution import EvolutionEngine
 from mvp.lab_swarm_demo.swarm_sync import SwarmSync
-from mvp.lab_swarm_demo.meta_agent import MetaAgent
+# Вынесенные счётчики мутаций
+from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation, update_llm_impact, get_llm_stats, _llm_mutation_count
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
@@ -47,31 +47,8 @@ logging.basicConfig(level=config.log_level)
 EXPECTED_RETURN_RATE = config.expected_return_rate
 MAX_NORMALIZED_CAPITAL = config.max_normalized_capital
 
-# LLM mutation counters (глобально, т.к. в каждом процессе они независимы)
-_llm_mutation_count = 0
-_llm_mutation_total_impact = 0.0
-_last_capital = None
+# Все глобальные переменные и функции удалены из этого файла
 
-mutation_counter = Counter('swarm_mutations_total', 'Total number of LLM mutations')
-mutation_impact_gauge = Gauge('swarm_mutation_impact', 'Average impact of mutations on capital')
-
-def note_llm_mutation():
-    global _llm_mutation_count
-    _llm_mutation_count += 1
-    mutation_counter.inc()
-
-def update_llm_impact(current_capital: float):
-    global _llm_mutation_total_impact, _last_capital
-    if _last_capital is not None:
-        impact = current_capital - _last_capital
-        _llm_mutation_total_impact += impact
-    _last_capital = current_capital
-    avg = _llm_mutation_total_impact / _llm_mutation_count if _llm_mutation_count else 0.0
-    mutation_impact_gauge.set(avg)
-
-def get_llm_stats() -> Tuple[int, float]:
-    avg = _llm_mutation_total_impact / _llm_mutation_count if _llm_mutation_count else 0.0
-    return _llm_mutation_count, avg
 
 class SwarmNode:
     def __init__(self) -> None:
@@ -223,9 +200,6 @@ class SwarmNode:
             adapter=None,
             is_leader_func=self.is_leader,
         )
-
-            # MetaAgent – self-reflective orchestrator (должен быть после инициализации LLM)
-        self.meta_agent = MetaAgent(self)
 
     def is_leader(self, block_number: int) -> bool:
         leader_index = select_leader(self.node_id, block_number, config.total_nodes)
@@ -533,9 +507,6 @@ class SwarmNode:
         await self.swarm_sync.reconcile()
 
     async def _periodic_tasks(self):
-            # MetaAgent reflection (раз в 500 шагов)
-        if self.step_count % 500 == 0:
-            await self.meta_agent.reflect()
         if self.step_count % 30 == 0:
             try:
                 self.telemetry.heartbeat(

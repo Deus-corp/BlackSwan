@@ -6,10 +6,11 @@ import time
 import os
 import asyncio
 from swarm_config import config
+from sim.genetic_engine import Genome
 from src.evolution.mutation_engine import MutationEngine
 from src.security.gossip_envelope import sign_envelope
 from src.economy.roi_dispatcher import ROIDispatcher
-from mvp.lab_swarm_demo.node_agent import note_llm_mutation
+from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation
 
 logger = logging.getLogger(__name__)
 

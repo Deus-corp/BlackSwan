@@ -59,6 +59,31 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../../data/nonce:/app/nonce_data
 
+  meta-agent:
+    build:
+      context: ../..
+    image: blackswan-node:latest
+    entrypoint: ["python", "/app/mvp/lab_swarm_demo/meta_agent_node.py"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app              # ← ключевая строка
+      - LLM_MODEL=DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M
+      - GOSSIP_PORT=9777
+      - TOTAL_NODES=4
+      - GOSSIP_SIGNING_ENABLED=true
+      - EVENT_LEDGER_PATH=/app/data/ledgers/meta_events.jsonl
+      - EVENT_SQLITE_PATH=/app/data/ledgers/meta_events.db
+      - EVENT_LEDGER_PATH=/app/data/ledgers/events.jsonl
+      - EVENT_SQLITE_PATH=/app/data/ledgers/events.db
+    ports:
+      - "9778"
+    networks:
+      - default
+    restart: unless-stopped
+    volumes:
+      - ../../llama_cpp:/app/llama_cpp:ro
+      - ../../data/ledgers:/app/data/ledgers
+
   prometheus:
     image: prom/prometheus:latest
     volumes:
