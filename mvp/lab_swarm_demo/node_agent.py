@@ -38,6 +38,7 @@ from prometheus_client import Counter, Gauge
 from mvp.lab_swarm_demo.leader import select_leader
 from mvp.lab_swarm_demo.execution import build_backend
 from mvp.lab_swarm_demo.market import MarketSnapshotService, select_best_market
+from mvp.lab_swarm_demo.capital_manager import CapitalManager
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -195,7 +196,7 @@ class SwarmNode:
         self.survival: SurvivalEvaluator = SurvivalEvaluator()
         self.survival.dq = 0.03
         self.survival.liveness = 1.0
-
+        
         self.curiosity: CuriosityEngine = CuriosityEngine(window_size=10, surprise_threshold=0.3)
         self.meta_agent: MetaPOMDPAgent = MetaPOMDPAgent()
         self.llm = LLMClient()
@@ -214,15 +215,20 @@ class SwarmNode:
         self._seed_from_memory()
 
         self.trading_controller = TradingController(self.node_id)
+        self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id, nonce_manager=None, event_store=self.event_store)
+        self.nonce_manager = None   # будет инициализирован после создания адаптера
+        
+                # Capital & Risk Manager (PR-5)
+        self.capital_manager = CapitalManager(capital=self.capital)
+        self.capital_manager.set_survival(self.survival)
+
                 # Execution backend (PR-3)
         self.executor = build_backend(
             node_id=self.node_id,
             adapter=None,   # будет передан позже, когда адаптер готов (для web3)
             is_leader_func=self.is_leader,
         )
-        self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id, nonce_manager=None, event_store=self.event_store)
-        self.nonce_manager = None   # будет инициализирован после создания адаптера
-    
+
     def is_leader(self, block_number: int) -> bool:
         leader_index = select_leader(self.node_id, block_number, config.total_nodes)
         return self.node_index == leader_index
@@ -424,8 +430,9 @@ class SwarmNode:
                             pass
                 
                 market = best_market
-                self.capital -= self.burn_rate
-                if self.capital <= 0:
+                self.capital_manager.burn()
+                self.capital = self.capital_manager.capital   # синхронизируем
+                if not self.capital_manager.is_alive():
                     logger.info(f"[{self.node_id}] died")
                     return
 
@@ -479,8 +486,9 @@ class SwarmNode:
                         ret = market["price"] * fraction * 0.1
                         prev_capital = self.capital
                         self.capital *= (1 + ret)
+                        self.capital_manager.capital = self.capital   # синхронизируем с менеджером
                         self.capital -= 1.0
-                        self.survival.dq = min(1.0, self.survival.dq + 0.001)
+                        self.capital_manager.apply_dq_delta(0.001)
 
                         if trade_result and trade_result.get("success"):
                             trade_logger.info(
