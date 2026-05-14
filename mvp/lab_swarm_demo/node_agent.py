@@ -242,6 +242,25 @@ class SwarmNode:
                 config.trading.max_usdc_balance = max(50.0, old_max * 0.8)
                 logger.info(f"🧠 MetaAgent: reduced max USDC balance from {old_max:.2f} to {config.trading.max_usdc_balance:.2f}")
 
+            if "reduce risk" in thought_lower or "lower risk" in thought_lower:
+                # Уменьшаем max_risk_per_trade
+                old_risk = self.current_params.get("max_risk_per_trade", 0.05)
+                new_risk = max(0.001, old_risk * 0.8)
+                self.current_params["max_risk_per_trade"] = new_risk
+                logger.info(f"🧠 MetaAgent: reduced max risk from {old_risk:.4f} to {new_risk:.4f}")
+
+            if "increase phi" in thought_lower or "raise phi" in thought_lower:
+                old_phi = self.current_params.get("phi_llm", 0.15)
+                new_phi = min(1.0, old_phi * 1.2)
+                self.current_params["phi_llm"] = new_phi
+                logger.info(f"🧠 MetaAgent: increased phi_llm from {old_phi:.4f} to {new_phi:.4f}")
+
+            if "decrease volatility" in thought_lower or "lower volatility threshold" in thought_lower:
+                old_vol = self.current_params.get("volatility_threshold", 0.02)
+                new_vol = max(0.001, old_vol * 0.8)
+                self.current_params["volatility_threshold"] = new_vol
+                logger.info(f"🧠 MetaAgent: reduced volatility threshold from {old_vol:.4f} to {new_vol:.4f}")
+
         except Exception as e:
             logger.debug(f"MetaAgent command application skipped: {e}")
 

@@ -58,6 +58,7 @@ services:
       - ../../llama_cpp:/app/llama_cpp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../../data/nonce:/app/nonce_data
+      - ../../data/ledgers:/app/data/ledgers
 
   meta-agent:
     build:
