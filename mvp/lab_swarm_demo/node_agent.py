@@ -1,10 +1,8 @@
-import os, time, random, uuid, hashlib, asyncio, logging, sys, signal, json, socket
+import os, time, random, uuid, hashlib, asyncio, logging, sys, signal, socket
 from typing import Dict, Any, Optional, List, Tuple
 
 import aiohttp
-from aiohttp import web
 
-from src.economy.roi_dispatcher import ROIDispatcher
 from src.core.global_state import GlobalState
 from sim.genetic_engine import GeneticEngine, Genome
 from sim.survival_evaluator import SurvivalEvaluator
@@ -17,24 +15,22 @@ from src.security.reputation_manager import ReputationManager
 from src.intelligence.episodic_memory import EpisodicMemory
 from src.intelligence.semantic_memory import SemanticMemory
 from src.intelligence.llm_client import LLMClient
-from src.security.gossip_envelope import sign_envelope, generate_key_pair, public_key_bytes, sha256, GossipEnvelope
+from src.security.gossip_envelope import sign_envelope, generate_key_pair, public_key_bytes, sha256
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
-from adapters.live_market import BinanceTestnetAdapter
 from src.core.events import Event
 from src.core.event_store import EventStore
 from src.security.key_manager import KeyManager
 from adapters.multi_pair_adapter import MultiPairAdapter
-from adapters.web3_testnet import WETH_ADDRESS, USDC_ADDRESS
 from src.intelligence.internet_researcher import InternetResearcher
 from adapters.tradingview_webhook import TradingViewWebhook
 from adapters.orderbook_analyzer import OrderBookAnalyzer
 from src.observability.telegram_notifier import TelegramNotifier
-from src.intelligence.strategy_schema import StrategyParams
 from swarm_config import config
 from src.core.trading_controller import TradingController
 from src.evolution.mutation_engine import MutationEngine
 from prometheus_client import Counter, Gauge
+from src.economy.roi_dispatcher import ROIDispatcher
 from mvp.lab_swarm_demo.leader import select_leader
 from mvp.lab_swarm_demo.execution import build_backend
 from mvp.lab_swarm_demo.market import MarketSnapshotService, select_best_market
@@ -43,10 +39,8 @@ from mvp.lab_swarm_demo.telemetry import Telemetry
 from mvp.lab_swarm_demo.evolution import EvolutionEngine
 from mvp.lab_swarm_demo.swarm_sync import SwarmSync
 
-import logging
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
-# Уровень устанавливается из переменной окружения LOG_LEVEL (по умолчанию INFO)
 logging.basicConfig(level=config.log_level)
 
 EXPECTED_RETURN_RATE = config.expected_return_rate
@@ -55,7 +49,7 @@ MAX_NORMALIZED_CAPITAL = config.max_normalized_capital
 # LLM mutation counters (глобально, т.к. в каждом процессе они независимы)
 _llm_mutation_count = 0
 _llm_mutation_total_impact = 0.0
-_last_capital = None          # запоминаем предыдущий капитал для расчёта impact
+_last_capital = None
 
 mutation_counter = Counter('swarm_mutations_total', 'Total number of LLM mutations')
 mutation_impact_gauge = Gauge('swarm_mutation_impact', 'Average impact of mutations on capital')
@@ -71,7 +65,6 @@ def update_llm_impact(current_capital: float):
         impact = current_capital - _last_capital
         _llm_mutation_total_impact += impact
     _last_capital = current_capital
-    # Обновляем средний impact (можно обновлять не каждый раз, а при чтении, но так проще)
     avg = _llm_mutation_total_impact / _llm_mutation_count if _llm_mutation_count else 0.0
     mutation_impact_gauge.set(avg)
 
@@ -92,7 +85,7 @@ class SwarmNode:
         self.gossip_seq_no = 0
         self.gossip_lamport_ts = 0
 
-                # Gossip signing keys
+        # Gossip signing keys
         self.gossip_private_key = Ed25519PrivateKey.generate()
         self.gossip_public_bytes = self.gossip_private_key.public_key().public_bytes_raw()
         self.gossip_key_id = hashlib.sha256(self.gossip_public_bytes).hexdigest()[:16]
@@ -111,24 +104,21 @@ class SwarmNode:
         self.swarm_sync = SwarmSync(self)
 
         # ========== INFRASTRUCTURE LAYER (BODY) ==========
-        # Криптография и безопасность
         self.key_manager = KeyManager()
         self.crypto: CryptoManager = CryptoManager()
 
-        # Сеть и Gossip
         self.reputation: ReputationManager = ReputationManager()
         self.reputation_blacklist_threshold: float = 0.3
 
         self.memory_api_enabled: bool = config.memory_api_enabled
         self.memory_api: LocalMemoryAPI = LocalMemoryAPI(
             node_id=self.node_id,
-            storage=None  # будет подключён после создания CRDT
+            storage=None
         )
 
         self.internet_researcher: InternetResearcher = InternetResearcher(
             memory_api=self.memory_api if self.memory_api_enabled else None
         )
-                # Telegram уведомления
         self.telegram_notifier = TelegramNotifier()
 
         self.crdt: CRDTAdapter = CRDTAdapter(
@@ -143,7 +133,6 @@ class SwarmNode:
         self.gossip: SafeGossipAdapter = SafeGossipAdapter(self.crdt)
         self.gossip.set_reputation_manager(self.reputation)
 
-        # Хранилище событий (всегда, независимо от флагов)
         self.event_store = EventStore(
             ledger_path=config.event_ledger_path,
             sqlite_path=config.event_sqlite_path,
@@ -157,21 +146,19 @@ class SwarmNode:
             update_llm_impact_func=update_llm_impact,
         )
 
-        # Рыночные данные – теперь мульти-парный адаптер
         trading_symbols = config.trading_symbols
         symbols_list = [s.strip() for s in trading_symbols.split(",") if s.strip()]
-        self.symbols_list = symbols_list   # сохраняем для использования в start()
+        self.symbols_list = symbols_list
         self.market_adapter = MultiPairAdapter(
             symbols=symbols_list,
             market_mode=self.market_mode,
             crdt_adapter=self.crdt if self.market_mode == "web3" else None
         )
-                # Market layer (PR-4)
         self.market_service = MarketSnapshotService(
             market_adapter=self.market_adapter,
             market_mode=self.market_mode,
         )
-        # --- принудительно прокидываем CRDT в web3 адаптер ---
+
         if self.market_mode == "web3":
             for sym in symbols_list:
                 adapter = self.market_adapter.get_adapter(sym)
@@ -180,13 +167,11 @@ class SwarmNode:
 
         self.primary_symbol = symbols_list[0] if symbols_list else "BTC/USDT"
 
-                # TradingView webhook (если включен)
         self.tradingview_enabled = config.tradingview_webhook_enabled
         self.tradingview_webhook = None
         if self.tradingview_enabled:
             self.tradingview_webhook = TradingViewWebhook(port=config.tradingview_webhook_port)
 
-                # OrderBook анализ (если включён)
         self.orderbook_enabled = config.orderbook_analysis_enabled
         self.orderbook_analyzers: Dict[str, OrderBookAnalyzer] = {}
         if self.orderbook_enabled:
@@ -196,25 +181,22 @@ class SwarmNode:
                     self.orderbook_analyzers[sym] = OrderBookAnalyzer(adapter)
 
         # ========== INTELLIGENCE LAYER (BRAIN) ==========
-        # Генетический движок и стратегии
         self.engine: GeneticEngine = GeneticEngine(pop_size=10)
         self.engine.initialize()
 
         self.state: GlobalState = GlobalState()
         best = self.state.get_best_genomes(top_n=1)
         self.current_params: Dict[str, float] = list(best.values())[-1] if best else {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
-        self.dispatcher: ROIDispatcher = ROIDispatcher(config=self.current_params)
+        self.dispatcher = ROIDispatcher(config=self.current_params)
 
-        # Оценка выживания и мотивация
         self.survival: SurvivalEvaluator = SurvivalEvaluator()
         self.survival.dq = 0.03
         self.survival.liveness = 1.0
-        
+
         self.curiosity: CuriosityEngine = CuriosityEngine(window_size=10, surprise_threshold=0.3)
         self.meta_agent: MetaPOMDPAgent = MetaPOMDPAgent()
         self.llm = LLMClient()
 
-        # Память (эпизодическая/семантическая) — старая, но пока оставляем
         self.memory: EpisodicMemory = EpisodicMemory(max_size=500)
         self.semantic: SemanticMemory = SemanticMemory()
 
@@ -229,17 +211,15 @@ class SwarmNode:
 
         self.trading_controller = TradingController(self.node_id)
         self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id, nonce_manager=None, event_store=self.event_store)
-        self.nonce_manager = None   # будет инициализирован после создания адаптера
+        self.nonce_manager = None
         self.evolution_engine = EvolutionEngine(self)
-        
-                # Capital & Risk Manager (PR-5)
+
         self.capital_manager = CapitalManager(capital=self.capital)
         self.capital_manager.set_survival(self.survival)
 
-                # Execution backend (PR-3)
         self.executor = build_backend(
             node_id=self.node_id,
-            adapter=None,   # будет передан позже, когда адаптер готов (для web3)
+            adapter=None,
             is_leader_func=self.is_leader,
         )
 
@@ -263,13 +243,6 @@ class SwarmNode:
         for v in genome.get("params", {}).values():
             if not (0 < v < 10):
                 return False
-        #sig = genome.get("signature")
-        #pubkey = genome.get("origin_pubkey")
-        #if sig and pubkey:
-            #payload = {"params": genome.get("params", {}), "fitness": genome.get("fitness", 0.0)}
-            #if not CryptoManager.verify(payload, sig, pubkey):
-                #return False
-        # репутационный фильтр
         pubkey = genome.get("origin_pubkey")
         if pubkey and not self.reputation.is_trusted(pubkey):
             return False
@@ -361,7 +334,6 @@ class SwarmNode:
                     tick['price'] = tick.get('price', tick.get('ask', 50000))
                     tick['price'] = tick['price'] / scale
                     return tick
-        # fallback – симуляция
         if self.market_url:
             try:
                 async with session.get(self.market_url, timeout=1) as resp:
@@ -382,7 +354,6 @@ class SwarmNode:
                 self.step_count += 1
                 self._trace_id = str(uuid.uuid4())
 
-                # Spore failure
                 if self.failure_prob > 0 and random.random() < self.failure_prob:
                     await self.telemetry.spore_failure(
                         step=self.step_count,
@@ -399,7 +370,7 @@ class SwarmNode:
                 # 1. Рынок
                 best_symbol, best_market, snapshot = await self._collect_market_snapshot(session)
 
-                # 2. Авто-конвертация и стоп-лосс (web3/futures)
+                # 2. Авто-конвертация и стоп-лосс
                 if self.market_mode == "web3":
                     adapter = self.market_adapter.get_adapter(best_symbol)
                     if adapter:
@@ -421,7 +392,12 @@ class SwarmNode:
                                     if adapter.check_stop_loss(entry_price, current_price, side):
                                         logger.info(f"Stop‑loss triggered for {best_symbol}")
                                         adapter.close_position(best_symbol)
-                                        await self.telegram_notifier.send(...)
+                                        await self.telegram_notifier.send(
+                                            f"🛑 <b>Stop‑loss triggered</b>\n"
+                                            f"Node: {self.node_id}\n"
+                                            f"Symbol: {best_symbol}\n"
+                                            f"Capital: {self.capital:.2f}"
+                                        )
                                         if self.market_adapter.hedge_enabled:
                                             spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
                                             if spot_adapter:
@@ -461,13 +437,11 @@ class SwarmNode:
 
                 await asyncio.sleep(0.5)
 
-        # Быстрый фикс _recombine — убираем @staticmethod, чтобы self был доступен
     def _recombine(self, g1: dict, g2: dict) -> dict:
-        # объединяем все ключи из обоих родителей
         all_keys = set(g1.get("params", {}).keys()) | set(g2.get("params", {}).keys())
         child = {}
         for k in all_keys:
-            v1 = g1.get("params", {}).get(k, 0.5)      # default, если ключ отсутствует
+            v1 = g1.get("params", {}).get(k, 0.5)
             v2 = g2.get("params", {}).get(k, 0.5)
             val = v1 if random.random() < 0.5 else v2
             if random.random() < 0.1:
@@ -481,15 +455,13 @@ class SwarmNode:
             "lineage": (g1.get("lineage", [])[-5:] + [self.node_id]),
             "ts": time.time(),
         }
-    
+
     async def _collect_market_snapshot(self, session):
-        """Возвращает (best_symbol, best_market, snapshot)."""
         snapshot = await self.market_service.get_snapshot(session)
         best_symbol, best_market = select_best_market(snapshot)
         return best_symbol, best_market, snapshot
 
     async def _evaluate_survival_and_trade(self, market, symbol):
-        """Выполняет проверку выживаемости и сделку. Возвращает результат сделки или None."""
         expected = market["price"] * EXPECTED_RETURN_RATE
         _, approved = self.survival.evaluate_trade(self.capital, expected)
         logger.info(f"[{self.node_id}] Survival approved={approved}, capital={self.capital:.2f}, expected={expected:.4f}")
@@ -511,7 +483,6 @@ class SwarmNode:
             capital=self.capital,
         )
 
-        # Обновление капитала (формула как раньше)
         ret = market["price"] * fraction * 0.1
         prev_capital = self.capital
         self.capital *= (1 + ret)
@@ -523,7 +494,6 @@ class SwarmNode:
             trade_logger.info(f"TRADE | {symbol} | {side} | status: {trade_result.get('status')}")
             self.telemetry.update_impact(self.capital)
 
-        # Хеджирование (futures)
         if self.market_mode == "futures" and self.market_adapter.hedge_enabled:
             hedge_ratio = config.hedge_ratio
             spot_adapter = self.market_adapter.get_adapter(symbol, "spot")
@@ -537,7 +507,6 @@ class SwarmNode:
                 except Exception as e:
                     logger.error(f"Hedge order failed: {e}")
 
-        # Запись события сделки и уведомление через Telemetry
         if trade_result and isinstance(trade_result, dict):
             await self.telemetry.trade(
                 step=self.step_count,
@@ -560,7 +529,6 @@ class SwarmNode:
         await self.swarm_sync.reconcile()
 
     async def _periodic_tasks(self):
-        """Периодические задачи: heartbeat, memory consolidation, prune."""
         if self.step_count % 30 == 0:
             try:
                 self.telemetry.heartbeat(
@@ -577,7 +545,6 @@ class SwarmNode:
             except Exception as e:
                 logger.warning(f"Heartbeat failed: {e}")
 
-        # Memory consolidation (раз в 500 шагов)
         if self.step_count % 500 == 0:
             self.memory.records = list({
                 (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec
@@ -599,7 +566,6 @@ class SwarmNode:
                     parent_id=self._trace_id,
                 ))
 
-        # Prune (раз в 200 шагов)
         if self.step_count % 200 == 0:
             self.semantic.derive_rules(self.memory.to_dict_list())
             await self.crdt.prune()
@@ -615,7 +581,7 @@ class SwarmNode:
             if self.memory_api_enabled:
                 stats = await self.memory_api.compress()
                 logger.info(f"Memory stats: {stats}")
-                
+
     async def start(self) -> None:
         logger.info(f"[{self.node_id}] port={self.port} peers={self.peers}")
 
@@ -641,11 +607,10 @@ class SwarmNode:
                 await self.memory_api.save_to_db()
                 logger.info(f"[{self.node_id}] memory saved before exit")
             raise SystemExit(0)
-        
-        if self.tradingview_enabled:
-                await self.tradingview_webhook.stop()
 
-                # Инициализация web3-адаптеров, если в режиме web3
+        if self.tradingview_enabled:
+            await self.tradingview_webhook.stop()
+
         if self.market_mode == "web3":
             for sym in self.symbols_list:
                 adapter = self.market_adapter.get_adapter(sym)
@@ -656,8 +621,6 @@ class SwarmNode:
                     self.nonce_manager = adapter.nonce_manager
                     self.mutation_engine.nonce_manager = self.nonce_manager
 
-                    # Обновляем executor для web3-режима актуальным адаптером
-        if self.market_mode == "web3":
             adapter = self.market_adapter.get_adapter(self.symbols_list[0]) if self.symbols_list else None
             self.executor = build_backend(self.node_id, adapter, self.is_leader)
 
