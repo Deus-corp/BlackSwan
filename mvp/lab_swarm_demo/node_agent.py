@@ -345,8 +345,8 @@ class SwarmNode:
             try:
                 genome = self.dict_to_genome({"params": rec["params"]})
                 self.engine.add_genome(genome)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Seed from memory skipped: {e}")
 
     # ------------------------------------------------------------
     # Market
@@ -366,8 +366,8 @@ class SwarmNode:
             try:
                 async with session.get(self.market_url, timeout=1) as resp:
                     return await resp.json()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Market URL request failed: {e}")
         return {"price": random.uniform(90, 110)}
 
     # ------------------------------------------------------------
@@ -427,10 +427,10 @@ class SwarmNode:
                                             if spot_adapter:
                                                 try:
                                                     spot_adapter.close_position(best_symbol)
-                                                except:
-                                                    pass
-                        except Exception:
-                            pass
+                                                except Exception as e:
+                                                    logger.warning(f"Hedge close failed: {e}")
+                        except Exception as e:
+                            logger.warning(f"Futures stop-loss check failed: {e}")
 
                 # 3. Burn
                 self.capital_manager.burn()
@@ -574,8 +574,8 @@ class SwarmNode:
                     niche_counts=self.population_niche_counts(),
                     trace_id=self._trace_id,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Heartbeat failed: {e}")
 
         # Memory consolidation (раз в 500 шагов)
         if self.step_count % 500 == 0:
