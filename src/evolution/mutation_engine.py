@@ -97,10 +97,11 @@ Do not include any other text.
     def _extract_json(self, text: str) -> Optional[str]:
         """
         Ищет JSON-объект в ответе: сначала в блоках ```json, потом просто { ... }.
-        Дополнительно пытается найти любой JSON-подобный фрагмент.
+        Дополнительно удаляет все XML-теги (включая think).
         """
-        # Удаляем возможные мысли до 
-        text = re.sub(r'<\s*think\s*>.*?<\s*/\s*think\s*>', '', text, flags=re.DOTALL | re.IGNORECASE)
+        # Удаляем ВСЕ XML-теги (например,  think, /think )
+        import re
+        text = re.sub(r'<[^>]+>', '', text)
 
         # Пробуем ```json
         match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
