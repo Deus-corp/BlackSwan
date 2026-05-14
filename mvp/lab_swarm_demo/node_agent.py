@@ -136,12 +136,11 @@ class SwarmNode:
 
         # Хранилище событий (всегда, независимо от флагов)
         self.event_store = EventStore(
-            ledger_path=os.environ.get("EVENT_LEDGER_PATH", "./data/ledgers/events.jsonl"),
-            sqlite_path=os.environ.get("EVENT_SQLITE_PATH", "./data/ledgers/events.db"),
+            ledger_path=config.event_ledger_path,
+            sqlite_path=config.event_sqlite_path,
         )
 
         # Рыночные данные – теперь мульти-парный адаптер
-        self.market_mode: str = os.environ.get("MARKET_MODE", "sim")
         trading_symbols = config.trading_symbols
         symbols_list = [s.strip() for s in trading_symbols.split(",") if s.strip()]
         self.symbols_list = symbols_list   # сохраняем для использования в start()
