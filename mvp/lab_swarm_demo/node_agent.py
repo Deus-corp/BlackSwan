@@ -41,6 +41,7 @@ from mvp.lab_swarm_demo.market import MarketSnapshotService, select_best_market
 from mvp.lab_swarm_demo.capital_manager import CapitalManager
 from mvp.lab_swarm_demo.telemetry import Telemetry
 from mvp.lab_swarm_demo.evolution import EvolutionEngine
+from mvp.lab_swarm_demo.swarm_sync import SwarmSync
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -106,6 +107,8 @@ class SwarmNode:
         self.ttl: int = config.TTL
         self.max_import: int = config.MAX_IMPORT
         self.import_cooldown: int = config.IMPORT_COOLDOWN
+
+        self.swarm_sync = SwarmSync(self)
 
         # ========== INFRASTRUCTURE LAYER (BODY) ==========
         # Криптография и безопасность
@@ -554,30 +557,7 @@ class SwarmNode:
         await self.evolution_engine.tick(self._last_market)
 
     async def _sync_swarm(self):
-        """Gossip-отправка и импорт геномов."""
-        # Отправка gossip
-        if self.step_count % int(self.gossip_interval) == 0:
-            try:
-                genome_to_share = self.make_genome(
-                    self.current_params,
-                    self.engine.champion[1] if hasattr(self.engine, 'champion') and self.engine.champion else 0.0
-                )
-                envelope = sign_envelope(genome_to_share, self.gossip_private_key, self.gossip_key_id)
-                await self.gossip.broadcast(envelope)
-            except Exception as e:
-                logger.debug(f"Gossip error: {e}")
-
-        # Импорт геномов
-        if self.step_count - self.last_import_step > self.import_cooldown:
-            try:
-                imported = await self.crdt.get_top(10)
-                for g in imported:
-                    if self.accept_genome(g):
-                        gen = self.dict_to_genome(g)
-                        self.engine.add_genome(gen)
-                self.last_import_step = self.step_count
-            except Exception:
-                pass
+        await self.swarm_sync.reconcile()
 
     async def _periodic_tasks(self):
         """Периодические задачи: heartbeat, memory consolidation, prune."""

@@ -18,3 +18,12 @@ def test_evolution_engine_exists():
     from mvp.lab_swarm_demo.node_agent import SwarmNode
     node = SwarmNode()
     assert hasattr(node, 'evolution_engine')
+
+def test_swarm_sync_exists():
+    """Проверяем, что SwarmSync создаётся при инициализации узла."""
+    import swarm_config
+    from swarm_config import SwarmConfig
+    swarm_config.config = SwarmConfig()
+    from mvp.lab_swarm_demo.node_agent import SwarmNode
+    node = SwarmNode()
+    assert hasattr(node, 'swarm_sync')
