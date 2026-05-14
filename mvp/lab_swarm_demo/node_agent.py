@@ -37,6 +37,7 @@ from src.evolution.mutation_engine import MutationEngine
 from prometheus_client import Counter, Gauge
 from mvp.lab_swarm_demo.leader import select_leader
 from mvp.lab_swarm_demo.execution import build_backend
+from mvp.lab_swarm_demo.market import MarketSnapshotService, select_best_market
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -150,6 +151,11 @@ class SwarmNode:
             symbols=symbols_list,
             market_mode=self.market_mode,
             crdt_adapter=self.crdt if self.market_mode == "web3" else None
+        )
+                # Market layer (PR-4)
+        self.market_service = MarketSnapshotService(
+            market_adapter=self.market_adapter,
+            market_mode=self.market_mode,
         )
         # --- принудительно прокидываем CRDT в web3 адаптер ---
         if self.market_mode == "web3":
@@ -372,20 +378,9 @@ class SwarmNode:
                     logger.info(f"[{self.node_id}] failed")
                     sys.exit(1)
 
-                # Получаем тики для всех пар
-                all_tickers = await self.market_adapter.fetch_all_tickers()
-                best_symbol = None
-                best_expected_return = -1
-                best_market = None
-                for sym, tick in all_tickers.items():
-                    expected = tick.get("price", 0.0) * EXPECTED_RETURN_RATE
-                    if expected > best_expected_return:
-                        best_expected_return = expected
-                        best_symbol = sym
-                        best_market = tick
-                if best_market is None:
-                    best_market = {"price": random.uniform(90, 110)}
-                    best_symbol = self.primary_symbol
+                # Получаем снапшот рынка и выбираем лучший символ
+                snapshot = await self.market_service.get_snapshot(session)
+                best_symbol, best_market = select_best_market(snapshot)
 
                 # Авто-конвертация USDC/WETH/ETH (выполняет только лидер)
                 if self.market_mode == "web3":
