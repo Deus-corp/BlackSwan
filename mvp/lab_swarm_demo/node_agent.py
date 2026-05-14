@@ -39,6 +39,7 @@ from mvp.lab_swarm_demo.leader import select_leader
 from mvp.lab_swarm_demo.execution import build_backend
 from mvp.lab_swarm_demo.market import MarketSnapshotService, select_best_market
 from mvp.lab_swarm_demo.capital_manager import CapitalManager
+from mvp.lab_swarm_demo.telemetry import Telemetry
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -142,6 +143,14 @@ class SwarmNode:
         self.event_store = EventStore(
             ledger_path=config.event_ledger_path,
             sqlite_path=config.event_sqlite_path,
+        )
+
+        self.telemetry = Telemetry(
+            node_id=self.node_id,
+            event_store=self.event_store,
+            telegram_notifier=self.telegram_notifier,
+            get_llm_stats_func=get_llm_stats,
+            update_llm_impact_func=update_llm_impact,
         )
 
         # Рыночные данные – теперь мульти-парный адаптер
@@ -363,32 +372,29 @@ class SwarmNode:
         async with aiohttp.ClientSession() as session:
             if self.memory_api_enabled:
                 await self.memory_api.load_from_db()
+
             while True:
                 self.step_count += 1
                 self._trace_id = str(uuid.uuid4())
+
+                # Spore failure
                 if self.failure_prob > 0 and random.random() < self.failure_prob:
-                    self.event_store.append(Event.create(
-                        node_id=self.node_id,
-                        event_type="spore_failure",
-                        payload={
-                            "step": self.step_count,
-                            "capital": self.capital,
-                            "dq": self.survival.dq,
-                            "fitness": self.engine.champion[1],
-                            "diversity": self.engine.diversity(),
-                            "crdt_size": len(self.crdt.state),
-                            "trace_id": self._trace_id,
-                        },
-                        parent_id=self._trace_id,
-                    ))
+                    await self.telemetry.spore_failure(
+                        step=self.step_count,
+                        capital=self.capital,
+                        dq=self.survival.dq,
+                        fitness=self.engine.champion[1] if hasattr(self.engine, 'champion') and self.engine.champion else 0.0,
+                        diversity=self.engine.diversity(),
+                        crdt_size=len(self.crdt.state),
+                        trace_id=self._trace_id,
+                    )
                     logger.info(f"[{self.node_id}] failed")
                     sys.exit(1)
 
-                # Получаем снапшот рынка и выбираем лучший символ
-                snapshot = await self.market_service.get_snapshot(session)
-                best_symbol, best_market = select_best_market(snapshot)
+                # 1. Рынок
+                best_symbol, best_market, snapshot = await self._collect_market_snapshot(session)
 
-                # Авто-конвертация USDC/WETH/ETH (выполняет только лидер)
+                # 2. Авто-конвертация и стоп-лосс (web3/futures)
                 if self.market_mode == "web3":
                     adapter = self.market_adapter.get_adapter(best_symbol)
                     if adapter:
@@ -396,7 +402,6 @@ class SwarmNode:
                         if self.is_leader(block_number):
                             await self.trading_controller.check_and_rebalance(adapter)
 
-                # Проверка стоп‑лосса для фьючерсных позиций
                 if self.market_mode == "futures":
                     adapter = self.market_adapter.get_adapter(best_symbol)
                     if adapter and hasattr(adapter, 'check_stop_loss'):
@@ -411,414 +416,43 @@ class SwarmNode:
                                     if adapter.check_stop_loss(entry_price, current_price, side):
                                         logger.info(f"Stop‑loss triggered for {best_symbol}")
                                         adapter.close_position(best_symbol)
-
-                                        await self.telegram_notifier.send(
-                                            f"🛑 <b>Stop‑loss triggered</b>\n"
-                                            f"Node: {self.node_id}\n"
-                                            f"Symbol: {best_symbol}\n"
-                                            f"Capital: {self.capital:.2f}"
-                                        )
+                                        await self.telegram_notifier.send(...)
                                         if self.market_adapter.hedge_enabled:
                                             spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
                                             if spot_adapter:
                                                 try:
                                                     spot_adapter.close_position(best_symbol)
-                                                    logger.info("Hedge position closed")
                                                 except:
                                                     pass
                         except Exception:
                             pass
-                
-                market = best_market
+
+                # 3. Burn
                 self.capital_manager.burn()
-                self.capital = self.capital_manager.capital   # синхронизируем
+                self.capital = self.capital_manager.capital
                 if not self.capital_manager.is_alive():
                     logger.info(f"[{self.node_id}] died")
                     return
 
-                # -- получаем ордербук для выбранного инструмента --
-                ob_imbalance = 0.0
-                ob_delta_volume = 0.0
-                if self.orderbook_enabled and best_symbol in self.orderbook_analyzers:
-                    analyzer = self.orderbook_analyzers[best_symbol]
-                    metrics = await analyzer.update()  # обновим и получим словарь
-                    if metrics:
-                        ob_imbalance = metrics.get("imbalance", 0.0)
-                        ob_delta_volume = metrics.get("delta_volume", 0.0)
+                # 4. Survival + Trade
+                await self._evaluate_survival_and_trade(best_market, best_symbol)
 
-                # -- расширенный контекст для мутации (обновляется редко, но можно хранить последний) --
-                self._last_orderbook_context = {
-                    "imbalance": ob_imbalance,
-                    "delta_volume": ob_delta_volume,
-                    "symbol": best_symbol
-                }
+                self._last_market = best_market
 
-                action = self.trading_controller.decide_action(
-                    market=market,
-                    current_params=self.current_params,
-                    capital=self.capital,
-                    step=self.step_count,
-                    orderbook_imbalance=ob_imbalance,
-                    orderbook_delta_volume=ob_delta_volume
-                )
+                # 5. Эволюция
+                await self._tick_evolution()
 
-                expected = market["price"] * EXPECTED_RETURN_RATE
-                #_, approved = self.survival.evaluate_trade(self.capital, expected)
-                approved = True   # временно, пока не настроим пороги
-                logger.info(f"[{self.node_id}] Survival approved={approved}, capital={self.capital:.2f}, expected={expected:.4f}")
-                logger.debug(f"Survival check: expected={expected:.4f} approved={approved}")
-                if approved:
-                    fraction, _ = self.dispatcher.evaluate(market, self.capital)
-                    if fraction > 0:
-                        side = config.trading.test_web3_swap_side
-                        test_amount = config.trading.test_web3_swap_amount
+                # 6. Swarm sync
+                await self._sync_swarm()
 
-                        # --- Исполнение через ExecutionBackend (PR-3) ---
-                        trade_result = await self.executor.execute_order(
-                            symbol=best_symbol,
-                            side=side,
-                            amount=test_amount,
-                            price=market.get("price", 0),
-                            capital=self.capital,
-                        )
+                # 7. Периодические задачи
+                await self._periodic_tasks()
 
-                        # Обновление капитала по симуляционной формуле (как раньше)
-                        ret = market["price"] * fraction * 0.1
-                        prev_capital = self.capital
-                        self.capital *= (1 + ret)
-                        self.capital_manager.capital = self.capital   # синхронизируем с менеджером
-                        self.capital -= 1.0
-                        self.capital_manager.apply_dq_delta(0.001)
-
-                        if trade_result and trade_result.get("success"):
-                            trade_logger.info(
-                                f"TRADE | {best_symbol} | {side} | "
-                                f"status: {trade_result.get('status')}"
-                            )
-                            update_llm_impact(self.capital)
-
-                        logger.debug(
-                            f"[{self.node_id}] TRADE | step={self.step_count} "
-                            f"symbol={best_symbol} price={market['price']:.2f} fraction={fraction:.4f} "
-                            f"ret={ret:.6f} capital_before={prev_capital:.2f} "
-                            f"capital_after={self.capital:.2f} dq={self.survival.dq:.3f} "
-                            f"params={self.current_params}"
-                        )
-
-                        # Хеджирование (только для futures)
-                        if self.market_mode == "futures" and self.market_adapter.hedge_enabled:
-                            hedge_ratio = config.hedge_ratio
-                            spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
-                            futures_adapter = self.market_adapter.get_adapter(best_symbol, "futures")
-                            if spot_adapter and futures_adapter:
-                                side = 'sell' if fraction > 0 else 'buy'
-                                hedge_amount = abs(fraction) * hedge_ratio * self.capital / market['price']
-                                try:
-                                    spot_adapter.place_order(side, hedge_amount)
-                                    logger.info(f"Hedge order placed: {side} {hedge_amount} {best_symbol}")
-                                except Exception as e:
-                                    logger.error(f"Hedge order failed: {e}")
-
-                        # Запись события сделки
-                        if trade_result and isinstance(trade_result, dict):
-                            self.event_store.append(Event.create(
-                                node_id=self.node_id,
-                                event_type="trade_executed",
-                                payload={
-                                    "step": self.step_count,
-                                    "symbol": best_symbol,
-                                    "side": side,
-                                    "amount": test_amount,
-                                    "tx_hash": trade_result.get("tx_hash", ""),
-                                    "status": trade_result.get("status", "unknown"),
-                                    "capital_before": prev_capital,
-                                    "capital_after": self.capital,
-                                    "trace_id": self._trace_id,
-                                },
-                                parent_id=self._trace_id,
-                            ))
-
-                        await self.telegram_notifier.send(
-                            f"🦢 <b>Trade</b>\n"
-                            f"Node: {self.node_id}\n"
-                            f"Step: {self.step_count}\n"
-                            f"Symbol: {best_symbol}\n"
-                            f"Price: {market['price']:.2f}\n"
-                            f"Capital: {self.capital:.2f}"
-                        )
-
-                # ---- import genomes ----
-                if self.step_count - self.last_import_step > self.import_cooldown:
-                    remote = await self.crdt.get_top(10)
-                    remote_genomes = []
-                    for g in remote:
-                        if self.accept_genome(g):
-                            try:
-                                remote_genomes.append(self.dict_to_genome(g))
-                            except Exception:
-                                pass
-                    scored = sorted(remote_genomes, key=self.local_score, reverse=True)
-                    pref = self.node_niche()
-                    counts = self.population_niche_counts()
-                    total = sum(counts.values()) or 1
-                    selected = []
-                    for g in scored:
-                        niche = g.niche
-                        share = counts.get(niche, 0) / total
-                        prob = 0.2
-                        if niche == pref:
-                            prob = 1.0
-                        elif share > 0.5:
-                            prob = 0.3
-                        if random.random() < prob:
-                            selected.append(g)
-                        if len(selected) >= self.max_import:
-                            break
-                    for g in selected:
-                        if self.engine.population:
-                            parent_obj = random.choice(self.engine.population)
-                            if isinstance(parent_obj, Genome):
-                                parent_dict = {
-                                    "params": parent_obj.params,
-                                    "fitness": parent_obj.fitness,
-                                    "niche": parent_obj.niche,
-                                    "lineage": parent_obj.lineage,
-                                }
-                            else:
-                                parent_dict = parent_obj
-                        else:
-                            continue
-                        child_dict = self._recombine(
-                            parent_dict,
-                            {"params": g.params, "fitness": g.fitness, "niche": g.niche, "lineage": g.lineage},
-                        )
-                        child_genome = self.dict_to_genome(child_dict, niche=g.niche)
-                        self.engine.add_genome(child_genome)
-                        self.event_store.append(Event.create(
-                            node_id=self.node_id,
-                            event_type="genome_imported",
-                            payload={
-                                "step": self.step_count,
-                                "gid": child_genome.params,
-                                "fitness": child_genome.fitness,
-                                "niche": child_genome.niche,
-                                "origin": g.params if hasattr(g, 'params') else str(g),
-                                "trace_id": self._trace_id,
-                            },
-                            parent_id=self._trace_id,
-                        ))
-                    self.last_import_step = self.step_count
-
-                # ---- evolution ----
-                if self.step_count % 50 == 0:
-                    self.engine.evolve_generation()
-                    if self.engine.champion[1] > 0:
-                        current_vol = self._current_volatility()
-                        params_to_publish = self.semantic.apply_rules(
-                            self.engine.champion[0], current_vol, self.survival.dq
-                        )
-                        genome_dict = self.make_genome(params_to_publish, self.engine.champion[1])
-
-                        if config.gossip_signing_enabled:
-                            self.gossip_seq_no += 1
-                            self.gossip_lamport_ts += 1
-                            meta = {
-                                "envelope_version": "1.0",
-                                "domain": "blackswan-gossip-v1",
-                                "payload_type": "memory.fact",
-                                "topic": "swarm.genome",
-                                "sender_peer_id": self.node_id,
-                                "sender_node_id": self.node_id,
-                                "sender_pubkey": self.gossip_public_bytes,
-                                "key_id": self.gossip_key_id,
-                                "key_version": 1,
-                                "seq_no": self.gossip_seq_no,
-                                "lamport_ts": self.gossip_lamport_ts,
-                                "nonce": os.urandom(16).hex(),
-                                "timestamp_ms": int(time.time() * 1000),
-                                "ttl_ms": 60000,
-                                "expires_at_ms": int(time.time() * 1000) + 60000,
-                                "parent_hashes": [],
-                            }
-                            envelope = sign_envelope(genome_dict, meta, self.gossip_private_key)
-                            await self.crdt.add_genome(envelope.model_dump(mode='json'))
-                        else:
-                            payload = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
-                            genome_dict["signature"] = self.crypto.sign(payload)
-                            genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
-                            await self.crdt.add_genome(genome_dict)
-
-                    if self.step_count % 100 == 0:
-                        external_context = ""
-                        if config.internet_researcher_enabled:
-                            try:
-                                external_context = await self.internet_researcher.gather_context()
-                            except Exception:
-                                external_context = ""
-
-                        if self.tradingview_enabled and self.tradingview_webhook.latest_signal:
-                            signal = self.tradingview_webhook.latest_signal
-                            external_context += f"\nTradingView signal: {signal}\n"
-
-                        if self.orderbook_enabled:
-                            for sym, analyzer in self.orderbook_analyzers.items():
-                                metrics = await analyzer.update()
-                                if metrics:
-                                    external_context += f"\n{sym} OrderBook: {analyzer.get_context_string()}"
-
-                        context = (
-                            f"volatility={self._current_volatility():.3f}, "
-                            f"dq={self.survival.dq:.3f}, "
-                            f"capital={self.capital:.2f}"
-                        )
-                        if external_context:
-                            context += "\n" + external_context
-
-                        # --- Memory replay: добавляем похожие успешные эпизоды ---
-                        if len(self.memory) > 0:
-                            vol = self._current_volatility()
-                            similar = self.memory.find_similar(vol, self.survival.dq, top_k=3)
-                            if similar:
-                                memory_lines = ["Past successful strategies in similar conditions:"]
-                                for i, rec in enumerate(similar):
-                                    params = rec.get("params", {})
-                                    fitness = rec.get("fitness", 0.0)
-                                    memory_lines.append(f"{i+1}. params={params}, fitness={fitness:.4f}")
-                                memory_context = "\n".join(memory_lines)
-                                context += "\n" + memory_context
-                        # --------------------------------------------------------
-
-                        new_params = self.mutation_engine.mutate(self.engine.champion[0], context)
-                        if new_params != self.engine.champion[0]:
-                            genome = self.dict_to_genome({"params": new_params})
-                            self.engine.add_genome(genome)
-                            note_llm_mutation()
-
-                    if self.engine.champion[1] > self.engine._fitness(self.current_params):
-                        self.current_params = self.engine.champion[0]
-                        self.dispatcher = ROIDispatcher(config=self.current_params)
-
-                    self._prev_prev_price = self._prev_price
-                    self._prev_price = market.get("price", self._prev_price)
-
-                    if self.engine.champion[1] > 0:
-                        self.memory.add(
-                            market_volatility=self._current_volatility(),
-                            dq=self.survival.dq,
-                            capital=self.capital,
-                            params=self.engine.champion[0],
-                            fitness=self.engine.champion[1],
-                        )
-
-                    cur_niche = self.node_niche()
-                    counts = self.population_niche_counts()
-                    dom_niche = max(counts, key=counts.get)
-                    llm_muts, avg_impact = get_llm_stats()
-                    logger.info(
-                        f"[{self.node_id}] step={self.step_count} capital={self.capital:.2f} "
-                        f"dq={self.survival.dq:.3f} fitness={self.engine.champion[1]:.4f} "
-                        f"diversity={self.engine.diversity():.2f} crdt_size={len(self.crdt.state)} "
-                        f"niche={cur_niche} dominant={dom_niche} "
-                        f"llm_muts={llm_muts} avg_llm_impact={avg_impact:+.2f}"
-                    )
-
-                    if self.memory_api_enabled:
-                        record = MemoryRecord(
-                            id="",
-                            kind="summary",
-                            scope="local",
-                            payload={
-                                "step": self.step_count,
-                                "capital": self.capital,
-                                "fitness": self.engine.champion[1],
-                                "diversity": self.engine.diversity(),
-                                "crdt_size": len(self.crdt.state),
-                                "niche": cur_niche,
-                                "dominant": dom_niche,
-                                "llm_muts": llm_muts,
-                                "avg_llm_impact": avg_impact
-                            },
-                            confidence=0.9,
-                            priority=10
-                        )
-                        await self.memory_api.remember(record)
-
-                # ---- curiosity + meta ----
-                if self.step_count % 100 == 0:
-                    if self.market_mode == "futures":
-                        vol = self._current_volatility()
-                        for sym in self.market_adapter.symbols:
-                            adapter = self.market_adapter.get_adapter(sym)
-                            if adapter and hasattr(adapter, 'adjust_leverage'):
-                                await adapter.adjust_leverage(vol)
-
-                    hypothesis = self.curiosity.update(market)
-                    if hypothesis:
-                        self.engine.add_genome(self.dict_to_genome(hypothesis))
-                    norm_cap = min(1.0, self.capital / MAX_NORMALIZED_CAPITAL)
-                    surprise = self.curiosity.prediction_errors[-1] if self.curiosity.prediction_errors else 0.0
-                    weights = self.meta_agent.update(
-                        dq=self.survival.dq,
-                        liveness=self.survival.liveness,
-                        capital=norm_cap,
-                        surprise=surprise,
-                    )
-                    self.survival.config["lambda"] = weights["w_capital"]
-                    if self.meta_agent.current_scenario in ("crisis", "stealth_mode"):
-                        self.engine.set_mutation_rate(0.1)
-                    elif self.meta_agent.current_scenario == "exploration":
-                        self.engine.set_mutation_rate(0.5)
-                    else:
-                        self.engine.set_mutation_rate(0.25)
-
-                # ---- prune + semantic update + spot-check ----
-                if self.step_count % 200 == 0:
-                    self.semantic.derive_rules(self.memory.to_dict_list())
-                    await self.crdt.prune()
-                    top = await self.crdt.get_top(20)
-                    if top:
-                        sample = random.choice(top)
-                        pubkey = sample.get("origin_pubkey")
-                        if pubkey and pubkey != self.crypto.public_bytes_hex:
-                            actual_fit = self.engine._fitness(sample["params"])
-                            claimed_fit = sample.get("fitness", 0.0)
-                            self.reputation.update(pubkey, claimed_fit, actual_fit)
-
-                    if self.memory_api_enabled:
-                        stats = await self.memory_api.compress()
-                        logger.info(f"Memory stats: {stats}")
-
-                # ---- memory consolidation ----
-                if self.step_count % 500 == 0:
-                    self.memory.records = list({
-                        (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec
-                        for rec in self.memory.records
-                    }.values())
-                    if len(self.memory.records) > self.memory.max_size:
-                        self.memory.records = self.memory.records[-self.memory.max_size:]
-
-                    if self.memory_api_enabled:
-                        await self.memory_api.save_to_db()
-                        self.event_store.append(Event.create(
-                            node_id=self.node_id,
-                            event_type="memory_snapshot_created",
-                            payload={
-                                "step": self.step_count,
-                                "records_count": len(self.memory_api._records),
-                                "trace_id": self._trace_id,
-                            },
-                            parent_id=self._trace_id,
-                        ))
-
-                update_llm_impact(self.capital)
+                # 8. Проверка низкого капитала
+                self.telemetry.update_impact(self.capital)
                 alert_threshold = config.capital_alert_threshold
                 if self.capital < alert_threshold:
-                    await self.telegram_notifier.send(
-                        f"⚠️ <b>Low capital alert</b>\n"
-                        f"Node: {self.node_id}\n"
-                        f"Step: {self.step_count}\n"
-                        f"Capital: {self.capital:.2f} (threshold: {alert_threshold})"
-                    )
+                    await self.telemetry.low_capital_alert(self.capital, alert_threshold)
 
                 await asyncio.sleep(0.5)
 
@@ -842,7 +476,263 @@ class SwarmNode:
             "lineage": (g1.get("lineage", [])[-5:] + [self.node_id]),
             "ts": time.time(),
         }
+    
+    async def _collect_market_snapshot(self, session):
+        """Возвращает (best_symbol, best_market, snapshot)."""
+        snapshot = await self.market_service.get_snapshot(session)
+        best_symbol, best_market = select_best_market(snapshot)
+        return best_symbol, best_market, snapshot
 
+    async def _evaluate_survival_and_trade(self, market, symbol):
+        """Выполняет проверку выживаемости и сделку. Возвращает результат сделки или None."""
+        expected = market["price"] * EXPECTED_RETURN_RATE
+        _, approved = self.survival.evaluate_trade(self.capital, expected)
+        logger.info(f"[{self.node_id}] Survival approved={approved}, capital={self.capital:.2f}, expected={expected:.4f}")
+        if not approved:
+            return None
+
+        fraction, _ = self.dispatcher.evaluate(market, self.capital)
+        if fraction <= 0:
+            return None
+
+        side = config.trading.test_web3_swap_side
+        test_amount = config.trading.test_web3_swap_amount
+
+        trade_result = await self.executor.execute_order(
+            symbol=symbol,
+            side=side,
+            amount=test_amount,
+            price=market.get("price", 0),
+            capital=self.capital,
+        )
+
+        # Обновление капитала (формула как раньше)
+        ret = market["price"] * fraction * 0.1
+        prev_capital = self.capital
+        self.capital *= (1 + ret)
+        self.capital -= 1.0
+        self.capital_manager.capital = self.capital
+        self.capital_manager.apply_dq_delta(0.001)
+
+        if trade_result and trade_result.get("success"):
+            trade_logger.info(f"TRADE | {symbol} | {side} | status: {trade_result.get('status')}")
+            self.telemetry.update_impact(self.capital)
+
+        # Хеджирование (futures)
+        if self.market_mode == "futures" and self.market_adapter.hedge_enabled:
+            hedge_ratio = config.hedge_ratio
+            spot_adapter = self.market_adapter.get_adapter(symbol, "spot")
+            futures_adapter = self.market_adapter.get_adapter(symbol, "futures")
+            if spot_adapter and futures_adapter:
+                side_hedge = 'sell' if fraction > 0 else 'buy'
+                hedge_amount = abs(fraction) * hedge_ratio * self.capital / market['price']
+                try:
+                    spot_adapter.place_order(side_hedge, hedge_amount)
+                    logger.info(f"Hedge order placed: {side_hedge} {hedge_amount} {symbol}")
+                except Exception as e:
+                    logger.error(f"Hedge order failed: {e}")
+
+        # Запись события сделки и уведомление через Telemetry
+        if trade_result and isinstance(trade_result, dict):
+            await self.telemetry.trade(
+                step=self.step_count,
+                symbol=symbol,
+                side=side,
+                amount=test_amount,
+                tx_hash=trade_result.get("tx_hash", ""),
+                status=trade_result.get("status", "unknown"),
+                capital_before=prev_capital,
+                capital_after=self.capital,
+                trace_id=self._trace_id,
+            )
+
+        return trade_result
+
+    async def _tick_evolution(self):
+        """Шаг эволюции: мутации, генетика, memory replay."""
+        # LLM Mutation & Memory replay (раз в 100 шагов)
+        if self.step_count % 100 == 0:
+            external_context = ""
+            if config.internet_researcher_enabled:
+                try:
+                    external_context = await self.internet_researcher.gather_context()
+                except Exception:
+                    external_context = ""
+            if self.tradingview_enabled and self.tradingview_webhook.latest_signal:
+                signal = self.tradingview_webhook.latest_signal
+                external_context += f"\nTradingView signal: {signal}\n"
+            if self.orderbook_enabled:
+                for sym, analyzer in self.orderbook_analyzers.items():
+                    metrics = await analyzer.update()
+                    if metrics:
+                        external_context += f"\n{sym} OrderBook: {analyzer.get_context_string()}"
+
+            context = (
+                f"volatility={self._current_volatility():.3f}, "
+                f"dq={self.survival.dq:.3f}, "
+                f"capital={self.capital:.2f}"
+            )
+            if external_context:
+                context += "\n" + external_context
+
+            # Memory replay
+            if len(self.memory) > 0:
+                vol = self._current_volatility()
+                similar = self.memory.find_similar(vol, self.survival.dq, top_k=3)
+                if similar:
+                    memory_lines = ["Past successful strategies in similar conditions:"]
+                    for i, rec in enumerate(similar):
+                        params = rec.get("params", {})
+                        fitness = rec.get("fitness", 0.0)
+                        memory_lines.append(f"{i+1}. params={params}, fitness={fitness:.4f}")
+                    memory_context = "\n".join(memory_lines)
+                    context += "\n" + memory_context
+
+            new_params = self.mutation_engine.mutate(self.engine.champion[0], context)
+            if new_params != self.engine.champion[0]:
+                genome = self.dict_to_genome({"params": new_params})
+                self.engine.add_genome(genome)
+                note_llm_mutation()
+
+        # Genetic step (раз в 50 шагов)
+        if self.step_count % 50 == 0:
+            self.engine.evolve_generation()
+            if self.engine.champion[1] > 0:
+                current_vol = self._current_volatility()
+                params_to_publish = self.semantic.apply_rules(
+                    self.engine.champion[0], current_vol, self.survival.dq
+                )
+                genome_dict = self.make_genome(params_to_publish, self.engine.champion[1])
+
+                if config.gossip_signing_enabled:
+                    # Gossip signing (упрощено — полный код из оригинального main_loop)
+                    self.gossip_seq_no += 1
+                    self.gossip_lamport_ts += 1
+                    meta = {
+                        "envelope_version": "1.0",
+                        "domain": "blackswan-gossip-v1",
+                        "payload_type": "memory.fact",
+                        "topic": "swarm.genome",
+                        "sender_peer_id": self.node_id,
+                        "sender_node_id": self.node_id,
+                        "sender_pubkey": self.gossip_public_bytes,
+                        "key_id": self.gossip_key_id,
+                        "key_version": 1,
+                        "seq_no": self.gossip_seq_no,
+                        "lamport_ts": self.gossip_lamport_ts,
+                        "nonce": os.urandom(16).hex(),
+                        "timestamp_ms": int(time.time() * 1000),
+                        "ttl_ms": 60000,
+                        "expires_at_ms": int(time.time() * 1000) + 60000,
+                        "parent_hashes": [],
+                    }
+                    envelope = sign_envelope(genome_dict, meta, self.gossip_private_key)
+                    await self.crdt.add_genome(envelope.model_dump(mode='json'))
+                else:
+                    payload = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
+                    genome_dict["signature"] = self.crypto.sign(payload)
+                    genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
+                    await self.crdt.add_genome(genome_dict)
+
+                if self.engine.champion[1] > self.engine._fitness(self.current_params):
+                    self.current_params = self.engine.champion[0]
+                    self.dispatcher = ROIDispatcher(config=self.current_params)
+
+                self.memory.add(
+                    market_volatility=current_vol,
+                    dq=self.survival.dq,
+                    capital=self.capital,
+                    params=self.engine.champion[0],
+                    fitness=self.engine.champion[1],
+                )
+
+        # Обновление цен
+        self._prev_prev_price = self._prev_price
+        self._prev_price = market.get("price", self._prev_price) if 'market' in locals() else self._prev_price
+
+    async def _sync_swarm(self):
+        """Gossip-отправка и импорт геномов."""
+        # Отправка gossip
+        if self.step_count % int(self.gossip_interval) == 0:
+            try:
+                genome_to_share = self.make_genome(
+                    self.current_params,
+                    self.engine.champion[1] if hasattr(self.engine, 'champion') and self.engine.champion else 0.0
+                )
+                envelope = sign_envelope(genome_to_share, self.gossip_private_key, self.gossip_key_id)
+                await self.gossip.broadcast(envelope)
+            except Exception as e:
+                logger.debug(f"Gossip error: {e}")
+
+        # Импорт геномов
+        if self.step_count - self.last_import_step > self.import_cooldown:
+            try:
+                imported = await self.crdt.get_top(10)
+                for g in imported:
+                    if self.accept_genome(g):
+                        gen = self.dict_to_genome(g)
+                        self.engine.add_genome(gen)
+                self.last_import_step = self.step_count
+            except Exception:
+                pass
+
+    async def _periodic_tasks(self):
+        """Периодические задачи: heartbeat, memory consolidation, prune."""
+        if self.step_count % 30 == 0:
+            try:
+                self.telemetry.heartbeat(
+                    step=self.step_count,
+                    capital=self.capital,
+                    dq=self.survival.dq,
+                    fitness=self.engine.champion[1] if hasattr(self.engine, 'champion') and self.engine.champion else 0.0,
+                    diversity=self.population_diversity(),
+                    crdt_size=len(self.crdt.state),
+                    llm_mutations=_llm_mutation_count,
+                    niche_counts=self.population_niche_counts(),
+                    trace_id=self._trace_id,
+                )
+            except Exception:
+                pass
+
+        # Memory consolidation (раз в 500 шагов)
+        if self.step_count % 500 == 0:
+            self.memory.records = list({
+                (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec
+                for rec in self.memory.records
+            }.values())
+            if len(self.memory.records) > self.memory.max_size:
+                self.memory.records = self.memory.records[-self.memory.max_size:]
+
+            if self.memory_api_enabled:
+                await self.memory_api.save_to_db()
+                self.event_store.append(Event.create(
+                    node_id=self.node_id,
+                    event_type="memory_snapshot_created",
+                    payload={
+                        "step": self.step_count,
+                        "records_count": len(self.memory_api._records),
+                        "trace_id": self._trace_id,
+                    },
+                    parent_id=self._trace_id,
+                ))
+
+        # Prune (раз в 200 шагов)
+        if self.step_count % 200 == 0:
+            self.semantic.derive_rules(self.memory.to_dict_list())
+            await self.crdt.prune()
+            top = await self.crdt.get_top(20)
+            if top:
+                sample = random.choice(top)
+                pubkey = sample.get("origin_pubkey")
+                if pubkey and pubkey != self.crypto.public_bytes_hex:
+                    actual_fit = self.engine._fitness(sample["params"])
+                    claimed_fit = sample.get("fitness", 0.0)
+                    self.reputation.update(pubkey, claimed_fit, actual_fit)
+
+            if self.memory_api_enabled:
+                stats = await self.memory_api.compress()
+                logger.info(f"Memory stats: {stats}")
+                
     async def start(self) -> None:
         logger.info(f"[{self.node_id}] port={self.port} peers={self.peers}")
 
