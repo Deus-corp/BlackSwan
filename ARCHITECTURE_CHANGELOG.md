@@ -31,3 +31,38 @@
 - График мутаций наполняется точками
 - Выживаемость больше не блокирует нормальные трейды, но ограничит при экстремальном DQ
 
+## [2026-05-14] Завершена архитектурная реструктуризация (PR-0 – PR-12)
+
+### Достигнутое состояние
+- `node_agent.py` выступает чистым оркестратором (~400 строк вместо 800+).
+- Выделены сервисные модули:
+  - `leader.py` — детерминированный выбор лидера (SHA-256).
+  - `capital_manager.py` — управление капиталом, burn-rate, survival.
+  - `telemetry.py` — единый слой наблюдаемости (события, Telegram, метрики).
+  - `evolution/engine.py` — генетика, мутации, memory replay.
+  - `swarm_sync.py` — gossip-обмен и импорт геномов.
+  - `market/` — сбор рыночных данных и выбор инструмента.
+  - `execution/` — интерфейс исполнения (sim/live/web3).
+  - `models.py` — типизированные dataclass'ы (MarketSnapshot, TradeDecision и др.).
+- Все настройки централизованы в `swarm_config.py`, прямые обращения к `os.environ` удалены.
+- `except: pass` заменены на типизированную обработку ошибок с логированием.
+- Добавлены smoke-тесты и unit-тесты на все новые сервисы (50 тестов в CI).
+
+### Ключевые PR
+- PR-0: smoke-тесты базового запуска
+- PR-1: единый конфиг
+- PR-2: детерминированный лидер-элекшн
+- PR-3: execution backend abstraction
+- PR-4: market layer extraction
+- PR-5: capital & risk manager
+- PR-6: main loop decomposition
+- PR-7: telemetry extraction
+- PR-8: error handling cleanup
+- PR-9: evolution engine extraction
+- PR-10: swarm sync extraction
+- PR-11/12: typed models & final slimming
+
+### Результат
+- Проект готов к масштабированию, тестированию и презентации.
+- `node_agent` — orchestrator only.
+
