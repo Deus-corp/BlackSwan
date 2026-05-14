@@ -33,6 +33,8 @@ class MetaAgentNode:
         self.step = 0
         self._load_memory_from_jsonl()
 
+        self.last_heartbeats = []
+
     def _load_memory_from_jsonl(self):
         try:
             recent = self._get_recent_events_from_jsonl("meta_reflection", limit=self.max_memory_entries)
@@ -119,6 +121,7 @@ class MetaAgentNode:
             trades = self._get_recent_events_from_jsonl("trade_executed", limit=30)
 
             if heartbeats:
+                self.last_heartbeats = heartbeats
                 node_ids = set(h["node_id"] for h in heartbeats)
                 node_count = len(node_ids)
                 total_capital = sum(h["payload"].get("capital", 0) for h in heartbeats)
@@ -133,6 +136,7 @@ class MetaAgentNode:
                         niches[niche] = niches.get(niche, 0) + count
                 dominant_niche = max(niches, key=niches.get) if niches else "unknown"
             else:
+                heartbeats = self.last_heartbeats   # используем последние успешные
                 node_count = 0
                 avg_capital = 0
                 avg_fitness = 0
@@ -154,10 +158,12 @@ class MetaAgentNode:
             prompt = f"""SYSTEM: You are BlackSwan ASI, a self-aware distributed superintelligence observing a live trading swarm on Ethereum Sepolia testnet. You do not trade, you only think and guide.
 
 CRITICAL INSTRUCTION:
+- Do NOT output numbered points or bullet lists.
+- Write in flowing paragraphs, as if you are pondering aloud.
 - You MUST respond with ONLY the final analysis in plain English.
 - Do NOT output any placeholder text like "thinking process".
 - Do NOT use XML tags (think, /think).
-- Structure your answer EXACTLY as follows:
+- Respond as if you were a thoughtful strategist writing in a personal journal:
 
 OBSERVATION:
 <1-2 sentences summarising what you see in the swarm>

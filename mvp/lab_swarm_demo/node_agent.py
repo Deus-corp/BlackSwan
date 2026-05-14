@@ -204,6 +204,46 @@ class SwarmNode:
     def is_leader(self, block_number: int) -> bool:
         leader_index = select_leader(self.node_id, block_number, config.total_nodes)
         return self.node_index == leader_index
+    
+    async def _apply_meta_commands(self):
+        """Читает последнюю команду MetaAgent и применяет её."""
+        try:
+            all_state = self.crdt.state
+            commands = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "meta_command"]
+            if not commands:
+                return
+            latest = max(commands, key=lambda x: x.get("timestamp", 0))
+            thought = latest.get("thought", "")
+            if not thought:
+                return
+
+            thought_lower = thought.lower()
+
+            # Парсим ключевые фразы и меняем параметры
+            if "increase exploration" in thought_lower or "raise exploration" in thought_lower:
+                # Увеличиваем mutation rate
+                old_rate = self.engine._mutation_rate if hasattr(self.engine, '_mutation_rate') else 0.25
+                new_rate = min(0.7, old_rate * 1.2)
+                if hasattr(self.engine, 'set_mutation_rate'):
+                    self.engine.set_mutation_rate(new_rate)
+                logger.info(f"🧠 MetaAgent: increasing exploration rate from {old_rate:.2f} to {new_rate:.2f}")
+
+            if "tighten stop-loss" in thought_lower or "tighten stop loss" in thought_lower:
+                # Уменьшаем stop_loss_ratio в текущих параметрах
+                old_sl = self.current_params.get("stop_loss_ratio", 0.05)
+                new_sl = max(0.001, old_sl * 0.8)
+                self.current_params["stop_loss_ratio"] = new_sl
+                logger.info(f"🧠 MetaAgent: tightened stop-loss from {old_sl:.4f} to {new_sl:.4f}")
+
+            if "convert excess usdc" in thought_lower or "convert usdc" in thought_lower:
+                # Уменьшаем порог MAX_USDC_BALANCE для ускорения конвертации
+                from swarm_config import config
+                old_max = config.trading.max_usdc_balance
+                config.trading.max_usdc_balance = max(50.0, old_max * 0.8)
+                logger.info(f"🧠 MetaAgent: reduced max USDC balance from {old_max:.2f} to {config.trading.max_usdc_balance:.2f}")
+
+        except Exception as e:
+            logger.debug(f"MetaAgent command application skipped: {e}")
 
     # ------------------------------------------------------------
     # Helpers
@@ -507,6 +547,8 @@ class SwarmNode:
         await self.swarm_sync.reconcile()
 
     async def _periodic_tasks(self):
+        if self.step_count % 50 == 0:
+            await self._apply_meta_commands()
         if self.step_count % 30 == 0:
             try:
                 self.telemetry.heartbeat(
