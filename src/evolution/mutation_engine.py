@@ -96,24 +96,28 @@ Do not include any other text.
 
     def _extract_json(self, text: str) -> Optional[str]:
         import re
-        # 1. Удаляем все XML-подобные теги
-        text = re.sub(r'<[^>]+>', '', text)
-
-        # 2. Ищем ```json ... ```
+        # 1. Ищем ```json ... ``` в сыром тексте (может быть внутри think)
         match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
         if match:
             return match.group(1)
 
-        # 3. Ищем просто ``` ... ```
+        # 2. Ищем просто ``` ... ``` в сыром тексте
         match = re.search(r'```\s*(\{.*?\})\s*```', text, re.DOTALL)
         if match:
             return match.group(1)
 
-        # 4. Ищем от первой { до последней }
+        # 3. Ищем от первой { до последней } в сыром тексте
         start = text.find('{')
         end = text.rfind('}')
         if start != -1 and end != -1 and end > start:
             return text[start:end+1]
+
+        # 4. Удаляем XML-теги и пробуем снова
+        cleaned = re.sub(r'<[^>]+>', '', text)
+        start = cleaned.find('{')
+        end = cleaned.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            return cleaned[start:end+1]
 
         return None
 
