@@ -3,6 +3,7 @@ Evolution Engine – мутации, генетика, memory replay.
 """
 import logging
 import time
+import os
 from swarm_config import config
 from src.evolution.mutation_engine import MutationEngine
 
