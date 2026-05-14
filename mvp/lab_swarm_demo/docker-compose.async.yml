@@ -82,7 +82,8 @@ services:
     restart: unless-stopped
     volumes:
       - ../../llama_cpp:/app/llama_cpp:ro
-      - ../../data/ledgers:/app/data/ledgers
+      - ../../data/meta_agent:/app/data/meta_agent
+      - ../../data/ledgers:/app/data/ledgers   # для чтения heartbeats
 
   prometheus:
     image: prom/prometheus:latest
