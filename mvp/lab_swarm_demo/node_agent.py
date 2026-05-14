@@ -36,6 +36,7 @@ from src.core.trading_controller import TradingController
 from src.evolution.mutation_engine import MutationEngine
 from prometheus_client import Counter, Gauge
 from mvp.lab_swarm_demo.leader import select_leader
+from mvp.lab_swarm_demo.execution import build_backend
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -207,6 +208,12 @@ class SwarmNode:
         self._seed_from_memory()
 
         self.trading_controller = TradingController(self.node_id)
+                # Execution backend (PR-3)
+        self.executor = build_backend(
+            node_id=self.node_id,
+            adapter=None,   # будет передан позже, когда адаптер готов (для web3)
+            is_leader_func=self.is_leader,
+        )
         self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id, nonce_manager=None, event_store=self.event_store)
         self.nonce_manager = None   # будет инициализирован после создания адаптера
     
@@ -461,48 +468,31 @@ class SwarmNode:
                 if approved:
                     fraction, _ = self.dispatcher.evaluate(market, self.capital)
                     if fraction > 0:
-                        swap_result = None
-                        test_amount = config.trading.test_web3_swap_amount
                         side = config.trading.test_web3_swap_side
+                        test_amount = config.trading.test_web3_swap_amount
 
-                        # --- Динамическая корректировка объёма под баланс ---
-                        if self.market_mode in ("web3", "live"):
-                            adapter = self.market_adapter.get_adapter(best_symbol)
-                            if adapter:
-                                try:
-                                    if side == "sell":
-                                        weth_bal = await adapter._get_token_balance(WETH_ADDRESS)
-                                        if weth_bal < test_amount:
-                                            logger.warning(f"Low WETH balance ({weth_bal}), reducing swap size")
-                                            test_amount = max(weth_bal, 0.0)
-                                    elif side == "buy":
-                                        usdc_bal = await adapter._get_token_balance(USDC_ADDRESS)
-                                        # Примерная оценка: сколько WETH можем купить за USDC
-                                        max_weth = usdc_bal / market["price"] if market.get("price", 0) > 0 else 0.0
-                                        if max_weth < test_amount:
-                                            test_amount = max_weth
-                                except Exception as e:
-                                    logger.warning(f"Balance check skipped: {e}")
-                        # ----------------------------------------------------
-                        # --- Реальный своп (sell) ---
-                        if self.market_mode in ("web3", "live"):
-                            adapter = self.market_adapter.get_adapter(best_symbol)
-                            if adapter and hasattr(adapter, "place_order") and test_amount > 0:
-                                block_number = await adapter.w3.eth.block_number
-                                if self.is_leader(block_number):
-                                    logger.info(f"Leader, swap: {side} {test_amount} {best_symbol}")
-                                    try:
-                                        swap_result = await adapter.place_order(side, test_amount, price=market.get("price"))
-                                        logger.info(f"📡 Real swap result: {swap_result}")
-                                    except Exception as e:
-                                        logger.error(f"Real swap error: {e}")
-                                        swap_result = {"error": str(e)}
+                        # --- Исполнение через ExecutionBackend (PR-3) ---
+                        trade_result = await self.executor.execute_order(
+                            symbol=best_symbol,
+                            side=side,
+                            amount=test_amount,
+                            price=market.get("price", 0),
+                            capital=self.capital,
+                        )
 
+                        # Обновление капитала по симуляционной формуле (как раньше)
                         ret = market["price"] * fraction * 0.1
                         prev_capital = self.capital
                         self.capital *= (1 + ret)
                         self.capital -= 1.0
                         self.survival.dq = min(1.0, self.survival.dq + 0.001)
+
+                        if trade_result and trade_result.get("success"):
+                            trade_logger.info(
+                                f"TRADE | {best_symbol} | {side} | "
+                                f"status: {trade_result.get('status')}"
+                            )
+                            update_llm_impact(self.capital)
 
                         logger.debug(
                             f"[{self.node_id}] TRADE | step={self.step_count} "
@@ -512,6 +502,7 @@ class SwarmNode:
                             f"params={self.current_params}"
                         )
 
+                        # Хеджирование (только для futures)
                         if self.market_mode == "futures" and self.market_adapter.hedge_enabled:
                             hedge_ratio = config.hedge_ratio
                             spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
@@ -526,7 +517,7 @@ class SwarmNode:
                                     logger.error(f"Hedge order failed: {e}")
 
                         # Запись события сделки
-                        if swap_result and isinstance(swap_result, dict):
+                        if trade_result and isinstance(trade_result, dict):
                             self.event_store.append(Event.create(
                                 node_id=self.node_id,
                                 event_type="trade_executed",
@@ -535,8 +526,8 @@ class SwarmNode:
                                     "symbol": best_symbol,
                                     "side": side,
                                     "amount": test_amount,
-                                    "tx_hash": swap_result.get("tx_hash", ""),
-                                    "status": swap_result.get("status", "unknown"),
+                                    "tx_hash": trade_result.get("tx_hash", ""),
+                                    "status": trade_result.get("status", "unknown"),
                                     "capital_before": prev_capital,
                                     "capital_after": self.capital,
                                     "trace_id": self._trace_id,
@@ -888,6 +879,11 @@ class SwarmNode:
                 if adapter:
                     self.nonce_manager = adapter.nonce_manager
                     self.mutation_engine.nonce_manager = self.nonce_manager
+
+                    # Обновляем executor для web3-режима актуальным адаптером
+        if self.market_mode == "web3":
+            adapter = self.market_adapter.get_adapter(self.symbols_list[0]) if self.symbols_list else None
+            self.executor = build_backend(self.node_id, adapter, self.is_leader)
 
         await asyncio.gather(
             self.gossip.start(),
