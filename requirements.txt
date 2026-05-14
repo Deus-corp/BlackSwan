@@ -20,5 +20,5 @@ numpy
 python-dotenv
 scipy
 urllib3
-llama-cpp-pythonpy
-test-asyncio
+llama-cpp-python
+pytest-asyncio
