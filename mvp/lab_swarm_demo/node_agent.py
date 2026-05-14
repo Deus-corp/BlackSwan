@@ -40,6 +40,7 @@ from mvp.lab_swarm_demo.execution import build_backend
 from mvp.lab_swarm_demo.market import MarketSnapshotService, select_best_market
 from mvp.lab_swarm_demo.capital_manager import CapitalManager
 from mvp.lab_swarm_demo.telemetry import Telemetry
+from mvp.lab_swarm_demo.evolution import EvolutionEngine
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -226,6 +227,7 @@ class SwarmNode:
         self.trading_controller = TradingController(self.node_id)
         self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id, nonce_manager=None, event_store=self.event_store)
         self.nonce_manager = None   # будет инициализирован после создания адаптера
+        self.evolution_engine = EvolutionEngine(self)
         
                 # Capital & Risk Manager (PR-5)
         self.capital_manager = CapitalManager(capital=self.capital)
@@ -549,106 +551,7 @@ class SwarmNode:
         return trade_result
 
     async def _tick_evolution(self):
-        """Шаг эволюции: мутации, генетика, memory replay."""
-        # LLM Mutation & Memory replay (раз в 100 шагов)
-        if self.step_count % 100 == 0:
-            external_context = ""
-            if config.internet_researcher_enabled:
-                try:
-                    external_context = await self.internet_researcher.gather_context()
-                except Exception:
-                    external_context = ""
-            if self.tradingview_enabled and self.tradingview_webhook.latest_signal:
-                signal = self.tradingview_webhook.latest_signal
-                external_context += f"\nTradingView signal: {signal}\n"
-            if self.orderbook_enabled:
-                for sym, analyzer in self.orderbook_analyzers.items():
-                    metrics = await analyzer.update()
-                    if metrics:
-                        external_context += f"\n{sym} OrderBook: {analyzer.get_context_string()}"
-
-            context = (
-                f"volatility={self._current_volatility():.3f}, "
-                f"dq={self.survival.dq:.3f}, "
-                f"capital={self.capital:.2f}"
-            )
-            if external_context:
-                context += "\n" + external_context
-
-            # Memory replay
-            if len(self.memory) > 0:
-                vol = self._current_volatility()
-                similar = self.memory.find_similar(vol, self.survival.dq, top_k=3)
-                if similar:
-                    memory_lines = ["Past successful strategies in similar conditions:"]
-                    for i, rec in enumerate(similar):
-                        params = rec.get("params", {})
-                        fitness = rec.get("fitness", 0.0)
-                        memory_lines.append(f"{i+1}. params={params}, fitness={fitness:.4f}")
-                    memory_context = "\n".join(memory_lines)
-                    context += "\n" + memory_context
-
-            new_params = self.mutation_engine.mutate(self.engine.champion[0], context)
-            if new_params != self.engine.champion[0]:
-                genome = self.dict_to_genome({"params": new_params})
-                self.engine.add_genome(genome)
-                note_llm_mutation()
-
-        # Genetic step (раз в 50 шагов)
-        if self.step_count % 50 == 0:
-            self.engine.evolve_generation()
-            if self.engine.champion[1] > 0:
-                current_vol = self._current_volatility()
-                params_to_publish = self.semantic.apply_rules(
-                    self.engine.champion[0], current_vol, self.survival.dq
-                )
-                genome_dict = self.make_genome(params_to_publish, self.engine.champion[1])
-
-                if config.gossip_signing_enabled:
-                    # Gossip signing (упрощено — полный код из оригинального main_loop)
-                    self.gossip_seq_no += 1
-                    self.gossip_lamport_ts += 1
-                    meta = {
-                        "envelope_version": "1.0",
-                        "domain": "blackswan-gossip-v1",
-                        "payload_type": "memory.fact",
-                        "topic": "swarm.genome",
-                        "sender_peer_id": self.node_id,
-                        "sender_node_id": self.node_id,
-                        "sender_pubkey": self.gossip_public_bytes,
-                        "key_id": self.gossip_key_id,
-                        "key_version": 1,
-                        "seq_no": self.gossip_seq_no,
-                        "lamport_ts": self.gossip_lamport_ts,
-                        "nonce": os.urandom(16).hex(),
-                        "timestamp_ms": int(time.time() * 1000),
-                        "ttl_ms": 60000,
-                        "expires_at_ms": int(time.time() * 1000) + 60000,
-                        "parent_hashes": [],
-                    }
-                    envelope = sign_envelope(genome_dict, meta, self.gossip_private_key)
-                    await self.crdt.add_genome(envelope.model_dump(mode='json'))
-                else:
-                    payload = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
-                    genome_dict["signature"] = self.crypto.sign(payload)
-                    genome_dict["origin_pubkey"] = self.crypto.public_bytes_hex
-                    await self.crdt.add_genome(genome_dict)
-
-                if self.engine.champion[1] > self.engine._fitness(self.current_params):
-                    self.current_params = self.engine.champion[0]
-                    self.dispatcher = ROIDispatcher(config=self.current_params)
-
-                self.memory.add(
-                    market_volatility=current_vol,
-                    dq=self.survival.dq,
-                    capital=self.capital,
-                    params=self.engine.champion[0],
-                    fitness=self.engine.champion[1],
-                )
-
-        # Обновление цен
-        self._prev_prev_price = self._prev_price
-        self._prev_price = market.get("price", self._prev_price) if 'market' in locals() else self._prev_price
+        await self.evolution_engine.tick(self._last_market)
 
     async def _sync_swarm(self):
         """Gossip-отправка и импорт геномов."""
