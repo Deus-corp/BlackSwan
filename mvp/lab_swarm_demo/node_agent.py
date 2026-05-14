@@ -35,6 +35,7 @@ from swarm_config import config
 from src.core.trading_controller import TradingController
 from src.evolution.mutation_engine import MutationEngine
 from prometheus_client import Counter, Gauge
+from mvp.lab_swarm_demo.leader import select_leader
 
 import logging
 logger = logging.getLogger("SwarmNode")
@@ -208,9 +209,9 @@ class SwarmNode:
         self.trading_controller = TradingController(self.node_id)
         self.mutation_engine = MutationEngine(self.llm, node_id=self.node_id, nonce_manager=None, event_store=self.event_store)
         self.nonce_manager = None   # будет инициализирован после создания адаптера
-
+    
     def is_leader(self, block_number: int) -> bool:
-        leader_index = abs(hash(f"{self.node_id}:{block_number}")) % config.total_nodes
+        leader_index = select_leader(self.node_id, block_number, config.total_nodes)
         return self.node_index == leader_index
 
     # ------------------------------------------------------------
