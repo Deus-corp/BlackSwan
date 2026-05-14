@@ -9,6 +9,7 @@ from swarm_config import config
 from src.evolution.mutation_engine import MutationEngine
 from src.security.gossip_envelope import sign_envelope
 from src.economy.roi_dispatcher import ROIDispatcher
+from mvp.lab_swarm_demo.node_agent import note_llm_mutation
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ class EvolutionEngine:
             self.node._prev_price = market.get("price", self.node._prev_price)
 
     async def _mutate_with_context(self):
+        # --- Сбор внешнего контекста (новости, сигналы, ордербук) ---
         external_context = ""
         if config.internet_researcher_enabled:
             try:
@@ -51,15 +53,34 @@ class EvolutionEngine:
                 if metrics:
                     external_context += f"\n{sym} OrderBook: {analyzer.get_context_string()}"
 
+        # --- Расширенный рыночный контекст ---
+        market_context = ""
+        m = getattr(self.node, '_last_market', None)
+        if m:
+            price = m.get('price', 0)
+            prev1 = getattr(self.node, '_prev_price', price)
+            prev2 = getattr(self.node, '_prev_prev_price', price)
+            trend = "up" if price >= prev1 else "down"
+            market_context = (
+                f"price_now={price:.4f}, "
+                f"price_prev1={prev1:.4f}, "
+                f"price_prev2={prev2:.4f}, "
+                f"trend={trend}, "
+            )
+
+        # --- Базовый контекст узла ---
         context = (
             f"volatility={self.node._current_volatility():.3f}, "
             f"dq={self.node.survival.dq:.3f}, "
-            f"capital={self.node.capital:.2f}"
+            f"capital={self.node.capital:.2f}, "
+            f"niche={self.node.node_niche()}, "
         )
+        if market_context:
+            context += market_context
         if external_context:
             context += "\n" + external_context
 
-        # Memory replay
+        # --- Memory replay: похожие успешные стратегии ---
         if len(self.node.memory) > 0:
             vol = self.node._current_volatility()
             similar = self.node.memory.find_similar(vol, self.node.survival.dq, top_k=3)
@@ -72,15 +93,30 @@ class EvolutionEngine:
                 memory_context = "\n".join(memory_lines)
                 context += "\n" + memory_context
 
+        # --- Топ-3 гена популяции ---
+        if self.node.engine.population:
+            top_genomes = sorted(
+                [g for g in self.node.engine.population if isinstance(g, Genome)],
+                key=lambda g: self.node.engine._fitness(g.params),
+                reverse=True
+            )[:3]
+            if top_genomes:
+                top_lines = ["Top-3 genomes in population:"]
+                for i, g in enumerate(top_genomes):
+                    top_lines.append(
+                        f"{i+1}. params={g.params}, fitness={self.node.engine._fitness(g.params):.4f}, niche={g.niche}"
+                    )
+                context += "\n" + "\n".join(top_lines)
+
+        # --- Вызов LLM мутации ---
         champion = self.node.engine.champion[0] if self.node.engine.champion else self.node.current_params
         new_params = self.mutation_engine.mutate(champion, context)
         if new_params != champion:
             genome = self.node.dict_to_genome({"params": new_params})
             self.node.engine.add_genome(genome)
-            # note_llm_mutation() – используем глобальный счётчик
-            from node_agent import note_llm_mutation
+            from mvp.lab_swarm_demo.node_agent import note_llm_mutation
             note_llm_mutation()
-
+            
     def _genetic_step(self):
         self.node.engine.evolve_generation()
         if self.node.engine.champion[1] > 0:
