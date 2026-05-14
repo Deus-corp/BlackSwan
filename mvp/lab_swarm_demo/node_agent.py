@@ -38,6 +38,7 @@ from mvp.lab_swarm_demo.capital_manager import CapitalManager
 from mvp.lab_swarm_demo.telemetry import Telemetry
 from mvp.lab_swarm_demo.evolution import EvolutionEngine
 from mvp.lab_swarm_demo.swarm_sync import SwarmSync
+from mvp.lab_swarm_demo.meta_agent import MetaAgent
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
@@ -222,6 +223,9 @@ class SwarmNode:
             adapter=None,
             is_leader_func=self.is_leader,
         )
+
+            # MetaAgent – self-reflective orchestrator (должен быть после инициализации LLM)
+        self.meta_agent = MetaAgent(self)
 
     def is_leader(self, block_number: int) -> bool:
         leader_index = select_leader(self.node_id, block_number, config.total_nodes)
@@ -529,6 +533,9 @@ class SwarmNode:
         await self.swarm_sync.reconcile()
 
     async def _periodic_tasks(self):
+            # MetaAgent reflection (раз в 500 шагов)
+        if self.step_count % 500 == 0:
+            await self.meta_agent.reflect()
         if self.step_count % 30 == 0:
             try:
                 self.telemetry.heartbeat(
