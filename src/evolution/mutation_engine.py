@@ -95,27 +95,26 @@ Do not include any other text.
         return new_params
 
     def _extract_json(self, text: str) -> Optional[str]:
-        """
-        Ищет JSON-объект в ответе: сначала в блоках ```json, потом просто { ... }.
-        Дополнительно удаляет все XML-теги (включая think).
-        """
-        # Удаляем ВСЕ XML-теги (например,  think, /think )
         import re
+        # 1. Удаляем все XML-подобные теги
         text = re.sub(r'<[^>]+>', '', text)
 
-        # Пробуем ```json
+        # 2. Ищем ```json ... ```
         match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
         if match:
             return match.group(1)
-        # Пробуем просто ``` (без указания языка)
+
+        # 3. Ищем просто ``` ... ```
         match = re.search(r'```\s*(\{.*?\})\s*```', text, re.DOTALL)
         if match:
             return match.group(1)
-        # Ищем от первой фигурной скобки до последней (самый широкий захват)
+
+        # 4. Ищем от первой { до последней }
         start = text.find('{')
         end = text.rfind('}')
         if start != -1 and end != -1 and end > start:
             return text[start:end+1]
+
         return None
 
     def _record(self, old_params: Dict[str, float], new_params: Dict[str, float], context: str):

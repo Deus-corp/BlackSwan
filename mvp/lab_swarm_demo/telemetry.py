@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Any
 from src.core.events import Event
 from swarm_config import config
+from mvp.lab_swarm_demo.mutation_metrics import get_llm_stats, update_llm_impact
 
 logger = logging.getLogger(__name__)
 
