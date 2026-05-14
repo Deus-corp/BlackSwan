@@ -19,4 +19,4 @@ web3==7.16.0
 numpy
 python-dotenv
 scipy
-urllib3
+urllib3pytest-asyncio
