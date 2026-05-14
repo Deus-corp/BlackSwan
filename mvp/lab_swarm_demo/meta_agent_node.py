@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
 MetaAgent – отдельный узел-наблюдатель, непрерывно рефлексирующий над роем.
-Не торгует, только анализирует состояние через CRDT, event_store и LLM.
+Читает heartbeats и сделки из events.jsonl, пишет размышления в meta_events.jsonl.
+Публикует команды в CRDT.
 """
-import asyncio, logging, os, sys, time, uuid, json, sqlite3
+import asyncio, logging, os, sys, time, uuid, json
 from typing import Dict, Any, List
 
 from src.core.crdt_adapter import CRDTAdapter
-from src.core.event_store import EventStore
-from src.core.events import Event
 from src.intelligence.llm_client import LLMClient
 from swarm_config import config
 
@@ -21,75 +20,79 @@ class MetaAgentNode:
         self.node_id = f"meta-{uuid.uuid4().hex[:8]}"
         self.llm = LLMClient()
         self.crdt = CRDTAdapter(node_id=self.node_id)
-        self.event_store = EventStore(
-            ledger_path=config.event_ledger_path,
-            sqlite_path=config.event_sqlite_path,
-        )
+        # Путь к общему JSONL-файлу событий роя
+        self.events_jsonl_path = config.event_ledger_path or "./data/ledgers/events.jsonl"
+        # Путь к собственному JSONL-файлу размышлений
+         # Собственная папка для размышлений MetaAgent
+        meta_dir = "/app/data/meta_agent"
+        os.makedirs(meta_dir, exist_ok=True)
+        self.meta_events_jsonl_path = os.path.join(meta_dir, "meta_events.jsonl")
+        
         self.memory: List[str] = []
         self.max_memory_entries = 5
         self.step = 0
-        self._load_memory_from_db()
+        self._load_memory_from_jsonl()
 
-    def _load_memory_from_db(self):
-        """Загружает последние размышления из event_store при старте."""
+    def _load_memory_from_jsonl(self):
         try:
-            recent = self._get_recent_events("meta_reflection", limit=self.max_memory_entries)
+            recent = self._get_recent_events_from_jsonl("meta_reflection", limit=self.max_memory_entries)
             for evt in recent:
                 thought = evt.get("payload", {}).get("thought", "")
                 if thought:
                     self.memory.append(thought)
             logger.info(f"Loaded {len(self.memory)} past reflections from memory")
         except Exception as e:
-            logger.warning(f"Could not load memory from DB: {e}")
+            logger.warning(f"Could not load memory from JSONL: {e}")
 
     def _clean_thinking(self, text: str) -> str:
-        """
-        Удаляет из ответа модели блоки  think ...  think  и любые другие XML-теги.
-        """
         import re
-        # Удаляем всё, что похоже на XML-теги
         cleaned = re.sub(r'<[^>]+>', '', text)
         cleaned = cleaned.strip()
-        # Если после очистки осталась пустая строка, возвращаем исходный текст (без тегов)
         return cleaned if cleaned else text.strip()
 
-    def _get_recent_events(self, event_type: str, limit: int = 20) -> list:
-        """Читает последние события указанного типа из event_store (SQLite)."""
+    def _get_recent_events_from_jsonl(self, event_type: str, limit: int = 30) -> list:
+        """Читает последние события указанного типа из JSONL-файла."""
         try:
-            db_path = self.event_store.sqlite_path
-            if not os.path.exists(db_path):
-                logger.warning(f"Event store DB not found at {db_path}")
+            if not os.path.exists(self.events_jsonl_path):
+                logger.warning(f"JSONL file not found: {self.events_jsonl_path}")
                 return []
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            # Схема EventStore: (id, node_id, event_type, payload, parent_id, timestamp)
-            cur = conn.execute(
-                "SELECT node_id, event_type, payload, timestamp FROM events WHERE event_type = ? ORDER BY timestamp DESC LIMIT ?",
-                (event_type, limit)
-            )
-            rows = cur.fetchall()
-            conn.close()
             events = []
-            for r in reversed(rows):
-                try:
-                    payload = json.loads(r["payload"])
-                except:
-                    payload = {}
-                events.append({
-                    "node_id": r["node_id"],
-                    "event_type": r["event_type"],
-                    "payload": payload,
-                    "timestamp": r["timestamp"],
-                })
-            return events
+            with open(self.events_jsonl_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        evt = json.loads(line)
+                    except:
+                        continue
+                    if evt.get("event_type") == event_type:
+                        events.append({
+                            "node_id": evt.get("node_id"),
+                            "event_type": evt.get("event_type"),
+                            "payload": evt.get("payload", {}),
+                            "timestamp": evt.get("timestamp", ""),
+                        })
+            return events[-limit:]
         except Exception as e:
-            logger.warning(f"Cannot read events from event_store: {e}")
+            logger.warning(f"Cannot read events from JSONL: {e}")
             return []
 
+    def _append_to_jsonl(self, event_type: str, payload: dict):
+        """Добавляет событие в собственный JSONL-файл MetaAgent."""
+        try:
+            record = {
+                "node_id": self.node_id,
+                "event_type": event_type,
+                "payload": payload,
+                "timestamp": time.time(),
+            }
+            with open(self.meta_events_jsonl_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(record) + "\n")
+        except Exception as e:
+            logger.error(f"Failed to write to meta JSONL: {e}")
+
     async def publish_command(self, thought: str):
-        """
-        Публикует управляющую рекомендацию в CRDT.
-        """
         try:
             command = {
                 "type": "meta_command",
@@ -106,17 +109,15 @@ class MetaAgentNode:
         logger.info(f"🧠 MetaAgent {self.node_id} started")
         while True:
             self.step += 1
-            if self.step % 300 == 0:
+            if self.step % 100 == 0:
                 await self.reflect()
             await asyncio.sleep(1.0)
 
     async def reflect(self):
         try:
-            # 1. Читаем последние heartbeats и сделки
-            heartbeats = self._get_recent_events("heartbeat", limit=30)
-            trades = self._get_recent_events("trade_executed", limit=30)
+            heartbeats = self._get_recent_events_from_jsonl("heartbeat", limit=30)
+            trades = self._get_recent_events_from_jsonl("trade_executed", limit=30)
 
-            # 2. Агрегируем статистику
             if heartbeats:
                 node_ids = set(h["node_id"] for h in heartbeats)
                 node_count = len(node_ids)
@@ -182,14 +183,9 @@ Your recent thoughts:
                 self.memory.append(thought)
                 if len(self.memory) > self.max_memory_entries:
                     self.memory = self.memory[-self.max_memory_entries:]
-                # Сохраняем в собственный event_store
-                self.event_store.append(Event.create(
-                    node_id=self.node_id,
-                    event_type="meta_reflection",
-                    payload={"thought": thought, "timestamp": time.time()},
-                    parent_id=None,
-                ))
-                # Публикуем управляющую команду в CRDT для роя
+                # Сохраняем размышление в JSONL
+                self._append_to_jsonl("meta_reflection", {"thought": thought})
+                # Публикуем управляющую команду в CRDT
                 await self.publish_command(thought)
                 logger.info(f"🧠 MetaAgent reflection:\n{thought}")
         except Exception as e:
