@@ -9,3 +9,12 @@ async def test_main_loop_has_required_methods():
     assert hasattr(SwarmNode, '_tick_evolution')
     assert hasattr(SwarmNode, '_sync_swarm')
     assert hasattr(SwarmNode, '_periodic_tasks')
+
+def test_evolution_engine_exists():
+    """Проверяем, что EvolutionEngine создаётся при инициализации узла."""
+    import swarm_config
+    from swarm_config import SwarmConfig
+    swarm_config.config = SwarmConfig()
+    from mvp.lab_swarm_demo.node_agent import SwarmNode
+    node = SwarmNode()
+    assert hasattr(node, 'evolution_engine')
