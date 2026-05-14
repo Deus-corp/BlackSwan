@@ -8,6 +8,7 @@ import logging
 import os
 from typing import Optional, Dict, Any, List
 import aiohttp
+from swarm_config import config
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class InternetResearcher:
         self.memory_api = memory_api
         self.session: Optional[aiohttp.ClientSession] = None
         # Etherscan API key (бесплатный, получается на etherscan.io)
-        self.etherscan_api_key = os.environ.get("ETHERSCAN_API_KEY", "")
+        self.etherscan_api_key = config.security.etherscan_api_key.get_secret_value() if config.security.etherscan_api_key else ""
 
     async def _ensure_session(self):
         if self.session is None:
