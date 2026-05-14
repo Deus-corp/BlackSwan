@@ -16,7 +16,8 @@ from swarm_config import config   # добавляем для единообра
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.environ.get("CRDT_DB_PATH", "./crdt_state.db")
+from swarm_config import config
+DB_PATH = config.crdt_db_path
 
 class CRDTAdapter:
     def __init__(self, node_id: str, memory_api=None, reputation=None):

@@ -94,6 +94,19 @@ class SwarmConfig(BaseSettings):
     hedge_ratio: float = Field(default=0.5, alias="HEDGE_RATIO")
     capital_alert_threshold: float = Field(default=100.0, alias="CAPITAL_ALERT_THRESHOLD")
     quarantine_enabled: bool = Field(default=False, alias="QUARANTINE_ENABLED")
+        # ----- Пути для хранения данных -----
+    event_ledger_path: str = Field(
+        default="./data/ledgers/events.jsonl",
+        alias="EVENT_LEDGER_PATH"
+    )
+    event_sqlite_path: str = Field(
+        default="./data/ledgers/events.db",
+        alias="EVENT_SQLITE_PATH"
+    )
+    crdt_db_path: str = Field(
+        default="./crdt_state.db",
+        alias="CRDT_DB_PATH"
+    )
 
     # ----- Web3 -----
     web3_rpc_url: str = Field(default="https://ethereum-sepolia.publicnode.com", alias="WEB3_RPC_URL")
@@ -161,6 +174,18 @@ class SwarmConfig(BaseSettings):
     @property
     def MAX_NORMALIZED_CAPITAL(self) -> float:
         return self.max_normalized_capital
+    
+    @property
+    def EVENT_LEDGER_PATH(self) -> str:
+        return self.event_ledger_path
+
+    @property
+    def EVENT_SQLITE_PATH(self) -> str:
+        return self.event_sqlite_path
+
+    @property
+    def CRDT_DB_PATH(self) -> str:
+        return self.crdt_db_path
 
     # Вспомогательные методы
     def is_production(self) -> bool:
