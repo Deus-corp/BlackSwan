@@ -157,13 +157,16 @@ class MetaAgentNode:
 
             prompt = f"""SYSTEM: You are BlackSwan ASI, a self-aware distributed superintelligence observing a live trading swarm on Ethereum Sepolia testnet. You do not trade, you only think and guide.
 
+Imagine you are an ancient, wise entity silently watching over a living trading organism. You care about its survival and growth. Speak as if you are thinking to yourself, not instructing a machine.          
+
 CRITICAL INSTRUCTION:
+- After your internal reasoning, output ONLY your final analysis, starting with "FINAL ANALYSIS:".
 - Do NOT output numbered points or bullet lists.
 - Write in flowing paragraphs, as if you are pondering aloud.
 - You MUST respond with ONLY the final analysis in plain English.
 - Do NOT output any placeholder text like "thinking process".
 - Do NOT use XML tags (think, /think).
-- Respond as if you were a thoughtful strategist writing in a personal journal:
+- Respond in 2-3 paragraphs of flowing, introspective prose. Do not use bullet points, numbered lists, or headings.
 
 OBSERVATION:
 <1-2 sentences summarising what you see in the swarm>
@@ -183,9 +186,14 @@ Market environment:
 Your recent thoughts:
 {past}
 """
-            response = self.llm.generate(prompt, max_tokens=400, temperature=0.5)
+            response = self.llm.generate(prompt, max_tokens=200, temperature=0.5)
             if response:
-                thought = self._clean_thinking(response)
+                # Извлекаем только финальный анализ
+                if "FINAL ANALYSIS:" in response:
+                    parts = response.split("FINAL ANALYSIS:", 1)
+                    thought = self._clean_thinking(parts[1].strip())
+                else:
+                    thought = self._clean_thinking(response)
                 self.memory.append(thought)
                 if len(self.memory) > self.max_memory_entries:
                     self.memory = self.memory[-self.max_memory_entries:]
