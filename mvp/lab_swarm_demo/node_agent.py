@@ -102,7 +102,8 @@ class SwarmNode:
         self.crdt: CRDTAdapter = CRDTAdapter(
             node_id=self.node_id,
             memory_api=self.memory_api if self.memory_api_enabled else None,
-            reputation=self.reputation
+            reputation=self.reputation,
+            db_path=config.crdt_db_path          # ← ключевая строка
         )
 
         if self.memory_api_enabled:
