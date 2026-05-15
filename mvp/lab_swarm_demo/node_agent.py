@@ -184,6 +184,7 @@ class SwarmNode:
         self.last_import_step: int = 0
         self._prev_price: float = 100.0
         self._prev_prev_price: float = 100.0
+        self._last_market = None   # будет установлен при первом рыночном тике
 
         self._seed_from_memory()
 
@@ -248,49 +249,6 @@ class SwarmNode:
                         new_sl = max(0.001, min(0.2, old_sl * factor))
                         self.current_params["stop_loss_ratio"] = new_sl
                         logger.info(f"🧠 MetaAgent JSON: stop-loss {old_sl:.4f} → {new_sl:.4f}")
-
-            # --- Fallback к текстовым командам ---
-            text_commands = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "meta_command"]
-            if text_commands:
-                latest = max(text_commands, key=lambda x: x.get("timestamp", 0))
-                thought = latest.get("thought", "").lower()
-
-                if "increase exploration" in thought or "raise exploration" in thought:
-                    old_rate = getattr(self.engine, '_mutation_rate', 0.25)
-                    new_rate = min(0.7, old_rate * 1.2)
-                    if hasattr(self.engine, 'set_mutation_rate'):
-                        self.engine.set_mutation_rate(new_rate)
-                    logger.info(f"🧠 MetaAgent: exploration {old_rate:.2f} → {new_rate:.2f}")
-
-                if "tighten stop-loss" in thought or "tighten stop loss" in thought:
-                    old_sl = self.current_params.get("stop_loss_ratio", 0.05)
-                    new_sl = max(0.001, old_sl * 0.8)
-                    self.current_params["stop_loss_ratio"] = new_sl
-                    logger.info(f"🧠 MetaAgent: stop-loss {old_sl:.4f} → {new_sl:.4f}")
-
-                if "convert excess usdc" in thought or "convert usdc" in thought:
-                    from swarm_config import config
-                    old_max = config.trading.max_usdc_balance
-                    config.trading.max_usdc_balance = max(50.0, old_max * 0.8)
-                    logger.info(f"🧠 MetaAgent: USDC max {old_max:.2f} → {config.trading.max_usdc_balance:.2f}")
-
-                if "reduce risk" in thought or "lower risk" in thought:
-                    old_risk = self.current_params.get("max_risk_per_trade", 0.05)
-                    new_risk = max(0.001, old_risk * 0.8)
-                    self.current_params["max_risk_per_trade"] = new_risk
-                    logger.info(f"🧠 MetaAgent: risk {old_risk:.4f} → {new_risk:.4f}")
-
-                if "increase phi" in thought or "raise phi" in thought:
-                    old_phi = self.current_params.get("phi_llm", 0.15)
-                    new_phi = min(1.0, old_phi * 1.2)
-                    self.current_params["phi_llm"] = new_phi
-                    logger.info(f"🧠 MetaAgent: phi_llm {old_phi:.4f} → {new_phi:.4f}")
-
-                if "decrease volatility" in thought or "lower volatility threshold" in thought:
-                    old_vol = self.current_params.get("volatility_threshold", 0.02)
-                    new_vol = max(0.001, old_vol * 0.8)
-                    self.current_params["volatility_threshold"] = new_vol
-                    logger.info(f"🧠 MetaAgent: volatility threshold {old_vol:.4f} → {new_vol:.4f}")
 
         except Exception as e:
             logger.debug(f"Meta command processing skipped: {e}")
