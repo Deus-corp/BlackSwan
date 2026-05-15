@@ -199,6 +199,8 @@ Example of an ACTIVE adjustment (DO NOT COPY DIRECTLY, use your own judgement):
 
 ADDITIONAL HINT: {hint}
 
+Include a "confidence" field (0.0 to 1.0) indicating how confident you are in this adjustment.
+
 Current swarm data:
 {swarm_context}
 
@@ -260,6 +262,7 @@ Do NOT include any other text. Output ONLY the JSON command.
                         "type": "meta_command_json",
                         "data": command_json,
                         "timestamp": time.time(),
+                        "expires_at": time.time() + 300,   # команда живёт 5 минут
                         "gid": f"meta_json_{int(time.time())}",
                     })
                     logger.info(f"📡 MetaAgent JSON command: {command_json}")
