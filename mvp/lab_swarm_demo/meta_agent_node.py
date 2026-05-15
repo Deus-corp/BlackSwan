@@ -34,8 +34,6 @@ class MetaAgentNode:
         self.step = 0
         self._load_memory_from_jsonl()
 
-        self.last_heartbeats = []
-
     def _load_memory_from_jsonl(self):
         try:
             recent = self._get_recent_events_from_jsonl("meta_reflection", limit=self.max_memory_entries)
