@@ -38,7 +38,10 @@ class MutationEngine:
         if external_context:
             full_context += "\nAdditional market data:\n" + external_context
 
-        prompt = f"""You are a trading strategy optimizer. Adjust the following parameters conservatively based on the current market context. Return ONLY a JSON object with the updated values.
+        prompt = f"""You are a JSON generator. Output ONLY a valid JSON object. No explanations, no markdown, no  think  tags.
+
+Adjust the following strategy parameters based on the market context. The JSON must contain exactly these keys:
+"max_risk_per_trade", "phi_llm", "stop_loss_ratio", "trailing_stop_ratio", "momentum_window", "volatility_threshold".
 
 Current market context:
 {full_context}
@@ -46,16 +49,16 @@ Current market context:
 Current strategy parameters:
 {json.dumps(params, indent=2)}
 
-Return a JSON like:
+Example of valid output:
 {{"max_risk_per_trade": 0.02, "phi_llm": 0.4, "stop_loss_ratio": 0.03, "trailing_stop_ratio": 0.01, "momentum_window": 14, "volatility_threshold": 0.025}}
 
-Return ONLY the JSON object. No explanations.
+Now generate your adjusted JSON:
 """
         
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                response = self.llm.generate(prompt, max_tokens=300, temperature=0.35)
+                response = self.llm.generate(prompt, max_tokens=300, temperature=0.25)
                 logger.debug(f"LLM FULL raw response: {response}")
                 # Ищем JSON с максимальной жадностью
                 json_candidate = self._extract_json(response)
