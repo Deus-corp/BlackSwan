@@ -56,7 +56,7 @@ Return ONLY the JSON object. No explanations.
         for attempt in range(max_retries):
             try:
                 response = self.llm.generate(prompt, max_tokens=300, temperature=0.35)
-                logger.debug(f"LLM raw response (first 200 chars): {response[:200]}")
+                logger.debug(f"LLM FULL raw response: {response}")
                 # Ищем JSON с максимальной жадностью
                 json_candidate = self._extract_json(response)
                 if not json_candidate:
