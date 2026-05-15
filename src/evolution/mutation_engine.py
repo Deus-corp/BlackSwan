@@ -96,21 +96,18 @@ Return ONLY the JSON object. No explanations.
         return new_params
 
     def _extract_json(self, text: str) -> Optional[str]:
-        import re
-        # 1. Ищем ```json ... ```
-        match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
-        if match:
-            return match.group(1)
-
-        # 2. Ищем просто ``` ... ```
-        match = re.search(r'```\s*(\{.*?\})\s*```', text, re.DOTALL)
-        if match:
-            return match.group(1)
-
-        # 3. Удаляем все XML-теги
+        import re, json
+        # 1. Удаляем всё, что похоже на XML-теги (включая think)
         cleaned = re.sub(r'<[^>]+>', '', text)
-
-        # 4. Перебираем все подстроки, начинающиеся с { и заканчивающиеся }
+        # 2. Ищем в ```json ... ```
+        match = re.search(r'```json\s*(\{.*?\})\s*```', cleaned, re.DOTALL)
+        if match:
+            return match.group(1)
+        # 3. Ищем в простых ``` ... ```
+        match = re.search(r'```\s*(\{.*?\})\s*```', cleaned, re.DOTALL)
+        if match:
+            return match.group(1)
+        # 4. Перебираем все подстроки от { до }, пытаемся распарсить
         candidates = re.finditer(r'\{.*?\}', cleaned, re.DOTALL)
         for m in candidates:
             candidate = m.group(0)
