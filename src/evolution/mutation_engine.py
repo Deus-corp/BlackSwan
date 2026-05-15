@@ -38,7 +38,7 @@ class MutationEngine:
         if external_context:
             full_context += "\nAdditional market data:\n" + external_context
 
-        prompt = f"""You are an expert trading strategy optimizer for the Kelly criterion.
+        prompt = f"""You are a trading strategy optimizer. Adjust the following parameters conservatively based on the current market context. Return ONLY a JSON object with the updated values.
 
 Current market context:
 {full_context}
@@ -46,11 +46,12 @@ Current market context:
 Current strategy parameters:
 {json.dumps(params, indent=2)}
 
-Suggest a small, conservative adjustment. Return ONLY valid JSON like:
+Return a JSON like:
 {{"max_risk_per_trade": 0.02, "phi_llm": 0.4, "stop_loss_ratio": 0.03, "trailing_stop_ratio": 0.01, "momentum_window": 14, "volatility_threshold": 0.025}}
-Do not include any other text.
-"""
 
+Do not include any other text, explanations, or markdown formatting.
+"""
+        
         max_retries = 3
         for attempt in range(max_retries):
             try:

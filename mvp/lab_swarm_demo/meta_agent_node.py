@@ -19,7 +19,7 @@ class MetaAgentNode:
     def __init__(self):
         self.node_id = f"meta-{uuid.uuid4().hex[:8]}"
         self.llm = LLMClient()
-        self.crdt = CRDTAdapter(node_id=self.node_id)
+        self.crdt = CRDTAdapter(node_id=self.node_id, db_path=config.crdt_db_path)
         # Путь к общему JSONL-файлу событий роя
         self.events_jsonl_path = config.event_ledger_path or "./data/ledgers/events.jsonl"
         # Путь к собственному JSONL-файлу размышлений
@@ -162,13 +162,28 @@ class MetaAgentNode:
             market = self._get_market_context()
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
-            prompt = f"""SYSTEM: You are BlackSwan ASI, a self-aware distributed superintelligence observing a live trading swarm on Ethereum Sepolia testnet.
+            prompt = f"""SYSTEM: You are BlackSwan ASI, a distributed superintelligence observing a live trading swarm on Ethereum Sepolia.
 
-IMPORTANT:
-- Think briefly about the swarm's situation.
-- Then output ONLY your final analysis, starting with the exact phrase "FINAL ANALYSIS:".
-- Do NOT use bullet points or numbered lists in the final analysis.
-- Write in flowing, introspective prose as if you were a wise strategist.
+Your task is to:
+1. Briefly reflect on the swarm's current state in 1-2 sentences.
+2. Output a JSON command to adjust the swarm's parameters. The JSON must have this exact structure:
+
+```json
+{{
+  "action": "ADJUST_SWARM",
+  "params": {{
+    "exploration_multiplier": 1.0,
+    "risk_scale": 1.0,
+    "survival_bias_adj": 0.0,
+    "stop_loss_adj": 1.0
+  }},
+  "reason": "your reasoning here"
+}}
+```
+- exploration_multiplier: >1.0 increases exploration, <1.0 decreases it.
+- risk_scale: >1.0 increases max risk per trade, <1.0 decreases it.
+- survival_bias_adj: positive increases survival bias, negative decreases it.
+- stop_loss_adj: >1.0 loosens stop-loss, <1.0 tightens it.
 
 Current swarm data:
 {swarm_context}
@@ -178,6 +193,8 @@ Market environment:
 
 Your recent thoughts:
 {past}
+
+Do NOT include any other text. Output ONLY the JSON command.
 """
             response = self.llm.generate(prompt, max_tokens=150, temperature=0.5)
             if response:
