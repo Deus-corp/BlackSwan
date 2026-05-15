@@ -212,6 +212,9 @@ class SwarmNode:
             all_state = self.crdt.state
             # --- Обработка структурированных JSON-команд ---
             json_commands = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "meta_command_json"]
+                # Фильтруем просроченные команды
+            now = time.time()
+            json_commands = [c for c in json_commands if c.get("expires_at", now+1) > now]
             if json_commands:
                 latest_json = max(json_commands, key=lambda x: x.get("timestamp", 0))
                 data = latest_json.get("data", {})
@@ -570,9 +573,8 @@ class SwarmNode:
     async def _periodic_tasks(self):
         # Watchdog: защита от падения капитала (проверка на каждом шаге)
         if self.capital < 100:   # порог можно вынести в config
-            logger.warning(f"[{self.node_id}] Watchdog triggered: low capital ({self.capital:.2f})")
-            # мягкий откат к стандартным параметрам
-            self.current_params = {
+            logger.warning(f"[{self.node_id}] Watchdog: low capital ({self.capital:.2f}), gradual rollback")
+            std = {
                 "max_risk_per_trade": 0.05,
                 "phi_llm": 0.15,
                 "stop_loss_ratio": 0.02,
@@ -580,7 +582,9 @@ class SwarmNode:
                 "momentum_window": 10,
                 "volatility_threshold": 0.02,
             }
-            self.capital_manager.apply_dq_delta(-0.1)
+            for k in std:
+                self.current_params[k] = self.current_params.get(k, std[k]) * 0.8 + std[k] * 0.2
+            self.capital_manager.apply_dq_delta(-0.05)
 
         if self.step_count % 50 == 0:
             await self._apply_meta_commands()
