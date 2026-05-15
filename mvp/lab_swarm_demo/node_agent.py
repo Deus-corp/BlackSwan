@@ -568,6 +568,20 @@ class SwarmNode:
         await self.swarm_sync.reconcile()
 
     async def _periodic_tasks(self):
+        # Watchdog: защита от падения капитала (проверка на каждом шаге)
+        if self.capital < 100:   # порог можно вынести в config
+            logger.warning(f"[{self.node_id}] Watchdog triggered: low capital ({self.capital:.2f})")
+            # мягкий откат к стандартным параметрам
+            self.current_params = {
+                "max_risk_per_trade": 0.05,
+                "phi_llm": 0.15,
+                "stop_loss_ratio": 0.02,
+                "trailing_stop_ratio": 0.01,
+                "momentum_window": 10,
+                "volatility_threshold": 0.02,
+            }
+            self.capital_manager.apply_dq_delta(-0.1)
+
         if self.step_count % 50 == 0:
             await self._apply_meta_commands()
 
@@ -601,6 +615,43 @@ class SwarmNode:
                 await self.crdt.add_genome(heartbeat_payload)
             except Exception as e:
                 logger.warning(f"Heartbeat failed: {e}")
+
+        if self.step_count % 500 == 0:
+            self.memory.records = list({
+                (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec
+                for rec in self.memory.records
+            }.values())
+            if len(self.memory.records) > self.memory.max_size:
+                self.memory.records = self.memory.records[-self.memory.max_size:]
+
+            if self.memory_api_enabled:
+                await self.memory_api.save_to_db()
+                self.event_store.append(Event.create(
+                    node_id=self.node_id,
+                    event_type="memory_snapshot_created",
+                    payload={
+                        "step": self.step_count,
+                        "records_count": len(self.memory_api._records),
+                        "trace_id": self._trace_id,
+                    },
+                    parent_id=self._trace_id,
+                ))
+
+        if self.step_count % 200 == 0:
+            self.semantic.derive_rules(self.memory.to_dict_list())
+            await self.crdt.prune()
+            top = await self.crdt.get_top(20)
+            if top:
+                sample = random.choice(top)
+                pubkey = sample.get("origin_pubkey")
+                if pubkey and pubkey != self.crypto.public_bytes_hex:
+                    actual_fit = self.engine._fitness(sample["params"])
+                    claimed_fit = sample.get("fitness", 0.0)
+                    self.reputation.update(pubkey, claimed_fit, actual_fit)
+
+            if self.memory_api_enabled:
+                stats = await self.memory_api.compress()
+                logger.info(f"Memory stats: {stats}")
                 
         if self.step_count % 500 == 0:
             self.memory.records = list({
