@@ -20,9 +20,11 @@ from swarm_config import config
 DB_PATH = config.crdt_db_path
 
 class CRDTAdapter:
-    def __init__(self, node_id: str, memory_api=None, reputation=None):
+    def __init__(self, node_id: str, memory_api=None, reputation=None, db_path: str = None):
         self.node_id = node_id
-        storage = CRDTStorage(DB_PATH)
+        # Если db_path не передан, используем значение из конфига
+        path = db_path or config.crdt_db_path
+        storage = CRDTStorage(path)
         self.crdt = GenomeCRDT(node_id, storage=storage)
         self.storage = storage
         self._seen_nonces: dict[str, set] = {}
