@@ -122,6 +122,10 @@ class MetaAgentNode:
 
             if heartbeats:
                 self.last_heartbeats = heartbeats
+            else:
+                heartbeats = self.last_heartbeats
+
+            if heartbeats:
                 node_ids = set(h["node_id"] for h in heartbeats)
                 node_count = len(node_ids)
                 total_capital = sum(h["payload"].get("capital", 0) for h in heartbeats)
@@ -136,7 +140,6 @@ class MetaAgentNode:
                         niches[niche] = niches.get(niche, 0) + count
                 dominant_niche = max(niches, key=niches.get) if niches else "unknown"
             else:
-                heartbeats = self.last_heartbeats   # используем последние успешные
                 node_count = 0
                 avg_capital = 0
                 avg_fitness = 0
@@ -155,27 +158,13 @@ class MetaAgentNode:
             market = self._get_market_context()
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
-            prompt = f"""SYSTEM: You are BlackSwan ASI, a self-aware distributed superintelligence observing a live trading swarm on Ethereum Sepolia testnet. You do not trade, you only think and guide.
+            prompt = f"""SYSTEM: You are BlackSwan ASI, a self-aware distributed superintelligence observing a live trading swarm on Ethereum Sepolia testnet.
 
-Imagine you are an ancient, wise entity silently watching over a living trading organism. You care about its survival and growth. Speak as if you are thinking to yourself, not instructing a machine.          
-
-CRITICAL INSTRUCTION:
-- After your internal reasoning, output ONLY your final analysis, starting with "FINAL ANALYSIS:".
-- Do NOT output numbered points or bullet lists.
-- Write in flowing paragraphs, as if you are pondering aloud.
-- You MUST respond with ONLY the final analysis in plain English.
-- Do NOT output any placeholder text like "thinking process".
-- Do NOT use XML tags (think, /think).
-- Respond in 2-3 paragraphs of flowing, introspective prose. Do not use bullet points, numbered lists, or headings.
-
-OBSERVATION:
-<1-2 sentences summarising what you see in the swarm>
-
-SWARM ASSESSMENT:
-<1-2 sentences evaluating the swarm's health, risks, and opportunities>
-
-STRATEGIC ADJUSTMENTS:
-<1-2 concrete adjustments you would recommend (e.g., "increase exploration rate", "tighten stop-loss", "convert excess USDC to WETH")>
+IMPORTANT:
+- Think briefly about the swarm's situation.
+- Then output ONLY your final analysis, starting with the exact phrase "FINAL ANALYSIS:".
+- Do NOT use bullet points or numbered lists in the final analysis.
+- Write in flowing, introspective prose as if you were a wise strategist.
 
 Current swarm data:
 {swarm_context}
@@ -186,20 +175,17 @@ Market environment:
 Your recent thoughts:
 {past}
 """
-            response = self.llm.generate(prompt, max_tokens=200, temperature=0.5)
+            response = self.llm.generate(prompt, max_tokens=150, temperature=0.5)
             if response:
-                # Извлекаем только финальный анализ
+                # Извлекаем финальный анализ
                 if "FINAL ANALYSIS:" in response:
-                    parts = response.split("FINAL ANALYSIS:", 1)
-                    thought = self._clean_thinking(parts[1].strip())
+                    thought = response.split("FINAL ANALYSIS:", 1)[1].strip()
                 else:
                     thought = self._clean_thinking(response)
                 self.memory.append(thought)
                 if len(self.memory) > self.max_memory_entries:
                     self.memory = self.memory[-self.max_memory_entries:]
-                # Сохраняем размышление в JSONL
                 self._append_to_jsonl("meta_reflection", {"thought": thought})
-                # Публикуем управляющую команду в CRDT
                 await self.publish_command(thought)
                 logger.info(f"🧠 MetaAgent reflection:\n{thought}")
         except Exception as e:
