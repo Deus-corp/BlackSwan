@@ -96,29 +96,28 @@ Do not include any other text.
 
     def _extract_json(self, text: str) -> Optional[str]:
         import re
-        # 1. Ищем ```json ... ``` в сыром тексте (может быть внутри think)
+        # 1. Ищем ```json ... ```
         match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
         if match:
             return match.group(1)
 
-        # 2. Ищем просто ``` ... ``` в сыром тексте
+        # 2. Ищем просто ``` ... ```
         match = re.search(r'```\s*(\{.*?\})\s*```', text, re.DOTALL)
         if match:
             return match.group(1)
 
-        # 3. Ищем от первой { до последней } в сыром тексте
-        start = text.find('{')
-        end = text.rfind('}')
-        if start != -1 and end != -1 and end > start:
-            return text[start:end+1]
-
-        # 4. Удаляем XML-теги и пробуем снова
+        # 3. Удаляем все XML-теги
         cleaned = re.sub(r'<[^>]+>', '', text)
-        start = cleaned.find('{')
-        end = cleaned.rfind('}')
-        if start != -1 and end != -1 and end > start:
-            return cleaned[start:end+1]
 
+        # 4. Перебираем все подстроки, начинающиеся с { и заканчивающиеся }
+        candidates = re.finditer(r'\{.*?\}', cleaned, re.DOTALL)
+        for m in candidates:
+            candidate = m.group(0)
+            try:
+                json.loads(candidate)
+                return candidate
+            except:
+                continue
         return None
 
     def _record(self, old_params: Dict[str, float], new_params: Dict[str, float], context: str):
