@@ -109,6 +109,14 @@ class CRDTAdapter:
                 if self.quarantine and envelope.payload_type == "memory.fact":
                     await self.quarantine.process(genome)
 
+            # --- Пользовательские типы данных (heartbeat, meta_command и т.д.) ---
+        if isinstance(genome, dict) and "type" in genome:
+            gid = genome.get("gid") or str(uuid.uuid4())
+            # Сохраняем как есть, не преобразуем в стандартный genome
+            self.crdt.upsert(gid, genome)
+            logger.info(f"✅ Custom data imported: {gid[:8]}... (type={genome.get('type')})")
+            return gid
+
         # --- Обычная обработка genome ---
         gid = genome.get("gid") or str(uuid.uuid4())
         payload = {
