@@ -29,6 +29,7 @@ class MetaAgentNode:
         self.meta_events_jsonl_path = os.path.join(meta_dir, "meta_events.jsonl")
         
         self.memory: List[str] = []
+        self.last_heartbeats = []
         self.max_memory_entries = 5
         self.step = 0
         self._load_memory_from_jsonl()
@@ -117,31 +118,35 @@ class MetaAgentNode:
 
     async def reflect(self):
         try:
-            #heartbeats = self._get_recent_events_from_jsonl("heartbeat", limit=30)
-                        # Читаем heartbeats из CRDT
+            # 1. Читаем heartbeats напрямую из CRDT (плоские словари)
             all_crdt = self.crdt.state
-            heartbeats = [v for k, v in all_crdt.items() if isinstance(v, dict) and v.get("type") == "heartbeat"]
+            heartbeats = [
+                v for k, v in all_crdt.items()
+                if isinstance(v, dict) and v.get("type") == "heartbeat"
+            ]
 
-            trades = self._get_recent_events_from_jsonl("trade_executed", limit=30)
-
+            # Если не нашли, используем последние успешные
             if heartbeats:
                 self.last_heartbeats = heartbeats
             else:
                 heartbeats = self.last_heartbeats
 
+            # 2. Агрегируем статистику
             if heartbeats:
-                node_ids = set(h["node_id"] for h in heartbeats)
+                node_ids = set(h.get("node_id", "unknown") for h in heartbeats)
                 node_count = len(node_ids)
-                total_capital = sum(h["payload"].get("capital", 0) for h in heartbeats)
+                # поля лежат прямо в heartbeats: capital, fitness, dq, niche_counts
+                total_capital = sum(h.get("capital", 0) for h in heartbeats)
                 avg_capital = total_capital / node_count if node_count > 0 else 0
-                avg_fitness = sum(h["payload"].get("fitness", 0) for h in heartbeats) / max(len(heartbeats), 1)
-                dq_values = [h["payload"].get("dq", 0) for h in heartbeats]
+                avg_fitness = sum(h.get("fitness", 0) for h in heartbeats) / max(len(heartbeats), 1)
+                dq_values = [h.get("dq", 0) for h in heartbeats]
                 avg_dq = sum(dq_values) / len(dq_values) if dq_values else 0
                 niches = {}
                 for h in heartbeats:
-                    nc = h["payload"].get("niche_counts", {})
-                    for niche, count in nc.items():
-                        niches[niche] = niches.get(niche, 0) + count
+                    nc = h.get("niche_counts", {})
+                    if isinstance(nc, dict):
+                        for niche, count in nc.items():
+                            niches[niche] = niches.get(niche, 0) + count
                 dominant_niche = max(niches, key=niches.get) if niches else "unknown"
             else:
                 node_count = 0
@@ -149,6 +154,9 @@ class MetaAgentNode:
                 avg_fitness = 0
                 avg_dq = 0
                 dominant_niche = "unknown"
+
+            # 3. Читаем последние сделки из JSONL (можно оставить или тоже перенести в CRDT)
+            trades = self._get_recent_events_from_jsonl("trade_executed", limit=30)
 
             swarm_context = (
                 f"Active nodes (with heartbeats): {node_count}\n"
@@ -162,13 +170,11 @@ class MetaAgentNode:
             market = self._get_market_context()
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
+            # 4. Формируем промпт (требуем ТОЛЬКО JSON)
             prompt = f"""SYSTEM: You are BlackSwan ASI, a distributed superintelligence observing a live trading swarm on Ethereum Sepolia.
 
-Your task is to:
-1. Briefly reflect on the swarm's current state in 1-2 sentences.
-2. Output a JSON command to adjust the swarm's parameters. The JSON must have this exact structure:
+Your task is to output ONLY a JSON command to adjust the swarm's parameters. The JSON must have this exact structure:
 
-```json
 {{
   "action": "ADJUST_SWARM",
   "params": {{
@@ -179,11 +185,11 @@ Your task is to:
   }},
   "reason": "your reasoning here"
 }}
-```
-- exploration_multiplier: >1.0 increases exploration, <1.0 decreases it.
-- risk_scale: >1.0 increases max risk per trade, <1.0 decreases it.
-- survival_bias_adj: positive increases survival bias, negative decreases it.
-- stop_loss_adj: >1.0 loosens stop-loss, <1.0 tightens it.
+
+- **exploration_multiplier**: >1.0 increases exploration, <1.0 decreases it.
+- **risk_scale**: >1.0 increases max risk per trade, <1.0 decreases it.
+- **survival_bias_adj**: positive increases survival bias, negative decreases it.
+- **stop_loss_adj**: >1.0 loosens stop-loss, <1.0 tightens it.
 
 Current swarm data:
 {swarm_context}
@@ -198,44 +204,37 @@ Do NOT include any other text. Output ONLY the JSON command.
 """
             response = self.llm.generate(prompt, max_tokens=150, temperature=0.5)
             if response:
-                # Извлекаем финальный анализ (если есть маркер)
-                if "FINAL ANALYSIS:" in response:
-                    thought = response.split("FINAL ANALYSIS:", 1)[1].strip()
-                else:
-                    thought = self._clean_thinking(response)
-
-                # Извлекаем JSON-команду из полного ответа (всегда)
+                # 5. Извлекаем JSON‑команду
+                import json, re
+                thought = self._clean_thinking(response)  # на всякий случай очищаем от мусора
                 command_json = None
-                try:
-                    import re, json
-                    # Ищем блок ```json
-                    match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
-                    if match:
-                        command_json = json.loads(match.group(1))
-                    else:
-                        # Ищем просто JSON-объект
-                        for m in re.finditer(r'\{.*?\}', response, re.DOTALL):
-                            try:
-                                command_json = json.loads(m.group(0))
-                                break
-                            except:
-                                continue
-                    if command_json and "action" in command_json:
-                        await self.crdt.add_genome({
-                            "type": "meta_command_json",
-                            "data": command_json,
-                            "timestamp": time.time(),
-                            "gid": f"meta_json_{int(time.time())}",
-                        })
-                        logger.info(f"📡 MetaAgent JSON command: {command_json}")
-                except Exception as e:
-                    logger.warning(f"Failed to parse JSON command: {e}")
+                # Ищем ```json ... ```
+                match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
+                if match:
+                    command_json = json.loads(match.group(1))
+                else:
+                    # Ищем любой JSON-объект
+                    for m in re.finditer(r'\{.*?\}', response, re.DOTALL):
+                        try:
+                            command_json = json.loads(m.group(0))
+                            break
+                        except:
+                            continue
+                # Публикуем JSON‑команду в CRDT (только если есть action)
+                if command_json and "action" in command_json:
+                    await self.crdt.add_genome({
+                        "type": "meta_command_json",
+                        "data": command_json,
+                        "timestamp": time.time(),
+                        "gid": f"meta_json_{int(time.time())}",
+                    })
+                    logger.info(f"📡 MetaAgent JSON command: {command_json}")
 
+                # 6. Сохраняем размышление (текст) для истории, но команду НЕ дублируем
                 self.memory.append(thought)
                 if len(self.memory) > self.max_memory_entries:
                     self.memory = self.memory[-self.max_memory_entries:]
                 self._append_to_jsonl("meta_reflection", {"thought": thought})
-                await self.publish_command(thought)
                 logger.info(f"🧠 MetaAgent reflection:\n{thought}")
         except Exception as e:
             logger.error(f"MetaAgent reflection failed: {e}")
