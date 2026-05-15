@@ -206,63 +206,112 @@ class SwarmNode:
         return self.node_index == leader_index
     
     async def _apply_meta_commands(self):
-        """Читает последнюю команду MetaAgent и применяет её."""
         try:
             all_state = self.crdt.state
-            commands = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "meta_command"]
-            if not commands:
-                return
-            latest = max(commands, key=lambda x: x.get("timestamp", 0))
-            thought = latest.get("thought", "")
-            if not thought:
-                return
+            # --- Обработка структурированных JSON-команд ---
+            json_commands = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "meta_command_json"]
+            if json_commands:
+                latest_json = max(json_commands, key=lambda x: x.get("timestamp", 0))
+                data = latest_json.get("data", {})
+                if data.get("action") == "ADJUST_SWARM":
+                    params = data.get("params", {})
+                    alpha = 0.1
+                    import math
 
-            thought_lower = thought.lower()
+                    if "risk_scale" in params:
+                        raw = params["risk_scale"]
+                        adjustment = alpha * math.tanh(raw - 1.0)
+                        old_risk = self.current_params.get("max_risk_per_trade", 0.05)
+                        new_risk = old_risk * (1 + adjustment)
+                        new_risk = max(0.005, min(0.15, new_risk))
+                        self.current_params["max_risk_per_trade"] = new_risk
+                        logger.info(f"🧠 MetaAgent JSON: risk {old_risk:.4f} → {new_risk:.4f}")
 
-            # Парсим ключевые фразы и меняем параметры
-            if "increase exploration" in thought_lower or "raise exploration" in thought_lower:
-                # Увеличиваем mutation rate
-                old_rate = self.engine._mutation_rate if hasattr(self.engine, '_mutation_rate') else 0.25
-                new_rate = min(0.7, old_rate * 1.2)
-                if hasattr(self.engine, 'set_mutation_rate'):
-                    self.engine.set_mutation_rate(new_rate)
-                logger.info(f"🧠 MetaAgent: increasing exploration rate from {old_rate:.2f} to {new_rate:.2f}")
+                    if "exploration_multiplier" in params:
+                        mult = params["exploration_multiplier"]
+                        old_rate = getattr(self.engine, '_mutation_rate', 0.25)
+                        new_rate = max(0.1, min(0.7, old_rate * mult))
+                        if hasattr(self.engine, 'set_mutation_rate'):
+                            self.engine.set_mutation_rate(new_rate)
+                        logger.info(f"🧠 MetaAgent JSON: exploration rate → {new_rate:.2f}")
 
-            if "tighten stop-loss" in thought_lower or "tighten stop loss" in thought_lower:
-                # Уменьшаем stop_loss_ratio в текущих параметрах
-                old_sl = self.current_params.get("stop_loss_ratio", 0.05)
-                new_sl = max(0.001, old_sl * 0.8)
-                self.current_params["stop_loss_ratio"] = new_sl
-                logger.info(f"🧠 MetaAgent: tightened stop-loss from {old_sl:.4f} to {new_sl:.4f}")
+                    if "survival_bias_adj" in params:
+                        delta = max(-0.05, min(0.05, params["survival_bias_adj"]))
+                        old_sb = self.survival.config.get("lambda", 0.15)
+                        new_sb = max(0.1, min(0.9, old_sb + delta))
+                        self.survival.config["lambda"] = new_sb
+                        logger.info(f"🧠 MetaAgent JSON: survival lambda → {new_sb:.3f}")
 
-            if "convert excess usdc" in thought_lower or "convert usdc" in thought_lower:
-                # Уменьшаем порог MAX_USDC_BALANCE для ускорения конвертации
-                from swarm_config import config
-                old_max = config.trading.max_usdc_balance
-                config.trading.max_usdc_balance = max(50.0, old_max * 0.8)
-                logger.info(f"🧠 MetaAgent: reduced max USDC balance from {old_max:.2f} to {config.trading.max_usdc_balance:.2f}")
+                    if "stop_loss_adj" in params:
+                        factor = params["stop_loss_adj"]
+                        old_sl = self.current_params.get("stop_loss_ratio", 0.05)
+                        new_sl = max(0.001, min(0.2, old_sl * factor))
+                        self.current_params["stop_loss_ratio"] = new_sl
+                        logger.info(f"🧠 MetaAgent JSON: stop-loss {old_sl:.4f} → {new_sl:.4f}")
 
-            if "reduce risk" in thought_lower or "lower risk" in thought_lower:
-                # Уменьшаем max_risk_per_trade
-                old_risk = self.current_params.get("max_risk_per_trade", 0.05)
-                new_risk = max(0.001, old_risk * 0.8)
-                self.current_params["max_risk_per_trade"] = new_risk
-                logger.info(f"🧠 MetaAgent: reduced max risk from {old_risk:.4f} to {new_risk:.4f}")
+            # --- Fallback к текстовым командам ---
+            text_commands = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "meta_command"]
+            if text_commands:
+                latest = max(text_commands, key=lambda x: x.get("timestamp", 0))
+                thought = latest.get("thought", "").lower()
 
-            if "increase phi" in thought_lower or "raise phi" in thought_lower:
-                old_phi = self.current_params.get("phi_llm", 0.15)
-                new_phi = min(1.0, old_phi * 1.2)
-                self.current_params["phi_llm"] = new_phi
-                logger.info(f"🧠 MetaAgent: increased phi_llm from {old_phi:.4f} to {new_phi:.4f}")
+                if "increase exploration" in thought or "raise exploration" in thought:
+                    old_rate = getattr(self.engine, '_mutation_rate', 0.25)
+                    new_rate = min(0.7, old_rate * 1.2)
+                    if hasattr(self.engine, 'set_mutation_rate'):
+                        self.engine.set_mutation_rate(new_rate)
+                    logger.info(f"🧠 MetaAgent: exploration {old_rate:.2f} → {new_rate:.2f}")
 
-            if "decrease volatility" in thought_lower or "lower volatility threshold" in thought_lower:
-                old_vol = self.current_params.get("volatility_threshold", 0.02)
-                new_vol = max(0.001, old_vol * 0.8)
-                self.current_params["volatility_threshold"] = new_vol
-                logger.info(f"🧠 MetaAgent: reduced volatility threshold from {old_vol:.4f} to {new_vol:.4f}")
+                if "tighten stop-loss" in thought or "tighten stop loss" in thought:
+                    old_sl = self.current_params.get("stop_loss_ratio", 0.05)
+                    new_sl = max(0.001, old_sl * 0.8)
+                    self.current_params["stop_loss_ratio"] = new_sl
+                    logger.info(f"🧠 MetaAgent: stop-loss {old_sl:.4f} → {new_sl:.4f}")
+
+                if "convert excess usdc" in thought or "convert usdc" in thought:
+                    from swarm_config import config
+                    old_max = config.trading.max_usdc_balance
+                    config.trading.max_usdc_balance = max(50.0, old_max * 0.8)
+                    logger.info(f"🧠 MetaAgent: USDC max {old_max:.2f} → {config.trading.max_usdc_balance:.2f}")
+
+                if "reduce risk" in thought or "lower risk" in thought:
+                    old_risk = self.current_params.get("max_risk_per_trade", 0.05)
+                    new_risk = max(0.001, old_risk * 0.8)
+                    self.current_params["max_risk_per_trade"] = new_risk
+                    logger.info(f"🧠 MetaAgent: risk {old_risk:.4f} → {new_risk:.4f}")
+
+                if "increase phi" in thought or "raise phi" in thought:
+                    old_phi = self.current_params.get("phi_llm", 0.15)
+                    new_phi = min(1.0, old_phi * 1.2)
+                    self.current_params["phi_llm"] = new_phi
+                    logger.info(f"🧠 MetaAgent: phi_llm {old_phi:.4f} → {new_phi:.4f}")
+
+                if "decrease volatility" in thought or "lower volatility threshold" in thought:
+                    old_vol = self.current_params.get("volatility_threshold", 0.02)
+                    new_vol = max(0.001, old_vol * 0.8)
+                    self.current_params["volatility_threshold"] = new_vol
+                    logger.info(f"🧠 MetaAgent: volatility threshold {old_vol:.4f} → {new_vol:.4f}")
 
         except Exception as e:
-            logger.debug(f"MetaAgent command application skipped: {e}")
+            logger.debug(f"Meta command processing skipped: {e}")
+
+    async def _evolution_cycle(self):
+        """Фоновый цикл эволюции (генетика, LLM-мутации)."""
+        while True:
+            try:
+                await self._tick_evolution()
+            except Exception as e:
+                logger.error(f"Evolution cycle error: {e}")
+            await asyncio.sleep(0.5)
+
+    async def _sync_cycle(self):
+        """Фоновый цикл синхронизации с роем (gossip, импорт геномов)."""
+        while True:
+            try:
+                await self._sync_swarm()
+            except Exception as e:
+                logger.error(f"Sync cycle error: {e}")
+            await asyncio.sleep(0.5)
 
     # ------------------------------------------------------------
     # Helpers
@@ -456,12 +505,6 @@ class SwarmNode:
                 await self._evaluate_survival_and_trade(best_market, best_symbol)
 
                 self._last_market = best_market
-
-                # 5. Эволюция
-                await self._tick_evolution()
-
-                # 6. Swarm sync
-                await self._sync_swarm()
 
                 # 7. Периодические задачи
                 await self._periodic_tasks()
@@ -679,8 +722,13 @@ class SwarmNode:
             adapter = self.market_adapter.get_adapter(self.symbols_list[0]) if self.symbols_list else None
             self.executor = build_backend(self.node_id, adapter, self.is_leader)
 
+        self._evolution_task = asyncio.create_task(self._evolution_cycle())
+        self._sync_task = asyncio.create_task(self._sync_cycle())
+
         await asyncio.gather(
             self.gossip.start(),
+            self._evolution_task,
+            self._sync_task,
             self.main_loop(),
             _shutdown_waiter(),
         )

@@ -181,11 +181,39 @@ Your recent thoughts:
 """
             response = self.llm.generate(prompt, max_tokens=150, temperature=0.5)
             if response:
-                # Извлекаем финальный анализ
+                # Извлекаем финальный анализ (если есть маркер)
                 if "FINAL ANALYSIS:" in response:
                     thought = response.split("FINAL ANALYSIS:", 1)[1].strip()
                 else:
                     thought = self._clean_thinking(response)
+
+                # Извлекаем JSON-команду из полного ответа (всегда)
+                command_json = None
+                try:
+                    import re, json
+                    # Ищем блок ```json
+                    match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
+                    if match:
+                        command_json = json.loads(match.group(1))
+                    else:
+                        # Ищем просто JSON-объект
+                        for m in re.finditer(r'\{.*?\}', response, re.DOTALL):
+                            try:
+                                command_json = json.loads(m.group(0))
+                                break
+                            except:
+                                continue
+                    if command_json and "action" in command_json:
+                        await self.crdt.add_genome({
+                            "type": "meta_command_json",
+                            "data": command_json,
+                            "timestamp": time.time(),
+                            "gid": f"meta_json_{int(time.time())}",
+                        })
+                        logger.info(f"📡 MetaAgent JSON command: {command_json}")
+                except Exception as e:
+                    logger.warning(f"Failed to parse JSON command: {e}")
+
                 self.memory.append(thought)
                 if len(self.memory) > self.max_memory_entries:
                     self.memory = self.memory[-self.max_memory_entries:]
