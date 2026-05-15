@@ -117,7 +117,11 @@ class MetaAgentNode:
 
     async def reflect(self):
         try:
-            heartbeats = self._get_recent_events_from_jsonl("heartbeat", limit=30)
+            #heartbeats = self._get_recent_events_from_jsonl("heartbeat", limit=30)
+                        # Читаем heartbeats из CRDT
+            all_crdt = self.crdt.state
+            heartbeats = [v for k, v in all_crdt.items() if isinstance(v, dict) and v.get("type") == "heartbeat"]
+
             trades = self._get_recent_events_from_jsonl("trade_executed", limit=30)
 
             if heartbeats:

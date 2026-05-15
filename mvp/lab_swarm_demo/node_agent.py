@@ -568,6 +568,7 @@ class SwarmNode:
     async def _periodic_tasks(self):
         if self.step_count % 50 == 0:
             await self._apply_meta_commands()
+
         if self.step_count % 30 == 0:
             try:
                 self.telemetry.heartbeat(
@@ -581,9 +582,24 @@ class SwarmNode:
                     niche_counts=self.population_niche_counts(),
                     trace_id=self._trace_id,
                 )
+
+                # Дублируем heartbeat в CRDT для MetaAgent
+                heartbeat_payload = {
+                    "type": "heartbeat",
+                    "capital": self.capital,
+                    "dq": self.survival.dq,
+                    "fitness": self.engine.champion[1] if hasattr(self.engine, 'champion') and self.engine.champion else 0.0,
+                    "diversity": self.population_diversity(),
+                    "crdt_size": len(self.crdt.state),
+                    "llm_mutations": _llm_mutation_count,
+                    "niche_counts": self.population_niche_counts(),
+                    "node_id": self.node_id,
+                    "timestamp": time.time(),
+                }
+                await self.crdt.add_genome(heartbeat_payload)
             except Exception as e:
                 logger.warning(f"Heartbeat failed: {e}")
-
+                
         if self.step_count % 500 == 0:
             self.memory.records = list({
                 (rec["params"].get("max_risk_per_trade", 0), rec["params"].get("phi_llm", 0)): rec
