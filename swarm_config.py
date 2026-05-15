@@ -103,10 +103,8 @@ class SwarmConfig(BaseSettings):
         default="./data/ledgers/events.db",
         alias="EVENT_SQLITE_PATH"
     )
-    crdt_db_path: str = Field(
-        default="./crdt_state.db",
-        alias="CRDT_DB_PATH"
-    )
+
+    crdt_db_path: str = Field(default="./crdt_state.db", alias="CRDT_DB_PATH")
 
     # ----- Web3 -----
     web3_rpc_url: str = Field(default="https://ethereum-sepolia.publicnode.com", alias="WEB3_RPC_URL")
