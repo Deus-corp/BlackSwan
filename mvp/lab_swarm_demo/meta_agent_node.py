@@ -96,7 +96,6 @@ class MetaAgentNode:
     async def publish_command(self, thought: str):
         try:
             command = {
-                "type": "meta_command",
                 "thought": thought,
                 "timestamp": time.time(),
                 "gid": f"meta_cmd_{int(time.time())}",
@@ -165,34 +164,40 @@ class MetaAgentNode:
                 f"Recent trades count: {len(trades)}\n"
             )
 
-            logger.info(f"DEBUG MetaAgent: heartbeats_count={len(heartbeats)}, node_count={node_count}, avg_capital={avg_capital:.2f}")
-            logger.info(f"DEBUG MetaAgent: swarm_context=\n{swarm_context}")
-
             market = self._get_market_context()
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
+
+                    # Динамическая подсказка для модели
+            if avg_capital < 2000:
+                hint = "The swarm is struggling with low capital. Suggest conservative adjustments: reduce risk_scale below 1.0, increase survival bias slightly."
+            elif avg_fitness > 0.8:
+                hint = "The swarm is performing well. You may increase exploration_multiplier above 1.0, slightly raise risk_scale."
+            else:
+                hint = "Balance exploration and safety."
 
             # 4. Формируем промпт (требуем ТОЛЬКО JSON)
             prompt = f"""SYSTEM: You are BlackSwan ASI, a distributed superintelligence observing a live trading swarm on Ethereum Sepolia.
 
-Your task is to output ONLY a JSON command to adjust the swarm's parameters.
-The JSON must have this exact structure, but with values ADJUSTED based on the swarm data. Do NOT use 1.0 for all fields unless the data truly suggests no change.
+Your task is to output ONLY a JSON command to adjust the swarm's parameters. The JSON must have this exact structure, but with values ADJUSTED based on the swarm data. Do NOT use 1.0 for all fields unless the data truly suggests no change.
 
 Example of an ACTIVE adjustment (DO NOT COPY DIRECTLY, use your own judgement):
-{
+{{
   "action": "ADJUST_SWARM",
-  "params": {
+  "params": {{
     "exploration_multiplier": 1.3,
     "risk_scale": 0.85,
     "survival_bias_adj": 0.03,
     "stop_loss_adj": 0.9
-  },
+  }},
   "reason": "exploration increased due to high fitness, risk slightly reduced"
-}
+}}
 
 - **exploration_multiplier**: >1.0 increases exploration, <1.0 decreases it.
 - **risk_scale**: >1.0 increases max risk per trade, <1.0 decreases it.
 - **survival_bias_adj**: positive increases survival bias, negative decreases it.
 - **stop_loss_adj**: >1.0 loosens stop-loss, <1.0 tightens it.
+
+ADDITIONAL HINT: {hint}
 
 Current swarm data:
 {swarm_context}
@@ -207,22 +212,48 @@ Do NOT include any other text. Output ONLY the JSON command.
 """
             response = self.llm.generate(prompt, max_tokens=200, temperature=0.5)
             if response:
-                # 5. Извлекаем JSON‑команду
-                import json, re
-                thought = self._clean_thinking(response)  # на всякий случай очищаем от мусора
+                # 5. Извлекаем JSON‑команду (надежный парсинг с балансом скобок)
+                import json
+                thought = self._clean_thinking(response)
                 command_json = None
-                # Ищем ```json ... ```
-                match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
-                if match:
-                    command_json = json.loads(match.group(1))
-                else:
-                    # Ищем любой JSON-объект
-                    for m in re.finditer(r'\{.*?\}', response, re.DOTALL):
+
+                # Ищем самый внешний JSON-объект, балансируя скобки
+                start = response.find('{')
+                if start != -1:
+                    depth = 0
+                    end = start
+                    for i in range(start, len(response)):
+                        if response[i] == '{':
+                            depth += 1
+                        elif response[i] == '}':
+                            depth -= 1
+                            if depth == 0:
+                                end = i
+                                break
+                    if end > start:
+                        candidate = response[start:end+1]
                         try:
-                            command_json = json.loads(m.group(0))
-                            break
+                            command_json = json.loads(candidate)
                         except:
-                            continue
+                            pass
+
+                # Если не получилось, пробуем ```json блоки или любой JSON-объект
+                if not command_json:
+                    import re
+                    match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
+                    if match:
+                        try:
+                            command_json = json.loads(match.group(1))
+                        except:
+                            pass
+                    if not command_json:
+                        for m in re.finditer(r'\{.*?\}', response, re.DOTALL):
+                            try:
+                                command_json = json.loads(m.group(0))
+                                break
+                            except:
+                                continue
+
                 # Публикуем JSON‑команду в CRDT (только если есть action)
                 if command_json and "action" in command_json:
                     await self.crdt.add_genome({
