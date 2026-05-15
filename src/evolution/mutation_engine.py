@@ -49,7 +49,7 @@ Current strategy parameters:
 Return a JSON like:
 {{"max_risk_per_trade": 0.02, "phi_llm": 0.4, "stop_loss_ratio": 0.03, "trailing_stop_ratio": 0.01, "momentum_window": 14, "volatility_threshold": 0.025}}
 
-Do not include any other text, explanations, or markdown formatting.
+Return ONLY the JSON object. No explanations.
 """
         
         max_retries = 3
