@@ -174,18 +174,20 @@ class MetaAgentNode:
             # 4. Формируем промпт (требуем ТОЛЬКО JSON)
             prompt = f"""SYSTEM: You are BlackSwan ASI, a distributed superintelligence observing a live trading swarm on Ethereum Sepolia.
 
-Your task is to output ONLY a JSON command to adjust the swarm's parameters. The JSON must have this exact structure:
+Your task is to output ONLY a JSON command to adjust the swarm's parameters.
+The JSON must have this exact structure, but with values ADJUSTED based on the swarm data. Do NOT use 1.0 for all fields unless the data truly suggests no change.
 
-{{
+Example of an ACTIVE adjustment (DO NOT COPY DIRECTLY, use your own judgement):
+{
   "action": "ADJUST_SWARM",
-  "params": {{
-    "exploration_multiplier": 1.0,
-    "risk_scale": 1.0,
-    "survival_bias_adj": 0.0,
-    "stop_loss_adj": 1.0
-  }},
-  "reason": "your reasoning here"
-}}
+  "params": {
+    "exploration_multiplier": 1.3,
+    "risk_scale": 0.85,
+    "survival_bias_adj": 0.03,
+    "stop_loss_adj": 0.9
+  },
+  "reason": "exploration increased due to high fitness, risk slightly reduced"
+}
 
 - **exploration_multiplier**: >1.0 increases exploration, <1.0 decreases it.
 - **risk_scale**: >1.0 increases max risk per trade, <1.0 decreases it.
@@ -203,7 +205,7 @@ Your recent thoughts:
 
 Do NOT include any other text. Output ONLY the JSON command.
 """
-            response = self.llm.generate(prompt, max_tokens=150, temperature=0.5)
+            response = self.llm.generate(prompt, max_tokens=200, temperature=0.5)
             if response:
                 # 5. Извлекаем JSON‑команду
                 import json, re
