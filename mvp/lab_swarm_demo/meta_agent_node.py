@@ -165,6 +165,9 @@ class MetaAgentNode:
                 f"Recent trades count: {len(trades)}\n"
             )
 
+            logger.info(f"DEBUG MetaAgent: heartbeats_count={len(heartbeats)}, node_count={node_count}, avg_capital={avg_capital:.2f}")
+            logger.info(f"DEBUG MetaAgent: swarm_context=\n{swarm_context}")
+
             market = self._get_market_context()
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
