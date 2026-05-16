@@ -81,6 +81,9 @@ Now generate your adjusted JSON:
                 else:
                     logger.info(f"LLM mutation successful: {params} → {new_params}")
                 self._record(params, new_params, full_context)
+                # увеличиваем глобальный счётчик мутаций
+                from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation
+                note_llm_mutation()
                 return new_params
 
             except Exception as e:
@@ -97,6 +100,8 @@ Now generate your adjusted JSON:
             else:
                 new_params[key] = round(random.uniform(0.001, 0.3), 4)
         self._record(params, new_params, full_context)
+        from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation
+        note_llm_mutation()
         return new_params
 
     def _extract_json(self, text: str) -> Optional[str]:
