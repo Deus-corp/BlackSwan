@@ -48,12 +48,12 @@ class MetaAgentNode:
         self.roles = [
             {
                 "name": "Aggressive Explorer",
-                "temperature": 0.8,
+                "temperature": 0.6,
                 "prompt_prefix": "You are an aggressive trading strategist. You believe in high exploration and taking calculated risks to maximise growth.",
             },
             {
                 "name": "Conservative Guardian",
-                "temperature": 0.5,
+                "temperature": 0.3,
                 "prompt_prefix": "You are a conservative risk manager. You prioritise capital preservation and survival above all else.",
             },
         ]
@@ -211,16 +211,18 @@ class MetaAgentNode:
             all_thoughts = []
 
             for role in self.roles:
-                role_prompt = f"""{role['prompt_prefix']}
+                role_prompt = f"""User: {role['prompt_prefix']}
 {context_header}Swarm: {node_count} nodes, avg capital {avg_capital:.0f}, fitness {avg_fitness:.3f}, DQ {avg_dq:.3f}.
-Adjust parameters. Return ONLY JSON with: exploration_multiplier, risk_scale, survival_bias_adj, stop_loss_adj, confidence, reason.
+Adjust parameters. Output ONLY a valid JSON object with these keys: exploration_multiplier, risk_scale, survival_bias_adj, stop_loss_adj, confidence, reason.
 Example: {{"exploration_multiplier":1.2,"risk_scale":1.0,"survival_bias_adj":0.0,"stop_loss_adj":1.0,"confidence":0.7,"reason":"increase exploration"}}
-"""
+Assistant: {{"""
                 try:
                     response = self.llm.generate(role_prompt, max_tokens=250, temperature=role["temperature"])
+                    logger.info(f"ROLE [{role['name']}] raw response: {response[:300]}")
                     if response:
                         import json, re
                         command_json = None
+                        # Ищем JSON в ответе
                         start = response.find('{')
                         if start != -1:
                             depth = 0
@@ -240,7 +242,6 @@ Example: {{"exploration_multiplier":1.2,"risk_scale":1.0,"survival_bias_adj":0.0
                                 except:
                                     pass
                         if command_json and "exploration_multiplier" in command_json:
-                            # Приводим к единому формату
                             if "action" not in command_json:
                                 command_json = {
                                     "action": "ADJUST_SWARM",
