@@ -77,7 +77,17 @@ class Web3TestnetAdapter:
 
     async def initialize(self):
         """Асинхронная инициализация (вызывать при старте ноды)."""
-        chain_id = await self.w3.eth.chain_id
+        for attempt in range(3):
+            try:
+                chain_id = await self.w3.eth.chain_id
+                break
+            except Exception as e:
+                if attempt < 2:
+                    logger.warning(f"RPC chain_id failed, retrying ({attempt+1}/3): {e}")
+                    await asyncio.sleep(1)
+                else:
+                    raise
+
         logger.info(f"Connected to chain ID {chain_id}")
 
         if self.private_key:
@@ -250,13 +260,12 @@ class Web3TestnetAdapter:
             else:  # buy
                 token_in = USDC_ADDRESS
                 token_out = WETH_ADDRESS
-                # Используем асинхронный get_ticker для получения цены
                 tick = await self.get_ticker()
                 usdc_needed = amount * (tick["price"] if tick else 2000)
                 amount_in_wei = int(usdc_needed * 10**6)
                 amount_out_min = 0
 
-            # Проверка баланса (асинхронно)
+            # Проверка баланса
             balance = await self._get_token_balance(token_in)
             if balance < amount:
                 logger.warning(f"Insufficient {token_in} balance ({balance} < {amount})")
@@ -266,10 +275,8 @@ class Web3TestnetAdapter:
             if not await self._ensure_allowance(token_in, ROUTER_ADDRESS, amount_in_wei):
                 return {"error": "Insufficient allowance"}
 
-            # Безопасный nonce
             safe_nonce = await self.nonce_manager.reserve_nonce(self.w3)
 
-            # Параметры ExactInputSingle
             swap_tuple = (
                 self.w3.to_checksum_address(token_in),
                 self.w3.to_checksum_address(token_out),
@@ -292,35 +299,71 @@ class Web3TestnetAdapter:
             tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"Swap tx sent: {tx_hash.hex()}")
 
-            receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180, poll_latency=1.0)
+            # Ожидание квитанции с ретраем
+            receipt = None
+            for attempt in range(3):
+                try:
+                    receipt = await self.w3.eth.wait_for_transaction_receipt(
+                        tx_hash, timeout=180, poll_latency=1.0
+                    )
+                    break
+                except Exception as e:
+                    if attempt < 2:
+                        logger.warning(
+                            f"RPC wait_for_transaction_receipt failed, retrying ({attempt+1}/3): {e}"
+                        )
+                        await asyncio.sleep(2 ** attempt)
+                    else:
+                        raise
 
-            if receipt.status == 1:
+            if receipt and receipt.status == 1:
                 logger.success(f"✅ Swap successful! Tx: {tx_hash.hex()}")
-                # Обновим nonce
                 await self.nonce_manager.update_nonce_async(receipt)
                 return {"tx_hash": tx_hash.hex(), "status": "success"}
-            else:
-                logger.error(f"❌ Swap reverted. Tx: {tx_hash.hex()}")
-                await self.nonce_manager.sync_with_chain_async(await self.w3.eth.get_transaction_count(self.account.address, "pending"))
-                return {"tx_hash": tx_hash.hex(), "status": "failed"}
+
+            # Неудача (реверт или тайм-аут) – синхронизируем nonce с ретраем
+            status_text = "reverted" if receipt else "timeout"
+            logger.error(f"❌ Swap {status_text}. Tx: {tx_hash.hex()}")
+
+            # Ретраи для get_transaction_count
+            for attempt in range(3):
+                try:
+                    pending = await self.w3.eth.get_transaction_count(
+                        self.account.address, "pending"
+                    )
+                    await self.nonce_manager.sync_with_chain_async(pending)
+                    break
+                except Exception as e:
+                    if attempt < 2:
+                        logger.warning(
+                            f"RPC get_transaction_count failed, retrying ({attempt+1}/3): {e}"
+                        )
+                        await asyncio.sleep(1)
+            return {"tx_hash": tx_hash.hex(), "status": "failed"}
+
         except Exception as e:
             logger.error(f"Swap exception: {e}")
-            # Синхронизируем nonce после ошибки
+            # Синхронизируем nonce после любой ошибки с ретраем
             if self.nonce_manager:
-                await self.nonce_manager.sync_with_chain_async(
-                    await self.w3.eth.get_transaction_count(self.account.address, "pending")
-                )
+                for attempt in range(3):
+                    try:
+                        pending = await self.w3.eth.get_transaction_count(
+                            self.account.address, "pending"
+                        )
+                        await self.nonce_manager.sync_with_chain_async(pending)
+                        break
+                    except Exception as e2:
+                        if attempt < 2:
+                            logger.warning(
+                                f"RPC get_transaction_count failed, retrying ({attempt+1}/3): {e2}"
+                            )
+                            await asyncio.sleep(1)
             return {"error": str(e)}
         
     async def batch_swap(self, swaps: list) -> dict:
-        """
-        Выполняет несколько свопов через Multicall (tryAggregate).
-        swaps: [{"token_in": str, "token_out": str, "fee": int, "amount_in_wei": int, "amount_out_min": int}, ...]
-        """
         if not self.account or not self.nonce_manager:
             return {"error": "Not initialized"}
 
-        # Адрес Multicall3 на Sepolia
         MULTICALL_ADDRESS = self.w3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
         MULTICALL_ABI = [
             {
@@ -370,14 +413,35 @@ class Web3TestnetAdapter:
         tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
         logger.info(f"Batch swap tx sent: {tx_hash.hex()} with {len(swaps)} swaps")
 
-        receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
-        if receipt.status == 1:
+        # Ретраи для wait_for_transaction_receipt
+        receipt = None
+        for attempt in range(3):
+            try:
+                receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+                break
+            except Exception as e:
+                if attempt < 2:
+                    logger.warning(f"RPC wait_for_transaction_receipt failed, retrying ({attempt+1}/3): {e}")
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    raise
+
+        if receipt and receipt.status == 1:
             logger.success(f"✅ Batch swap successful! Tx: {tx_hash.hex()}")
             await self.nonce_manager.update_nonce_async(receipt)
             return {"tx_hash": tx_hash.hex(), "status": "success"}
-        else:
-            logger.error(f"❌ Batch swap reverted. Tx: {tx_hash.hex()}")
-            await self.nonce_manager.sync_with_chain_async(
-                await self.w3.eth.get_transaction_count(self.account.address, "pending")
-            )
-            return {"tx_hash": tx_hash.hex(), "status": "failed"}
+
+        # Неудача – синхронизируем nonce с ретраем
+        status_text = "reverted" if receipt else "timeout"
+        logger.error(f"❌ Batch swap {status_text}. Tx: {tx_hash.hex()}")
+
+        for attempt in range(3):
+            try:
+                pending = await self.w3.eth.get_transaction_count(self.account.address, "pending")
+                await self.nonce_manager.sync_with_chain_async(pending)
+                break
+            except Exception as e:
+                if attempt < 2:
+                    logger.warning(f"RPC get_transaction_count failed, retrying ({attempt+1}/3): {e}")
+                    await asyncio.sleep(1)
+        return {"tx_hash": tx_hash.hex(), "status": "failed"}
