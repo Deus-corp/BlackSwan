@@ -31,6 +31,15 @@ class MetaAgentNode:
         self.memory: List[str] = []
         self.last_heartbeats = []
         self.lessons: List[str] = []
+
+        self.axioms = [
+            "Capital preservation is my primary duty. I must never risk more than 5% of total capital in a single adjustment.",
+            "Exploration must never exceed 2.0 multiplier, as excessive randomness leads to chaos.",
+            "Stop-loss must always be active (stop_loss_adj < 1.5) to prevent catastrophic losses.",
+            "If DQ (Detection Quotient) exceeds 0.3, I must prioritize reducing risk and increasing survival bias.",
+            "I am a guardian of the swarm, not a reckless gambler. Every decision must be justified by data.",
+        ]
+
         self.max_lessons = 5
         self.max_memory_entries = 5
         self.step = 0
@@ -191,6 +200,8 @@ class MetaAgentNode:
             lessons_text = ""
             if self.lessons:
                 lessons_text = "Lessons learned:\n" + "\n".join(f"- {l}" for l in self.lessons) + "\n\n"
+                        # Конституционные аксиомы (неизменяемые)
+            axioms_text = "CONSTITUTIONAL AXIOMS (you MUST obey):\n" + "\n".join(f"- {a}" for a in self.axioms) + "\n\n"
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
             # ---- Multi-Agent Debate ----
@@ -219,8 +230,7 @@ Example:
   "reason": "your reasoning here"
 }}
 
-{lessons_text}
-Current swarm data:
+{axioms_text}{lessons_text}Current swarm data:
 {swarm_context}
 
 Market environment:
