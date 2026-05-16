@@ -126,6 +126,16 @@ class MetaAgentNode:
                 await self.reflect()
             await asyncio.sleep(1.0)
 
+    def _compute_sentiment(self, confidence: float, avg_capital: float, avg_dq: float) -> str:
+        """Определяет эмоциональный окрас на основе уверенности и состояния роя."""
+        if avg_capital < 500 or avg_dq > 0.3:
+            return "DESPERATE"
+        if confidence > 0.7:
+            return "CALCULATED"
+        if confidence >= 0.4:
+            return "CURIOUS"
+        return "TRANSCENDENT"
+
     async def reflect(self):
         try:
             # Читаем heartbeats из CRDT
@@ -258,15 +268,24 @@ Do NOT include any other text. Output ONLY the JSON command.
                     "expires_at": time.time() + 300,
                     "gid": f"meta_json_{int(time.time())}",
                 })
-                logger.info(f"📡 MetaAgent JSON command (debate winner): {best_command}")
 
-            # Сохраняем размышления всех ролей
+                # Определяем эмоциональный окрас
+                confidence = best_command.get("params", {}).get("confidence", 0.5)
+                sentiment = self._compute_sentiment(confidence, avg_capital, avg_dq)
+                sentiment_icon = {"CALCULATED": "🧘", "CURIOUS": "🤔", "DESPERATE": "😰", "TRANSCENDENT": "🌌"}.get(sentiment, "")
+                logger.info(f"📡 MetaAgent JSON command (debate winner) [{sentiment_icon} {sentiment}]: {best_command}")
+
+            # Сохраняем размышления всех ролей с эмоциональным окрасом
             thought = "\n".join(all_thoughts)
             self.memory.append(thought)
             if len(self.memory) > self.max_memory_entries:
                 self.memory = self.memory[-self.max_memory_entries:]
-            self._append_to_jsonl("meta_reflection", {"thought": thought})
-            logger.info(f"🧠 MetaAgent debate:\n{thought}")
+            self._append_to_jsonl("meta_reflection", {
+                "thought": thought,
+                "sentiment": sentiment if best_command else "UNKNOWN",
+                "confidence": confidence if best_command else 0.0,
+            })
+            logger.info(f"🧠 MetaAgent debate [{sentiment_icon} {sentiment}]:\n{thought}")
         except Exception as e:
             logger.error(f"MetaAgent reflection failed: {e}")
 
