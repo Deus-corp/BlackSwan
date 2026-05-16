@@ -290,6 +290,9 @@ Do NOT include any other text. Output ONLY the JSON command.
 
                 # Определяем эмоциональный окрас
                 confidence = best_command.get("params", {}).get("confidence", 0.5)
+                sentiment = "UNKNOWN"
+                sentiment_icon = ""
+                confidence = 0.0
                 sentiment = self._compute_sentiment(confidence, avg_capital, avg_dq)
                 sentiment_icon = {"CALCULATED": "🧘", "CURIOUS": "🤔", "DESPERATE": "😰", "TRANSCENDENT": "🌌"}.get(sentiment, "")
                 logger.info(f"📡 MetaAgent JSON command (debate winner) [{sentiment_icon} {sentiment}]: {best_command}")
