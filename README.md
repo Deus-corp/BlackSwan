@@ -119,14 +119,18 @@ Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
 - **Defense in Depth** – multi‑layer isolation, traffic obfuscation.
 - **Control Panel** – interactive CLI menu to start/stop/configure the swarm without Docker commands.
 
-### Current State (11 May 2026)
-- Fully autonomous swarm trading WETH/USDC on Uniswap V3 (Sepolia)
-- Async Web3 adapter with NonceManager (SQLite/WAL) – no more nonce collisions
-- Leader election: only one node sends transactions per block
-- Centralized config via Pydantic Settings (swarm_config.py)
-- Professional dashboards (FastAPI, Grafana, Prometheus)
-- LLM mutations with Pydantic validation and retry
-- Multi-node gossip with signing
+### Current State (16 May 2026) – Autonomous Swarm v0.5.0
+- **Fully autonomous closed-loop system** – MetaAgent (separate node) observes swarm via CRDT, issues structured JSON commands, nodes apply them with mathematical damping.
+- **Async Web3 adapter** with retry logic for RPC calls and nonce manager (SQLite/WAL).
+- **Modular architecture** – node_agent is a thin orchestrator; market, execution, capital, evolution, swarm sync, telemetry extracted into dedicated services.
+- **Deterministic leader election** (SHA-256) for reproducible behavior.
+- **50+ unit tests** covering all major services and models.
+- **Watchdog** – gradual rollback of unsafe parameters when capital drops below threshold.
+- **Shared CRDT** (SQLite) – all nodes and MetaAgent read/write heartbeats and commands.
+- **LLM-driven mutations** with robust JSON extraction from DeepSeek-R1 responses.
+- **Secure gossip** with signed envelopes, replay protection, and reputation filtering.
+- **Prometheus + Grafana** for live metrics; web dashboard for trading, logs, mutations.
+- **Controlled Chaos mode** – ability to inject experimental commands into the swarm with expiration TTL.
 
 ---
 

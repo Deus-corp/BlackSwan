@@ -12,8 +12,17 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 
 ## 📍 Current Status (May 2026)
 
-**Overall readiness level: TRL‑5 (laboratory‑validated system with real on‑chain execution)**
+**Overall readiness: TRL‑5 – autonomous system with real on‑chain execution, self‑adaptation, and basic protection**
 
+✅ Swarm refactoring (PR‑0..PR‑12) – node_agent is now a thin orchestrator, all subsystems extracted.  
+✅ MetaAgent – standalone observer/controller node that analyzes swarm state and issues JSON commands.  
+✅ Closed-loop control – nodes apply MetaAgent commands with mathematical damping.  
+✅ Watchdog – automatic rollback of dangerous parameters when capital drops.  
+✅ Shared CRDT storage – heartbeats, genomes, and commands visible to all nodes.  
+✅ RPC retry logic – increased resilience to network issues.  
+✅ Controlled Chaos – ability to inject expiring experimental commands.  
+✅ LLM mutations with robust JSON parsing (DeepSeek-R1).  
+✅ Comprehensive unit tests (50+ tests).  
 ✅ Formal verification (TLA+): 8 protocols (Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation, etc.).  
 ✅ Economic simulator: multi‑agent sweep, stability zone discovered.  
 ✅ Laboratory swarm: Docker Compose with 4 nodes, fully decentralized (no Redis).  
@@ -46,11 +55,7 @@ Create a distributed AI swarm capable of autonomously surviving, self‑healing,
 - [x] Centralized configuration (Pydantic)
 - [x] Async Web3 + NonceManager
 - [x] Leader election
-- [ ] Batched transactions (multi-swap)
-- [ ] TradingController refactoring
-- [ ] MutationEngine refactoring
-- [ ] Scale to 10+ nodes
-- [ ] Paper trading / Simulation mode
+
 
 📖 Detailed report: [docs/TRL4_VALIDATION_REPORT.md](docs/TRL4_VALIDATION_REPORT.md)
 
