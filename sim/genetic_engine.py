@@ -89,6 +89,10 @@ class GeneticEngine:
             raise ValueError("elite_size must be >= 0")
         if tournament_size < 2:
             raise ValueError("tournament_size must be >= 2")
+        
+            # Quality-Diversity archive (10x10 grid)
+        self.qd_archive = {}
+        self.qd_bonus_weight = 0.3   # вес новизны в итоговой оценке
 
         self.pop_size = pop_size
         self.base_mutation_rate = float(mutation_rate)
@@ -158,8 +162,14 @@ class GeneticEngine:
 
     def evaluate_population(self) -> None:
         for genome in self.population:
-            genome.fitness = self._fitness(genome.params)
+            # базовый фитнес
+            base_fitness = self._fitness(genome.params)
+            # бонус за новизну (Quality-Diversity)
+            novelty = self.novelty_bonus(genome)
+            genome.fitness = base_fitness + self.qd_bonus_weight * novelty
             genome.eval_count += 1
+            # обновляем QD-архив
+            self._update_archive(genome)
         self._rebuild_species()
         self._assign_species_ids()
         self._update_champion()
@@ -318,6 +328,10 @@ class GeneticEngine:
         self.evaluate_population()
         ranked = self._ranked_population()
         elites = [g.copy() for g in ranked[: self.elite_size]]
+            # Добавляем в элиту по одному лучшему геному из каждой ячейки QD-архива
+        for genome in self.qd_archive.values():
+            if len(next_population) < self.pop_size:
+                next_population.append(genome.copy())
         next_population: List[Genome] = elites
 
         while len(next_population) < self.pop_size:
@@ -423,3 +437,28 @@ class GeneticEngine:
         if x != x:  # NaN
             return low
         return max(low, min(high, float(x)))
+    
+    def _compute_descriptor(self, genome: Genome) -> tuple:
+        """Возвращает (row, col) для QD-архива на основе параметров."""
+        params = genome.params
+        risk = params.get("max_risk_per_trade", 0.05) * params.get("phi_llm", 0.15)
+        aggressiveness = params.get("trailing_stop_ratio", 0.01) + params.get("momentum_window", 10) / 100.0
+        # Нормируем в 0..9
+        row = min(9, max(0, int(risk * 50)))          # risk ~0..0.5 → row 0..9
+        col = min(9, max(0, int(aggressiveness * 5)))  # aggressiveness ~0..2 → col 0..9
+        return (row, col)
+
+    def _update_archive(self, genome: Genome):
+        """Обновляет QD-архив. Если ячейка пуста или фитнес выше – сохраняет геном."""
+        row, col = self._compute_descriptor(genome)
+        key = (row, col)
+        if key not in self.qd_archive or genome.fitness > self.qd_archive[key].fitness:
+            self.qd_archive[key] = genome
+
+    def novelty_bonus(self, genome: Genome) -> float:
+        """Возвращает бонус за новизну (1.0 если ячейка пуста, 0.3 если занята)."""
+        row, col = self._compute_descriptor(genome)
+        key = (row, col)
+        if key not in self.qd_archive:
+            return 1.0
+        return 0.3
