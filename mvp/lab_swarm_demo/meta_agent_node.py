@@ -34,6 +34,19 @@ class MetaAgentNode:
         self.step = 0
         self._load_memory_from_jsonl()
 
+        self.roles = [
+            {
+                "name": "Aggressive Explorer",
+                "temperature": 0.7,
+                "prompt_prefix": "You are an aggressive trading strategist. You believe in high exploration and taking calculated risks to maximise growth.",
+            },
+            {
+                "name": "Conservative Guardian",
+                "temperature": 0.5,
+                "prompt_prefix": "You are a conservative risk manager. You prioritise capital preservation and survival above all else.",
+            },
+        ]
+
     def _load_memory_from_jsonl(self):
         try:
             recent = self._get_recent_events_from_jsonl("meta_reflection", limit=self.max_memory_entries)
@@ -115,24 +128,21 @@ class MetaAgentNode:
 
     async def reflect(self):
         try:
-            # 1. Читаем heartbeats напрямую из CRDT (плоские словари)
+            # Читаем heartbeats из CRDT
             all_crdt = self.crdt.state
             heartbeats = [
                 v for k, v in all_crdt.items()
                 if isinstance(v, dict) and v.get("type") == "heartbeat"
             ]
-
-            # Если не нашли, используем последние успешные
             if heartbeats:
                 self.last_heartbeats = heartbeats
             else:
                 heartbeats = self.last_heartbeats
 
-            # 2. Агрегируем статистику
+            # Агрегируем статистику
             if heartbeats:
                 node_ids = set(h.get("node_id", "unknown") for h in heartbeats)
                 node_count = len(node_ids)
-                # поля лежат прямо в heartbeats: capital, fitness, dq, niche_counts
                 total_capital = sum(h.get("capital", 0) for h in heartbeats)
                 avg_capital = total_capital / node_count if node_count > 0 else 0
                 avg_fitness = sum(h.get("fitness", 0) for h in heartbeats) / max(len(heartbeats), 1)
@@ -152,9 +162,7 @@ class MetaAgentNode:
                 avg_dq = 0
                 dominant_niche = "unknown"
 
-            # 3. Читаем последние сделки из JSONL (можно оставить или тоже перенести в CRDT)
             trades = self._get_recent_events_from_jsonl("trade_executed", limit=30)
-
             swarm_context = (
                 f"Active nodes (with heartbeats): {node_count}\n"
                 f"Average capital per node: {avg_capital:.2f}\n"
@@ -167,39 +175,31 @@ class MetaAgentNode:
             market = self._get_market_context()
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
-                    # Динамическая подсказка для модели
-            if avg_capital < 2000:
-                hint = "The swarm is struggling with low capital. Suggest conservative adjustments: reduce risk_scale below 1.0, increase survival bias slightly."
-            elif avg_fitness > 0.8:
-                hint = "The swarm is performing well. You may increase exploration_multiplier above 1.0, slightly raise risk_scale."
-            else:
-                hint = "Balance exploration and safety."
+            # ---- Multi-Agent Debate ----
+            best_command = None
+            best_confidence = -1
+            all_thoughts = []
 
-            # 4. Формируем промпт (требуем ТОЛЬКО JSON)
-            prompt = f"""SYSTEM: You are BlackSwan ASI, a distributed superintelligence observing a live trading swarm on Ethereum Sepolia.
+            for role in self.roles:
+                role_prompt = f"""SYSTEM: {role['prompt_prefix']}
 
-Your task is to output ONLY a JSON command to adjust the swarm's parameters. The JSON must have this exact structure, but with values ADJUSTED based on the swarm data. Do NOT use 1.0 for all fields unless the data truly suggests no change.
+You are BlackSwan ASI, a distributed superintelligence observing a live trading swarm on Ethereum Sepolia.
+Based on your character, output ONLY a JSON command to adjust the swarm's parameters.
 
-Example of an ACTIVE adjustment (DO NOT COPY DIRECTLY, use your own judgement):
+The JSON must have this exact structure, but with values ADJUSTED based on the swarm data and your character.
+
+Example:
 {{
   "action": "ADJUST_SWARM",
   "params": {{
     "exploration_multiplier": 1.3,
     "risk_scale": 0.85,
     "survival_bias_adj": 0.03,
-    "stop_loss_adj": 0.9
+    "stop_loss_adj": 0.9,
+    "confidence": 0.8
   }},
-  "reason": "exploration increased due to high fitness, risk slightly reduced"
+  "reason": "your reasoning here"
 }}
-
-- **exploration_multiplier**: >1.0 increases exploration, <1.0 decreases it.
-- **risk_scale**: >1.0 increases max risk per trade, <1.0 decreases it.
-- **survival_bias_adj**: positive increases survival bias, negative decreases it.
-- **stop_loss_adj**: >1.0 loosens stop-loss, <1.0 tightens it.
-
-ADDITIONAL HINT: {hint}
-
-Include a "confidence" field (0.0 to 1.0) indicating how confident you are in this adjustment.
 
 Current swarm data:
 {swarm_context}
@@ -212,67 +212,61 @@ Your recent thoughts:
 
 Do NOT include any other text. Output ONLY the JSON command.
 """
-            response = self.llm.generate(prompt, max_tokens=200, temperature=0.5)
-            if response:
-                # 5. Извлекаем JSON‑команду (надежный парсинг с балансом скобок)
-                import json
-                thought = self._clean_thinking(response)
-                command_json = None
+                try:
+                    response = self.llm.generate(role_prompt, max_tokens=200, temperature=role["temperature"])
+                    if response:
+                        # Парсим JSON
+                        import json, re
+                        command_json = None
+                        start = response.find('{')
+                        if start != -1:
+                            depth = 0
+                            end = start
+                            for i in range(start, len(response)):
+                                if response[i] == '{':
+                                    depth += 1
+                                elif response[i] == '}':
+                                    depth -= 1
+                                    if depth == 0:
+                                        end = i
+                                        break
+                            if end > start:
+                                candidate = response[start:end+1]
+                                try:
+                                    command_json = json.loads(candidate)
+                                except:
+                                    pass
+                        if command_json and "action" in command_json:
+                            confidence = command_json.get("params", {}).get("confidence", 0.5)
+                            all_thoughts.append(f"[{role['name']}]: {command_json.get('reason', '')}")
+                            if confidence > best_confidence:
+                                best_confidence = confidence
+                                best_command = command_json
+                except Exception as e:
+                    logger.warning(f"Role {role['name']} failed: {e}")
 
-                # Ищем самый внешний JSON-объект, балансируя скобки
-                start = response.find('{')
-                if start != -1:
-                    depth = 0
-                    end = start
-                    for i in range(start, len(response)):
-                        if response[i] == '{':
-                            depth += 1
-                        elif response[i] == '}':
-                            depth -= 1
-                            if depth == 0:
-                                end = i
-                                break
-                    if end > start:
-                        candidate = response[start:end+1]
-                        try:
-                            command_json = json.loads(candidate)
-                        except:
-                            pass
+            # Если никто не дал команду, берём первую роль
+            if not best_command and all_thoughts:
+                best_command = {"action": "ADJUST_SWARM", "params": {}}
 
-                # Если не получилось, пробуем ```json блоки или любой JSON-объект
-                if not command_json:
-                    import re
-                    match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
-                    if match:
-                        try:
-                            command_json = json.loads(match.group(1))
-                        except:
-                            pass
-                    if not command_json:
-                        for m in re.finditer(r'\{.*?\}', response, re.DOTALL):
-                            try:
-                                command_json = json.loads(m.group(0))
-                                break
-                            except:
-                                continue
+            # Публикуем лучшую команду
+            if best_command and "action" in best_command:
+                await self.crdt.add_genome({
+                    "type": "meta_command_json",
+                    "data": best_command,
+                    "timestamp": time.time(),
+                    "expires_at": time.time() + 300,
+                    "gid": f"meta_json_{int(time.time())}",
+                })
+                logger.info(f"📡 MetaAgent JSON command (debate winner): {best_command}")
 
-                # Публикуем JSON‑команду в CRDT (только если есть action)
-                if command_json and "action" in command_json:
-                    await self.crdt.add_genome({
-                        "type": "meta_command_json",
-                        "data": command_json,
-                        "timestamp": time.time(),
-                        "expires_at": time.time() + 300,   # команда живёт 5 минут
-                        "gid": f"meta_json_{int(time.time())}",
-                    })
-                    logger.info(f"📡 MetaAgent JSON command: {command_json}")
-
-                # 6. Сохраняем размышление (текст) для истории, но команду НЕ дублируем
-                self.memory.append(thought)
-                if len(self.memory) > self.max_memory_entries:
-                    self.memory = self.memory[-self.max_memory_entries:]
-                self._append_to_jsonl("meta_reflection", {"thought": thought})
-                logger.info(f"🧠 MetaAgent reflection:\n{thought}")
+            # Сохраняем размышления всех ролей
+            thought = "\n".join(all_thoughts)
+            self.memory.append(thought)
+            if len(self.memory) > self.max_memory_entries:
+                self.memory = self.memory[-self.max_memory_entries:]
+            self._append_to_jsonl("meta_reflection", {"thought": thought})
+            logger.info(f"🧠 MetaAgent debate:\n{thought}")
         except Exception as e:
             logger.error(f"MetaAgent reflection failed: {e}")
 
