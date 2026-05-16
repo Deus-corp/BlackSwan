@@ -21,9 +21,10 @@ class SecurityNode:
     def __init__(self, node_id: str = None):
         self.node_id = node_id or f"sec-{uuid.uuid4().hex[:8]}"
         self.crdt = CRDTAdapter(node_id=self.node_id, db_path=config.crdt_db_path)
+        # Используем отдельные файлы для безопасности, не пересекаясь с торговым роем
         self.event_store = EventStore(
-            ledger_path=os.path.join(config.event_ledger_path or "./data/ledgers", "sec_events.jsonl"),
-            sqlite_path=os.path.join(config.event_sqlite_path or "./data/ledgers", "sec_events.db"),
+            ledger_path="./data/ledgers/sec_events.jsonl",
+            sqlite_path="./data/ledgers/sec_events.db",
         )
         self.step = 0
 
