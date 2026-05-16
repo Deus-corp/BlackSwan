@@ -186,15 +186,6 @@ class MetaAgentNode:
                 dominant_niche = "unknown"
 
             trades = self._get_recent_events_from_jsonl("trade_executed", limit=30)
-            swarm_context = (
-                f"Active nodes (with heartbeats): {node_count}\n"
-                f"Average capital per node: {avg_capital:.2f}\n"
-                f"Average fitness: {avg_fitness:.4f}\n"
-                f"Average DQ: {avg_dq:.3f}\n"
-                f"Dominant niche: {dominant_niche}\n"
-                f"Recent trades count: {len(trades)}\n"
-            )
-
             market = self._get_market_context()
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
@@ -219,50 +210,64 @@ Assistant: {{"""
                 try:
                     response = self.llm.generate(role_prompt, max_tokens=250, temperature=role["temperature"])
                     logger.info(f"ROLE [{role['name']}] raw response: {response[:300]}")
-                        if response:
-                            import json, re
-                            # Пытаемся найти JSON, если нет – извлекаем значения вручную
-                            start = response.find('{')
-                            if start != -1:
-                                depth = 0
-                                end = start
-                                for i in range(start, len(response)):
-                                    if response[i] == '{':
-                                        depth += 1
-                                    elif response[i] == '}':
-                                        depth -= 1
-                                        if depth == 0:
-                                            end = i
-                                            break
-                                if end > start:
-                                    candidate = response[start:end+1]
+                    if response:
+                        import json, re
+                        command_json = None
+                        # Пытаемся найти JSON
+                        start = response.find('{')
+                        if start != -1:
+                            depth = 0
+                            end = start
+                            for i in range(start, len(response)):
+                                if response[i] == '{':
+                                    depth += 1
+                                elif response[i] == '}':
+                                    depth -= 1
+                                    if depth == 0:
+                                        end = i
+                                        break
+                            if end > start:
+                                candidate = response[start:end+1]
+                                try:
+                                    command_json = json.loads(candidate)
+                                except:
                                     try:
-                                        command_json = json.loads(candidate)
+                                        command_json = json.loads(candidate + "}")
                                     except:
-                                        try:
-                                            command_json = json.loads(candidate + "}")
-                                        except:
-                                            pass
-                            if not command_json:
-                                # Извлекаем значения из текста
-                                vals = {}
-                                for key in ["exploration_multiplier", "risk_scale", "survival_bias_adj", "stop_loss_adj", "confidence"]:
-                                    match = re.search(rf'{key}\s*:\s*"?([\d.]+)"?', response)
-                                    if match:
-                                        vals[key] = float(match.group(1))
-                                reason_match = re.search(r'reason\s*:\s*"([^"]+)"', response)
-                                if "exploration_multiplier" in vals:
-                                    command_json = {
-                                        "action": "ADJUST_SWARM",
-                                        "params": {
-                                            "exploration_multiplier": vals.get("exploration_multiplier", 1.0),
-                                            "risk_scale": vals.get("risk_scale", 1.0),
-                                            "survival_bias_adj": vals.get("survival_bias_adj", 0.0),
-                                            "stop_loss_adj": vals.get("stop_loss_adj", 1.0),
-                                            "confidence": vals.get("confidence", 0.5),
-                                        },
-                                        "reason": reason_match.group(1) if reason_match else "",
-                                    }
+                                        pass
+                        if not command_json:
+                            # Извлекаем значения из текста
+                            vals = {}
+                            for key in ["exploration_multiplier", "risk_scale", "survival_bias_adj", "stop_loss_adj", "confidence"]:
+                                match = re.search(rf'{key}\s*:\s*"?([\d.]+)"?', response)
+                                if match:
+                                    vals[key] = float(match.group(1))
+                            reason_match = re.search(r'reason\s*:\s*"([^"]+)"', response)
+                            if "exploration_multiplier" in vals:
+                                command_json = {
+                                    "action": "ADJUST_SWARM",
+                                    "params": {
+                                        "exploration_multiplier": vals.get("exploration_multiplier", 1.0),
+                                        "risk_scale": vals.get("risk_scale", 1.0),
+                                        "survival_bias_adj": vals.get("survival_bias_adj", 0.0),
+                                        "stop_loss_adj": vals.get("stop_loss_adj", 1.0),
+                                        "confidence": vals.get("confidence", 0.5),
+                                    },
+                                    "reason": reason_match.group(1) if reason_match else "",
+                                }
+                        if command_json and "exploration_multiplier" in command_json:
+                            if "action" not in command_json:
+                                command_json = {
+                                    "action": "ADJUST_SWARM",
+                                    "params": {
+                                        "exploration_multiplier": command_json.get("exploration_multiplier", 1.0),
+                                        "risk_scale": command_json.get("risk_scale", 1.0),
+                                        "survival_bias_adj": command_json.get("survival_bias_adj", 0.0),
+                                        "stop_loss_adj": command_json.get("stop_loss_adj", 1.0),
+                                        "confidence": command_json.get("confidence", 0.5),
+                                    },
+                                    "reason": command_json.get("reason", ""),
+                                }
                             confidence = command_json.get("params", command_json).get("confidence", 0.5)
                             all_thoughts.append(f"[{role['name']}]: {command_json.get('reason', '')}")
                             if confidence > best_confidence:
