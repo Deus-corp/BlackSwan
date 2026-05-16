@@ -177,6 +177,20 @@ class CRDTAdapter:
     async def prune(self) -> None:
         pass
 
+    async def prune_heartbeats(self, max_age_seconds: int = 600):
+        """Удаляет heartbeats старше max_age_seconds."""
+        now = time.time()
+        to_delete = []
+        for k, v in self.crdt.state().items():
+            if isinstance(v, dict) and v.get("type") == "heartbeat":
+                ts = v.get("timestamp", 0)
+                if now - ts > max_age_seconds:
+                    to_delete.append(k)
+        for k in to_delete:
+            self.crdt.delete(k)
+        if to_delete:
+            logger.info(f"Pruned {len(to_delete)} old heartbeats from CRDT")
+
     @property
     def state(self):
         return self.crdt.state()
