@@ -99,8 +99,6 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
-      - EVENT_LEDGER_PATH=/app/data/ledgers/events.jsonl
-      - EVENT_SQLITE_PATH=/app/data/ledgers/events.db
     volumes:
       - ../../data/ledgers:/app/data/ledgers
       - /var/log:/var/log:ro
