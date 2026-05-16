@@ -30,6 +30,8 @@ class MetaAgentNode:
         
         self.memory: List[str] = []
         self.last_heartbeats = []
+        self.lessons: List[str] = []
+        self.max_lessons = 5
         self.max_memory_entries = 5
         self.step = 0
         self._load_memory_from_jsonl()
@@ -124,6 +126,8 @@ class MetaAgentNode:
             self.step += 1
             if self.step % 100 == 0:
                 await self.reflect()
+            if self.step % 1000 == 0:
+                await self._learn_from_experience()
             await asyncio.sleep(1.0)
 
     def _compute_sentiment(self, confidence: float, avg_capital: float, avg_dq: float) -> str:
@@ -183,6 +187,10 @@ class MetaAgentNode:
             )
 
             market = self._get_market_context()
+                # Уроки, извлечённые из опыта
+            lessons_text = ""
+            if self.lessons:
+                lessons_text = "Lessons learned:\n" + "\n".join(f"- {l}" for l in self.lessons) + "\n\n"
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
             # ---- Multi-Agent Debate ----
@@ -211,6 +219,7 @@ Example:
   "reason": "your reasoning here"
 }}
 
+{lessons_text}
 Current swarm data:
 {swarm_context}
 
@@ -291,6 +300,72 @@ Do NOT include any other text. Output ONLY the JSON command.
 
     def _get_market_context(self) -> str:
         return "Market data not directly available to observer (use shared state)."
+    
+    async def _learn_from_experience(self):
+        """Анализирует последние команды и их результаты, извлекая уроки."""
+        try:
+            all_crdt = self.crdt.state
+            # Получаем последние 3 JSON-команды
+            commands = [
+                v for k, v in all_crdt.items()
+                if isinstance(v, dict) and v.get("type") == "meta_command_json"
+            ]
+            if len(commands) < 2:
+                return   # недостаточно данных
+            commands = sorted(commands, key=lambda x: x.get("timestamp", 0))[-3:]
+
+            # Для каждой команды ищем heartbeats до и после
+            heartbeats = [
+                v for k, v in all_crdt.items()
+                if isinstance(v, dict) and v.get("type") == "heartbeat"
+            ]
+            heartbeats = sorted(heartbeats, key=lambda x: x.get("timestamp", 0))
+
+            lessons = []
+            for cmd in commands:
+                ts = cmd.get("timestamp", 0)
+                # Находим heartbeat до команды
+                hb_before = None
+                for h in reversed(heartbeats):
+                    if h.get("timestamp", 0) < ts:
+                        hb_before = h
+                        break
+                # Находим heartbeat после команды (спустя ~60 секунд)
+                hb_after = None
+                for h in heartbeats:
+                    if h.get("timestamp", 0) > ts + 60:
+                        hb_after = h
+                        break
+                if not hb_before or not hb_after:
+                    continue
+
+                capital_before = hb_before.get("capital", 0)
+                capital_after = hb_after.get("capital", 0)
+                dq_before = hb_before.get("dq", 0)
+                dq_after = hb_after.get("dq", 0)
+
+                lesson_prompt = f"""You are BlackSwan ASI. You issued the following command:
+{json.dumps(cmd.get('data', {}))}
+
+Before command: capital={capital_before:.2f}, DQ={dq_before:.3f}
+After command (~60s): capital={capital_after:.2f}, DQ={dq_after:.3f}
+
+What lesson can you learn from this outcome? Output ONE short sentence starting with "Lesson:"."""
+                response = self.llm.generate(lesson_prompt, max_tokens=60, temperature=0.3)
+                if response and "Lesson:" in response:
+                    lesson = response.split("Lesson:", 1)[1].strip()
+                    lessons.append(lesson)
+
+            # Сохраняем уроки
+            for lesson in lessons:
+                if lesson not in self.lessons:
+                    self.lessons.append(lesson)
+            if len(self.lessons) > self.max_lessons:
+                self.lessons = self.lessons[-self.max_lessons:]
+            if lessons:
+                logger.info(f"🧠 MetaAgent learned lessons: {lessons}")
+        except Exception as e:
+            logger.warning(f"MetaAgent learning failed: {e}")
 
 if __name__ == "__main__":
     node = MetaAgentNode()
