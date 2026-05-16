@@ -17,24 +17,22 @@ except ImportError:
 
 
 class LLMClient:
-    def __init__(self, model_name: Optional[str] = None, api_url: Optional[str] = None):
+    def __init__(self, model_name: Optional[str] = None, api_url: Optional[str] = None, n_ctx: int = 2048):
         self.model_name = model_name or os.getenv("LLM_MODEL", "deepseek")
         self.llm = None
         self.use_local = False
 
-        # Только "smollm17" считаем удалённым по умолчанию (если не задан api_url)
         if self.model_name == "smollm17" and not api_url:
             api_url = os.getenv("LLM_API_URL", "https://api.deepseek.com/v1/chat/completions")
         self.api_url = api_url
         self.api_key = os.getenv("DEEPSEEK_API_KEY", "")
 
         if LLAMA_AVAILABLE and self.model_name not in ("smollm17",):
-            # Пробуем загрузить локально. Файл должен лежать в llama_cpp/<model_name>.gguf
             try:
                 self.llm = Llama(model_path=f"./llama_cpp/{self.model_name}.gguf",
-                             n_ctx=2048, verbose=False)
+                                 n_ctx=n_ctx, verbose=False)
                 self.use_local = True
-                logger.info(f"Local LLM loaded: {self.model_name}")
+                logger.info(f"Local LLM loaded: {self.model_name} (n_ctx={n_ctx})")
             except Exception as e:
                 logger.warning(f"Cannot load local LLM: {e}")
         if not self.use_local and not self.api_url:

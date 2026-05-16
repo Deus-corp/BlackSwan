@@ -18,7 +18,7 @@ logger = logging.getLogger("MetaAgent")
 class MetaAgentNode:
     def __init__(self):
         self.node_id = f"meta-{uuid.uuid4().hex[:8]}"
-        self.llm = LLMClient()
+        self.llm = LLMClient(n_ctx=4096)
         self.crdt = CRDTAdapter(node_id=self.node_id, db_path=config.crdt_db_path)
         # Путь к общему JSONL-файлу событий роя
         self.events_jsonl_path = config.event_ledger_path or "./data/ledgers/events.jsonl"
@@ -48,7 +48,7 @@ class MetaAgentNode:
         self.roles = [
             {
                 "name": "Aggressive Explorer",
-                "temperature": 0.7,
+                "temperature": 0.8,
                 "prompt_prefix": "You are an aggressive trading strategist. You believe in high exploration and taking calculated risks to maximise growth.",
             },
             {
@@ -196,13 +196,14 @@ class MetaAgentNode:
             )
 
             market = self._get_market_context()
-            # Уроки, извлечённые из опыта
-            lessons_text = ""
-            if self.lessons:
-                lessons_text = "Lessons learned:\n" + "\n".join(f"- {l}" for l in self.lessons) + "\n\n"
-            # Конституционные аксиомы (неизменяемые)
-            axioms_text = "CONSTITUTIONAL AXIOMS (you MUST obey):\n" + "\n".join(f"- {a}" for a in self.axioms) + "\n\n"
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
+
+            # Контекст из аксиом и уроков (компактно)
+            context_header = ""
+            if self.axioms:
+                context_header += "Axioms: " + "; ".join(self.axioms[:2]) + ". "
+            if self.lessons:
+                context_header += "Lessons: " + "; ".join(self.lessons[-2:]) + ". "
 
             # ---- Multi-Agent Debate ----
             best_command = None
@@ -210,39 +211,13 @@ class MetaAgentNode:
             all_thoughts = []
 
             for role in self.roles:
-                role_prompt = f"""SYSTEM: {role['prompt_prefix']}
-
-You are BlackSwan ASI, a distributed superintelligence observing a live trading swarm on Ethereum Sepolia.
-Based on your character, output ONLY a JSON command to adjust the swarm's parameters.
-
-The JSON must have this exact structure, but with values ADJUSTED based on the swarm data and your character.
-
-Example:
-{{
-  "action": "ADJUST_SWARM",
-  "params": {{
-    "exploration_multiplier": 1.3,
-    "risk_scale": 0.85,
-    "survival_bias_adj": 0.03,
-    "stop_loss_adj": 0.9,
-    "confidence": 0.8
-  }},
-  "reason": "your reasoning here"
-}}
-
-{axioms_text}{lessons_text}Current swarm data:
-{swarm_context}
-
-Market environment:
-{market}
-
-Your recent thoughts:
-{past}
-
-Do NOT include any other text. Output ONLY the JSON command.
+                role_prompt = f"""{role['prompt_prefix']}
+{context_header}Swarm: {node_count} nodes, avg capital {avg_capital:.0f}, fitness {avg_fitness:.3f}, DQ {avg_dq:.3f}.
+Adjust parameters. Return ONLY JSON with: exploration_multiplier, risk_scale, survival_bias_adj, stop_loss_adj, confidence, reason.
+Example: {{"exploration_multiplier":1.2,"risk_scale":1.0,"survival_bias_adj":0.0,"stop_loss_adj":1.0,"confidence":0.7,"reason":"increase exploration"}}
 """
                 try:
-                    response = self.llm.generate(role_prompt, max_tokens=200, temperature=role["temperature"])
+                    response = self.llm.generate(role_prompt, max_tokens=250, temperature=role["temperature"])
                     if response:
                         import json, re
                         command_json = None
@@ -264,8 +239,21 @@ Do NOT include any other text. Output ONLY the JSON command.
                                     command_json = json.loads(candidate)
                                 except:
                                     pass
-                        if command_json and "action" in command_json:
-                            confidence = command_json.get("params", {}).get("confidence", 0.5)
+                        if command_json and "exploration_multiplier" in command_json:
+                            # Приводим к единому формату
+                            if "action" not in command_json:
+                                command_json = {
+                                    "action": "ADJUST_SWARM",
+                                    "params": {
+                                        "exploration_multiplier": command_json.get("exploration_multiplier", 1.0),
+                                        "risk_scale": command_json.get("risk_scale", 1.0),
+                                        "survival_bias_adj": command_json.get("survival_bias_adj", 0.0),
+                                        "stop_loss_adj": command_json.get("stop_loss_adj", 1.0),
+                                        "confidence": command_json.get("confidence", 0.5),
+                                    },
+                                    "reason": command_json.get("reason", ""),
+                                }
+                            confidence = command_json.get("params", command_json).get("confidence", 0.5)
                             all_thoughts.append(f"[{role['name']}]: {command_json.get('reason', '')}")
                             if confidence > best_confidence:
                                 best_confidence = confidence
@@ -279,7 +267,6 @@ Do NOT include any other text. Output ONLY the JSON command.
             confidence = 0.0
 
             if best_command and "action" in best_command:
-                # Публикуем лучшую команду
                 await self.crdt.add_genome({
                     "type": "meta_command_json",
                     "data": best_command,
@@ -287,14 +274,11 @@ Do NOT include any other text. Output ONLY the JSON command.
                     "expires_at": time.time() + 300,
                     "gid": f"meta_json_{int(time.time())}",
                 })
-
-                # Определяем эмоциональный окрас
                 confidence = best_command.get("params", {}).get("confidence", 0.5)
                 sentiment = self._compute_sentiment(confidence, avg_capital, avg_dq)
                 sentiment_icon = {"CALCULATED": "🧘", "CURIOUS": "🤔", "DESPERATE": "😰", "TRANSCENDENT": "🌌"}.get(sentiment, "")
                 logger.info(f"📡 MetaAgent JSON command (debate winner) [{sentiment_icon} {sentiment}]: {best_command}")
 
-            # Сохраняем размышления всех ролей с эмоциональным окрасом
             thought = "\n".join(all_thoughts) if all_thoughts else "No decision"
             self.memory.append(thought)
             if len(self.memory) > self.max_memory_entries:
@@ -307,44 +291,7 @@ Do NOT include any other text. Output ONLY the JSON command.
             logger.info(f"🧠 MetaAgent debate [{sentiment_icon} {sentiment}]:\n{thought}")
         except Exception as e:
             logger.error(f"MetaAgent reflection failed: {e}")
-
-            # Если никто не дал команду, берём первую роль
-            if not best_command and all_thoughts:
-                best_command = {"action": "ADJUST_SWARM", "params": {}}
-
-            # Публикуем лучшую команду
-            if best_command and "action" in best_command:
-                await self.crdt.add_genome({
-                    "type": "meta_command_json",
-                    "data": best_command,
-                    "timestamp": time.time(),
-                    "expires_at": time.time() + 300,
-                    "gid": f"meta_json_{int(time.time())}",
-                })
-
-                # Определяем эмоциональный окрас
-                confidence = best_command.get("params", {}).get("confidence", 0.5)
-                sentiment = "UNKNOWN"
-                sentiment_icon = ""
-                confidence = 0.0
-                sentiment = self._compute_sentiment(confidence, avg_capital, avg_dq)
-                sentiment_icon = {"CALCULATED": "🧘", "CURIOUS": "🤔", "DESPERATE": "😰", "TRANSCENDENT": "🌌"}.get(sentiment, "")
-                logger.info(f"📡 MetaAgent JSON command (debate winner) [{sentiment_icon} {sentiment}]: {best_command}")
-
-            # Сохраняем размышления всех ролей с эмоциональным окрасом
-            thought = "\n".join(all_thoughts)
-            self.memory.append(thought)
-            if len(self.memory) > self.max_memory_entries:
-                self.memory = self.memory[-self.max_memory_entries:]
-            self._append_to_jsonl("meta_reflection", {
-                "thought": thought,
-                "sentiment": sentiment if best_command else "UNKNOWN",
-                "confidence": confidence if best_command else 0.0,
-            })
-            logger.info(f"🧠 MetaAgent debate [{sentiment_icon} {sentiment}]:\n{thought}")
-        except Exception as e:
-            logger.error(f"MetaAgent reflection failed: {e}")
-
+            
     def _get_market_context(self) -> str:
         return "Market data not directly available to observer (use shared state)."
     
