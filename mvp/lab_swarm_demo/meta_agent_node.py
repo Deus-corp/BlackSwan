@@ -196,11 +196,11 @@ class MetaAgentNode:
             )
 
             market = self._get_market_context()
-                # Уроки, извлечённые из опыта
+            # Уроки, извлечённые из опыта
             lessons_text = ""
             if self.lessons:
                 lessons_text = "Lessons learned:\n" + "\n".join(f"- {l}" for l in self.lessons) + "\n\n"
-                        # Конституционные аксиомы (неизменяемые)
+            # Конституционные аксиомы (неизменяемые)
             axioms_text = "CONSTITUTIONAL AXIOMS (you MUST obey):\n" + "\n".join(f"- {a}" for a in self.axioms) + "\n\n"
             past = "\n".join(f"- {t}" for t in self.memory[-self.max_memory_entries:]) or "(no previous thoughts)"
 
@@ -244,7 +244,6 @@ Do NOT include any other text. Output ONLY the JSON command.
                 try:
                     response = self.llm.generate(role_prompt, max_tokens=200, temperature=role["temperature"])
                     if response:
-                        # Парсим JSON
                         import json, re
                         command_json = None
                         start = response.find('{')
@@ -273,6 +272,41 @@ Do NOT include any other text. Output ONLY the JSON command.
                                 best_command = command_json
                 except Exception as e:
                     logger.warning(f"Role {role['name']} failed: {e}")
+
+            # Инициализируем значения по умолчанию
+            sentiment = "UNKNOWN"
+            sentiment_icon = ""
+            confidence = 0.0
+
+            if best_command and "action" in best_command:
+                # Публикуем лучшую команду
+                await self.crdt.add_genome({
+                    "type": "meta_command_json",
+                    "data": best_command,
+                    "timestamp": time.time(),
+                    "expires_at": time.time() + 300,
+                    "gid": f"meta_json_{int(time.time())}",
+                })
+
+                # Определяем эмоциональный окрас
+                confidence = best_command.get("params", {}).get("confidence", 0.5)
+                sentiment = self._compute_sentiment(confidence, avg_capital, avg_dq)
+                sentiment_icon = {"CALCULATED": "🧘", "CURIOUS": "🤔", "DESPERATE": "😰", "TRANSCENDENT": "🌌"}.get(sentiment, "")
+                logger.info(f"📡 MetaAgent JSON command (debate winner) [{sentiment_icon} {sentiment}]: {best_command}")
+
+            # Сохраняем размышления всех ролей с эмоциональным окрасом
+            thought = "\n".join(all_thoughts) if all_thoughts else "No decision"
+            self.memory.append(thought)
+            if len(self.memory) > self.max_memory_entries:
+                self.memory = self.memory[-self.max_memory_entries:]
+            self._append_to_jsonl("meta_reflection", {
+                "thought": thought,
+                "sentiment": sentiment,
+                "confidence": confidence,
+            })
+            logger.info(f"🧠 MetaAgent debate [{sentiment_icon} {sentiment}]:\n{thought}")
+        except Exception as e:
+            logger.error(f"MetaAgent reflection failed: {e}")
 
             # Если никто не дал команду, берём первую роль
             if not best_command and all_thoughts:
