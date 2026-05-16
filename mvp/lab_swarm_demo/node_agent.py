@@ -644,6 +644,7 @@ class SwarmNode:
         if self.step_count % 200 == 0:
             self.semantic.derive_rules(self.memory.to_dict_list())
             await self.crdt.prune()
+            await self.crdt.prune_heartbeats(max_age_seconds=600)
             top = await self.crdt.get_top(20)
             if top:
                 sample = random.choice(top)
@@ -677,22 +678,6 @@ class SwarmNode:
                     },
                     parent_id=self._trace_id,
                 ))
-
-        if self.step_count % 200 == 0:
-            self.semantic.derive_rules(self.memory.to_dict_list())
-            await self.crdt.prune()
-            top = await self.crdt.get_top(20)
-            if top:
-                sample = random.choice(top)
-                pubkey = sample.get("origin_pubkey")
-                if pubkey and pubkey != self.crypto.public_bytes_hex:
-                    actual_fit = self.engine._fitness(sample["params"])
-                    claimed_fit = sample.get("fitness", 0.0)
-                    self.reputation.update(pubkey, claimed_fit, actual_fit)
-
-            if self.memory_api_enabled:
-                stats = await self.memory_api.compress()
-                logger.info(f"Memory stats: {stats}")
 
     async def start(self) -> None:
         logger.info(f"[{self.node_id}] port={self.port} peers={self.peers}")

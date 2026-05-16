@@ -9,6 +9,9 @@ class EpisodicMemory:
     def __init__(self, max_size: int = 1000):
         self.records: List[Dict] = []  # список записей (volatility, dq, capital, params, fitness)
         self.max_size = max_size
+        self.decay_factor = 0.9  # коэффициент забывания (0..1)
+        self.cleanup_interval = 100  # каждые 100 добавлений – очистка
+        self.add_count = 0
 
     def add(self, market_volatility: float, dq: float, capital: float, params: Dict, fitness: float):
         """Добавляет запись о рыночной ситуации и лучшей стратегии."""
@@ -19,6 +22,9 @@ class EpisodicMemory:
             "params": params,
             "fitness": fitness,
         }
+        self.add_count += 1
+        if self.add_count % self.cleanup_interval == 0:
+            self._forget_old_entries()
         self.records.append(record)
         if len(self.records) > self.max_size:
             self.records.pop(0)  # удаляем самую старую
@@ -50,3 +56,19 @@ class EpisodicMemory:
 
     def __len__(self):
         return len(self.records)
+    
+    def _forget_old_entries(self):
+        """Удаляет записи с низким весом (экспоненциальное забывание)."""
+        if not self.records:
+            return
+        now = time.time()
+        # Вычисляем вес: чем старше запись, тем ниже вес
+        for rec in self.records:
+            age = now - rec.get("timestamp", now)
+            rec["weight"] = math.exp(-age / 3600.0)  # период полураспада ~1 час
+        # Удаляем записи с весом < 0.1
+        self.records = [r for r in self.records if r.get("weight", 1.0) >= 0.1]
+        # Если после очистки всё ещё больше max_size, обрезаем
+        if len(self.records) > self.max_size:
+            self.records = sorted(self.records, key=lambda r: r.get("weight", 0), reverse=True)
+            self.records = self.records[:self.max_size]
