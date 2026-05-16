@@ -122,6 +122,22 @@ services:
     restart: unless-stopped
     init: true
 
+  overseer:
+    build:
+      context: ../..
+    image: blackswan-node:latest
+    entrypoint: ["python", "/app/mvp/lab_swarm_demo/overseer_node.py"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - LLM_MODEL=DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M
+      - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
+    volumes:
+      - ../../llama_cpp:/app/llama_cpp:ro
+      - ../../data/ledgers:/app/data/ledgers
+    restart: unless-stopped
+    init: true
+
   prometheus:
     image: prom/prometheus:latest
     volumes:
