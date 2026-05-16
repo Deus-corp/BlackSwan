@@ -4,6 +4,7 @@ Episodic Memory (L1) – запоминает рыночные ситуации 
 """
 from typing import Dict, List, Optional, Tuple
 import math
+import time
 
 class EpisodicMemory:
     def __init__(self, max_size: int = 1000):
