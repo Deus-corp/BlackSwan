@@ -328,11 +328,12 @@ class GeneticEngine:
         self.evaluate_population()
         ranked = self._ranked_population()
         elites = [g.copy() for g in ranked[: self.elite_size]]
-            # Добавляем в элиту по одному лучшему геному из каждой ячейки QD-архива
+        next_population: List[Genome] = elites
+
+        # Добавляем в элиту по одному лучшему геному из каждой ячейки QD-архива
         for genome in self.qd_archive.values():
             if len(next_population) < self.pop_size:
                 next_population.append(genome.copy())
-        next_population: List[Genome] = elites
 
         while len(next_population) < self.pop_size:
             parent_a = self._species_aware_pick()
