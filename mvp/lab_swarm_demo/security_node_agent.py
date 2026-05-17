@@ -4,6 +4,7 @@ Security Node Agent – автономный узел роя безопасно�
 Мониторит логи, применяет правила файрвола, обменивается данными через CRDT.
 """
 import asyncio, logging, os, sys, time, uuid, random, subprocess, re
+import hashlib
 from typing import Dict, Any, List, Optional
 
 from src.core.crdt_adapter import CRDTAdapter
@@ -36,6 +37,8 @@ class SecurityNode:
                 await self._monitor_logs()
                 await self._apply_security_commands()
                 await self._send_heartbeat()
+                await self._scan_ports()
+                await self._verify_integrity()
             except Exception as e:
                 logger.error(f"Security cycle error: {e}")
             await asyncio.sleep(2.0)
@@ -107,6 +110,59 @@ class SecurityNode:
             "gid": f"sec_hb_{int(time.time())}",
         }
         await self.crdt.add_genome(heartbeat)
+
+    async def _scan_ports(self):
+        """Проверяет открытые порты на localhost (безопасно, без внешних подключений)."""
+        if self.step % 60 != 0:
+            return
+        open_ports = []
+        for port in [22, 80, 443, 8080, 8443]:
+            try:
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection('127.0.0.1', port),
+                    timeout=2.0
+                )
+                writer.close()
+                await writer.wait_closed()
+                open_ports.append(port)
+            except:
+                pass
+        if open_ports:
+            logger.info(f"🔍 Open ports detected: {open_ports}")
+            self.event_store.append(Event.create(
+                node_id=self.node_id,
+                event_type="open_ports_detected",
+                payload={"ports": open_ports, "timestamp": time.time()},
+                parent_id=None,
+            ))
+
+    async def _verify_integrity(self):
+        """Проверяет хэши ключевых файлов и сравнивает с эталонами."""
+        if self.step % 120 != 0:
+            return
+        important_files = {
+            "/app/mvp/lab_swarm_demo/security_node_agent.py": None,
+            "/app/src/core/crdt_adapter.py": None,
+            "/app/src/intelligence/llm_client.py": None,
+        }
+        changed = []
+        for filepath in important_files:
+            try:
+                with open(filepath, "rb") as f:
+                    file_hash = hashlib.sha256(f.read()).hexdigest()
+                if important_files[filepath] is not None and important_files[filepath] != file_hash:
+                    changed.append(filepath)
+                important_files[filepath] = file_hash
+            except:
+                pass
+        if changed:
+            logger.warning(f"🔴 File integrity mismatch: {changed}")
+            self.event_store.append(Event.create(
+                node_id=self.node_id,
+                event_type="file_integrity_alert",
+                payload={"changed_files": changed, "timestamp": time.time()},
+                parent_id=None,
+            ))
 
 if __name__ == "__main__":
     node = SecurityNode()
