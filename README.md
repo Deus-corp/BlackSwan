@@ -49,13 +49,9 @@ Grafana dashboard is also embedded directly in the Web Control Panel (📊 Dashb
 The swarm requires at least one local LLM model. Download the recommended ones:
 
 ```bash
-# SmolLM2-1.7B (fast, low‑resource)
-curl -L "https://huggingface.co/bartowski/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf" -o llama_cpp/SmolLM2-1.7B-Instruct-Q4_K_M.gguf
-
-# DeepSeek-R1-Distill-Qwen-1.5B (best reasoning)
-curl -L "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf" -o llama_cpp/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf
+curl -L "https://huggingface.co/bartowski/Zyphra_ZR1-1.5B-GGUF/resolve/main/Zyphra_ZR1-1.5B-Q4_K_M.gguf" -o llama_cpp/Zyphra_ZR1-1.5B-Q4_K_M.gguf
 ```
-Set LLM_MODEL=smollm17 or LLM_MODEL=deepseek in docker-compose.async.yml.
+Set LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M in docker-compose.async.yml.
 
 ---
 
