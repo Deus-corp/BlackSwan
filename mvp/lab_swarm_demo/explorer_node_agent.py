@@ -43,6 +43,12 @@ class ExplorerNode:
             await asyncio.sleep(30.0)   # раз в 30 секунд
 
     async def _explore(self):
+            # Проверяем команды от Overseer
+        cmds = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_command"]
+        if cmds:
+            latest_cmd = max(cmds, key=lambda x: x.get("timestamp", 0))
+            if latest_cmd.get("data", {}).get("action") == "PAUSE":
+                return  # не исследуем
         targets = await self._get_targets()
         # Получаем последние находки для фильтрации дубликатов
         all_state = self.crdt.state
