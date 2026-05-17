@@ -5,6 +5,7 @@ Overseer Node – стратегический координатор для Tra
 """
 import asyncio, logging, os, sys, time, uuid, json
 from typing import Dict, Any, List
+import re
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.intelligence.llm_client import LLMClient
@@ -72,6 +73,10 @@ Assistant: {{"""
                 if not response.strip().startswith('{'):
                     response = '{' + response
                 logger.info(f"Overseer normalized response: {response[:200]}")
+                # Исправляем JSON: true → True, false → False, оборачиваем ключи в кавычки
+                cleaned = re.sub(r'(?<!["\'])\b(true|false)\b(?!["\'])', lambda m: m.group(1).title(), response)
+                cleaned = re.sub(r'(\w+):', r'"\1":', cleaned)
+                response = cleaned
                 # Парсим JSON
                 start = response.find('{')
                 end = response.rfind('}')
