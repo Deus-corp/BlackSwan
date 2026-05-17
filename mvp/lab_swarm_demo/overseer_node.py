@@ -34,7 +34,12 @@ class OverseerNode:
             all_state = self.crdt.state
 
             # Агрегируем Trade heartbeats
-            trade_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "heartbeat"]
+            now = time.time()
+            trade_hbs = [
+                v for k, v in all_state.items()
+                if isinstance(v, dict) and v.get("type") == "heartbeat"
+                and now - v.get("timestamp", 0) < 600
+            ]
             trade_nodes = len(set(h.get("node_id") for h in trade_hbs))
             trade_capital = sum(h.get("capital", 0) for h in trade_hbs)
             trade_dq = sum(h.get("dq", 0) for h in trade_hbs) / max(len(trade_hbs), 1)
@@ -58,7 +63,12 @@ class OverseerNode:
                     logger.info(f"🔄 Overseer: requesting restart of stale node {node_id}")
 
             # Агрегируем Security heartbeats
-            sec_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "security_heartbeat"]
+            now = time.time()
+            sec_hbs = [
+                v for k, v in all_state.items()
+                if isinstance(v, dict) and v.get("type") == "heartbeat"
+                and now - v.get("timestamp", 0) < 600
+            ]
             sec_nodes = len(set(h.get("node_id") for h in sec_hbs))
             blocked_ips = sum(h.get("blocked_ips", 0) for h in sec_hbs)
                 # Проверяем уязвимости от Security
@@ -68,7 +78,12 @@ class OverseerNode:
                 decisions["reduce_risk"] = True  # принудительно
 
             # Explorer heartbeats
-            exp_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_heartbeat"]
+            now = time.time()
+            exp_hbs = [
+                v for k, v in all_state.items()
+                if isinstance(v, dict) and v.get("type") == "heartbeat"
+                and now - v.get("timestamp", 0) < 600
+            ]
             exp_nodes = len(set(h.get("node_id") for h in exp_hbs))
             findings = len([v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_finding"])
 

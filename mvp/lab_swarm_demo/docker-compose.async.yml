@@ -152,6 +152,21 @@ services:
     restart: unless-stopped
     init: true
 
+  improver-agent:
+    build:
+      context: ../..
+    image: blackswan-node:latest
+    entrypoint: ["python", "/app/mvp/lab_swarm_demo/improver_agent.py", "--single-pass"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+    volumes:
+      - ../../llama_cpp:/app/llama_cpp:ro
+      - ../../data/improver_output:/app/data/improver_output
+    restart: "no"   # (бесконечный цикл) убери --single-pass и поставь restart: unless-stopped.
+    init: true
+
   overseer:
     build:
       context: ../..
