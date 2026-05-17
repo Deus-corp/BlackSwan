@@ -43,22 +43,27 @@ class ExplorerNode:
             await asyncio.sleep(30.0)   # раз в 30 секунд
 
     async def _explore(self):
-            # Проверяем команды от Overseer
+        # Единый вызов CRDT
+        all_state = self.crdt.state
+
+        # Проверяем команды от Overseer
         cmds = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_command"]
         if cmds:
             latest_cmd = max(cmds, key=lambda x: x.get("timestamp", 0))
             if latest_cmd.get("data", {}).get("action") == "PAUSE":
-                return  # не исследуем
+                return
+
+        # Получаем цели
         targets = await self._get_targets()
-        # Получаем последние находки для фильтрации дубликатов
-        all_state = self.crdt.state
+
+        # Фильтрация дубликатов
         recent_findings = [
             v for k, v in all_state.items()
             if isinstance(v, dict) and v.get("type") == "explorer_finding"
         ]
         recent_urls = {f["url"] for f in recent_findings[-10:]}
-        all_state = self.crdt.state
-        for url in targets[:3]:   # не больше 3 за цикл
+
+        for url in targets[:3]:
             if url in recent_urls:
                 continue
             try:
