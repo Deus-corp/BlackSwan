@@ -33,29 +33,46 @@ class ExplorerMetaAgent:
             findings = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_finding"]
             if not findings:
                 return
-            prompt = f"User: {len(findings)} web findings. Suggest 1-3 new URLs to explore. Output ONLY a JSON with 'urls' array. Example: {{\"urls\":[\"https://example.com\"]}}\nAssistant: {{"
-            response = self.llm.generate(prompt, max_tokens=80, temperature=0.3)
-            if response:
-                start = response.find('{')
-                end = response.rfind('}')
-                if start != -1 and end != -1:
-                    candidate = response[start:end+1]
-                    try:
-                        data = json.loads(candidate)
-                    except:
+            # Классифицируем находки через LLM
+            for f in findings[:5]:   # не больше 5 за цикл
+                content = f.get("content_preview", "")
+                url = f.get("url", "")
+                prompt = f"""User: Classify this web finding from {url}. Content preview: {content}
+Categories: USEFUL, HARMFUL, NEUTRAL. Output ONLY one word.
+Assistant: """
+                response = self.llm.generate(prompt, max_tokens=10, temperature=0.2)
+                if response:
+                    classification = response.strip().upper()
+                    if classification in ("USEFUL", "HARMFUL", "NEUTRAL"):
+                        f["classification"] = classification
+                        await self.crdt.add_genome(f)   # обновляем в CRDT
+            # Генерируем новые URL на основе полезных находок
+            useful = [f for f in findings if f.get("classification") == "USEFUL"]
+            if useful:
+                url_list = [f.get("url") for f in useful[:3]]
+                prompt = f"User: Based on these useful URLs: {', '.join(url_list)}. Suggest 2 new related URLs. Output ONLY JSON with 'urls' array.\nAssistant: {{"
+                response = self.llm.generate(prompt, max_tokens=80, temperature=0.3)
+                if response:
+                    start = response.find('{')
+                    end = response.rfind('}')
+                    if start != -1 and end != -1:
+                        candidate = response[start:end+1]
                         try:
-                            data = json.loads(candidate + "}")
+                            data = json.loads(candidate)
                         except:
-                            return
-                    if "urls" in data:
-                        cmd = {
-                            "type": "explorer_targets",
-                            "data": {"urls": data["urls"]},
-                            "timestamp": time.time(),
-                            "gid": f"exp_cmd_{int(time.time())}",
-                        }
-                        await self.crdt.add_genome(cmd)
-                        logger.info(f"🔎 ExplorerMetaAgent suggested URLs: {data['urls']}")
+                            try:
+                                data = json.loads(candidate + "}")
+                            except:
+                                return
+                        if "urls" in data:
+                            cmd = {
+                                "type": "explorer_targets",
+                                "data": {"urls": data["urls"]},
+                                "timestamp": time.time(),
+                                "gid": f"exp_cmd_{int(time.time())}",
+                            }
+                            await self.crdt.add_genome(cmd)
+                            logger.info(f"🔎 ExplorerMetaAgent suggested URLs: {data['urls']}")
         except Exception as e:
             logger.error(f"ExplorerMetaAgent reflection failed: {e}")
 

@@ -39,6 +39,7 @@ class SecurityNode:
                 await self._send_heartbeat()
                 await self._scan_ports()
                 await self._verify_integrity()
+                await self._pip_audit()
             except Exception as e:
                 logger.error(f"Security cycle error: {e}")
             await asyncio.sleep(2.0)
@@ -163,6 +164,30 @@ class SecurityNode:
                 payload={"changed_files": changed, "timestamp": time.time()},
                 parent_id=None,
             ))
+
+    async def _pip_audit(self):
+        """Проверяет уязвимости Python‑пакетов через pip‑audit."""
+        if self.step % 150 != 0:
+            return
+        try:
+            result = subprocess.run(
+                ["pip", "audit", "--format", "json"],
+                capture_output=True, text=True, timeout=30
+            )
+            if result.returncode == 0:
+                vulnerabilities = json.loads(result.stdout)
+                if vulnerabilities:
+                    logger.warning(f"🔴 Found {len(vulnerabilities)} vulnerabilities!")
+                    self.event_store.append(Event.create(
+                        node_id=self.node_id,
+                        event_type="vulnerability_alert",
+                        payload={"vulnerabilities": vulnerabilities, "timestamp": time.time()},
+                        parent_id=None,
+                    ))
+        except subprocess.TimeoutExpired:
+            logger.warning("pip‑audit timed out")
+        except Exception as e:
+            logger.warning(f"pip‑audit skipped: {e}")
 
 if __name__ == "__main__":
     node = SecurityNode()
