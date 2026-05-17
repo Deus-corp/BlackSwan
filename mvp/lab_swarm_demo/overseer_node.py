@@ -16,7 +16,7 @@ logger = logging.getLogger("Overseer")
 class OverseerNode:
     def __init__(self):
         self.node_id = f"overseer-{uuid.uuid4().hex[:8]}"
-        self.llm = LLMClient(n_ctx=4096)
+        self.llm = LLMClient(n_ctx=8192)
         self.crdt = CRDTAdapter(node_id=self.node_id, db_path=config.crdt_db_path)
         self.step = 0
 
@@ -30,6 +30,7 @@ class OverseerNode:
 
     async def coordinate(self):
         try:
+            logger.info(f"🧭 Overseer coordinate cycle #{self.step}")
             all_state = self.crdt.state
 
             # Агрегируем Trade heartbeats
@@ -138,7 +139,6 @@ Assistant: {{"""
             logger.error(f"Overseer coordination failed: {e}")
 
     def _get_resource_context(self) -> str:
-        """Собирает системные метрики для анализа ресурсов."""
         try:
             import psutil
             cpu = psutil.cpu_percent(interval=1)
