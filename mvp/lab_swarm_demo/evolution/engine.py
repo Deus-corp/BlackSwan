@@ -115,7 +115,7 @@ class EvolutionEngine:
         if new_params != champion:
             genome = self.node.dict_to_genome({"params": new_params})
             self.node.engine.add_genome(genome)
-            from mvp.lab_swarm_demo.node_agent import note_llm_mutation
+            from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation
             note_llm_mutation()
             
     def _genetic_step(self):

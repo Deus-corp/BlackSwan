@@ -1,5 +1,5 @@
 import pytest
-from mvp.lab_swarm_demo.node_agent import SwarmNode
+from mvp.lab_swarm_demo.trade_node_agent import SwarmNode
 
 @pytest.mark.asyncio
 async def test_main_loop_has_required_methods():
@@ -15,7 +15,7 @@ def test_evolution_engine_exists():
     import swarm_config
     from swarm_config import SwarmConfig
     swarm_config.config = SwarmConfig()
-    from mvp.lab_swarm_demo.node_agent import SwarmNode
+    from mvp.lab_swarm_demo.trade_node_agent import SwarmNode
     node = SwarmNode()
     assert hasattr(node, 'evolution_engine')
 
@@ -24,6 +24,6 @@ def test_swarm_sync_exists():
     import swarm_config
     from swarm_config import SwarmConfig
     swarm_config.config = SwarmConfig()
-    from mvp.lab_swarm_demo.node_agent import SwarmNode
+    from mvp.lab_swarm_demo.trade_node_agent import SwarmNode
     node = SwarmNode()
     assert hasattr(node, 'swarm_sync')
