@@ -44,7 +44,16 @@ class ExplorerNode:
 
     async def _explore(self):
         targets = await self._get_targets()
+        # Получаем последние находки для фильтрации дубликатов
+        all_state = self.crdt.state
+        recent_findings = [
+            v for k, v in all_state.items()
+            if isinstance(v, dict) and v.get("type") == "explorer_finding"
+        ]
+        recent_urls = {f["url"] for f in recent_findings[-10:]}
         for url in targets[:3]:   # не больше 3 за цикл
+            if url in recent_urls:
+                continue
             try:
                 async with self.session.get(url, timeout=10) as resp:
                     content = await resp.text()

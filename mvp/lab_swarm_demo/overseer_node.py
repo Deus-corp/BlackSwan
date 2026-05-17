@@ -35,6 +35,24 @@ class OverseerNode:
 
             # Агрегируем Trade heartbeats
             trade_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "heartbeat"]
+                # Проверяем истёкшие heartbeats (>180 секунд)
+            now = time.time()
+            stale_nodes = [
+                h.get("node_id") for h in trade_hbs
+                if now - h.get("timestamp", 0) > 180
+            ]
+            if stale_nodes:
+                for node_id in set(stale_nodes):
+                    cmd = {
+                        "type": "sec_command",
+                        "data": {"action": "RESTART_NODE", "node_id": node_id},
+                        "timestamp": now,
+                        "expires_at": now + 300,
+                        "gid": f"overseer_restart_{int(now)}",
+                    }
+                    await self.crdt.add_genome(cmd)
+                    logger.info(f"🔄 Overseer: requesting restart of stale node {node_id}")
+
             trade_nodes = len(set(h.get("node_id") for h in trade_hbs))
             trade_capital = sum(h.get("capital", 0) for h in trade_hbs)
             trade_dq = sum(h.get("dq", 0) for h in trade_hbs) / max(len(trade_hbs), 1)
