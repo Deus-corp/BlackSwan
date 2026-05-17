@@ -67,21 +67,25 @@ Output ONLY a JSON with three boolean fields: reduce_risk, increase_exploration,
 Example: {{"reduce_risk":false,"increase_exploration":true,"unblock_ips":false}}
 Assistant: {{"""
             response = self.llm.generate(prompt, max_tokens=60, temperature=0.1)
-            logger.info(f"Overseer LLM response: {response[:200]}")
             if response:
+                # Нормализуем JSON: добавляем открывающую скобку, если её нет
+                if not response.strip().startswith('{'):
+                    response = '{' + response
+                logger.info(f"Overseer normalized response: {response[:200]}")
                 # Парсим JSON
                 start = response.find('{')
                 end = response.rfind('}')
                 if start != -1 and end != -1:
                     candidate = response[start:end+1]
+                try:
+                    decisions = json.loads(candidate)
+                except:
                     try:
-                        decisions = json.loads(candidate)
+                        decisions = json.loads(candidate + "}")
                     except:
-                        try:
-                            decisions = json.loads(candidate + "}")
-                        except:
-                            return
-
+                        logger.warning(f"Overseer failed to parse JSON: {candidate}")
+                        return
+                    
                     # Применяем решения
                     if decisions.get("reduce_risk"):
                         cmd = {
