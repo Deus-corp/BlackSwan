@@ -70,6 +70,9 @@ Example: {{"reduce_risk":false,"increase_exploration":true,"unblock_ips":false,"
 Assistant: {{"""
             response = self.llm.generate(prompt, max_tokens=80, temperature=0.1)
             if response:
+                # Исправляем пропущенную кавычку перед первым ключом
+                response = re.sub(r'\{(\w+)"\s*:', r'{"\1":', response)
+
                 # Нормализуем JSON: добавляем скобки, если их нет
                 if not response.strip().startswith('{'):
                     response = '{' + response
@@ -80,10 +83,19 @@ Assistant: {{"""
                 # Оборачиваем ключи в кавычки
                 cleaned = re.sub(r'(\w+):', r'"\1":', response)
 
-                # Парсим JSON
+                # Ищем JSON-объект с балансировкой скобок
                 start = cleaned.find('{')
-                end = cleaned.rfind('}')
-                if start != -1 and end != -1 and end > start:
+                if start != -1:
+                    depth = 0
+                    end = start
+                    for i in range(start, len(cleaned)):
+                        if cleaned[i] == '{':
+                            depth += 1
+                        elif cleaned[i] == '}':
+                            depth -= 1
+                            if depth == 0:
+                                end = i
+                                break
                     candidate = cleaned[start:end+1]
                 else:
                     logger.warning("Overseer: no valid JSON object found")
