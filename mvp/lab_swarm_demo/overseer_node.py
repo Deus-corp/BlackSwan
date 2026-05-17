@@ -43,15 +43,18 @@ class OverseerNode:
             sec_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "security_heartbeat"]
             sec_nodes = len(set(h.get("node_id") for h in sec_hbs))
             blocked_ips = sum(h.get("blocked_ips", 0) for h in sec_hbs)
+            resources = self._get_resource_context()
 
             prompt = f"""User: You are BlackSwan Overseer, a strategic coordinator for two swarms:
 - Trade swarm: {trade_nodes} nodes, total capital {trade_capital:.0f}, DQ {trade_dq:.3f}, fitness {trade_fitness:.3f}
 - Security swarm: {sec_nodes} nodes, {blocked_ips} IPs blocked
+- System resources: {resources}
 
 Decide:
 1. Should you reduce trade risk? (if DQ > 0.25 or capital < 2000, answer YES)
 2. Should you increase exploration? (if fitness is high and DQ is low, answer YES)
 3. Should you unblock all IPs? (if blocked IPs > 50, answer YES)
+4. Should you spawn more nodes? (if RAM > 500MB, answer YES)
 
 Output ONLY a JSON with three boolean fields: reduce_risk, increase_exploration, unblock_ips.
 Example: {{"reduce_risk":false,"increase_exploration":true,"unblock_ips":false}}
@@ -126,6 +129,23 @@ Assistant: {{"""
                         logger.info("🔓 Overseer: requesting unblock all IPs")
         except Exception as e:
             logger.error(f"Overseer coordination failed: {e}")
+
+    def _get_resource_context(self) -> str:
+        """Собирает системные метрики для анализа ресурсов."""
+        try:
+            import psutil
+            cpu = psutil.cpu_percent(interval=1)
+            mem = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            return (
+                f"CPU: {cpu:.1f}%, RAM: {mem.percent:.1f}% ({mem.available//1024//1024}MB free), "
+                f"Disk: {disk.percent:.1f}% ({disk.free//1024//1024}MB free)"
+            )
+        except ImportError:
+            return "Resource data unavailable (psutil not installed)"
+        except Exception as e:
+            logger.warning(f"Resource check failed: {e}")
+            return f"Resource check failed: {e}"
 
 if __name__ == "__main__":
     node = OverseerNode()
