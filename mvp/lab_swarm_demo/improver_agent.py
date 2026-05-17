@@ -13,16 +13,25 @@ from swarm_config import config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s')
 logger = logging.getLogger("ImproverAgent")
 
-SCAN_DIRS = ["mvp/lab_swarm_demo", "src", "adapters", "sim"]
+SCAN_DIRS = ["mvp/lab_swarm_demo", "src", "adapters", "sim", "dashboard"]
 OUTPUT_DIR = "./data/improver_output"
-SKIP_EXTENSIONS = {".gguf", ".db", ".jsonl", ".log", ".pyc", ".md", ".txt"}
+SKIP_EXTENSIONS = {
+    ".gguf", ".db", ".jsonl", ".log", ".pyc", ".md", ".txt",
+    ".json", ".yml", ".ini", ".jar", ".sqlite3", ".pem", ".key"
+}
 MAX_FILE_SIZE_KB = 500          # увеличен для пакетного режима
 BATCH_SIZE = 5                  # файлов за один запрос
 SLEEP_BETWEEN_CYCLES = 3600     # ночной режим
 
 EXCLUDE_DIRS = {
-    "website", "docs", "data", ".git", "__pycache__", "node_modules",
-    "prometheus_data", "grafana_data", "tests", "tools",
+    "__pycache__", ".pytest_cache", ".venv", ".github",
+    "assets", "config", "docs", "formal", "grafana", "llama_cpp",
+    "logs", "scripts", "site", "tests", "tools",
+    "data", ".git", "node_modules", "prometheus_data", "grafana_data",
+}
+
+EXCLUDE_FILES = {
+    "Dockerfile", "=20.0",
 }
 
 class ImproverAgent:
