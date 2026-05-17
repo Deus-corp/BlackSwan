@@ -226,6 +226,9 @@ Assistant: {{"""
                                 response = inner[start:]
                         # Убираем квадратные скобки вокруг JSON
                         response = response.strip('[] ')
+                        # Если ответ содержит ключи, но без фигурных скобок – оборачиваем
+                        if '{' not in response and 'exploration_multiplier' in response:
+                            response = '{' + response + '}'
                         # Пытаемся найти JSON
                         start = response.find('{')
                         if start != -1:

@@ -57,6 +57,7 @@ class ExplorerNode:
             if isinstance(v, dict) and v.get("type") == "explorer_finding"
         ]
         recent_urls = {f["url"] for f in recent_findings[-10:]}
+        all_state = self.crdt.state
         for url in targets[:3]:   # не больше 3 за цикл
             if url in recent_urls:
                 continue
