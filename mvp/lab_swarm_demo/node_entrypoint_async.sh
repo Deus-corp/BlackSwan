@@ -38,4 +38,4 @@ done
 
 export PEERS="$PEERS"
 echo "Starting async node $NODE_ID on port $PORT with peers: $PEERS"
-exec python -u -m mvp.lab_swarm_demo.node_agent
+exec python -u -m mvp.lab_swarm_demo.trade_node_agent

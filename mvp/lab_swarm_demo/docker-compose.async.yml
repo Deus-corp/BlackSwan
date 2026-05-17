@@ -67,7 +67,7 @@ services:
     build:
       context: ../..
     image: blackswan-node:latest
-    entrypoint: ["python", "/app/mvp/lab_swarm_demo/meta_agent_node.py"]
+    entrypoint: ["python", "/app/mvp/lab_swarm_demo/trade_meta_agent.py"]
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app              # ← ключевая строка
