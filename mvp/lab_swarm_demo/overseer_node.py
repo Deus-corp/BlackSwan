@@ -35,6 +35,10 @@ class OverseerNode:
 
             # Агрегируем Trade heartbeats
             trade_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "heartbeat"]
+            trade_nodes = len(set(h.get("node_id") for h in trade_hbs))
+            trade_capital = sum(h.get("capital", 0) for h in trade_hbs)
+            trade_dq = sum(h.get("dq", 0) for h in trade_hbs) / max(len(trade_hbs), 1)
+            trade_fitness = sum(h.get("fitness", 0) for h in trade_hbs) / max(len(trade_hbs), 1)
                 # Проверяем истёкшие heartbeats (>180 секунд)
             now = time.time()
             stale_nodes = [
@@ -53,15 +57,15 @@ class OverseerNode:
                     await self.crdt.add_genome(cmd)
                     logger.info(f"🔄 Overseer: requesting restart of stale node {node_id}")
 
-            trade_nodes = len(set(h.get("node_id") for h in trade_hbs))
-            trade_capital = sum(h.get("capital", 0) for h in trade_hbs)
-            trade_dq = sum(h.get("dq", 0) for h in trade_hbs) / max(len(trade_hbs), 1)
-            trade_fitness = sum(h.get("fitness", 0) for h in trade_hbs) / max(len(trade_hbs), 1)
-
             # Агрегируем Security heartbeats
             sec_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "security_heartbeat"]
             sec_nodes = len(set(h.get("node_id") for h in sec_hbs))
             blocked_ips = sum(h.get("blocked_ips", 0) for h in sec_hbs)
+                # Проверяем уязвимости от Security
+            vuln_alerts = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "vulnerability_alert"]
+            if vuln_alerts:
+                logger.warning("🔴 Overseer: vulnerabilities detected, reducing trade risk")
+                decisions["reduce_risk"] = True  # принудительно
 
             # Explorer heartbeats
             exp_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_heartbeat"]
