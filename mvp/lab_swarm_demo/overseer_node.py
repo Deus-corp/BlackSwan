@@ -24,13 +24,12 @@ class OverseerNode:
         logger.info(f"🧭 Overseer {self.node_id} started")
         while True:
             self.step += 1
-            if self.step % 300 == 0:
+            if self.step % 150 == 0:
                 await self.coordinate()
             await asyncio.sleep(1.0)
 
     async def coordinate(self):
         try:
-            logger.info(f"🧭 Overseer coordinate cycle #{self.step}")
             all_state = self.crdt.state
 
             # Агрегируем Trade heartbeats
@@ -68,6 +67,7 @@ Output ONLY a JSON with three boolean fields: reduce_risk, increase_exploration,
 Example: {{"reduce_risk":false,"increase_exploration":true,"unblock_ips":false}}
 Assistant: {{"""
             response = self.llm.generate(prompt, max_tokens=60, temperature=0.1)
+            logger.info(f"Overseer LLM response: {response[:200]}")
             if response:
                 # Парсим JSON
                 start = response.find('{')
