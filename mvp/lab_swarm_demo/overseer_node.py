@@ -73,9 +73,8 @@ Assistant: {{"""
                 if not response.strip().startswith('{'):
                     response = '{' + response
                 logger.info(f"Overseer normalized response: {response[:200]}")
-                # Исправляем JSON: true → True, false → False, оборачиваем ключи в кавычки
-                cleaned = re.sub(r'(?<!["\'])\b(true|false)\b(?!["\'])', lambda m: m.group(1).title(), response)
-                cleaned = re.sub(r'(\w+):', r'"\1":', cleaned)
+                # Оборачиваем ключи в кавычки, оставляем true/false как есть
+                cleaned = re.sub(r'(\w+):', r'"\1":', response)
                 response = cleaned
                 # Парсим JSON
                 start = response.find('{')
