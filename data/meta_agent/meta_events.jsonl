@@ -693,3 +693,11 @@
 {"node_id": "meta-b9c87b8b", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: increase exploration", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779021970.105739}
 {"node_id": "meta-b9c87b8b", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779022094.541797}
 {"node_id": "meta-b9c87b8b", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779022222.785206}
+{"node_id": "meta-8b90a54f", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779023340.228505}
+{"node_id": "meta-8b90a54f", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779023475.4634871}
+{"node_id": "meta-8b90a54f", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: increase exploration", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779023613.1149395}
+{"node_id": "meta-634a7646", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779024697.4325159}
+{"node_id": "meta-634a7646", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779024829.9276044}
+{"node_id": "meta-634a7646", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779024955.6556559}
+{"node_id": "meta-4f75a9b8", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779027494.6681848}
+{"node_id": "meta-4f75a9b8", "event_type": "meta_reflection", "payload": {"thought": "No decision", "sentiment": "UNKNOWN", "confidence": 0.0}, "timestamp": 1779027624.855039}
