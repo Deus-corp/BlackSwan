@@ -215,12 +215,13 @@ Assistant: {{"""
                         command_json = None
                         # Убираем экранирование кавычек и лишние пробелы
                         response = response.replace('\\"', '"').strip()
-                        # Если ответ начинается с [\" или [, пробуем найти объект внутри
                         if response.startswith('["') or response.startswith('['):
-                            inner = response[1:]  # убираем первую [
+                            inner = response[1:]
                             start = inner.find('{')
                             if start != -1:
                                 response = inner[start:]
+                        # Убираем квадратные скобки вокруг JSON
+                        response = response.strip('[] ')
                         # Пытаемся найти JSON
                         start = response.find('{')
                         if start != -1:
