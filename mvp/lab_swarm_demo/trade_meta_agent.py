@@ -204,8 +204,12 @@ class MetaAgentNode:
             for role in self.roles:
                 role_prompt = f"""User: {role['prompt_prefix']}
 {context_header}Swarm: {node_count} nodes, avg capital {avg_capital:.0f}, fitness {avg_fitness:.3f}, DQ {avg_dq:.3f}.
+Market: {market}
 Adjust parameters. Output ONLY a valid JSON object with these keys: exploration_multiplier, risk_scale, survival_bias_adj, stop_loss_adj, confidence, reason.
 Example: {{"exploration_multiplier":1.2,"risk_scale":1.0,"survival_bias_adj":0.0,"stop_loss_adj":1.0,"confidence":0.7,"reason":"increase exploration"}}
+Hints based on market:
+- If trend is "up" and volatility is high, Aggressive Explorer should INCREASE exploration.
+- If trend is "down" or DQ > 0.2, Conservative Guardian should REDUCE risk.
 Assistant: {{"""
                 try:
                     response = self.llm.generate(role_prompt, max_tokens=250, temperature=role["temperature"])
@@ -317,7 +321,31 @@ Assistant: {{"""
             logger.error(f"MetaAgent reflection failed: {e}")
             
     def _get_market_context(self) -> str:
-        return "Market data not directly available to observer (use shared state)."
+        """Извлекает рыночный контекст из последних heartbeats."""
+        try:
+            all_crdt = self.crdt.state
+            heartbeats = [
+                v for k, v in all_crdt.items()
+                if isinstance(v, dict) and v.get("type") == "heartbeat"
+            ]
+            if not heartbeats:
+                return "Market data: N/A"
+            latest = max(heartbeats, key=lambda h: h.get("timestamp", 0))
+            capital = latest.get("capital", 0)
+            dq = latest.get("dq", 0)
+            # Используем капитал как прокси для «цены» и волатильности
+            price = capital  # упрощение, можно заменить на реальную цену позже
+            prev_price = getattr(self, "_prev_price", price)
+            self._prev_price = price
+            trend = "up" if price >= prev_price else "down"
+            volatility = abs(price - prev_price) / max(1, prev_price)
+            return (
+                f"Price: {price:.2f} (trend: {trend}), "
+                f"Volatility: {volatility:.3f}, "
+                f"DQ: {dq:.3f}"
+            )
+        except Exception:
+            return "Market data: N/A"
     
     async def _learn_from_experience(self):
         """Анализирует последние команды и их результаты, извлекая уроки."""
