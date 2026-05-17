@@ -45,16 +45,23 @@ class OverseerNode:
             blocked_ips = sum(h.get("blocked_ips", 0) for h in sec_hbs)
             resources = self._get_resource_context()
 
+                # Explorer heartbeats
+            exp_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_heartbeat"]
+            exp_nodes = len(set(h.get("node_id") for h in exp_hbs))
+            findings = len([v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_finding"])
+
             prompt = f"""User: You are BlackSwan Overseer, a strategic coordinator for two swarms:
 - Trade swarm: {trade_nodes} nodes, total capital {trade_capital:.0f}, DQ {trade_dq:.3f}, fitness {trade_fitness:.3f}
 - Security swarm: {sec_nodes} nodes, {blocked_ips} IPs blocked
 - System resources: {resources}
+- Explorer swarm: {exp_nodes} nodes, {findings} findings
 
 Decide:
 1. Should you reduce trade risk? (if DQ > 0.25 or capital < 2000, answer YES)
 2. Should you increase exploration? (if fitness is high and DQ is low, answer YES)
 3. Should you unblock all IPs? (if blocked IPs > 50, answer YES)
 4. Should you spawn more nodes? (if RAM > 500MB, answer YES)
+5. Should the Explorer continue? (if findings > 100, answer NO)
 
 Output ONLY a JSON with three boolean fields: reduce_risk, increase_exploration, unblock_ips.
 Example: {{"reduce_risk":false,"increase_exploration":true,"unblock_ips":false}}
