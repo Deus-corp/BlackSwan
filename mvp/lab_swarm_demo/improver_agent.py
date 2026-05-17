@@ -3,6 +3,7 @@
 Improver Agent – автономный улучшатель кода.
 Первый проход: оригинальные файлы проекта.
 Последующие проходы: улучшенные версии из data/improver_output/.
+Обрабатывает файлы по одному, проверяет синтаксис через AST.
 """
 import asyncio, logging, os, re, uuid, ast
 
@@ -29,14 +30,13 @@ EXCLUDE_DIRS = {
 EXCLUDE_FILES = {"Dockerfile", "=20.0"}
 
 MAX_FILE_SIZE_KB = 100
-MAX_BATCH_CHARS = 45000
 SLEEP_BETWEEN_CYCLES = 3600
 
 
 class ImproverAgent:
     def __init__(self, single_pass: bool = False):
         self.node_id = f"improver-{uuid.uuid4().hex[:8]}"
-        self.llm = LLMClient(n_ctx=32768)
+        self.llm = LLMClient(n_ctx=16384)
         self.single_pass = single_pass
         self.first_pass = True
         self.files_processed = 0
@@ -62,11 +62,8 @@ class ImproverAgent:
         scan_dirs = ORIGINAL_SCAN_DIRS if self.first_pass else [OUTPUT_DIR]
         exclude_dirs = set(EXCLUDE_DIRS)
         if not self.first_pass:
-            # не заходим в failed-папку
             exclude_dirs.add("improver_failed")
 
-        batch = []
-        current_chars = 0
         for scan_dir in scan_dirs:
             if not os.path.exists(scan_dir):
                 continue
@@ -76,15 +73,7 @@ class ImproverAgent:
                     filepath = os.path.join(root, filename)
                     if self._should_skip(filepath):
                         continue
-                    file_size = os.path.getsize(filepath)
-                    if current_chars + file_size > MAX_BATCH_CHARS and batch:
-                        await self._improve_batch(batch)
-                        batch.clear()
-                        current_chars = 0
-                    batch.append(filepath)
-                    current_chars += file_size
-        if batch:
-            await self._improve_batch(batch)
+                    await self._improve_file(filepath)
 
     def _should_skip(self, filepath: str) -> bool:
         basename = os.path.basename(filepath)
@@ -101,85 +90,74 @@ class ImproverAgent:
             return True
         return False
 
-    async def _improve_batch(self, filepaths: list):
-        files_content = ""
-        for fp in filepaths:
-            try:
-                with open(fp, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-                if not content.strip():
-                    continue
-                files_content += f"\n\n--- FILE: {fp} ---\n{content}"
-                self.files_processed += 1
-            except Exception as e:
-                logger.warning(f"Read error {fp}: {e}")
-
-        if not files_content.strip():
+    async def _improve_file(self, filepath: str):
+        try:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                original = f.read()
+            if not original.strip():
+                return
+        except Exception as e:
+            logger.warning(f"Read error {filepath}: {e}")
             return
 
-        prompt = f"""You are an expert Python code improver. Refactor the following batch of files.
-Rules:
-- Improve readability, add type hints, simplify logic.
-- Fix obvious bugs. DO NOT add new features.
-- Output EXACTLY in this format for each file:
---- FILE: <original_path> ---
-<improved code>
+        self.files_processed += 1
 
-Files to improve:
-{files_content}
+        prompt = f"""User: Improve the following Python code. Return ONLY the improved code, no explanations, no markdown, no  think  tags.
+
+Original code ({filepath}):
+```python
+{original}
+```
+
+Improved code:
+```python
 """
         try:
             response = await asyncio.to_thread(
-                self.llm.generate, prompt, max_tokens=8192, temperature=0.1
+                self.llm.generate, prompt, max_tokens=4096, temperature=0.1
             )
         except Exception as e:
-            logger.error(f"LLM failed: {e}")
+            logger.error(f"LLM failed for {filepath}: {e}")
             return
 
         if not response:
             return
-        self._parse_and_save(response)
+        logger.info(f"LLM raw response (first 200 chars) for {filepath}: {response[:200]}")
 
-    def _parse_and_save(self, response: str):
-        blocks = re.split(r'(?=--- FILE: .+ ---)', response)
-        for block in blocks:
-            block = block.strip()
-            if not block:
-                continue
-            header_match = re.match(r'--- FILE: (.+) ---', block)
-            if not header_match:
-                continue
-            original_path = header_match.group(1).strip()
-            improved_code = block[header_match.end():].strip()
-            improved_code = re.sub(r'^```\w*\n', '', improved_code)
-            improved_code = re.sub(r'\n```$', '', improved_code)
-            if not improved_code:
-                continue
+        # Очищаем markdown-обёртку
+        improved = response.strip()
+        improved = re.sub(r'^```\w*\n', '', improved)
+        improved = re.sub(r'\n```$', '', improved)
 
-            relative_path = os.path.relpath(original_path, start=os.getcwd())
-            is_valid_syntax = True
-            try:
-                ast.parse(improved_code)
-            except SyntaxError as e:
-                is_valid_syntax = False
-                logger.error(f"❌ Syntax Error in mutation for {relative_path}: {e}")
-            except Exception as e:
-                is_valid_syntax = False
-                logger.error(f"❌ Unexpected parsing error for {relative_path}: {e}")
+        if not improved:
+            return
 
-            target_dir = OUTPUT_DIR if is_valid_syntax else FAILED_DIR
-            output_path = os.path.join(target_dir, relative_path)
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            try:
-                with open(output_path, 'w', encoding='utf-8') as f:
-                    f.write(improved_code)
-                if is_valid_syntax:
-                    self.files_improved += 1
-                    logger.info(f"✅ Evolution saved and verified: {relative_path}")
-                else:
-                    logger.warning(f"☣️ Lethal mutation quarantined: {output_path}")
-            except Exception as e:
-                logger.error(f"Write error {output_path}: {e}")
+        # AST-валидация
+        is_valid = True
+        try:
+            ast.parse(improved)
+        except SyntaxError as e:
+            is_valid = False
+            logger.error(f"❌ Syntax error in mutation for {filepath}: {e}")
+        except Exception as e:
+            is_valid = False
+            logger.error(f"❌ Parse error for {filepath}: {e}")
+
+        relative_path = os.path.relpath(filepath, start=os.getcwd())
+        target_dir = OUTPUT_DIR if is_valid else FAILED_DIR
+        output_path = os.path.join(target_dir, relative_path)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        try:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(improved)
+            if is_valid:
+                self.files_improved += 1
+                logger.info(f"✅ Mutation saved: {relative_path}")
+            else:
+                logger.warning(f"☣️ Lethal mutation quarantined: {output_path}")
+        except Exception as e:
+            logger.error(f"Write error {output_path}: {e}")
 
 
 if __name__ == "__main__":

@@ -67,3 +67,7 @@ run_model_api.py
 .env
 .env.local
 .env.production
+
+# Improver Agent outputs
+data/improver_output/
+data/improver_failed/
