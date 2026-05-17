@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Overseer Node – стратегический координатор для Trade и Security роев.
-Анализирует heartbeats обоих роев и выдаёт JSON-команды через LLM.
+Overseer Node – стратегический координатор для Trade, Security и Explorer роев.
+Анализирует heartbeats всех роев и выдаёт JSON-команды через LLM.
 """
 import asyncio, logging, os, sys, time, uuid, json
 from typing import Dict, Any, List
@@ -44,18 +44,19 @@ class OverseerNode:
             sec_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "security_heartbeat"]
             sec_nodes = len(set(h.get("node_id") for h in sec_hbs))
             blocked_ips = sum(h.get("blocked_ips", 0) for h in sec_hbs)
-            resources = self._get_resource_context()
 
-                # Explorer heartbeats
+            # Explorer heartbeats
             exp_hbs = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_heartbeat"]
             exp_nodes = len(set(h.get("node_id") for h in exp_hbs))
             findings = len([v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "explorer_finding"])
 
-            prompt = f"""User: You are BlackSwan Overseer, a strategic coordinator for two swarms:
+            resources = self._get_resource_context()
+
+            prompt = f"""User: You are BlackSwan Overseer, a strategic coordinator for three swarms:
 - Trade swarm: {trade_nodes} nodes, total capital {trade_capital:.0f}, DQ {trade_dq:.3f}, fitness {trade_fitness:.3f}
 - Security swarm: {sec_nodes} nodes, {blocked_ips} IPs blocked
-- System resources: {resources}
 - Explorer swarm: {exp_nodes} nodes, {findings} findings
+- System resources: {resources}
 
 Decide:
 1. Should you reduce trade risk? (if DQ > 0.25 or capital < 2000, answer YES)
@@ -64,23 +65,31 @@ Decide:
 4. Should you spawn more nodes? (if RAM > 500MB, answer YES)
 5. Should the Explorer continue? (if findings > 100, answer NO)
 
-Output ONLY a JSON with three boolean fields: reduce_risk, increase_exploration, unblock_ips.
-Example: {{"reduce_risk":false,"increase_exploration":true,"unblock_ips":false}}
+Output ONLY a JSON with these boolean fields: reduce_risk, increase_exploration, unblock_ips, spawn_nodes, continue_explorer.
+Example: {{"reduce_risk":false,"increase_exploration":true,"unblock_ips":false,"spawn_nodes":false,"continue_explorer":true}}
 Assistant: {{"""
-            response = self.llm.generate(prompt, max_tokens=60, temperature=0.1)
+            response = self.llm.generate(prompt, max_tokens=80, temperature=0.1)
             if response:
-                # Нормализуем JSON: добавляем открывающую скобку, если её нет
+                # Нормализуем JSON: добавляем скобки, если их нет
                 if not response.strip().startswith('{'):
                     response = '{' + response
+                if not response.strip().endswith('}'):
+                    response = response + '}'
                 logger.info(f"Overseer normalized response: {response[:200]}")
-                # Оборачиваем ключи в кавычки, оставляем true/false как есть
+
+                # Оборачиваем ключи в кавычки
                 cleaned = re.sub(r'(\w+):', r'"\1":', response)
-                response = cleaned
+
                 # Парсим JSON
-                start = response.find('{')
-                end = response.rfind('}')
-                if start != -1 and end != -1:
-                    candidate = response[start:end+1]
+                start = cleaned.find('{')
+                end = cleaned.rfind('}')
+                if start != -1 and end != -1 and end > start:
+                    candidate = cleaned[start:end+1]
+                else:
+                    logger.warning("Overseer: no valid JSON object found")
+                    return
+
+                decisions = None
                 try:
                     decisions = json.loads(candidate)
                 except:
@@ -89,60 +98,78 @@ Assistant: {{"""
                     except:
                         logger.warning(f"Overseer failed to parse JSON: {candidate}")
                         return
-                    
-                    # Применяем решения
-                    if decisions.get("reduce_risk"):
-                        cmd = {
-                            "type": "meta_command_json",
-                            "data": {
-                                "action": "ADJUST_SWARM",
-                                "params": {
-                                    "exploration_multiplier": 1.0,
-                                    "risk_scale": 0.7,
-                                    "survival_bias_adj": 0.05,
-                                    "stop_loss_adj": 0.8,
-                                    "confidence": 0.9
-                                },
-                                "reason": "Overseer safety override"
-                            },
-                            "timestamp": time.time(),
-                            "expires_at": time.time() + 300,
-                            "gid": f"overseer_{int(time.time())}",
-                        }
-                        await self.crdt.add_genome(cmd)
-                        logger.info("🧭 Overseer: reducing trade risk")
 
-                    if decisions.get("increase_exploration"):
-                        cmd = {
-                            "type": "meta_command_json",
-                            "data": {
-                                "action": "ADJUST_SWARM",
-                                "params": {
-                                    "exploration_multiplier": 1.5,
-                                    "risk_scale": 1.0,
-                                    "survival_bias_adj": 0.0,
-                                    "stop_loss_adj": 1.0,
-                                    "confidence": 0.8
-                                },
-                                "reason": "Overseer: increase exploration"
-                            },
-                            "timestamp": time.time(),
-                            "expires_at": time.time() + 300,
-                            "gid": f"overseer_{int(time.time())}",
-                        }
-                        await self.crdt.add_genome(cmd)
-                        logger.info("🧭 Overseer: increasing exploration")
+                if not decisions:
+                    return
 
-                    if decisions.get("unblock_ips"):
-                        cmd = {
-                            "type": "sec_command",
-                            "data": {"action": "UNBLOCK_ALL"},
-                            "timestamp": time.time(),
-                            "expires_at": time.time() + 600,
-                            "gid": f"overseer_sec_{int(time.time())}",
-                        }
-                        await self.crdt.add_genome(cmd)
-                        logger.info("🔓 Overseer: requesting unblock all IPs")
+                # Применяем решения
+                if decisions.get("reduce_risk"):
+                    cmd = {
+                        "type": "meta_command_json",
+                        "data": {
+                            "action": "ADJUST_SWARM",
+                            "params": {
+                                "exploration_multiplier": 1.0,
+                                "risk_scale": 0.7,
+                                "survival_bias_adj": 0.05,
+                                "stop_loss_adj": 0.8,
+                                "confidence": 0.9
+                            },
+                            "reason": "Overseer safety override"
+                        },
+                        "timestamp": time.time(),
+                        "expires_at": time.time() + 300,
+                        "gid": f"overseer_{int(time.time())}",
+                    }
+                    await self.crdt.add_genome(cmd)
+                    logger.info("🧭 Overseer: reducing trade risk")
+
+                if decisions.get("increase_exploration"):
+                    cmd = {
+                        "type": "meta_command_json",
+                        "data": {
+                            "action": "ADJUST_SWARM",
+                            "params": {
+                                "exploration_multiplier": 1.5,
+                                "risk_scale": 1.0,
+                                "survival_bias_adj": 0.0,
+                                "stop_loss_adj": 1.0,
+                                "confidence": 0.8
+                            },
+                            "reason": "Overseer: increase exploration"
+                        },
+                        "timestamp": time.time(),
+                        "expires_at": time.time() + 300,
+                        "gid": f"overseer_{int(time.time())}",
+                    }
+                    await self.crdt.add_genome(cmd)
+                    logger.info("🧭 Overseer: increasing exploration")
+
+                if decisions.get("unblock_ips"):
+                    cmd = {
+                        "type": "sec_command",
+                        "data": {"action": "UNBLOCK_ALL"},
+                        "timestamp": time.time(),
+                        "expires_at": time.time() + 600,
+                        "gid": f"overseer_sec_{int(time.time())}",
+                    }
+                    await self.crdt.add_genome(cmd)
+                    logger.info("🔓 Overseer: requesting unblock all IPs")
+
+                if decisions.get("spawn_nodes"):
+                    logger.info("🧭 Overseer: recommends spawning more nodes")
+                    # TODO: автоматический скейлинг через Docker API
+
+                if decisions.get("continue_explorer") is False:
+                    cmd = {
+                        "type": "explorer_command",
+                        "data": {"action": "PAUSE"},
+                        "timestamp": time.time(),
+                        "expires_at": time.time() + 600,
+                        "gid": f"overseer_exp_{int(time.time())}",
+                    }
+                    await self.crdt.add_genome(cmd)
+                    logger.info("🔎 Overseer: pausing Explorer")
         except Exception as e:
             logger.error(f"Overseer coordination failed: {e}")
 
