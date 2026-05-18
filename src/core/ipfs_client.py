@@ -10,14 +10,26 @@ import hashlib
 import json
 import os
 import requests
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 
 class IPFSClient:
+    """
+    Client for interacting with IPFS, supporting a local IPFS daemon
+    or a file-system-based fallback for adding and retrieving JSON data.
+    """
     def __init__(self, host: str = "http://localhost:5001",
                  fallback_dir: str = ".ipfs_fallback"):
-        self.host = host
-        self.fallback_dir = fallback_dir
-        self._available = None  # кэш проверки
+        """
+        Initializes the IPFSClient.
+
+        Args:
+            host: The URL of the IPFS API daemon (e.g., "http://localhost:5001").
+            fallback_dir: Directory to use for storing files when IPFS daemon is unavailable.
+        """
+        self.host: str = host
+        self.fallback_dir: str = fallback_dir
+        self._available: Optional[bool] = None  # кэш проверки
 
     def is_available(self) -> bool:
         """Проверяет, отвечает ли демон IPFS."""
@@ -33,6 +45,11 @@ class IPFSClient:
         """
         Сохраняет словарь как JSON в IPFS (или в fallback-каталог).
         Возвращает CID (строку).
+
+        Args:
+            data: The dictionary to be stored as JSON.
+        Returns:
+            The CID (Content Identifier) string of the added content.
         """
         if self.is_available():
             return self._add_via_api(data)
@@ -43,6 +60,11 @@ class IPFSClient:
         """
         Загружает JSON по CID из IPFS (или fallback-каталога).
         Возвращает словарь или None при ошибке.
+
+        Args:
+            cid: The Content Identifier of the JSON data to retrieve.
+        Returns:
+            The retrieved JSON data as a dictionary, or None if not found or an error occurs.
         """
         if self.is_available():
             try:
@@ -58,6 +80,16 @@ class IPFSClient:
     # Внутренние методы
     # ------------------------------------------------------------------
     def _add_via_api(self, data: Dict[str, Any]) -> str:
+        """
+        Internal method to add JSON data using the IPFS HTTP API.
+
+        Args:
+            data: The dictionary to be added.
+        Returns:
+            The CID of the added content.
+        Raises:
+            requests.RequestException: If the API call fails.
+        """
         json_bytes = json.dumps(data, indent=2, default=str).encode("utf-8")
         files = {"file": ("snapshot.json", json_bytes)}
         resp = requests.post(f"{self.host}/api/v0/add", files=files, timeout=10)
@@ -66,6 +98,15 @@ class IPFSClient:
         return result["Hash"]
 
     def _add_fallback(self, data: Dict[str, Any]) -> str:
+        """
+        Internal method to add JSON data to the local filesystem as a fallback.
+        The CID is simulated using a SHA-256 hash of the content.
+
+        Args:
+            data: The dictionary to be added.
+        Returns:
+            The SHA-256 hash (pseudo-CID) of the content.
+        """
         json_str = json.dumps(data, indent=2, default=str)
         cid = hashlib.sha256(json_str.encode()).hexdigest()
         os.makedirs(self.fallback_dir, exist_ok=True)
@@ -75,6 +116,14 @@ class IPFSClient:
         return cid
 
     def _get_fallback(self, cid: str) -> Optional[Dict[str, Any]]:
+        """
+        Internal method to retrieve JSON data from the local filesystem fallback.
+
+        Args:
+            cid: The SHA-256 hash (pseudo-CID) of the content.
+        Returns:
+            The retrieved JSON data as a dictionary, or None if the file does not exist.
+        """
         path = os.path.join(self.fallback_dir, f"{cid}.json")
         if not os.path.exists(path):
             return None

@@ -14,11 +14,29 @@ import uuid
 
 
 def _canonical_json(data: Dict[str, Any]) -> str:
+    """
+    Generates a canonical JSON string for hashing.
+    Ensures consistent key ordering and no unnecessary whitespace,
+    which is crucial for producing stable hashes.
+
+    Args:
+        data: A dictionary to be serialized into a canonical JSON string.
+
+    Returns:
+        A canonical JSON string representation of the input data.
+    """
     return json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
 @dataclass(frozen=True)
 class Event:
+    """
+    Represents an immutable event within the BlackSwan swarm's append-only ledger.
+
+    Each event is uniquely identified, timestamped, associated with a source node,
+    has a specific type, carries a payload, and includes a self-verifying hash.
+    It can optionally reference a parent event.
+    """
     event_id: str
     ts: float
     node_id: str
@@ -35,7 +53,22 @@ class Event:
         payload: Dict[str, Any],
         parent_id: Optional[str] = None,
         ts: Optional[float] = None,
-    ) -> "Event":
+    ) -> Event:
+        """
+        Creates a new Event instance, automatically generating a unique ID,
+        timestamp (if not provided), and a cryptographic hash.
+
+        Args:
+            node_id: The identifier of the node that originated this event.
+            event_type: A string describing the category or type of the event.
+            payload: A dictionary containing the specific data pertinent to this event.
+            parent_id: Optional. The ID of a preceding event to which this event relates.
+            ts: Optional. A specific timestamp (Unix epoch float) for the event.
+                If None, the current UTC time is used.
+
+        Returns:
+            A new Event instance with all fields populated, including the calculated hash.
+        """
         event_id = str(uuid.uuid4())
         timestamp = time.time() if ts is None else ts
 
@@ -60,6 +93,13 @@ class Event:
         )
 
     def verify_hash(self) -> bool:
+        """
+        Verifies the integrity of the event by re-calculating its hash
+        based on its content and comparing it to the `hash` field.
+
+        Returns:
+            True if the re-calculated hash matches the stored hash, False otherwise.
+        """
         base = {
             "event_id": self.event_id,
             "ts": self.ts,
@@ -72,16 +112,33 @@ class Event:
         return expected == self.hash
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts the Event instance into a dictionary representation.
+
+        Returns:
+            A dictionary containing all event attributes.
+        """
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Event":
+    def from_dict(cls, data: Dict[str, Any]) -> Event:
+        """
+        Creates an Event instance from a dictionary.
+        This is typically used when deserializing an event from storage.
+
+        Args:
+            data: A dictionary containing the event's data, conforming to the
+                  Event's structure.
+
+        Returns:
+            An Event instance populated with data from the dictionary.
+        """
         return cls(
             event_id=data["event_id"],
             ts=float(data["ts"]),
             node_id=data["node_id"],
             type=data["type"],
             payload=data["payload"],
-            parent_id=data.get("parent_id"),
-            hash=data.get("hash", ""),
+            parent_id=data.get("parent_id"), # Use .get() for optional fields for robustness
+            hash=data.get("hash", ""),     # Use .get() for optional fields for robustness
         )

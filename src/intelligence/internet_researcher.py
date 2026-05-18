@@ -14,19 +14,37 @@ logger = logging.getLogger(__name__)
 
 
 class InternetResearcher:
-    """Асинхронный сборщик внешних данных для контекста LLM."""
+    """
+    Асинхронный сборщик внешних данных для контекста LLM.
+    Collects external data such as news and on-chain information asynchronously
+    and prepares it for LLM context.
+    """
 
-    def __init__(self, memory_api=None):
+    def __init__(self, memory_api: Optional[Any] = None) -> None:
+        """
+        Initializes the InternetResearcher.
+
+        Args:
+            memory_api (Optional[Any]): An optional API for storing memory records.
+                                         Expected to have a 'remember' method.
+        """
         self.memory_api = memory_api
         self.session: Optional[aiohttp.ClientSession] = None
         # Etherscan API key (бесплатный, получается на etherscan.io)
-        self.etherscan_api_key = config.security.etherscan_api_key.get_secret_value() if config.security.etherscan_api_key else ""
+        self.etherscan_api_key: str = config.security.etherscan_api_key.get_secret_value() if config.security.etherscan_api_key else ""
 
-    async def _ensure_session(self):
+    async def _ensure_session(self) -> None:
+        """
+        Ensures that an aiohttp client session is active.
+        If no session exists, a new one is created.
+        """
         if self.session is None:
             self.session = aiohttp.ClientSession()
 
-    async def close(self):
+    async def close(self) -> None:
+        """
+        Closes the aiohttp client session if it's active.
+        """
         if self.session:
             await self.session.close()
             self.session = None
@@ -50,17 +68,28 @@ class InternetResearcher:
         total = pos_score + neg_score
         return 0.0 if total == 0 else (pos_score - neg_score) / total
 
-    async def fetch_crypto_news(self, limit: int = 5) -> list[Dict[str, Any]]:
-        """Бесплатный RSS крипто‑новостей (CoinDesk). Возвращает список заголовков с тональностью."""
+    async def fetch_crypto_news(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Бесплатный RSS крипто‑новостей (CoinDesk). Возвращает список заголовков с тональностью.
+        Note: The CoinDesk API URL currently hardcodes numHeadlines=5, so the 'limit' parameter
+        will not fetch more than 5 headlines, even if a higher limit is requested.
+
+        Args:
+            limit (int): The maximum number of news headlines to fetch.
+
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries, each representing a news headline
+                                  with title, URL, publication date, source, and sentiment.
+        """
         await self._ensure_session()
         url = "https://www.coindesk.com/arc/outboundfeeds/v2/headlines/?outputType=json&numHeadlines=5"
         try:
             async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 if resp.status != 200:
-                    logger.warning(f"News fetch returned {resp.status}")
+                    logger.warning(f"News fetch returned {resp.status} for URL: {url}")
                     return []
                 data = await resp.json()
-                headlines = data.get("headlines", [])[:limit]
+                headlines = data.get("headlines", [])[:limit] # Slicing ensures 'limit' is respected locally
                 enriched = []
                 for h in headlines:
                     title = h.get("title", "")
@@ -79,7 +108,15 @@ class InternetResearcher:
     # ---------- Ончейн-методы ----------
 
     async def fetch_onchain_balance(self, address: str) -> Optional[float]:
-        """Запрашивает баланс ETH через Etherscan API."""
+        """
+        Запрашивает баланс ETH через Etherscan API.
+
+        Args:
+            address (str): The Ethereum address to query.
+
+        Returns:
+            Optional[float]: The ETH balance in Ether, or None if the fetch fails.
+        """
         await self._ensure_session()
         url = (
             f"https://api.etherscan.io/api"
@@ -91,13 +128,21 @@ class InternetResearcher:
             async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 data = await resp.json()
                 if data.get("status") == "1":
-                    return int(data["result"]) / 1e18
+                    return int(data["result"]) / 1e18 # Convert wei to ETH
         except Exception as e:
-            logger.error(f"Onchain balance fetch failed: {e}")
+            logger.error(f"Onchain balance fetch failed for address {address}: {e}")
         return None
 
     async def fetch_transaction_count(self, address: str) -> Optional[int]:
-        """Количество транзакций (для оценки активности)."""
+        """
+        Количество транзакций (для оценки активности).
+
+        Args:
+            address (str): The Ethereum address to query.
+
+        Returns:
+            Optional[int]: The number of transactions, or None if the fetch fails.
+        """
         await self._ensure_session()
         url = (
             f"https://api.etherscan.io/api"
@@ -109,13 +154,20 @@ class InternetResearcher:
             async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 data = await resp.json()
                 if data.get("status") == "1":
+                    # The API returns a list of transactions, its length is the count
                     return len(data["result"])
         except Exception as e:
-            logger.error(f"Transaction count fetch failed: {e}")
+            logger.error(f"Transaction count fetch failed for address {address}: {e}")
         return None
 
     async def fetch_gas_oracle(self) -> Optional[Dict[str, float]]:
-        """Текущие цены газа (Low/Medium/High)."""
+        """
+        Текущие цены газа (Low/Medium/High).
+
+        Returns:
+            Optional[Dict[str, float]]: A dictionary with 'low', 'medium', 'high' gas prices in Gwei,
+                                        or None if the fetch fails.
+        """
         await self._ensure_session()
         url = (
             f"https://api.etherscan.io/api"
@@ -140,14 +192,20 @@ class InternetResearcher:
 
     async def gather_context(self, eth_address: Optional[str] = None) -> str:
         """
-        Собирает все доступные внешние данные и возвращает строку
-        для подстановки в промпт LLM.
+        Собирает все доступные внешние данные (новости, ончейн) и возвращает строку
+        для подстановки в промпт LLM. Также сохраняет собранные данные в память, если memory_api доступен.
+
+        Args:
+            eth_address (Optional[str]): An optional Ethereum address for on-chain data collection.
+
+        Returns:
+            str: A formatted string containing all gathered external context.
         """
-        parts = []
-        news_count = 0
-        balance = None
-        tx_count = None
-        gas_prices = None
+        parts: List[str] = []
+        news_count: int = 0
+        balance: Optional[float] = None
+        tx_count: Optional[int] = None
+        gas_prices: Optional[Dict[str, float]] = None
 
         # Новости с тональностью
         news = await self.fetch_crypto_news(limit=3)
@@ -180,14 +238,14 @@ class InternetResearcher:
 
         # Сохраняем в память, если доступна
         if self.memory_api:
-            from src.memory.local_memory import MemoryRecord
+            from src.memory.local_memory import MemoryRecord # Deferred import
             record = MemoryRecord(
-                id="",
+                id="", # ID will likely be generated by the memory API
                 kind="fact",
                 scope="local",
                 payload={
                     "source": "internet_researcher",
-                    "context": context,
+                    "context_string": context, # Storing the full context string for debugging/LLM input
                     "news_count": news_count,
                     "balance": balance,
                     "transaction_count": tx_count,

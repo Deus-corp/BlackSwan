@@ -3,27 +3,49 @@
 Анализатор Order Book – вычисляет имбаланс ликвидности (давление покупок/продаж).
 """
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any # Added Any for adapter type hint
 
 logger = logging.getLogger(__name__)
 
 class OrderBookAnalyzer:
-    def __init__(self, adapter):
+    """
+    Анализатор Order Book – вычисляет имбаланс ликвидности (давление покупок/продаж).
+    Этот класс запрашивает данные стакана через предоставленный адаптер
+    и рассчитывает метрики ликвидности.
+    """
+    def __init__(self, adapter: Any):
         """
-        adapter – объект с методом exchange.fetch_order_book(symbol).
-        Например, FuturesAdapter или BinanceTestnetAdapter.
+        Инициализирует анализатор стакана с заданным адаптером.
+        :param adapter: Объект, который должен иметь атрибут 'exchange' с методом
+                        'fetch_order_book(symbol, limit=depth)'.
+                        Например, FuturesAdapter или BinanceTestnetAdapter.
         """
         self.adapter = adapter
         self.last_imbalance: Optional[float] = None
         self.last_delta_volume: Optional[float] = None
 
-    async def update(self, symbol: str = None, depth: int = 20) -> Optional[Dict[str, float]]:
+    async def update(self, symbol: Optional[str] = None, depth: int = 20) -> Optional[Dict[str, float]]:
         """
-        Запрашивает стакан и возвращает словарь с метриками.
+        Запрашивает стакан (order book) для указанного символа и глубины,
+        затем вычисляет и возвращает словарь с метриками ликвидности.
+        Обновляет внутренние состояния `last_imbalance` и `last_delta_volume`.
+
+        :param symbol: Торговый символ (например, 'BTC/USDT'). Если None, используется
+                       символ из адаптера (`self.adapter.symbol`).
+        :param depth: Глубина стакана для запроса (количество бидов и асков).
+        :return: Словарь с метриками ("imbalance", "delta_volume", "total_bid_volume", "total_ask_volume")
+                 или None в случае ошибки.
         """
-        sym = symbol or self.adapter.symbol
+        # The original logic assumes self.adapter.symbol exists if symbol is None.
+        # This preserves the existing functionality and logic.
+        sym: str = symbol or getattr(self.adapter, 'symbol', None)
+        if sym is None:
+            logger.error("Symbol not provided and adapter does not have a default 'symbol' attribute.")
+            return None
+
         try:
-            book = self.adapter.exchange.fetch_order_book(sym, limit=depth)
+            # Assuming fetch_order_book is an async operation because the 'update' method is async.
+            book = await self.adapter.exchange.fetch_order_book(sym, limit=depth) # Added await
             bids = book['bids']
             asks = book['asks']
 
@@ -48,11 +70,17 @@ class OrderBookAnalyzer:
                 "total_ask_volume": total_ask_volume,
             }
         except Exception as e:
-            logger.error(f"OrderBook analysis failed: {e}")
+            logger.error(f"OrderBook analysis for symbol {sym} failed: {e}")
             return None
 
     def get_context_string(self) -> str:
-        """Возвращает строку для подстановки в промпт LLM."""
+        """
+        Возвращает форматированную строку, описывающую последний рассчитанный имбаланс стакана.
+        Эта строка может быть использована для подстановки в промпт LLM.
+
+        :return: Строка с информацией об имбалансе и дельте объема, или пустая строка,
+                 если данные об имбалансе еще не были получены.
+        """
         if self.last_imbalance is None:
             return ""
         direction = "buy pressure" if self.last_imbalance > 0.1 else (

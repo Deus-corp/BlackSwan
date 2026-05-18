@@ -7,8 +7,13 @@ import time
 from typing import Any, Dict, Optional
 
 class CRDTState:
+    """
+    Implements a Last-Write-Wins (LWW) Register CRDT for state replication.
+    Each key stores a value and a timestamp.
+    In case of a conflict, the entry with the largest timestamp wins.
+    """
     def __init__(self, node_id: str):
-        self.node_id = node_id
+        self.node_id: str = node_id
         self.state: Dict[str, Dict[str, Any]] = {}  # key -> {value, timestamp}
 
     def update(self, key: str, value: Any) -> None:
@@ -34,9 +39,13 @@ class CRDTState:
         return changed
 
     def get(self, key: str) -> Optional[Any]:
+        """
+        Получает значение по ключу.
+        Возвращает None, если ключ отсутствует.
+        """
         entry = self.state.get(key)
         return entry["value"] if entry else None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Dict[str, Any]]:
         """Сериализация для передачи по сети."""
         return self.state

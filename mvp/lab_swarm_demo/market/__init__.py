@@ -1,3 +1,6 @@
+"""
+Initializes the market module, exposing key services and selectors.
+"""
 from .snapshot import MarketSnapshotService
 from .selector import select_best_market
 

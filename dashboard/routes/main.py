@@ -38,10 +38,16 @@ MAIN_CONTENT = """
 """
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request):
+def index(request: Request) -> HTMLResponse:
+    """
+    Renders the main dashboard page.
+    """
     return HTMLResponse(render_page(request, MAIN_CONTENT))
 
 @router.get("/api/container_status_json")
-def container_status_json():
+def container_status_json() -> dict:
+    """
+    Retrieves the current status of Docker containers in JSON format.
+    """
     from dashboard.docker_service import get_container_statuses
     return get_container_statuses()

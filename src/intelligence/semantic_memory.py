@@ -2,14 +2,22 @@
 Semantic Memory (L2) – обобщает закономерности из эпизодической памяти (L1)
 в виде простых правил, улучшающих стратегию чемпиона.
 """
-from typing import Dict, List, Tuple
-import math
+from typing import Dict, List, Any # Removed unused 'Tuple'
+# Removed unused import 'math'
 
 class SemanticMemory:
-    def __init__(self):
-        self.rules: List[Dict] = []  # список правил вида {"condition": {...}, "action": {...}}
+    """
+    Semantic Memory (L2) – компонент, который выводит и применяет
+    обобщенные правила на основе исторических эпизодических записей
+    для адаптации параметров стратегии.
+    """
+    def __init__(self) -> None:
+        """
+        Инициализирует экземпляр SemanticMemory.
+        """
+        self.rules: List[Dict[str, Any]] = []  # список правил вида {"condition": {...}, "action": {...}}
 
-    def derive_rules(self, episodic_records: List[Dict]) -> List[Dict]:
+    def derive_rules(self, episodic_records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Анализирует эпизодические записи и выводит правила:
         Если рыночное условие (volatility, dq) было высоким, то
@@ -18,13 +26,14 @@ class SemanticMemory:
         if len(episodic_records) < 10:
             return []  # недостаточно данных
 
-        rules = []
+        rules: List[Dict[str, Any]] = []
         # Группируем записи по диапазонам волатильности
-        high_vol = [r for r in episodic_records if r.get("volatility", 0) > 0.03]
-        low_vol = [r for r in episodic_records if r.get("volatility", 0) <= 0.03]
+        high_vol = [r for r in episodic_records if r.get("volatility", 0.0) > 0.03]
+        low_vol = [r for r in episodic_records if r.get("volatility", 0.0) <= 0.03]
 
         # Правило 1: При высокой волатильности уменьшить max_risk_per_trade
         if high_vol:
+            # Ensure safe division by checking if list is not empty (already done by 'if high_vol')
             avg_risk_high = sum(r["params"].get("max_risk_per_trade", 0.0) for r in high_vol) / len(high_vol)
             rules.append({
                 "condition": {"volatility": "high"},
@@ -40,7 +49,7 @@ class SemanticMemory:
             })
 
         # Правило 3: При высоком DQ снизить phi_llm (осторожность)
-        high_dq = [r for r in episodic_records if r.get("dq", 0) > 0.3]
+        high_dq = [r for r in episodic_records if r.get("dq", 0.0) > 0.3]
         if high_dq:
             avg_phi_high_dq = sum(r["params"].get("phi_llm", 0.0) for r in high_dq) / len(high_dq)
             rules.append({
@@ -51,7 +60,7 @@ class SemanticMemory:
         self.rules = rules
         return rules
 
-    def apply_rules(self, current_params: Dict, market_volatility: float, dq: float) -> Dict:
+    def apply_rules(self, current_params: Dict[str, Any], market_volatility: float, dq: float) -> Dict[str, Any]:
         """Применяет релевантные правила к текущим параметрам."""
         new_params = dict(current_params)
         for rule in self.rules:

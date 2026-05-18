@@ -3,7 +3,7 @@ strategy_schema.py — Глобальные Pydantic-модели для пар�
 """
 from pydantic import BaseModel, Field
 from typing import Dict, Optional
-import json
+# Removed unused import 'json'
 
 class StrategyParams(BaseModel):
     """Основные параметры торговой стратегии (genome)."""
@@ -19,4 +19,7 @@ class StrategyParams(BaseModel):
         extra = "forbid"
 
     def to_dict(self) -> Dict[str, float]:
+        """
+        Преобразует текущие параметры стратегии в словарь.
+        """
         return self.model_dump()

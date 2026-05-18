@@ -1,3 +1,4 @@
+from typing import Dict, Any
 from .global_state import GlobalState
 from .event_bus import EventBus
 
@@ -8,10 +9,15 @@ class DecisionPipeline:
     """
 
     def __init__(self, state: GlobalState, event_bus: EventBus):
-        self.state = state
-        self.event_bus = event_bus
+        self.state: GlobalState = state
+        self.event_bus: EventBus = event_bus
 
-    async def process(self, proposal: dict):
+    async def process(self, proposal: Dict[str, Any]) -> bool:
+        """
+        Обрабатывает предложенный объект через пайплайн принятия решений.
+        Включает этапы оценки и выполнения.
+        Возвращает True, если предложение было успешно обработано и выполнено, иначе False.
+        """
         # 1. Proposal уже передан
         # 2. Evaluation
         if not self._evaluate(proposal):
@@ -22,7 +28,11 @@ class DecisionPipeline:
         await self.event_bus.publish("execution", {"proposal": proposal, "status": "executed"}, "decision_pipeline")
         return True
 
-    def _evaluate(self, proposal: dict) -> bool:
+    def _evaluate(self, proposal: Dict[str, Any]) -> bool:
+        """
+        Оценивает предложение на основе заданных правил.
+        В данной заглушке, предложения, помеченные как "dangerous", отклоняются.
+        """
         # Простая проверка: все предложения, кроме помеченных как опасные, принимаются
         if proposal.get("dangerous"):
             return False
