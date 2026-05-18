@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 # Move docker_service imports to the top for better practice
 from dashboard.docker_service import get_swarm_logs, save_logs_to_disk, list_containers
 from dashboard.routes.base_template import render_page
-from dashboard.docker_service import DockerContainer # Assuming this is a type from docker_service
+from dashboard.docker_service import DockerService
 
 router = APIRouter()
 
@@ -54,7 +54,7 @@ def container_status() -> PlainTextResponse:
     Returns a plain text string with each container's name and status.
     """
     # list_containers is imported at the top
-    containers: list[DockerContainer] = list_containers() # Assuming DockerContainer is the type returned
+    containers: list[DockerService] = list_containers() # Assuming DockerService is the type returned
     if not containers:
         return PlainTextResponse("No containers found.")
     

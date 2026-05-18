@@ -52,6 +52,10 @@ def sha256(data: bytes) -> str:
 
 # ---------- Key Encoding / Decoding ----------
 
+def public_key_bytes(pubkey: Ed25519PublicKey) -> bytes:
+    """Alias for public_key_bytes_raw for backward compatibility."""
+    return public_key_bytes_raw(pubkey)
+
 def public_key_bytes_raw(pubkey: Ed25519PublicKey) -> bytes:
     """
     Returns the raw bytes of an Ed25519 public key.

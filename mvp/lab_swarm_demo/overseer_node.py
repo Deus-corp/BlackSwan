@@ -6,6 +6,7 @@ It analyzes heartbeats from all swarms and issues JSON commands via an LLM.
 import asyncio
 import logging
 import time
+import sys
 import uuid
 import json
 from typing import Dict, Any, List, Optional
@@ -21,7 +22,6 @@ try:
 except ImportError:
     psutil = None
     print("Warning: psutil not installed. System resource monitoring will be unavailable.", file=sys.stderr)
-import sys # Keep sys import as it is used in the above warning
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s')
 logger = logging.getLogger("Overseer")

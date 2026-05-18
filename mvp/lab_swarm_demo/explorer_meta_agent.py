@@ -122,7 +122,7 @@ class ExplorerMetaAgent:
             prompt: str = f"""User: Classify this web finding from {url}. Content preview: {content}
 Categories: USEFUL, HARMFUL, NEUTRAL. Output ONLY one word.
 Assistant: """
-            response: Optional[str] = await self.llm.generate(prompt, max_tokens=10, temperature=0.2)
+            response: Optional[str] = self.llm.generate(prompt, max_tokens=10, temperature=0.2)
             if response:
                 classification: str = response.strip().upper()
                 if classification in ("USEFUL", "HARMFUL", "NEUTRAL"):
@@ -164,7 +164,7 @@ Assistant: """
             return
 
         prompt: str = f"User: Based on these useful URLs: {', '.join(url_list)}. Suggest 2 new related URLs. Output ONLY JSON with 'urls' array.\nAssistant: {{"
-        response: Optional[str] = await self.llm.generate(prompt, max_tokens=80, temperature=0.3)
+        response: Optional[str] = self.llm.generate(prompt, max_tokens=80, temperature=0.3)
 
         if response:
             json_match = re.search(r'{.*}', response, re.DOTALL)

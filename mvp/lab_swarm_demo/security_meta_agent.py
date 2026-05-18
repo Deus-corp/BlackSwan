@@ -17,7 +17,7 @@ from typing import Dict, Any, List, Optional
 # is run from the project root.
 from src.core.crdt_adapter import CRDTAdapter
 from src.intelligence.llm_client import LLMClient
-from mvp.lab_swarm_demo.swarm_config import config
+from swarm_config import config
 
 # Configure logging for the module
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s')

@@ -16,7 +16,7 @@ from src.security.reputation_manager import ReputationManager
 from src.intelligence.episodic_memory import EpisodicMemory
 from src.intelligence.semantic_memory import SemanticMemory
 from src.intelligence.llm_client import LLMClient
-from src.security.gossip_envelope import sign_envelope, generate_key_pair, public_key_bytes, sha256
+from src.security.gossip_envelope import sign_envelope, generate_key_pair, sha256
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 from src.core.events import Event

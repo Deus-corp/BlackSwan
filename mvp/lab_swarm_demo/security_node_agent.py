@@ -26,7 +26,7 @@ from typing import Dict, Any, List, Optional, Set
 from src.core.crdt_adapter import CRDTAdapter
 from src.core.event_store import EventStore
 from src.core.events import Event
-from mvp.lab_swarm_demo.swarm_config import config
+from swarm_config import config
 
 # Configure logging for the module
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s')
