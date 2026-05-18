@@ -124,7 +124,9 @@ Categories: USEFUL, HARMFUL, NEUTRAL. Output ONLY one word.
 Assistant: """
             response: Optional[str] = self.llm.generate(prompt, max_tokens=10, temperature=0.2)
             if response:
-                classification: str = response.strip().upper()
+                # Remove XML tags (e.g., <think>, </think>) that LLM sometimes outputs
+                cleaned_response = re.sub(r'<[^>]+>', '', response).strip()
+                classification: str = cleaned_response.upper()
                 if classification in ("USEFUL", "HARMFUL", "NEUTRAL"):
                     # Create a copy to avoid modifying the CRDT state directly without proper synchronization
                     # or unintentional side effects. Add a unique ID for the update.

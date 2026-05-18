@@ -723,3 +723,8 @@
 {"node_id": "meta-7c0178ca", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: INCREASE EXPLORE", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779114934.1975129}
 {"node_id": "meta-7c0178ca", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: INCREASE EXPLORE", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779115065.479713}
 {"node_id": "meta-7c0178ca", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: INCREASE EXPLORATION", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779115200.605516}
+{"node_id": "meta-05a8e066", "event_type": "meta_reflection", "payload": {"thought": "[Conservative Guardian]: increase exploration", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779121502.4300165}
+{"node_id": "meta-05a8e066", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: INCREASE EXPLORE", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779121638.3652859}
+{"node_id": "meta-05a8e066", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: INCREASE EXPLORE", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779121793.1230283}
+{"node_id": "meta-05a8e066", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: INCREASE EXPLORE", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779121937.7555523}
+{"node_id": "meta-05a8e066", "event_type": "meta_reflection", "payload": {"thought": "[Aggressive Explorer]: INCREASE EXPLORATION", "sentiment": "CURIOUS", "confidence": 0.7}, "timestamp": 1779122092.4602485}

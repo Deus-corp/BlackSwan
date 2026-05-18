@@ -3,7 +3,6 @@ Deterministic leader selection for a swarm.
 Uses SHA-256 to ensure consistent results across all machines.
 """
 import hashlib
-from typing import str as Str # Alias str to Str to avoid confusion with the type hint 'str' used as a parameter name in the docstring
 
 def select_leader(node_id: str, block_number: int, total_nodes: int) -> int:
     """
