@@ -22,14 +22,14 @@ class CapitalManager:
     processes the financial outcomes of trades, and evaluates the node's
     operational liveness based on its capital and a linked SurvivalEvaluator.
     """
-    def __init__(self, initial_capital: float = 1000.0) -> None:
+    def __init__(self, capital: float = 1000.0) -> None:
         """
         Initializes the CapitalManager with a starting capital and configuration settings.
 
         Args:
-            initial_capital: The starting capital for the node. Defaults to 1000.0.
+            capital: The starting capital for the node. Defaults to 1000.0.
         """
-        self.capital: float = initial_capital
+        self.capital: float = capital
         self.burn_rate: float = config.burn_rate
         self.alert_threshold: float = config.capital_alert_threshold
 

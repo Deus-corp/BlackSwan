@@ -217,29 +217,20 @@ def get_current_config() -> Dict[str, str]:
             config[var] = match.group(1)
     return config
 
-
-# Initialize Docker client once
-#_docker_client = docker.from_env()
-
-
 def list_containers() -> List[Dict[str, str]]:
-    """
-    Lists Docker containers related to the swarm nodes.
-    """
+    """Lists Docker containers related to the swarm nodes."""
     client = docker.from_env()
     containers = client.containers.list(
         filters={"name": "lab_swarm_demo-node"}, all=True
     )
-    result: List[Dict[str, str]] = []
+    result = []
     for c in containers:
-        result.append(
-            {
-                "id": c.short_id,
-                "name": c.name,
-                "status": c.status,
-                "image": c.image.tags[0] if c.image.tags else "unknown",
-            }
-        )
+        result.append({
+            "id": c.short_id,
+            "name": c.name,
+            "status": c.status,
+            "image": c.image.tags[0] if c.image.tags else "unknown",
+        })
     return result
 
 
@@ -400,9 +391,7 @@ def unpause_container(container_name: str) -> str:
         return f"An unexpected error occurred: {str(e)}"
 
 def get_container_logs(container_name: str, tail: int = 200) -> str:
-    """
-    Retrieves the last N lines of logs for a specific Docker container.
-    """
+    """Retrieves the last N lines of logs for a specific Docker container."""
     client = docker.from_env()
     try:
         c = client.containers.get(container_name)
