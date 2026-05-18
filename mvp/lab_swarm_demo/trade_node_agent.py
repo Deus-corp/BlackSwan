@@ -38,7 +38,7 @@ from mvp.lab_swarm_demo.capital_manager import CapitalManager
 from mvp.lab_swarm_demo.telemetry import Telemetry
 from mvp.lab_swarm_demo.evolution import EvolutionEngine
 from mvp.lab_swarm_demo.swarm_sync import SwarmSync
-from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation, update_llm_impact, get_llm_stats, _llm_mutation_count
+from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation, update_llm_impact, get_llm_stats
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
@@ -862,7 +862,7 @@ class SwarmNode:
                     fitness=current_fitness,
                     diversity=current_diversity,
                     crdt_size=current_crdt_size,
-                    llm_mutations=_llm_mutation_count,
+                    llm_mutations=get_llm_stats()[0],
                     niche_counts=current_niche_counts,
                     trace_id=self._trace_id,
                 )
@@ -875,7 +875,7 @@ class SwarmNode:
                     "fitness": current_fitness,
                     "diversity": current_diversity,
                     "crdt_size": current_crdt_size,
-                    "llm_mutations": _llm_mutation_count,
+                    "llm_mutations": get_llm_stats()[0],
                     "niche_counts": current_niche_counts,
                     "node_id": self.node_id,
                     "timestamp": time.time(),

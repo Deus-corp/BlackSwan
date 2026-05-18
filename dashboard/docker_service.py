@@ -10,9 +10,8 @@ import subprocess
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Union
-
 import docker
-
+import functools
 # Define the project root and Docker Compose file path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 COMPOSE_FILE = PROJECT_ROOT / "mvp" / "lab_swarm_demo" / "docker-compose.async.yml"
@@ -220,25 +219,22 @@ def get_current_config() -> Dict[str, str]:
 
 
 # Initialize Docker client once
-_docker_client = docker.from_env()
+#_docker_client = docker.from_env()
 
 
 def list_containers() -> List[Dict[str, str]]:
     """
     Lists Docker containers related to the swarm nodes.
-
-    Returns:
-        A list of dictionaries, each representing a swarm node container
-        with its name, status, and image.
     """
-    containers = _docker_client.containers.list(
+    client = docker.from_env()
+    containers = client.containers.list(
         filters={"name": "lab_swarm_demo-node"}, all=True
     )
     result: List[Dict[str, str]] = []
     for c in containers:
         result.append(
             {
-                "id": c.short_id,  # Added short ID for more info
+                "id": c.short_id,
                 "name": c.name,
                 "status": c.status,
                 "image": c.image.tags[0] if c.image.tags else "unknown",
@@ -406,16 +402,10 @@ def unpause_container(container_name: str) -> str:
 def get_container_logs(container_name: str, tail: int = 200) -> str:
     """
     Retrieves the last N lines of logs for a specific Docker container.
-
-    Args:
-        container_name: The name of the Docker container.
-        tail: The number of last lines to retrieve. Defaults to 200.
-
-    Returns:
-        The log output as a string, or an empty string on failure.
     """
+    client = docker.from_env()
     try:
-        c = _docker_client.containers.get(container_name)
+        c = client.containers.get(container_name)
         return c.logs(tail=tail).decode('utf-8', errors='ignore')
     except docker.errors.NotFound:
         logger.error(f"Container '{container_name}' not found.")
