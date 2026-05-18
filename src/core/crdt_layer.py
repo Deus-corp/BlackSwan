@@ -3,14 +3,10 @@ from __future__ import annotations
 """
 Operation-based CRDT for genome records.
 
-Design:
-- deterministic last-write-wins at the field/entity level
-- op log for replay / sync / recovery
-- Lamport-style clocks per node
-- tombstones for deletes
-- SQLite persistence for state + operations
-
-This module is intentionally small and testable.
+Этот модуль реализует CRDT (Conflict-free Replicated Data Type) на основе операций
+для управления записями генома. Он разработан для обеспечения детерминированного
+Last-Write-Wins (LWW) на уровне полей/сущностей, используя логи операций,
+часы Лампорта и персистентность на основе SQLite.
 """
 
 from dataclasses import dataclass, field
@@ -30,7 +26,16 @@ import uuid
 @dataclass(frozen=True, slots=True)
 class CRDTOperation:
     """
-    Represents a single CRDT operation (upsert or delete) on a genome record.
+    Представляет одну операцию CRDT (upsert или delete) над записью генома.
+
+    Атрибуты:
+        op_id (str): Уникальный идентификатор операции.
+        node_id (str): Идентификатор узла, создавшего операцию.
+        clock (int): Значение часов Лампорта узла во время создания операции.
+        kind (str): Тип операции: "upsert" (вставка/обновление) или "delete" (удаление).
+        gid (str): Глобально уникальный идентификатор записи генома, на которую действует операция.
+        payload (Dict[str, Any]): Полезная нагрузка (данные) операции (пусто для "delete").
+        ts (float): Временная метка Unix, когда операция была создана.
     """
     op_id: str
     node_id: str
@@ -42,7 +47,10 @@ class CRDTOperation:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Converts the CRDTOperation instance to a dictionary.
+        Преобразует экземпляр CRDTOperation в словарь.
+
+        Returns:
+            Dict[str, Any]: Словарь, представляющий операцию.
         """
         return {
             "op_id": self.op_id,
@@ -57,7 +65,13 @@ class CRDTOperation:
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> CRDTOperation:
         """
-        Creates a CRDTOperation instance from a dictionary.
+        Создает экземпляр CRDTOperation из словаря.
+
+        Args:
+            data (Dict[str, Any]): Словарь, содержащий данные операции.
+
+        Returns:
+            CRDTOperation: Созданный экземпляр CRDTOperation.
         """
         return CRDTOperation(
             op_id=str(data["op_id"]),
@@ -73,47 +87,83 @@ class CRDTOperation:
 @dataclass(slots=True)
 class VersionVector:
     """
-    A Version Vector tracks the highest clock value seen from each node.
-    Used to determine causal order and identify missing operations during synchronization.
+    Вектор версий отслеживает наибольшее значение часов, наблюдаемое от каждого узла.
+    Используется для определения причинного порядка и выявления отсутствующих операций
+    во время синхронизации.
+
+    Атрибуты:
+        clocks (Dict[str, int]): Словарь, сопоставляющий `node_id` с их максимальным
+                                 известным значением часов.
     """
     clocks: Dict[str, int] = field(default_factory=dict)
 
     def bump(self, node_id: str) -> int:
         """
-        Increments the clock for a given node and returns the new clock value.
+        Увеличивает часы для заданного узла и возвращает новое значение часов.
+
+        Args:
+            node_id (str): Идентификатор узла, чьи часы нужно увеличить.
+
+        Returns:
+            int: Новое значение часов для узла.
         """
         self.clocks[node_id] = self.clocks.get(node_id, 0) + 1
         return self.clocks[node_id]
 
     def observe(self, node_id: str, clock: int) -> None:
         """
-        Updates the clock for a given node if the new clock value is higher.
+        Обновляет часы для заданного узла, если новое значение часов выше текущего.
+
+        Args:
+            node_id (str): Идентификатор узла.
+            clock (int): Значение часов для наблюдения.
         """
         self.clocks[node_id] = max(self.clocks.get(node_id, 0), int(clock))
 
     def seen(self, node_id: str, clock: int) -> bool:
         """
-        Checks if a specific clock value for a node has been observed.
+        Проверяет, было ли замечено конкретное значение часов для узла.
+
+        Args:
+            node_id (str): Идентификатор узла.
+            clock (int): Значение часов для проверки.
+
+        Returns:
+            bool: True, если значение часов было замечено (т.е. текущие часы >= `clock`),
+                  False в противном случае.
         """
         return self.clocks.get(node_id, 0) >= int(clock)
 
     def merge(self, other: VersionVector) -> None:
         """
-        Merges another VersionVector into this one, updating clocks to their maximum values.
+        Объединяет другой VersionVector с этим, обновляя часы до их максимальных значений.
+
+        Args:
+            other (VersionVector): Другой VersionVector для объединения.
         """
         for node_id, clock in other.clocks.items():
             self.observe(node_id, clock)
 
     def to_dict(self) -> Dict[str, int]:
         """
-        Converts the VersionVector to a dictionary.
+        Преобразует VersionVector в словарь.
+
+        Returns:
+            Dict[str, int]: Словарь, представляющий вектор версий.
         """
         return dict(self.clocks)
 
     @staticmethod
-    def from_dict(data: Dict[str, int]) -> VersionVector:
+    def from_dict(data: Optional[Dict[str, int]]) -> VersionVector:
         """
-        Creates a VersionVector instance from a dictionary.
+        Создает экземпляр VersionVector из словаря.
+
+        Args:
+            data (Optional[Dict[str, int]]): Словарь, содержащий данные вектора версий.
+                                            Может быть None, в этом случае будет создан пустой VV.
+
+        Returns:
+            VersionVector: Созданный экземпляр VersionVector.
         """
         vv = VersionVector()
         for k, v in (data or {}).items():
@@ -124,7 +174,15 @@ class VersionVector:
 @dataclass(slots=True)
 class CRDTRecord:
     """
-    Represents the current state of a genome record in the CRDT.
+    Представляет текущее состояние записи генома в CRDT.
+
+    Атрибуты:
+        gid (str): Глобально уникальный идентификатор записи.
+        payload (Dict[str, Any]): Данные (полезная нагрузка) генома.
+        clock (int): Значение часов Лампорта последней операции, повлиявшей на эту запись.
+        node_id (str): Идентификатор узла, создавшего последнюю операцию, повлиявшую на эту запись.
+        deleted (bool): Флаг, указывающий, является ли запись удаленной (tombstone).
+        ts (float): Временная метка Unix последней модификации записи.
     """
     gid: str
     payload: Dict[str, Any]
@@ -135,7 +193,10 @@ class CRDTRecord:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Converts the CRDTRecord instance to a dictionary.
+        Преобразует экземпляр CRDTRecord в словарь.
+
+        Returns:
+            Dict[str, Any]: Словарь, представляющий запись.
         """
         return {
             "gid": self.gid,
@@ -153,31 +214,34 @@ class CRDTRecord:
 
 class CRDTStorage:
     """
-    Manages persistence for CRDT operations, records, version vector, and memory snapshots
-    using an SQLite database.
+    Управляет персистентностью для операций CRDT, записей, вектора версий
+    и снимков памяти с использованием базы данных SQLite.
     """
     def __init__(self, path: str) -> None:
         """
-        Initializes the CRDTStorage with the given database path.
+        Инициализирует CRDTStorage с заданным путем к базе данных.
 
         Args:
-            path (str): The file path for the SQLite database.
+            path (str): Путь к файлу базы данных SQLite.
         """
         self.path = path
-        self._lock = threading.RLock()
+        self._lock = threading.RLock() # Reentrant lock for thread safety
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
         """
-        Establishes and returns a connection to the SQLite database.
+        Устанавливает и возвращает соединение с базой данных SQLite.
+
+        Returns:
+            sqlite3.Connection: Объект соединения SQLite.
         """
         conn = sqlite3.connect(self.path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
+        conn.row_factory = sqlite3.Row # Allows accessing columns by name
         return conn
 
     def _init_db(self) -> None:
         """
-        Initializes the database schema by creating necessary tables if they don't exist.
+        Инициализирует схему базы данных, создавая необходимые таблицы, если они не существуют.
         """
         with self._connect() as conn:
             conn.execute(
@@ -190,7 +254,7 @@ class CRDTStorage:
                     gid TEXT NOT NULL,
                     payload TEXT NOT NULL,
                     ts REAL NOT NULL
-                )
+                ) STRICT
                 """
             )
             conn.execute(
@@ -202,7 +266,7 @@ class CRDTStorage:
                     node_id TEXT NOT NULL,
                     deleted INTEGER NOT NULL,
                     ts REAL NOT NULL
-                )
+                ) STRICT
                 """
             )
             conn.execute(
@@ -210,7 +274,7 @@ class CRDTStorage:
                 CREATE TABLE IF NOT EXISTS version_vector (
                     node_id TEXT PRIMARY KEY,
                     clock INTEGER NOT NULL
-                )
+                ) STRICT
                 """
             )
             conn.execute(
@@ -219,17 +283,17 @@ class CRDTStorage:
                     key TEXT PRIMARY KEY,
                     data BLOB,
                     updated_at REAL
-                )
+                ) STRICT
                 """
             )
             conn.commit()
 
     def save_op(self, op: CRDTOperation) -> None:
         """
-        Saves a CRDT operation to the database.
+        Сохраняет операцию CRDT в базу данных.
 
         Args:
-            op (CRDTOperation): The operation to save.
+            op (CRDTOperation): Операция для сохранения.
         """
         with self._lock, self._connect() as conn:
             conn.execute(
@@ -243,7 +307,7 @@ class CRDTStorage:
                     op.clock,
                     op.kind,
                     op.gid,
-                    json.dumps(op.payload, sort_keys=True),
+                    json.dumps(op.payload, sort_keys=True), # Deterministic serialization
                     op.ts,
                 ),
             )
@@ -251,10 +315,10 @@ class CRDTStorage:
 
     def load_ops(self) -> List[CRDTOperation]:
         """
-        Loads all CRDT operations from the database, ordered by timestamp and clock.
+        Загружает все операции CRDT из базы данных, упорядоченные по временной метке и часам.
 
         Returns:
-            List[CRDTOperation]: A list of loaded operations.
+            List[CRDTOperation]: Список загруженных операций.
         """
         with self._lock, self._connect() as conn:
             rows = conn.execute(
@@ -277,11 +341,11 @@ class CRDTStorage:
 
     def save_record(self, record: CRDTRecord) -> None:
         """
-        Saves a CRDT record (representing the current state of a genome) to the database.
-        Updates an existing record or inserts a new one.
+        Сохраняет запись CRDT (представляющую текущее состояние генома) в базу данных.
+        Обновляет существующую запись или вставляет новую.
 
         Args:
-            record (CRDTRecord): The record to save.
+            record (CRDTRecord): Запись для сохранения.
         """
         with self._lock, self._connect() as conn:
             conn.execute(
@@ -297,7 +361,7 @@ class CRDTStorage:
                 """,
                 (
                     record.gid,
-                    json.dumps(record.payload, sort_keys=True),
+                    json.dumps(record.payload, sort_keys=True), # Deterministic serialization
                     record.clock,
                     record.node_id,
                     int(record.deleted),
@@ -308,10 +372,10 @@ class CRDTStorage:
 
     def load_records(self) -> Dict[str, CRDTRecord]:
         """
-        Loads all CRDT records (current state of genomes) from the database.
+        Загружает все записи CRDT (текущее состояние геномов) из базы данных.
 
         Returns:
-            Dict[str, CRDTRecord]: A dictionary mapping GIDs to CRDTRecord instances.
+            Dict[str, CRDTRecord]: Словарь, сопоставляющий GID с экземплярами CRDTRecord.
         """
         with self._lock, self._connect() as conn:
             rows = conn.execute(
@@ -331,10 +395,10 @@ class CRDTStorage:
 
     def load_vv(self) -> VersionVector:
         """
-        Loads the VersionVector from the database.
+        Загружает VersionVector из базы данных.
 
         Returns:
-            VersionVector: The loaded version vector.
+            VersionVector: Загруженный вектор версий.
         """
         with self._lock, self._connect() as conn:
             rows = conn.execute("SELECT node_id, clock FROM version_vector").fetchall()
@@ -345,10 +409,10 @@ class CRDTStorage:
 
     def save_vv(self, vv: VersionVector) -> None:
         """
-        Saves the VersionVector to the database.
+        Сохраняет VersionVector в базу данных.
 
         Args:
-            vv (VersionVector): The version vector to save.
+            vv (VersionVector): Вектор версий для сохранения.
         """
         with self._lock, self._connect() as conn:
             for node_id, clock in vv.clocks.items():
@@ -363,7 +427,13 @@ class CRDTStorage:
             conn.commit()
 
     def save_snapshot(self, key: str, data: bytes) -> None:
-        """Сохраняет бинарный снапшот памяти."""
+        """
+        Сохраняет бинарный снимок памяти по заданному ключу.
+
+        Args:
+            key (str): Уникальный ключ для снимка памяти.
+            data (bytes): Бинарные данные снимка.
+        """
         with self._lock, self._connect() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO memory_snapshots (key, data, updated_at) VALUES (?, ?, ?)",
@@ -372,14 +442,22 @@ class CRDTStorage:
             conn.commit()
 
     def load_snapshot(self, key: str) -> Optional[bytes]:
-        """Загружает снапшот памяти."""
+        """
+        Загружает бинарный снимок памяти по заданному ключу.
+
+        Args:
+            key (str): Уникальный ключ для снимка памяти.
+
+        Returns:
+            Optional[bytes]: Бинарные данные снимка, если найден, иначе None.
+        """
         with self._lock, self._connect() as conn:
             row = conn.execute(
                 "SELECT data FROM memory_snapshots WHERE key = ?",
                 (key,)
             ).fetchone()
             if row:
-                return row[0]
+                return row["data"] # Access by column name
             return None
 
 
@@ -389,53 +467,58 @@ class CRDTStorage:
 
 class GenomeCRDT:
     """
-    Operation-based CRDT for managing genome records with deterministic Last-Write-Wins (LWW) semantics.
+    Operation-based CRDT для управления записями генома с детерминированной
+    семантикой Last-Write-Wins (LWW).
 
-    Rules:
-    - each gid maps to one record
-    - higher clock wins
-    - on equal clock, lexicographically larger node_id wins
-    - delete is represented by tombstone and wins over older updates
-    - duplicate operations are ignored via op_id
+    Правила разрешения конфликтов:
+    - Каждый GID сопоставляется с одной записью.
+    - Побеждает операция с более высоким значением часов (Lamport clock).
+    - При равных значениях часов побеждает операция с лексикографически большим `node_id`.
+    - Операция удаления (tombstone) имеет приоритет над более старыми обновлениями.
+    - Дублирующиеся операции игнорируются по `op_id`.
     """
 
     def __init__(self, node_id: str, storage: Optional[CRDTStorage] = None) -> None:
         """
-        Initializes the GenomeCRDT instance.
+        Инициализирует экземпляр GenomeCRDT.
 
         Args:
-            node_id (str): The unique identifier for this node.
-            storage (Optional[CRDTStorage]): An optional storage backend for persistence.
+            node_id (str): Уникальный идентификатор для этого узла.
+            storage (Optional[CRDTStorage]): Необязательный бэкенд хранилища для персистентности.
+                                             Если None, CRDT работает только в памяти.
         """
         self.node_id = node_id
-        self.clock: int = 0
-        self.vv: VersionVector = VersionVector()
+        self.clock: int = 0 # Local Lamport clock
+        self.vv: VersionVector = VersionVector() # Tracks highest clocks from all nodes
         self.storage: Optional[CRDTStorage] = storage
-        self._lock = threading.RLock()
+        self._lock = threading.RLock() # Reentrant lock for concurrent access
 
-        self._records: Dict[str, CRDTRecord] = {}
-        self._seen_ops: set[str] = set()
+        # In-memory state
+        self._records: Dict[str, CRDTRecord] = {} # Current state of all genome records by GID
+        self._seen_ops: set[str] = set() # Set of unique operation IDs already processed
 
         if self.storage is not None:
             self._bootstrap_from_storage()
 
     def _bootstrap_from_storage(self) -> None:
         """
-        Loads initial state from the configured storage backend.
+        Загружает начальное состояние из настроенного бэкенда хранилища.
+        Это включает записи, вектор версий и отметку уже обработанных операций.
         """
         self._records = self.storage.load_records()
         self.vv = self.storage.load_vv()
+        # Replay ops to update _seen_ops and ensure clock and VV are fully caught up
         for op in self.storage.load_ops():
             self._seen_ops.add(op.op_id)
-            self.clock = max(self.clock, op.clock)
+            self.clock = max(self.clock, op.clock) # Maximize local clock based on all seen ops
             self.vv.observe(op.node_id, op.clock)
 
     def _next_clock(self) -> int:
         """
-        Increments the local clock and updates the version vector for this node.
+        Увеличивает локальные часы узла и обновляет вектор версий для этого узла.
 
         Returns:
-            int: The new clock value.
+            int: Новое значение часов.
         """
         self.clock += 1
         self.vv.observe(self.node_id, self.clock)
@@ -443,14 +526,15 @@ class GenomeCRDT:
 
     def _should_apply(self, current: Optional[CRDTRecord], op: CRDTOperation) -> bool:
         """
-        Determines if an incoming operation should be applied based on LWW rules.
+        Определяет, следует ли применять входящую операцию на основе правил LWW.
 
         Args:
-            current (Optional[CRDTRecord]): The current record state for the given GID, or None if not present.
-            op (CRDTOperation): The incoming operation.
+            current (Optional[CRDTRecord]): Текущее состояние записи для данного GID,
+                                            или None, если запись отсутствует.
+            op (CRDTOperation): Входящая операция.
 
         Returns:
-            bool: True if the operation should be applied, False otherwise.
+            bool: True, если операцию следует применить; False в противном случае.
         """
         if current is None:
             return True
@@ -458,29 +542,36 @@ class GenomeCRDT:
             return True
         if op.clock < current.clock:
             return False
-        # Tie-breaker: lexicographically larger node_id wins
+        # Tie-breaker: If clocks are equal, lexicographically larger node_id wins
         return op.node_id > current.node_id
 
     def _apply_op(self, op: CRDTOperation) -> bool:
         """
-        Applies a CRDT operation to the local state and persists it if storage is enabled.
+        Применяет операцию CRDT к локальному состоянию и сохраняет ее, если включено хранилище.
+        Обновляет `_seen_ops` и `vv` независимо от того, была ли операция фактически применена
+        к `_records`.
 
         Args:
-            op (CRDTOperation): The operation to apply.
+            op (CRDTOperation): Операция для применения.
 
         Returns:
-            bool: True if the operation was applied, False if it was a duplicate or rejected.
+            bool: True, если операция была успешно применена к локальным записям;
+                  False, если это была дублирующаяся операция или она была отклонена
+                  в соответствии с правилами LWW.
         """
         if op.op_id in self._seen_ops:
             return False
 
+        # First, update seen_ops and VV, as we have observed this operation regardless of application
+        self._seen_ops.add(op.op_id)
+        self.vv.observe(op.node_id, op.clock)
+
         current = self._records.get(op.gid)
+        # Check if the operation should be applied based on LWW rules
         if current is not None and not self._should_apply(current, op):
-            self._seen_ops.add(op.op_id)
-            self.vv.observe(op.node_id, op.clock)
             if self.storage is not None:
                 self.storage.save_op(op)
-                self.storage.save_vv(self.vv) # Also save VV even if op is rejected
+                self.storage.save_vv(self.vv) # Also save VV if op is rejected, as we've seen it
             return False
 
         if op.kind not in ("upsert", "delete"):
@@ -489,17 +580,16 @@ class GenomeCRDT:
         if op.kind == "delete":
             record = CRDTRecord(
                 gid=op.gid,
-                payload={},
+                payload={}, # Payload is typically empty for deletes
                 clock=op.clock,
                 node_id=op.node_id,
                 deleted=True,
                 ts=op.ts,
             )
-        else: # kind == "upsert"
-            payload = dict(op.payload)
+        else:  # kind == "upsert"
             record = CRDTRecord(
                 gid=op.gid,
-                payload=payload,
+                payload=dict(op.payload), # Create a copy to ensure immutability
                 clock=op.clock,
                 node_id=op.node_id,
                 deleted=False,
@@ -507,9 +597,8 @@ class GenomeCRDT:
             )
 
         self._records[op.gid] = record
-        self._seen_ops.add(op.op_id)
-        self.vv.observe(op.node_id, op.clock)
 
+        # Persist the operation and the updated record/VV if storage is available
         if self.storage is not None:
             self.storage.save_op(op)
             self.storage.save_record(record)
@@ -519,16 +608,16 @@ class GenomeCRDT:
 
     def upsert(self, gid: str, payload: Dict[str, Any], op_id: Optional[str] = None) -> CRDTOperation:
         """
-        Creates and applies an 'upsert' operation for a genome record.
+        Создает и применяет операцию 'upsert' для записи генома.
 
         Args:
-            gid (str): The globally unique ID for the genome record.
-            payload (Dict[str, Any]): The data payload for the genome.
-            op_id (Optional[str]): An optional unique ID for the operation.
-                                    If None, a new UUID will be generated.
+            gid (str): Глобально уникальный идентификатор для записи генома.
+            payload (Dict[str, Any]): Данные (полезная нагрузка) для генома.
+            op_id (Optional[str]): Необязательный уникальный ID для операции.
+                                    Если None, будет сгенерирован новый UUID.
 
         Returns:
-            CRDTOperation: The created and applied CRDT operation.
+            CRDTOperation: Созданная и примененная операция CRDT.
         """
         with self._lock:
             clock = self._next_clock()
@@ -538,23 +627,23 @@ class GenomeCRDT:
                 clock=clock,
                 kind="upsert",
                 gid=gid,
-                payload=dict(payload),
+                payload=dict(payload), # Create a copy to ensure payload immutability
                 ts=time.time(),
             )
-            self._apply_op(op)
+            self._apply_op(op) # This will also save op to storage
             return op
 
     def delete(self, gid: str, op_id: Optional[str] = None) -> CRDTOperation:
         """
-        Creates and applies a 'delete' operation for a genome record.
+        Создает и применяет операцию 'delete' для записи генома.
 
         Args:
-            gid (str): The globally unique ID of the genome record to delete.
-            op_id (Optional[str]): An optional unique ID for the operation.
-                                    If None, a new UUID will be generated.
+            gid (str): Глобально уникальный идентификатор записи генома для удаления.
+            op_id (Optional[str]): Необязательный уникальный ID для операции.
+                                    Если None, будет сгенерирован новый UUID.
 
         Returns:
-            CRDTOperation: The created and applied CRDT operation.
+            CRDTOperation: Созданная и примененная операция CRDT.
         """
         with self._lock:
             clock = self._next_clock()
@@ -564,123 +653,123 @@ class GenomeCRDT:
                 clock=clock,
                 kind="delete",
                 gid=gid,
-                payload={},
+                payload={}, # Payload is empty for delete operations
                 ts=time.time(),
             )
-            self._apply_op(op)
+            self._apply_op(op) # This will also save op to storage
             return op
 
     def merge(self, remote_ops: Iterable[Dict[str, Any] | CRDTOperation]) -> int:
         """
-        Merges a collection of remote CRDT operations into the local state.
+        Объединяет коллекцию удаленных операций CRDT с локальным состоянием.
 
         Args:
-            remote_ops (Iterable[Dict[str, Any] | CRDTOperation]): An iterable of
-                                                                  operations, which can be
-                                                                  dictionaries or CRDTOperation objects.
+            remote_ops (Iterable[Dict[str, Any] | CRDTOperation]): Итерируемый объект операций,
+                                                                  которые могут быть словарями
+                                                                  или объектами CRDTOperation.
 
         Returns:
-            int: The number of unique operations successfully applied.
+            int: Количество уникальных операций, успешно примененных к локальному состоянию.
         """
-        applied = 0
+        applied_count = 0
         with self._lock:
             for item in remote_ops:
                 op = item if isinstance(item, CRDTOperation) else CRDTOperation.from_dict(item)
-                if op.op_id in self._seen_ops:
-                    continue
-                # If the operation is from this node, just record it as seen and update VV
-                # without re-applying, as it originated here.
-                if op.node_id == self.node_id:
+
+                # Special handling for ops originating from this node: just record as seen and update VV.
+                # No need to re-apply the operation to records as it was already applied locally.
+                if op.node_id == self.node_id and op.op_id in self._seen_ops:
                     self.vv.observe(op.node_id, op.clock)
-                    self._seen_ops.add(op.op_id)
-                    # If using storage, ensure this operation is also saved
+                    # Even if already seen, ensure it's in storage if storage is active.
                     if self.storage is not None:
                         self.storage.save_op(op)
                         self.storage.save_vv(self.vv)
                     continue
+
                 if self._apply_op(op):
-                    applied += 1
-            return applied
+                    applied_count += 1
+            return applied_count
 
     def get(self, gid: str) -> Optional[Dict[str, Any]]:
         """
-        Retrieves the payload of a genome record by its GID, if it exists and is not deleted.
+        Извлекает payload записи генома по ее GID, если она существует и не удалена.
 
         Args:
-            gid (str): The globally unique ID of the genome record.
+            gid (str): Глобально уникальный идентификатор записи генома.
 
         Returns:
-            Optional[Dict[str, Any]]: The payload of the genome, or None if not found or deleted.
+            Optional[Dict[str, Any]]: Payload генома, или None, если запись не найдена или удалена.
         """
         with self._lock:
             record = self._records.get(gid)
             if record is None or record.deleted:
                 return None
-            return dict(record.payload)
+            return dict(record.payload) # Return a copy to prevent external modification of internal state
 
     def state(self) -> Dict[str, Dict[str, Any]]:
         """
-        Returns the current state of all active (non-deleted) genome records.
+        Возвращает текущее состояние всех активных (не удаленных) записей генома.
 
         Returns:
-            Dict[str, Dict[str, Any]]: A dictionary mapping GIDs to their respective payloads.
+            Dict[str, Dict[str, Any]]: Словарь, сопоставляющий GID с их соответствующими payloads.
+                                        Возвращаются копии payloads.
         """
         with self._lock:
             return {
-                gid: dict(rec.payload)
+                gid: dict(rec.payload) # Return a copy of the payload
                 for gid, rec in self._records.items()
                 if not rec.deleted
             }
 
     def tombstones(self) -> List[str]:
         """
-        Returns a list of GIDs for records that have been marked as deleted.
+        Возвращает список GID записей, которые были помечены как удаленные (tombstones).
 
         Returns:
-            List[str]: A list of GIDs that are currently tombstones.
+            List[str]: Список GID, которые в настоящее время являются tombstones.
         """
         with self._lock:
             return [gid for gid, rec in self._records.items() if rec.deleted]
 
     def delta_since(self, other_vv: VersionVector | Dict[str, int]) -> List[Dict[str, Any]]:
         """
-        Calculates the set of operations that are unknown to another node, based on its VersionVector.
+        Вычисляет набор операций, неизвестных другому узлу, на основе его VersionVector.
 
         Args:
-            other_vv (VersionVector | Dict[str, int]): The VersionVector of the other node,
-                                                       or a dictionary representation of it.
+            other_vv (VersionVector | Dict[str, int]): VersionVector другого узла
+                                                       или его представление в виде словаря.
 
         Returns:
-            List[Dict[str, Any]]: A list of operations (as dictionaries) that the other node needs to receive.
+            List[Dict[str, Any]]: Список операций (в виде словарей), которые другой узел должен получить.
         """
         if isinstance(other_vv, dict):
             other_vv = VersionVector.from_dict(other_vv)
 
         with self._lock:
             out: List[Dict[str, Any]] = []
-            for op_id, op in self._load_ops_from_state():
+            # We iterate through all operations (from storage or synthesized)
+            for _, op in self._load_ops_from_state():
                 if not other_vv.seen(op.node_id, op.clock):
                     out.append(op.to_dict())
             return out
 
     def _load_ops_from_state(self) -> List[Tuple[str, CRDTOperation]]:
         """
-        Helper to load operations from storage or synthesize them from current records
-        if no storage is configured.
+        Вспомогательный метод для загрузки операций из хранилища или их синтеза
+        из текущих записей, если хранилище не настроено.
 
-        Returns:
-            List[Tuple[str, CRDTOperation]]: A list of (op_id, CRDTOperation) tuples.
+        Если хранилище отсутствует, операции синтезируются из текущего состояния
+        `_records` для обеспечения функциональности `delta_since` без полного журнала.
         """
-        # We keep the operation log in storage. If storage is absent, synthesize
-        # a minimal log from current state so the object remains usable.
         if self.storage is not None:
             return [(op.op_id, op) for op in self.storage.load_ops()]
 
+        # If no storage, synthesize a minimal log from current in-memory state
         out: List[Tuple[str, CRDTOperation]] = []
         for gid, rec in self._records.items():
             kind = "delete" if rec.deleted else "upsert"
             op = CRDTOperation(
-                op_id=f"synth-{gid}-{rec.clock}-{rec.node_id}",
+                op_id=f"synth-{gid}-{rec.clock}-{rec.node_id}", # Unique synthetic op_id
                 node_id=rec.node_id,
                 clock=rec.clock,
                 kind=kind,
@@ -693,8 +782,9 @@ class GenomeCRDT:
 
     def compact(self) -> None:
         """
-        In storage-backed mode, compaction removes the op log and keeps only
-        the latest records + version vector snapshot. In memory mode it is a no-op.
+        В режиме с поддержкой хранилища, компактизация удаляет журнал операций (`ops`)
+        и сохраняет только последние записи (`records`) и снимок вектора версий.
+        В режиме только в памяти эта операция не выполняет никаких действий.
         """
         if self.storage is None:
             return
@@ -705,30 +795,32 @@ class GenomeCRDT:
 
     def known_versions(self) -> Dict[str, int]:
         """
-        Returns the current VersionVector as a dictionary.
+        Возвращает текущий VersionVector в виде словаря.
 
         Returns:
-            Dict[str, int]: A dictionary mapping node IDs to their highest observed clock values.
+            Dict[str, int]: Словарь, сопоставляющий `node_id` с их наивысшими
+                            наблюдаемыми значениями часов.
         """
         with self._lock:
             return self.vv.to_dict()
 
     def record_count(self) -> int:
         """
-        Returns the total number of records (including tombstones) currently held in the CRDT.
+        Возвращает общее количество записей (включая tombstones),
+        хранящихся в CRDT.
 
         Returns:
-            int: The count of all records.
+            int: Количество всех записей.
         """
         with self._lock:
             return len(self._records)
 
     def max_clock(self) -> int:
         """
-        Returns the highest clock value generated by this node.
+        Возвращает наибольшее значение часов, сгенерированное этим узлом.
 
         Returns:
-            int: The maximum clock value.
+            int: Максимальное значение часов.
         """
         with self._lock:
             return self.clock

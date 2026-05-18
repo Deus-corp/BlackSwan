@@ -1,10 +1,17 @@
+"""
+This module defines the main routes for the dashboard, including the home page
+and an API endpoint for container status.
+"""
+from typing import Any, Dict, List
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from dashboard.routes.base_template import render_page
+from dashboard.docker_service import get_container_statuses  # Moved import to top
 
 router = APIRouter()
 
-MAIN_CONTENT = """
+# Main dashboard content, including forms for swarm actions and buttons for container management.
+MAIN_CONTENT: str = """
     <section>
         <h2>Swarm Actions</h2>
         <form action="/api/start" method="post" style="display:inline">
@@ -38,16 +45,17 @@ MAIN_CONTENT = """
 """
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request) -> HTMLResponse:
+async def index(request: Request) -> HTMLResponse:
     """
     Renders the main dashboard page.
     """
     return HTMLResponse(render_page(request, MAIN_CONTENT))
 
 @router.get("/api/container_status_json")
-def container_status_json() -> dict:
+async def container_status_json() -> List[Dict[str, Any]]:
     """
     Retrieves the current status of Docker containers in JSON format.
+    The return type is expected to be a list of dictionaries, where each
+    dictionary represents a container's status.
     """
-    from dashboard.docker_service import get_container_statuses
     return get_container_statuses()

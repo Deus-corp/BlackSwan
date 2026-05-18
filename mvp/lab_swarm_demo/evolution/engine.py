@@ -1,15 +1,17 @@
 """
-Evolution Engine – мутации, генетика, memory replay.
+Evolution Engine – orchestrates mutations, genetics, and memory replay for swarm nodes.
 """
 import logging
 import time
 import os
 import asyncio
-from typing import Any, Dict, Optional, List # Added type hints for better readability
+from typing import Any, Dict, Optional, List, Tuple
+
+# Assuming these are available in the environment/project structure
 from swarm_config import config
 from sim.genetic_engine import Genome
 from src.evolution.mutation_engine import MutationEngine
-from src.security.gossip_envelope import sign_envelope
+from src.security.gossip_envelope import sign_envelope # Assuming sign_envelope expects payload, meta, and private_key
 from src.economy.roi_dispatcher import ROIDispatcher
 from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation
 
@@ -20,7 +22,15 @@ class EvolutionEngine:
     """
     Manages the evolutionary process for a swarm node, including LLM-driven mutations,
     genetic steps for population evolution, and memory-replay based context generation.
+
+    This engine orchestrates how a node adapts its parameters over time, incorporating
+    external market data, internal performance metrics, historical memory, and
+    population-level genetic evolution.
     """
+    node: Any
+    llm: Any
+    mutation_engine: MutationEngine
+
     def __init__(self, node: Any) -> None:
         """
         Initializes the EvolutionEngine with a reference to the SwarmNode.
@@ -32,7 +42,16 @@ class EvolutionEngine:
         """
         self.node = node          # ссылка на SwarmNode для доступа к его методам
         self.llm = node.llm
-        self.mutation_engine: MutationEngine = node.mutation_engine # Added type hint for clarity
+        self.mutation_engine = node.mutation_engine
+
+        # Ensure _prev_price and _prev_prev_price are initialized on the node
+        # This prevents potential AttributeError on the first tick if not set by SwarmNode __init__
+        if not hasattr(self.node, '_prev_price'):
+            self.node._prev_price = 0.0
+        if not hasattr(self.node, '_prev_prev_price'):
+            self.node._prev_prev_price = 0.0
+        if not hasattr(self.node, '_last_market'):
+            self.node._last_market = None
 
     async def tick(self, market: Dict[str, Any]) -> None:
         """
@@ -43,21 +62,26 @@ class EvolutionEngine:
 
         Args:
             market: A dictionary containing market data for the current step.
-                    It is expected to have a 'price' key.
+                    It is expected to have a 'price' key (e.g., {'price': 123.45}).
         """
-        step: int = self.node.step_count # Added type hint
+        step: int = self.node.step_count
+
         # LLM Mutation & Memory replay (раз в 100 шагов)
-        if step % 100 == 0:
+        if step > 0 and step % 100 == 0:
+            logger.debug(f"Node {self.node.node_id} performing LLM mutation at step {step}")
             await self._mutate_with_context()
 
         # Генетический шаг (раз в 50 шагов)
-        if step % 50 == 0:
+        if step > 0 and step % 50 == 0:
+            logger.debug(f"Node {self.node.node_id} performing genetic step at step {step}")
             self._genetic_step()
 
         # Обновление цен
         self.node._prev_prev_price = self.node._prev_price
         if market:
-            self.node._prev_price = market.get("price", self.node._prev_price)
+            current_price: float = market.get("price", self.node._prev_price)
+            self.node._prev_price = current_price
+            self.node._last_market = market # Ensure _last_market is always updated
 
     async def _mutate_with_context(self) -> None:
         """
@@ -73,89 +97,121 @@ class EvolutionEngine:
 
         The gathered context is then passed to the LLM mutation engine.
         """
+        logger.info(f"Node {self.node.node_id} gathering context for LLM mutation.")
+        
+        context_parts: List[str] = []
+
         # --- Сбор внешнего контекста (новости, сигналы, ордербук) ---
-        external_context: str = ""
-        if config.internet_researcher_enabled:
+        if config.internet_researcher_enabled and hasattr(self.node, 'internet_researcher'):
             try:
-                external_context = await self.node.internet_researcher.gather_context()
+                research_context: str = await self.node.internet_researcher.gather_context()
+                if research_context:
+                    context_parts.append(research_context)
             except Exception as e:
-                logger.warning(f"Internet researcher failed to gather context: {e}")
-                external_context = "" # Reset context on failure
-        if self.node.tradingview_enabled and self.node.tradingview_webhook.latest_signal:
-            signal: str = self.node.tradingview_webhook.latest_signal # Added type hint
-            external_context += f"\nTradingView signal: {signal}\n"
-        if self.node.orderbook_enabled:
+                logger.warning(f"Internet researcher failed to gather context for node {self.node.node_id}: {e}")
+
+        if getattr(self.node, 'tradingview_enabled', False) and hasattr(self.node, 'tradingview_webhook') and self.node.tradingview_webhook.latest_signal:
+            signal: str = self.node.tradingview_webhook.latest_signal
+            context_parts.append(f"TradingView signal: {signal}")
+
+        if getattr(self.node, 'orderbook_enabled', False) and hasattr(self.node, 'orderbook_analyzers'):
             for sym, analyzer in self.node.orderbook_analyzers.items():
-                metrics = await analyzer.update()
-                if metrics:
-                    external_context += f"\n{sym} OrderBook: {analyzer.get_context_string()}"
+                try:
+                    await analyzer.update() # Update analyzer state
+                    context_string = analyzer.get_context_string()
+                    if context_string:
+                        context_parts.append(f"{sym} OrderBook: {context_string}")
+                except Exception as e:
+                    logger.warning(f"Orderbook analyzer for {sym} failed for node {self.node.node_id}: {e}")
 
         # --- Расширенный рыночный контекст ---
-        market_context: str = ""
-        m: Optional[Dict[str, Any]] = getattr(self.node, '_last_market', None) # Added type hint
-        if m:
-            price: float = m.get('price', 0.0) # Added type hint, default to float
-            prev1: float = getattr(self.node, '_prev_price', price) # Added type hint
-            prev2: float = getattr(self.node, '_prev_prev_price', price) # Added type hint
-            trend: str = "up" if price >= prev1 else "down" # Added type hint
-            market_context = (
-                f"price_now={price:.4f}, "
-                f"price_prev1={prev1:.4f}, "
-                f"price_prev2={prev2:.4f}, "
-                f"trend={trend}, "
+        m: Optional[Dict[str, Any]] = getattr(self.node, '_last_market', None)
+        current_price: float = m.get('price', 0.0) if m else 0.0
+        prev1_price: float = getattr(self.node, '_prev_price', current_price)
+        prev2_price: float = getattr(self.node, '_prev_prev_price', current_price)
+
+        if current_price:
+            trend: str = "up" if current_price >= prev1_price else "down"
+            context_parts.append(
+                f"price_now={current_price:.4f}, "
+                f"price_prev1={prev1_price:.4f}, "
+                f"price_prev2={prev2_price:.4f}, "
+                f"trend={trend}"
             )
 
         # --- Базовый контекст узла ---
-        context: str = ( # Added type hint
-            f"volatility={self.node._current_volatility():.3f}, "
-            f"dq={self.node.survival.dq:.3f}, "
-            f"capital={self.node.capital:.2f}, "
-            f"niche={self.node.node_niche()}, "
-        )
-        if market_context:
-            context += market_context
-        if external_context:
-            context += "\n" + external_context
+        if hasattr(self.node, '_current_volatility') and callable(self.node._current_volatility):
+            context_parts.append(f"volatility={self.node._current_volatility():.3f}")
+        if hasattr(self.node, 'survival') and hasattr(self.node.survival, 'dq'):
+            context_parts.append(f"dq={self.node.survival.dq:.3f}")
+        if hasattr(self.node, 'capital'):
+            context_parts.append(f"capital={self.node.capital:.2f}")
+        if hasattr(self.node, 'node_niche') and callable(self.node.node_niche):
+            context_parts.append(f"niche={self.node.node_niche()}")
 
         # --- Memory replay: похожие успешные стратегии ---
-        if len(self.node.memory) > 0:
-            vol: float = self.node._current_volatility() # Added type hint
-            similar: Optional[List[Dict[str, Any]]] = self.node.memory.find_similar(vol, self.node.survival.dq, top_k=3) # Added type hint
-            if similar:
+        if hasattr(self.node, 'memory') and len(self.node.memory) > 0:
+            current_volatility: float = getattr(self.node, '_current_volatility', lambda: 0.0)()
+            current_dq: float = getattr(self.node.survival, 'dq', 0.0) if hasattr(self.node, 'survival') else 0.0
+
+            similar_strategies: Optional[List[Dict[str, Any]]] = self.node.memory.find_similar(
+                current_volatility, current_dq, top_k=3
+            )
+            if similar_strategies:
                 memory_lines: List[str] = ["Past successful strategies in similar conditions:"]
-                for i, rec in enumerate(similar):
-                    params: Dict[str, Any] = rec.get("params", {}) # Added type hint
-                    fitness: float = rec.get("fitness", 0.0) # Added type hint
-                    memory_lines.append(f"{i+1}. params={params}, fitness={fitness:.4f}")
-                memory_context: str = "\n".join(memory_lines) # Added type hint
-                context += "\n" + memory_context
+                for i, rec in enumerate(similar_strategies):
+                    params_mem: Dict[str, Any] = rec.get("params", {})
+                    fitness_mem: float = rec.get("fitness", 0.0)
+                    memory_lines.append(f"{i+1}. params={params_mem}, fitness={fitness_mem:.4f}")
+                context_parts.append("\n".join(memory_lines))
 
         # --- Топ-3 гена популяции ---
-        if self.node.engine.population:
-            # Filter for actual Genome instances and sort by fitness (descending)
-            top_genomes: List[Genome] = sorted( # Added type hint
-                [g for g in self.node.engine.population if isinstance(g, Genome)],
-                key=lambda g: self.node.engine._fitness(g.params),
-                reverse=True
-            )[:3]
-            if top_genomes:
-                top_lines: List[str] = ["Top-3 genomes in population:"] # Added type hint
-                for i, g in enumerate(top_genomes):
-                    top_lines.append(
-                        f"{i+1}. params={g.params}, fitness={self.node.engine._fitness(g.params):.4f}, niche={g.niche}"
-                    )
-                context += "\n" + "\n".join(top_lines)
+        if hasattr(self.node, 'engine') and hasattr(self.node.engine, 'population') and self.node.engine.population:
+            if hasattr(self.node.engine, '_fitness') and callable(self.node.engine._fitness):
+                top_genomes: List[Genome] = sorted(
+                    [g for g in self.node.engine.population if isinstance(g, Genome)],
+                    key=lambda g: self.node.engine._fitness(g.params),
+                    reverse=True
+                )[:3]
+                if top_genomes:
+                    top_lines: List[str] = ["Top-3 genomes in population:"]
+                    for i, g in enumerate(top_genomes):
+                        top_lines.append(
+                            f"{i+1}. params={g.params}, fitness={self.node.engine._fitness(g.params):.4f}, niche={getattr(g, 'niche', 'N/A')}"
+                        )
+                    context_parts.append("\n".join(top_lines))
+            else:
+                logger.warning(f"Genetic engine _fitness method not found or not callable for node {self.node.node_id}.")
+
+        full_context: str = "\n".join(context_parts)
 
         # --- Вызов LLM мутации ---
-        # Ensure champion exists before accessing its elements
-        champion_params: Dict[str, Any] = self.node.engine.champion[0] if self.node.engine.champion else self.node.current_params # Added type hint
-        new_params: Dict[str, Any] = self.mutation_engine.mutate(champion_params, context) # Added type hint
+        champion_params: Dict[str, Any]
+        if hasattr(self.node, 'engine') and self.node.engine.champion:
+            champion_params = self.node.engine.champion[0]
+        elif hasattr(self.node, 'current_params'):
+            champion_params = self.node.current_params
+            logger.warning(f"Node {self.node.node_id} has no champion in engine, using current_params for mutation.")
+        else:
+            logger.error(f"Node {self.node.node_id} has no champion or current_params to mutate from. Skipping mutation.")
+            return # Cannot mutate without a base parameter set
+
+        logger.info(f"Node {self.node.node_id} calling LLM for mutation with context length {len(full_context)}.")
+        new_params: Dict[str, Any] = self.mutation_engine.mutate(champion_params, full_context)
+
         if new_params != champion_params:
-            genome: Genome = self.node.dict_to_genome({"params": new_params}) # Added type hint
-            self.node.engine.add_genome(genome)
-            # BUG FIX: Removed redundant import. note_llm_mutation is already imported at the top.
-            # from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation
-            note_llm_mutation()
+            logger.info(f"Node {self.node.node_id} successfully mutated parameters.")
+            if hasattr(self.node, 'dict_to_genome') and callable(self.node.dict_to_genome):
+                genome_from_dict: Genome = self.node.dict_to_genome({"params": new_params})
+                if hasattr(self.node.engine, 'add_genome') and callable(self.node.engine.add_genome):
+                    self.node.engine.add_genome(genome_from_dict)
+                    note_llm_mutation() # This function is imported at the top, no need for redundant import
+                else:
+                    logger.error(f"Node {self.node.node_id} genetic engine lacks 'add_genome' method.")
+            else:
+                logger.error(f"Node {self.node.node_id} lacks 'dict_to_genome' method to convert new params to genome.")
+        else:
+            logger.info(f"Node {self.node.node_id} LLM mutation resulted in no change.")
             
     def _genetic_step(self) -> None:
         """
@@ -167,58 +223,121 @@ class EvolutionEngine:
         to the node's current parameters, the node's parameters and dispatcher
         are updated. The champion's performance is also added to the node's memory.
         """
+        logger.info(f"Node {self.node.node_id} performing genetic evolution step.")
+
+        if not (hasattr(self.node, 'engine') and hasattr(self.node.engine, 'evolve_generation') and callable(self.node.engine.evolve_generation)):
+            logger.error(f"Node {self.node.node_id} genetic engine lacks 'evolve_generation' method. Skipping genetic step.")
+            return
+
         self.node.engine.evolve_generation()
+
         # Ensure a champion exists and has a positive fitness before proceeding
-        if self.node.engine.champion and self.node.engine.champion[1] > 0:
-            current_vol: float = self.node._current_volatility()
-            # Apply semantic rules to the champion's parameters before publishing
-            params_to_publish: Dict[str, Any] = self.node.semantic.apply_rules(
-                self.node.engine.champion[0], current_vol, self.node.survival.dq
+        # self.node.engine.champion is expected to be a tuple (params: Dict, fitness: float)
+        champion: Optional[Tuple[Dict[str, Any], float]] = self.node.engine.champion
+
+        if champion is None or champion[1] <= 0:
+            logger.debug(f"Node {self.node.node_id} has no champion or non-positive champion fitness ({champion[1] if champion else 'N/A'}). Skipping publish and update.")
+            return
+
+        champion_params: Dict[str, Any] = champion[0]
+        champion_fitness: float = champion[1]
+
+        current_volatility: float = getattr(self.node, '_current_volatility', lambda: 0.0)()
+        current_dq: float = getattr(self.node.survival, 'dq', 0.0) if hasattr(self.node, 'survival') else 0.0
+
+        # Apply semantic rules to the champion's parameters before publishing
+        params_to_publish: Dict[str, Any]
+        if hasattr(self.node, 'semantic') and hasattr(self.node.semantic, 'apply_rules') and callable(self.node.semantic.apply_rules):
+            params_to_publish = self.node.semantic.apply_rules(
+                champion_params, current_volatility, current_dq
             )
-            genome_dict: Dict[str, Any] = self.node.make_genome(params_to_publish, self.node.engine.champion[1])
+        else:
+            logger.warning(f"Node {self.node.node_id} lacks 'semantic' object or 'apply_rules' method. Publishing raw champion params.")
+            params_to_publish = champion_params
 
-            if config.gossip_signing_enabled:
-                self.node.gossip_seq_no += 1
-                self.node.gossip_lamport_ts += 1
-                meta: Dict[str, Any] = { # Added type hint
-                    "envelope_version": "1.0",
-                    "domain": "blackswan-gossip-v1",
-                    "payload_type": "memory.fact",
-                    "topic": "swarm.genome",
-                    "sender_peer_id": self.node.node_id,
-                    "sender_node_id": self.node.node_id,
-                    "sender_pubkey": self.node.gossip_public_bytes,
-                    "key_id": self.node.gossip_key_id,
-                    "key_version": 1,
-                    "seq_no": self.node.gossip_seq_no,
-                    "lamport_ts": self.node.gossip_lamport_ts,
-                    "nonce": os.urandom(16).hex(),
-                    "timestamp_ms": int(time.time() * 1000),
-                    "ttl_ms": 60000,
-                    "expires_at_ms": int(time.time() * 1000) + 60000,
-                    "parent_hashes": [],
-                }
-                envelope = sign_envelope(genome_dict, meta, self.node.gossip_private_key)
-                asyncio.create_task(self.node.crdt.add_genome(envelope.model_dump(mode='json')))
-            else:
-                payload: Dict[str, Any] = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]} # Added type hint
-                genome_dict["signature"] = self.node.crypto.sign(payload)
-                genome_dict["origin_pubkey"] = self.node.crypto.public_bytes_hex
+        if not (hasattr(self.node, 'make_genome') and callable(self.node.make_genome)):
+            logger.error(f"Node {self.node.node_id} lacks 'make_genome' method. Cannot publish genome.")
+            return
+
+        genome_dict: Dict[str, Any] = self.node.make_genome(params_to_publish, champion_fitness)
+        
+        if config.gossip_signing_enabled:
+            # Ensure necessary attributes for gossip are present
+            required_gossip_attrs = [
+                'gossip_seq_no', 'gossip_lamport_ts', 'node_id', 'gossip_public_bytes',
+                'gossip_key_id', 'gossip_private_key', 'crdt'
+            ]
+            if not all(hasattr(self.node, attr) for attr in required_gossip_attrs):
+                logger.error(f"Node {self.node.node_id} missing attributes for gossip signing. Skipping genome publish.")
+                return
+
+            self.node.gossip_seq_no += 1
+            self.node.gossip_lamport_ts += 1
+            meta: Dict[str, Any] = {
+                "envelope_version": "1.0",
+                "domain": "blackswan-gossip-v1",
+                "payload_type": "memory.fact",
+                "topic": "swarm.genome",
+                "sender_peer_id": self.node.node_id,
+                "sender_node_id": self.node.node_id,
+                "sender_pubkey": self.node.gossip_public_bytes, # Expected to be bytes or hex string, `sign_envelope` usually expects bytes for signing, `meta` field may be hex
+                "key_id": self.node.gossip_key_id,
+                "key_version": 1,
+                "seq_no": self.node.gossip_seq_no,
+                "lamport_ts": self.node.gossip_lamport_ts,
+                "nonce": os.urandom(16).hex(),
+                "timestamp_ms": int(time.time() * 1000),
+                "ttl_ms": 60000,
+                "expires_at_ms": int(time.time() * 1000) + 60000,
+                "parent_hashes": [],
+            }
+            try:
+                envelope_signed = sign_envelope(genome_dict, meta, self.node.gossip_private_key)
+                if hasattr(self.node.crdt, 'add_genome') and callable(self.node.crdt.add_genome):
+                    asyncio.create_task(self.node.crdt.add_genome(envelope_signed.model_dump(mode='json')))
+                    logger.info(f"Node {self.node.node_id} published signed champion genome to CRDT.")
+                else:
+                    logger.error(f"Node {self.node.node_id} CRDT lacks 'add_genome' method. Cannot publish genome.")
+            except Exception as e:
+                logger.error(f"Failed to sign and publish genome for node {self.node.node_id} with gossip: {e}", exc_info=True)
+        else:
+            required_unsigned_attrs = ['crypto', 'crdt']
+            if not all(hasattr(self.node, attr) for attr in required_unsigned_attrs) or \
+               not (hasattr(self.node.crypto, 'sign') and hasattr(self.node.crypto, 'public_bytes_hex')):
+                logger.error(f"Node {self.node.node_id} missing crypto or CRDT attributes for unsigned publish. Skipping genome publish.")
+                return
+
+            payload_for_sign: Dict[str, Any] = {"params": genome_dict["params"], "fitness": genome_dict["fitness"]}
+            genome_dict["signature"] = self.node.crypto.sign(payload_for_sign)
+            genome_dict["origin_pubkey"] = self.node.crypto.public_bytes_hex
+            if hasattr(self.node.crdt, 'add_genome') and callable(self.node.crdt.add_genome):
                 asyncio.create_task(self.node.crdt.add_genome(genome_dict))
+                logger.info(f"Node {self.node.node_id} published unsigned champion genome to CRDT.")
+            else:
+                logger.error(f"Node {self.node.node_id} CRDT lacks 'add_genome' method. Cannot publish genome.")
 
-            # Update node's current parameters and dispatcher if the champion is better
-            # Ensure champion exists before comparing fitness
-            if self.node.engine.champion and self.node.engine.champion[1] > self.node.engine._fitness(self.node.current_params):
-                self.node.current_params = self.node.engine.champion[0]
-                self.node.dispatcher = ROIDispatcher(config=self.node.current_params)
+        # Update node's current parameters and dispatcher if the champion is better
+        current_params_fitness: float = -1.0 # Default if _fitness is not available or current_params is not set
+        if (hasattr(self.node, 'current_params') and
+                hasattr(self.node.engine, '_fitness') and callable(self.node.engine._fitness)):
+            current_params_fitness = self.node.engine._fitness(self.node.current_params)
 
-            # Add champion's performance to node's memory
-            # Ensure champion exists before adding to memory
-            if self.node.engine.champion:
-                self.node.memory.add(
-                    market_volatility=current_vol,
-                    dq=self.node.survival.dq,
-                    capital=self.node.capital,
-                    params=self.node.engine.champion[0],
-                    fitness=self.node.engine.champion[1],
-                )
+        if champion_fitness > current_params_fitness:
+            self.node.current_params = champion_params
+            self.node.dispatcher = ROIDispatcher(config=self.node.current_params) # Assuming ROIDispatcher takes config as a dict
+            logger.info(f"Node {self.node.node_id} updated current parameters to new champion (fitness {champion_fitness:.4f}).")
+        else:
+            logger.debug(f"Node {self.node.node_id} champion (fitness={champion_fitness:.4f}) not superior to current params (fitness={current_params_fitness:.4f}). No parameter update.")
+
+        # Add champion's performance to node's memory
+        if hasattr(self.node, 'memory') and hasattr(self.node.memory, 'add') and callable(self.node.memory.add):
+            self.node.memory.add(
+                market_volatility=current_volatility,
+                dq=current_dq,
+                capital=getattr(self.node, 'capital', 0.0), # Use getattr for safety
+                params=champion_params,
+                fitness=champion_fitness,
+            )
+            logger.debug(f"Node {self.node.node_id} added champion to memory.")
+        else:
+            logger.warning(f"Node {self.node.node_id} lacks 'memory' object or 'add' method. Cannot add champion to memory.")

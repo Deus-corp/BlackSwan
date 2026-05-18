@@ -4,7 +4,7 @@
 """
 import logging
 from aiohttp import web
-from typing import Any, Optional, Dict # Added Any for latest_signal, Optional for runner, Dict for signal
+from typing import Any, Optional, Dict 
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,10 @@ class TradingViewWebhook:
         :param port: Порт, на котором будет слушать webhook-сервер.
         """
         self.port: int = port
-        self.latest_signal: Optional[Dict[str, Any]] = None # Type hint for signal data
+        self.latest_signal: Optional[Dict[str, Any]] = None 
         self.app = web.Application()
         self.app.router.add_post('/tradingview', self.handle_signal)
-        self._runner: Optional[web.AppRunner] = None # Type hint for AppRunner
+        self._runner: Optional[web.AppRunner] = None 
 
     async def handle_signal(self, request: web.Request) -> web.Response:
         """
@@ -34,7 +34,7 @@ class TradingViewWebhook:
         :return: JSON-ответ aiohttp.web.Response со статусом "ok" или "error".
         """
         try:
-            data = await request.json()
+            data: Dict[str, Any] = await request.json()
             self.latest_signal = data
             logger.info(f"Received TradingView signal: {data}")
             return web.json_response({"status": "ok"})
@@ -58,3 +58,4 @@ class TradingViewWebhook:
         """
         if self._runner:
             await self._runner.cleanup()
+            logger.info(f"TradingView webhook on port {self.port} stopped.")

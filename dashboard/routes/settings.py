@@ -1,12 +1,24 @@
+"""
+This module defines FastAPI routes for the dashboard settings page,
+allowing users to configure Docker Compose environment variables (config),
+update secret environment variables (.env file), and initiate token approval processes.
+"""
+
+import subprocess
+from pathlib import Path
+from typing import Dict, Any
+
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
+
 from dashboard.docker_service import update_config
 from dashboard.routes.base_template import render_page
-from pathlib import Path
-import subprocess
 
 router = APIRouter()
 
+# HTML content for the settings page.
+# It includes forms for Docker Compose configuration and .env secrets,
+# and buttons for token approval.
 SETTINGS_CONTENT = """
     <section>
         <h2>Compose Configuration</h2>
@@ -68,7 +80,16 @@ SETTINGS_CONTENT = """
 """
 
 @router.get("/settings", response_class=HTMLResponse)
-def settings_page(request: Request):
+def settings_page(request: Request) -> HTMLResponse:
+    """
+    Renders the settings page with configuration forms and token approval options.
+
+    Args:
+        request: The incoming request object.
+
+    Returns:
+        An HTMLResponse containing the rendered settings page.
+    """
     return HTMLResponse(render_page(request, SETTINGS_CONTENT, "Settings"))
 
 @router.post("/api/update_config")
@@ -98,9 +119,24 @@ async def update_config_form(
     HEDGE_ENABLED: str = Form(...),
     HEDGE_RATIO: str = Form(...),
     CAPITAL_ALERT_THRESHOLD: str = Form(...),
-):
-    config = {k: v for k, v in locals().items() if k != 'self'}
-    msg = update_config(config)
+) -> HTMLResponse:
+    """
+    Handles the submission of the Docker Compose configuration form.
+    It collects all form fields and passes them to the `update_config` service.
+
+    Args:
+        BURN_RATE, FAILURE_PROB, etc.: Individual form fields,
+                                       typed as string as received from HTML form.
+
+    Returns:
+        An HTMLResponse containing a message about the update status.
+    """
+    # Collects all form parameters into a dictionary.
+    # This approach relies on `locals()` containing only the function parameters
+    # at this point. For more robust data handling, a Pydantic model would be
+    # preferred in a larger application.
+    config: Dict[str, str] = {k: v for k, v in locals().items() if k not in ['self', 'update_config_form', 'Form']}
+    msg: str = update_config(config)
     return HTMLResponse(f"<pre>{msg}</pre>")
 
 @router.post("/api/update_secrets")
@@ -112,11 +148,32 @@ async def update_secrets(
     TELEGRAM_CHAT_ID: str = Form(""),
     ETHERSCAN_API_KEY: str = Form(""),
     WEB3_RPC_URL: str = Form(""),
-):
-    env_path = Path(__file__).resolve().parent.parent.parent / "mvp" / "lab_swarm_demo" / ".env"
-    lines = env_path.read_text().splitlines()
-    updated_keys = set()
-    secret_map = {
+) -> HTMLResponse:
+    """
+    Handles the submission of the secrets form, updating the .env file.
+    It reads the existing .env file, updates or adds the provided secret keys,
+    and writes the changes back.
+
+    Args:
+        WEB3_PRIVATE_KEY, BINANCE_TESTNET_API_KEY, etc.: Secret form fields.
+                                                           Default to empty string if not provided.
+
+    Returns:
+        An HTMLResponse indicating that secrets have been updated and a restart is needed.
+    """
+    # Determine the path to the .env file relative to the current script.
+    # This path is hardcoded and assumes a specific project structure.
+    # In a production environment, this path might be better configured
+    # via environment variables or a more dynamic lookup.
+    project_root = Path(__file__).resolve().parent.parent.parent
+    env_path: Path = project_root / "mvp" / "lab_swarm_demo" / ".env"
+
+    current_lines: list[str] = []
+    if env_path.exists():
+        current_lines = env_path.read_text().splitlines()
+
+    updated_keys: set[str] = set()
+    secret_map: Dict[str, str] = {
         "WEB3_PRIVATE_KEY": WEB3_PRIVATE_KEY,
         "BINANCE_TESTNET_API_KEY": BINANCE_TESTNET_API_KEY,
         "BINANCE_TESTNET_API_SECRET": BINANCE_TESTNET_API_SECRET,
@@ -125,29 +182,57 @@ async def update_secrets(
         "ETHERSCAN_API_KEY": ETHERSCAN_API_KEY,
         "WEB3_RPC_URL": WEB3_RPC_URL,
     }
-    new_lines = []
-    for line in lines:
+
+    new_lines: list[str] = []
+    for line in current_lines:
         replaced = False
+        # Check if the line starts with any of the secret keys from the form
         for key, value in secret_map.items():
-            if line.startswith(key + "="):
+            # Basic check, does not handle commented lines or quoted values correctly
+            if line.startswith(f"{key}="):
                 new_lines.append(f"{key}={value}")
                 updated_keys.add(key)
                 replaced = True
                 break
         if not replaced:
             new_lines.append(line)
+
+    # Append any keys that were in the form but not found in the original .env file
     for key, value in secret_map.items():
         if key not in updated_keys:
             new_lines.append(f"{key}={value}")
+
+    # Write the updated content back to the .env file, ensuring a trailing newline
     env_path.write_text("\n".join(new_lines) + "\n")
     return HTMLResponse("<pre>Secrets updated. Restart swarm to apply.</pre>")
 
 @router.post("/api/approve/{token}")
-async def approve_token(token: str):
-    project_root = Path(__file__).resolve().parent.parent.parent
+async def approve_token(token: str) -> HTMLResponse:
+    """
+    Initiates a token approval script for WETH or USDC.
+
+    Args:
+        token: The token symbol (e.g., 'WETH', 'USDC') to approve.
+
+    Returns:
+        An HTMLResponse containing the standard output or error from the approval script.
+    """
+    project_root: Path = Path(__file__).resolve().parent.parent.parent
+    command: list[str]
     if token.upper() == "WETH":
-        cmd = f"python tools/approve_weth.py"
+        command = ["python", "tools/approve_weth.py"]
+    elif token.upper() == "USDC":
+        command = ["python", "tools/approve_usdc.py"]
     else:
-        cmd = f"python tools/approve_usdc.py"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=project_root)
+        return HTMLResponse(f"<pre>Error: Unknown token '{token}'</pre>", status_code=400)
+
+    # Execute the approval script. Using a list for `cmd` and `shell=False` is safer.
+    result: subprocess.CompletedProcess = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        cwd=project_root,
+        check=False  # Do not raise an exception for non-zero exit codes
+    )
+    # Return the stdout or stderr from the script execution
     return HTMLResponse(f"<pre>{result.stdout or result.stderr}</pre>")

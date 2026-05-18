@@ -16,25 +16,31 @@ Features:
 This module is intentionally self-contained for easier testing and reuse.
 """
 
-from dataclasses import dataclass, field, asdict
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple
 import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import os
 import random
 import sqlite3
 import time
 import uuid
+from dataclasses import asdict, dataclass, field
+from typing import Any, Callable, Deque, Dict, Iterable, Optional, Tuple
 
 import aiohttp
 from aiohttp import web
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
 # =========================
 # CONFIG
 # =========================
+
 
 @dataclass(frozen=True, slots=True)
 class GossipConfig:
@@ -42,6 +48,7 @@ class GossipConfig:
     Configuration for the BlackSwan gossip layer.
     Settings are primarily sourced from environment variables, with sensible defaults.
     """
+
     node_id: str = field(default_factory=lambda: os.environ.get("NODE_ID", str(uuid.uuid4())))
     port: int = field(default_factory=lambda: int(os.environ.get("PORT", "8000")))
     bind_host: str = field(default_factory=lambda: os.environ.get("BIND_HOST", "0.0.0.0"))
@@ -64,7 +71,7 @@ class GossipConfig:
 
     @property
     def secret_bytes(self) -> bytes:
-        """Returns the shared secret encoded as bytes."""
+        """Returns the shared secret encoded as UTF-8 bytes."""
         return self.shared_secret.encode("utf-8")
 
 
@@ -72,12 +79,14 @@ class GossipConfig:
 # DOMAIN MODELS
 # =========================
 
+
 @dataclass(slots=True)
 class GenomeRecord:
     """
     Represents a single genome record to be gossiped across the cluster.
     Includes parameters, fitness, provenance, and versioning information.
     """
+
     gid: str
     params: Dict[str, float]
     fitness: float
@@ -110,29 +119,53 @@ class GenomeRecord:
         """
         Creates a GenomeRecord instance from a dictionary.
         Performs basic validation and type conversion.
+
+        Args:
+            gid: The genome ID, which should be the primary identifier.
+            data: A dictionary containing genome record data.
+
+        Returns:
+            A GenomeRecord instance if validation and conversion succeed,
+            otherwise None.
         """
         if not isinstance(data, dict):
+            logger.warning(f"Invalid data type for GenomeRecord.from_dict: {type(data)}")
             return None
-        params = data.get("params")
-        if not isinstance(params, dict):
+
+        params_raw = data.get("params")
+        if not isinstance(params_raw, dict):
+            logger.warning(f"Invalid 'params' field type for GenomeRecord {gid}: {type(params_raw)}")
             return None
+
+        clean_params: Dict[str, float] = {}
+        for k, v in params_raw.items():
+            try:
+                clean_params[str(k)] = float(v)
+            except (TypeError, ValueError):
+                logger.warning(f"Could not convert param '{k}' with value '{v}' to float for GenomeRecord {gid}.")
+                return None
+
+        lineage_raw = data.get("lineage", [])
+        if not isinstance(lineage_raw, list):
+            logger.warning(f"Invalid 'lineage' field type for GenomeRecord {gid}: {type(lineage_raw)}")
+            lineage_raw = []  # Default to empty list if invalid type
+
+        lineage: list[str] = [str(x) for x in lineage_raw if x is not None] # Convert all elements to string
+
         try:
-            clean_params = {str(k): float(v) for k, v in params.items()}
-            lineage = data.get("lineage", [])
-            if not isinstance(lineage, list):
-                lineage = []
             return GenomeRecord(
                 gid=str(gid),
                 params=clean_params,
-                fitness=float(data.get("fitness", 0.0)),
+                fitness=_safe_float(data.get("fitness"), 0.0),
                 niche=str(data.get("niche", "exploration")),
                 origin=str(data.get("origin", "")),
-                lineage=[str(x) for x in lineage if isinstance(x, (str, int))],
-                ts=float(data.get("ts", time.time())),
+                lineage=lineage,
+                ts=_safe_float(data.get("ts"), time.time()),  # Use provided ts, fallback to current time for robustness
                 ver=int(data.get("ver", 0)),
                 node=str(data.get("node", "")),
             )
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as e:
+            logger.warning(f"Error parsing GenomeRecord from dict for GID {gid}: {e}. Data: {data}")
             return None
 
 
@@ -142,6 +175,7 @@ class GossipEnvelope:
     A message envelope for gossip, containing sender info, timestamp, nonce,
     versioning, delta (genome updates), and a signature for authentication.
     """
+
     sender: str
     ts: float
     nonce: str
@@ -150,7 +184,10 @@ class GossipEnvelope:
     sig: str = ""
 
     def payload_bytes(self) -> bytes:
-        """Generates the byte payload for signing/verification."""
+        """
+        Generates the byte payload for signing/verification.
+        Ensures deterministic serialization for consistent HMAC generation.
+        """
         payload = {
             "sender": self.sender,
             "ts": self.ts,
@@ -162,8 +199,14 @@ class GossipEnvelope:
 
     def sign(self, secret: bytes) -> str:
         """
-        Signs the envelope payload using HMAC and the shared secret.
+        Signs the envelope payload using HMAC-SHA256 and the shared secret.
         Sets the `sig` attribute and returns it.
+
+        Args:
+            secret: The shared secret key as bytes.
+
+        Returns:
+            The hexadecimal string representation of the signature.
         """
         self.sig = hmac.new(secret, self.payload_bytes(), hashlib.sha256).hexdigest()
         return self.sig
@@ -171,14 +214,25 @@ class GossipEnvelope:
     def verify(self, secret: bytes) -> bool:
         """
         Verifies the envelope's signature against the payload and shared secret.
+
+        Args:
+            secret: The shared secret key as bytes.
+
+        Returns:
+            True if the signature is valid, False otherwise.
         """
         if not self.sig:
             return False
-        expected = hmac.new(secret, self.payload_bytes(), hashlib.sha256).hexdigest()
-        return hmac.compare_digest(expected, self.sig)
+        expected_sig = hmac.new(secret, self.payload_bytes(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected_sig, self.sig)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Converts the GossipEnvelope to a dictionary."""
+        """
+        Converts the GossipEnvelope to a dictionary.
+
+        Returns:
+            A dictionary representation of the envelope.
+        """
         return {
             "sender": self.sender,
             "ts": self.ts,
@@ -193,23 +247,40 @@ class GossipEnvelope:
         """
         Creates a GossipEnvelope instance from a dictionary.
         Performs basic validation and type conversion.
+
+        Args:
+            data: A dictionary containing gossip envelope data.
+
+        Returns:
+            A GossipEnvelope instance if validation and conversion succeed,
+            otherwise None.
         """
         if not isinstance(data, dict):
+            logger.warning(f"Invalid data type for GossipEnvelope.from_dict: {type(data)}")
             return None
         try:
-            versions = data.get("versions", {})
-            delta = data.get("delta", {})
-            if not isinstance(versions, dict) or not isinstance(delta, dict):
+            versions_raw = data.get("versions", {})
+            delta_raw = data.get("delta", {})
+
+            if not isinstance(versions_raw, dict) or not isinstance(delta_raw, dict):
+                logger.warning("Invalid 'versions' or 'delta' field type in incoming envelope.")
                 return None
+
+            versions: Dict[str, int] = {str(k): int(v) for k, v in versions_raw.items()}
+            # Delta can contain nested dicts, so we take it as is for now,
+            # validation will happen when converting to GenomeRecord.
+            delta: Dict[str, Dict[str, Any]] = delta_raw
+
             return GossipEnvelope(
                 sender=str(data.get("sender", "")),
-                ts=float(data.get("ts", 0.0)),
+                ts=_safe_float(data.get("ts"), 0.0),
                 nonce=str(data.get("nonce", "")),
-                versions={str(k): int(v) for k, v in versions.items()},
+                versions=versions,
                 delta=delta,
                 sig=str(data.get("sig", "")),
             )
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as e:
+            logger.warning(f"Error parsing GossipEnvelope from dict: {e}. Data: {data}")
             return None
 
 
@@ -217,8 +288,18 @@ class GossipEnvelope:
 # ACCEPTANCE POLICY
 # =========================
 
+
 def _safe_float(value: Any, default: float = 0.0) -> float:
-    """Safely converts a value to float, handling None, non-numeric, and NaN."""
+    """
+    Safely converts a value to float, handling None, non-numeric strings, and NaN.
+
+    Args:
+        value: The value to convert.
+        default: The default float value to return on failure.
+
+    Returns:
+        The converted float value or the default value.
+    """
     try:
         v = float(value)
         if v != v:  # Check for NaN
@@ -233,6 +314,7 @@ class DeltaPolicy:
     """
     Configurable policy for whether a genome delta should be accepted.
     """
+
     min_fitness: float = 0.0
     min_param_value: float = 0.0
     max_param_value: float = 10.0
@@ -243,43 +325,68 @@ class DeltaPolicy:
         """
         Determines if a given genome (as a dictionary) meets the acceptance criteria.
         Trust acts as a soft gate, reducing acceptance probability for less trusted sources.
+
+        Args:
+            genome: A dictionary representing the genome record.
+            trust: A float between 0.0 and 1.0 representing the trustworthiness
+                   of the source. Higher trust increases acceptance probability.
+
+        Returns:
+            True if the genome is accepted, False otherwise.
         """
         if not isinstance(genome, dict):
+            logger.debug(f"Rejecting genome: not a dictionary. Type: {type(genome)}")
             return False
 
         fitness = _safe_float(genome.get("fitness"), -1.0)
         if fitness < self.min_fitness:
+            logger.debug(f"Rejecting genome {genome.get('gid', 'N/A')}: fitness {fitness} < {self.min_fitness}")
             return False
 
         params = genome.get("params", {})
         if not isinstance(params, dict) or not params:
+            logger.debug(f"Rejecting genome {genome.get('gid', 'N/A')}: invalid or empty params.")
             return False
 
         for raw in params.values():
             value = _safe_float(raw, float("nan"))
             if value != value:  # NaN
+                logger.debug(f"Rejecting genome {genome.get('gid', 'N/A')}: param value is NaN.")
                 return False
-            if not (self.min_param_value < value < self.max_param_value):
+            if not (self.min_param_value <= value <= self.max_param_value): # Inclusive range check
+                logger.debug(
+                    f"Rejecting genome {genome.get('gid', 'N/A')}: param value {value} out of range "
+                    f"[{self.min_param_value}, {self.max_param_value}]."
+                )
                 return False
 
         niche = str(genome.get("niche", "exploration"))
         if niche not in self.trusted_niches and niche not in self.niche_bonus:
+            logger.debug(f"Rejecting genome {genome.get('gid', 'N/A')}: untrusted niche '{niche}'.")
             return False
 
-        # trust is a soft gate: lower trust shrinks acceptance probability
+        # Trust is a soft gate: lower trust shrinks acceptance probability,
         # but never blocks deterministic policy if trust is high enough.
-        return random.random() < max(0.0, min(1.0, trust))
+        # Ensure trust is clamped between 0.0 and 1.0.
+        acceptance_probability = max(0.0, min(1.0, trust))
+        if random.random() >= acceptance_probability:
+            logger.debug(f"Rejecting genome {genome.get('gid', 'N/A')}: failed probabilistic trust gate (trust={trust:.2f}).")
+            return False
+
+        return True
 
 
 # =========================
 # SQLITE PERSISTENCE
 # =========================
 
+
 class SQLiteGenomeStore:
     """
     Manages persistent storage of GenomeRecords using SQLite.
     Includes methods for adding, merging, querying, and pruning genomes.
     """
+
     def __init__(self, path: str, node_id: str, ttl_s: int, max_state: int):
         """
         Initializes the SQLiteGenomeStore.
@@ -290,22 +397,31 @@ class SQLiteGenomeStore:
             ttl_s: Time-to-live in seconds for genome records before pruning.
             max_state: Maximum number of genome records to keep after pruning.
         """
-        self.path = path
-        self.node_id = node_id
-        self.ttl_s = ttl_s
-        self.max_state = max_state
-        self._lock = asyncio.Lock()
+        self.path: str = path
+        self.node_id: str = node_id
+        self.ttl_s: int = ttl_s
+        self.max_state: int = max_state
+        self._lock: asyncio.Lock = asyncio.Lock()
         self._version: int = 0  # Monotonically increasing version for local changes
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        """Establishes and returns a connection to the SQLite database."""
+        """
+        Establishes and returns a connection to the SQLite database.
+        Sets row_factory to sqlite3.Row for dictionary-like access to rows.
+
+        Returns:
+            An opened SQLite database connection.
+        """
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         return conn
 
     def _init_db(self) -> None:
-        """Initializes the database schema if it doesn't already exist."""
+        """
+        Initializes the database schema if it doesn't already exist.
+        Creates the 'genomes' table and an index for efficient querying.
+        """
         with self._connect() as conn:
             conn.execute(
                 """
@@ -327,18 +443,33 @@ class SQLiteGenomeStore:
             )
             conn.commit()
 
+        # Initialize _version from existing data
+        with self._connect() as conn:
+            row = conn.execute("SELECT MAX(ver) AS max_ver FROM genomes WHERE node = ?", (self.node_id,)).fetchone()
+            if row and row["max_ver"] is not None:
+                self._version = int(row["max_ver"])
+            logger.info(f"SQLiteGenomeStore initialized for node {self.node_id} at {self.path}. Current local version: {self._version}")
+
     async def add(self, genome: GenomeRecord) -> str:
         """
         Adds a new genome or updates an existing one in the store.
-        Assigns a new version and the current node's ID.
+        Assigns a new local version and the current node's ID.
+        Updates the timestamp to the current time.
+
+        Args:
+            genome: The GenomeRecord to add or update.
+
+        Returns:
+            The GID of the added/updated genome.
         """
         async with self._lock:
-            gid = genome.gid or str(uuid.uuid4())
+            # Ensure GID is present, generate if not provided
+            gid = genome.gid if genome.gid else str(uuid.uuid4())
             self._version += 1
             genome.gid = gid
             genome.ver = self._version
             genome.node = self.node_id
-            genome.ts = genome.ts or time.time()
+            genome.ts = time.time()  # Always update timestamp on local modification
 
             payload = json.dumps(genome.to_public_dict(), sort_keys=True, separators=(",", ":"))
             with self._connect() as conn:
@@ -356,42 +487,49 @@ class SQLiteGenomeStore:
                     (gid, payload, genome.fitness, genome.ver, genome.node, genome.ts),
                 )
                 conn.commit()
+            logger.debug(f"Added/updated genome {gid} locally. New version: {genome.ver}")
             return gid
 
     async def merge_many(self, remote: Dict[str, Dict[str, Any]]) -> int:
         """
         Merges multiple remote genome records into the local store.
-        Uses a deterministic last-write-wins (version, node_id) comparison.
+        Uses a deterministic last-write-wins (higher version, then lexicographically higher node_id)
+        comparison for conflict resolution.
 
         Args:
             remote: A dictionary of genome GIDs to their dictionary representations.
         Returns:
             The number of genomes successfully merged/updated.
         """
-        merged = 0
+        merged_count = 0
         async with self._lock:
             with self._connect() as conn:
-                for gid, raw in remote.items():
-                    rec = GenomeRecord.from_dict(gid, raw)
+                for gid, raw_genome_data in remote.items():
+                    rec = GenomeRecord.from_dict(gid, raw_genome_data)
                     if rec is None:
+                        logger.warning(f"Skipping merge for GID {gid}: failed to parse remote genome data.")
                         continue
 
-                    row = conn.execute("SELECT payload, ver, node FROM genomes WHERE gid = ?", (gid,)).fetchone()
+                    row = conn.execute(
+                        "SELECT payload, ver, node FROM genomes WHERE gid = ?", (gid,)
+                    ).fetchone()
+                    
+                    payload = json.dumps(rec.to_public_dict(), sort_keys=True, separators=(",", ":"))
+
                     if row is None:
                         # New genome, insert it
-                        payload = json.dumps(rec.to_public_dict(), sort_keys=True, separators=(",", ":"))
                         conn.execute(
                             "INSERT INTO genomes(gid, payload, fitness, ver, node, ts) VALUES(?, ?, ?, ?, ?, ?)",
                             (gid, payload, rec.fitness, rec.ver, rec.node, rec.ts),
                         )
-                        merged += 1
+                        merged_count += 1
+                        logger.debug(f"Merged new genome: {gid} (ver {rec.ver})")
                     else:
-                        # Existing genome, check for update
+                        # Existing genome, check for update based on last-write-wins
                         local_ver = int(row["ver"])
                         local_node = str(row["node"])
-                        # Last-write-wins: (higher version, then lexicographically higher node ID)
+
                         if (rec.ver, rec.node) > (local_ver, local_node):
-                            payload = json.dumps(rec.to_public_dict(), sort_keys=True, separators=(",", ":"))
                             conn.execute(
                                 """
                                 UPDATE genomes
@@ -400,12 +538,23 @@ class SQLiteGenomeStore:
                                 """,
                                 (payload, rec.fitness, rec.ver, rec.node, rec.ts, gid),
                             )
-                            merged += 1
+                            merged_count += 1
+                            logger.debug(
+                                f"Updated genome {gid}: local (ver {local_ver}, node {local_node}) "
+                                f" < remote (ver {rec.ver}, node {rec.node})"
+                            )
                 conn.commit()
-        return merged
+        if merged_count > 0:
+            logger.info(f"Merged {merged_count} remote genomes.")
+        return merged_count
 
     async def versions(self) -> Dict[str, int]:
-        """Returns a dictionary of all genome GIDs and their current versions."""
+        """
+        Returns a dictionary of all genome GIDs and their current versions.
+
+        Returns:
+            A dictionary mapping genome IDs (str) to their versions (int).
+        """
         async with self._lock:
             with self._connect() as conn:
                 rows = conn.execute("SELECT gid, ver FROM genomes").fetchall()
@@ -460,35 +609,49 @@ class SQLiteGenomeStore:
         """
         async with self._lock:
             now = time.time()
-            deleted = 0
+            deleted_count = 0
             with self._connect() as conn:
                 # 1. Prune by TTL
                 cur = conn.execute("DELETE FROM genomes WHERE (? - ts) >= ?", (now, self.ttl_s))
-                deleted += cur.rowcount if cur.rowcount is not None else 0
+                deleted_count += cur.rowcount if cur.rowcount is not None else 0
+                if deleted_count > 0:
+                    logger.info(f"Pruned {deleted_count} genomes by TTL.")
 
                 # 2. Prune by max_state (keep top fitness)
                 count_row = conn.execute("SELECT COUNT(*) AS c FROM genomes").fetchone()
-                count = int(count_row["c"]) if count_row else 0
-                if count > self.max_state:
-                    overflow = int(count - self.max_state)
-                    # Delete all but the top `self.max_state` genomes by fitness and timestamp
-                    conn.execute(
+                current_count = int(count_row["c"]) if count_row else 0
+                
+                if current_count > self.max_state:
+                    overflow = current_count - self.max_state
+                    # Select GIDs to delete (all but the top `self.max_state` genomes by fitness and timestamp)
+                    delete_gids = conn.execute(
                         """
-                        DELETE FROM genomes
-                        WHERE gid IN (
-                            SELECT gid FROM genomes
-                            ORDER BY fitness DESC, ts DESC
-                            LIMIT -1 OFFSET ?
-                        )
+                        SELECT gid FROM genomes
+                        ORDER BY fitness DESC, ts DESC
+                        LIMIT -1 OFFSET ?
                         """,
                         (self.max_state,),
-                    )
-                    deleted += overflow
+                    ).fetchall()
+                    
+                    if delete_gids:
+                        gids_to_delete = tuple(str(r["gid"]) for r in delete_gids)
+                        # Execute deletion for selected GIDs
+                        cur_overflow = conn.execute(
+                            f"DELETE FROM genomes WHERE gid IN ({','.join(['?'] * len(gids_to_delete))})",
+                            gids_to_delete
+                        )
+                        deleted_count += cur_overflow.rowcount if cur_overflow.rowcount is not None else 0
+                        logger.info(f"Pruned {overflow} genomes by max_state (kept top {self.max_state}).")
                 conn.commit()
-            return deleted
+            return deleted_count
 
     async def size(self) -> int:
-        """Returns the current number of genome records in the store."""
+        """
+        Returns the current number of genome records in the store.
+
+        Returns:
+            The total count of genomes as an integer.
+        """
         async with self._lock:
             with self._connect() as conn:
                 row = conn.execute("SELECT COUNT(*) AS c FROM genomes").fetchone()
@@ -499,13 +662,15 @@ class SQLiteGenomeStore:
 # PEER METRICS
 # =========================
 
+
 @dataclass(slots=True)
 class PeerMetrics:
     """
     Tracks operational metrics for a single peer, including score,
     success/failure counts, last interaction time, and backoff status.
     """
-    score: float = 1.0  # Represents trustworthiness/reliability
+
+    score: float = 1.0  # Represents trustworthiness/reliability (higher is better)
     successes: int = 0
     failures: int = 0
     last_seen: float = 0.0
@@ -513,23 +678,45 @@ class PeerMetrics:
     backoff_until: float = 0.0
 
     def mark_success(self) -> None:
-        """Updates metrics after a successful interaction with the peer."""
+        """
+        Updates metrics after a successful interaction with the peer.
+        Increases score, resets backoff, and updates last_seen.
+        """
         self.successes += 1
         self.last_seen = time.time()
         self.last_error = ""
-        self.score = min(2.0, self.score * 1.03 + 0.01) # Slowly increase score
+        # Slowly increase score, capped at 2.0
+        self.score = min(2.0, self.score * 1.03 + 0.01)
         self.backoff_until = 0.0
+        logger.debug(f"Peer success. New score: {self.score:.2f}")
 
     def mark_failure(self, error: str) -> None:
-        """Updates metrics after a failed interaction with the peer."""
+        """
+        Updates metrics after a failed interaction with the peer.
+        Decreases score, sets exponential backoff, and records the error.
+
+        Args:
+            error: A string describing the reason for the failure.
+        """
         self.failures += 1
-        self.last_error = error[:200] # Cap error message length
-        self.score = max(0.2, self.score * 0.85) # Decrease score faster
-        delay = min(30.0, 0.5 * (2 ** min(self.failures, 6))) # Exponential backoff, capped at 30s
+        self.last_error = error[:200]  # Cap error message length
+        # Decrease score faster, floored at 0.2
+        self.score = max(0.2, self.score * 0.85)
+        # Exponential backoff: 0.5, 1, 2, 4, 8, 16 seconds, capped at 30s
+        delay = min(30.0, 0.5 * (2**min(self.failures, 6)))
         self.backoff_until = time.time() + delay
+        logger.warning(
+            f"Peer failure (score: {self.score:.2f}, failures: {self.failures}). "
+            f"Backing off for {delay:.1f}s. Error: {self.last_error}"
+        )
 
     def can_attempt(self) -> bool:
-        """Checks if an attempt to contact this peer is allowed based on backoff."""
+        """
+        Checks if an attempt to contact this peer is allowed based on backoff status.
+
+        Returns:
+            True if the current time is beyond the backoff period, False otherwise.
+        """
         return time.time() >= self.backoff_until
 
 
@@ -537,11 +724,13 @@ class PeerMetrics:
 # GOSSIP PROTOCOL
 # =========================
 
+
 class GossipProtocol:
     """
     Implements the core gossip logic, handling message creation,
     validation, and peer synchronization.
     """
+
     def __init__(
         self,
         cfg: GossipConfig,
@@ -557,15 +746,18 @@ class GossipProtocol:
             policy: An optional DeltaPolicy for filtering incoming genomes.
                     Defaults to a policy based on `cfg.min_fitness`.
         """
-        self.cfg = cfg
-        self.store = store
-        self.policy = policy or DeltaPolicy(min_fitness=cfg.min_fitness)
-        self.peers = cfg.peers
+        self.cfg: GossipConfig = cfg
+        self.store: SQLiteGenomeStore = store
+        self.policy: DeltaPolicy = policy or DeltaPolicy(min_fitness=cfg.min_fitness)
+        self.peers: list[str] = cfg.peers
         self.peer_metrics: Dict[str, PeerMetrics] = {p: PeerMetrics() for p in self.peers}
-        self.peer_versions: Dict[str, Dict[str, int]] = {p: {} for p in self.peers}
-        self.replay_cache: Dict[Tuple[str, str], float] = {} # Stores (sender, nonce) -> timestamp
-        self.replay_order: list[Tuple[str, str]] = [] # For LRU-like eviction
-        self._replay_lock = asyncio.Lock()
+        self.peer_versions: Dict[str, Dict[str, int]] = {
+            p: {} for p in self.peers
+        }  # Stores peer's last known versions
+        self.replay_cache: Dict[Tuple[str, str], float] = {}  # Stores (sender, nonce) -> timestamp
+        # Using collections.deque for efficient O(1) appends and pops from both ends
+        self.replay_order: Deque[Tuple[str, str]] = Deque()  # For LRU-like eviction
+        self._replay_lock: asyncio.Lock = asyncio.Lock()
 
     def _make_envelope(self, delta: Dict[str, Dict[str, Any]], versions: Dict[str, int]) -> GossipEnvelope:
         """
@@ -600,12 +792,13 @@ class GossipProtocol:
         key = (sender, nonce)
         async with self._replay_lock:
             if key in self.replay_cache:
+                logger.warning(f"Replay detected: nonce '{nonce}' from sender '{sender}' already in cache.")
                 return False
             self.replay_cache[key] = time.time()
             self.replay_order.append(key)
             # Prune cache if it exceeds max size
             while len(self.replay_order) > self.cfg.replay_cache_size:
-                old = self.replay_order.pop(0)
+                old = self.replay_order.popleft()  # Use popleft for deque
                 self.replay_cache.pop(old, None)
             return True
 
@@ -618,7 +811,12 @@ class GossipProtocol:
         Returns:
             True if the timestamp is fresh enough, False otherwise.
         """
-        return abs(time.time() - ts) <= self.cfg.max_clock_skew_s
+        current_time = time.time()
+        is_fresh = abs(current_time - ts) <= self.cfg.max_clock_skew_s
+        if not is_fresh:
+            logger.warning(f"Stale envelope: message timestamp {ts} (diff {abs(current_time - ts):.2f}s) "
+                           f"exceeds max skew {self.cfg.max_clock_skew_s}s.")
+        return is_fresh
 
     def _peer_allowed(self, peer: str) -> bool:
         """
@@ -630,20 +828,27 @@ class GossipProtocol:
             True if allowed, False otherwise.
         """
         metrics = self.peer_metrics.get(peer)
-        return metrics is not None and metrics.can_attempt()
+        if metrics is None:
+            # If peer is not in metrics, it's new or not configured, assume allowed to initiate contact
+            return True
+        return metrics.can_attempt()
 
     def _choose_peer(self) -> Optional[str]:
         """
         Selects a peer to gossip with, prioritizing healthier peers.
 
         Returns:
-            The URL of a chosen peer, or None if no peers are available.
+            The URL of a chosen peer, or None if no peers are available or all are in backoff.
         """
         candidates = [p for p in self.peers if self._peer_allowed(p)]
         if not candidates:
             return None
         # Choose peers based on their score (higher score = more likely to be chosen)
-        weights = [self.peer_metrics[p].score for p in candidates]
+        weights = [self.peer_metrics.get(p, PeerMetrics()).score for p in candidates]
+        # Normalize weights to avoid issues with all zero or negative (though scores are >=0.2)
+        total_weight = sum(weights)
+        if total_weight == 0: # Should not happen with min score 0.2, but as a safeguard
+            return random.choice(candidates)
         return random.choices(candidates, weights=weights, k=1)[0]
 
     def _filtered_delta(self, delta: Dict[str, Dict[str, Any]], trust: float) -> Dict[str, Dict[str, Any]]:
@@ -652,7 +857,7 @@ class GossipProtocol:
 
         Args:
             delta: The incoming delta of genome records.
-            trust: The trust score of the peer sending the delta.
+            trust: The trust score of the peer sending the delta, used by the policy.
         Returns:
             A new dictionary containing only the accepted genome records.
         """
@@ -660,12 +865,16 @@ class GossipProtocol:
         for gid, genome in delta.items():
             if self.policy.accepts(genome, trust=trust):
                 out[gid] = genome
+            else:
+                logger.debug(f"Rejected genome '{gid}' from incoming delta by policy.")
         return out
 
     async def incoming(self, env_data: Dict[str, Any]) -> web.Response:
         """
         Handles an incoming gossip envelope from another peer.
-        Performs validation, merges deltas, and prepares a response.
+        Performs validation (format, sender, timestamp, signature, replay),
+        merges accepted deltas, and prepares a response containing local versions
+        and deltas for the sender.
 
         Args:
             env_data: The dictionary representation of the incoming envelope.
@@ -674,90 +883,118 @@ class GossipProtocol:
         """
         env = GossipEnvelope.from_dict(env_data)
         if env is None:
+            logger.warning("Rejected incoming gossip: Invalid envelope format.")
             return web.json_response({"error": "invalid_envelope"}, status=400)
 
         if env.sender == self.cfg.node_id:
+            logger.warning(f"Rejected incoming gossip from self ({env.sender}).")
             return web.json_response({"error": "self_message"}, status=400)
 
         if not self._fresh_enough(env.ts):
             return web.json_response({"error": "stale_envelope"}, status=400)
 
         if not env.verify(self.cfg.secret_bytes):
+            logger.warning(f"Rejected incoming gossip from {env.sender}: Bad signature.")
             return web.json_response({"error": "bad_signature"}, status=401)
 
         if not await self._remember_nonce(env.sender, env.nonce):
             return web.json_response({"error": "replay_detected"}, status=409)
 
-        # Initialize metrics for new peers
+        # Initialize metrics for new peers if they connect
         if env.sender not in self.peer_metrics:
+            logger.info(f"Discovered new peer: {env.sender}. Initializing metrics.")
             self.peer_metrics[env.sender] = PeerMetrics()
             self.peer_versions[env.sender] = {}
 
         trust = self.peer_metrics[env.sender].score
-        merged = await self.store.merge_many(self._filtered_delta(env.delta, trust=trust))
+        filtered_delta = self._filtered_delta(env.delta, trust=trust)
+        merged = await self.store.merge_many(filtered_delta)
+        
         local_versions = await self.store.versions()
+        # Calculate delta to send back: what *we* have that the *sender* doesn't know about or has an older version of
         local_delta = await self.store.delta(env.versions)
 
-        self.peer_versions[env.sender] = dict(env.versions) # Store peer's last known versions
-        self.peer_metrics[env.sender].mark_success() # Mark successful interaction
+        # Store peer's last known versions to avoid sending them data they already have next time
+        self.peer_versions[env.sender] = dict(env.versions)
+        self.peer_metrics[env.sender].mark_success()  # Mark successful interaction
 
-        return web.json_response({
-            "ok": True,
-            "merged": merged,
-            "versions": local_versions,
-            "delta": local_delta,
-        })
+        logger.info(f"Processed gossip from {env.sender}: merged {merged} genomes, returning {len(local_delta)} delta items.")
+        return web.json_response(
+            {
+                "ok": True,
+                "merged": merged,
+                "versions": local_versions,
+                "delta": local_delta,
+            }
+        )
 
-    async def sync_once(self, session: aiohttp.ClientSession, peer: str) -> None:
+    async def sync_once(self, session: aiohttp.ClientSession, peer_url: str) -> None:
         """
         Attempts a single gossip synchronization round with a specific peer.
+        Sends our delta and versions, then processes the peer's response.
 
         Args:
-            session: An aiohttp client session.
-            peer: The URL of the peer to sync with.
+            session: An aiohttp client session for making HTTP requests.
+            peer_url: The URL of the peer to sync with (e.g., "http://peer-host:port").
         """
-        # Initialize metrics for new peers if they somehow weren't already
-        if peer not in self.peer_metrics:
-            self.peer_metrics[peer] = PeerMetrics()
-            self.peer_versions[peer] = {}
+        # Initialize metrics for new peers if they weren't already
+        if peer_url not in self.peer_metrics:
+            logger.info(f"Initializing metrics for peer {peer_url}.")
+            self.peer_metrics[peer_url] = PeerMetrics()
+            self.peer_versions[peer_url] = {}
 
-        if not self._peer_allowed(peer):
-            return # Skip if peer is in backoff
+        if not self._peer_allowed(peer_url):
+            logger.debug(f"Skipping sync with {peer_url}: currently in backoff.")
+            return  # Skip if peer is in backoff
 
         try:
-            known_versions = self.peer_versions.get(peer, {})
+            known_versions = self.peer_versions.get(peer_url, {})
             local_versions = await self.store.versions()
-            local_delta = await self.store.delta(known_versions) # Send what peer doesn't have
-            env = self._make_envelope(local_delta, local_versions)
+            # Determine what we need to send to the peer based on what they *don't* know
+            local_delta_to_send = await self.store.delta(known_versions)
+            env = self._make_envelope(local_delta_to_send, local_versions)
 
+            logger.debug(f"Syncing with {peer_url}: sending {len(local_delta_to_send)} delta items.")
             async with session.post(
-                f"{peer}/gossip",
+                f"{peer_url}/gossip",
                 json=env.to_dict(),
                 timeout=self.cfg.request_timeout_s,
             ) as resp:
-                resp.raise_for_status() # Raise an exception for bad status codes (4xx, 5xx)
+                resp.raise_for_status()  # Raise an exception for bad status codes (4xx, 5xx)
                 data = await resp.json()
 
+            # Process response from peer
             remote_versions = data.get("versions", {})
             remote_delta = data.get("delta", {})
 
-            if isinstance(remote_versions, dict):
-                # Update our knowledge of the peer's versions
-                self.peer_versions[peer] = {str(k): int(v) for k, v in remote_versions.items()}
+            if not isinstance(remote_versions, dict) or not isinstance(remote_delta, dict):
+                raise ValueError("Invalid response data structure from peer.")
 
-            if isinstance(remote_delta, dict):
-                # Merge incoming delta from peer
-                trust = self.peer_metrics[peer].score
-                await self.store.merge_many(self._filtered_delta(remote_delta, trust=trust))
+            # Update our knowledge of the peer's versions
+            self.peer_versions[peer_url] = {str(k): int(v) for k, v in remote_versions.items()}
 
-            self.peer_metrics[peer].mark_success()
+            # Merge incoming delta from peer, applying policy based on peer's trust score
+            trust = self.peer_metrics[peer_url].score
+            filtered_remote_delta = self._filtered_delta(remote_delta, trust=trust)
+            merged_count = await self.store.merge_many(filtered_remote_delta)
+
+            self.peer_metrics[peer_url].mark_success()
+            logger.info(
+                f"Successfully synced with {peer_url}. "
+                f"Merged {merged_count} remote genomes. "
+                f"Peer's new score: {self.peer_metrics[peer_url].score:.2f}"
+            )
 
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, KeyError, TypeError) as e:
-            # Handle network, JSON parsing, or data structure errors
-            self.peer_metrics[peer].mark_failure(str(e))
+            # Handle network, JSON parsing, or data structure errors from peer response
+            error_msg = f"Failed to sync with {peer_url} due to client/protocol error: {e}"
+            logger.error(error_msg, exc_info=False) # No full traceback unless needed
+            self.peer_metrics[peer_url].mark_failure(error_msg)
         except Exception as e:
-            # Catch any other unexpected exceptions
-            self.peer_metrics[peer].mark_failure(str(e))
+            # Catch any other unexpected exceptions during sync
+            error_msg = f"Unexpected error during sync with {peer_url}: {e}"
+            logger.error(error_msg, exc_info=True)
+            self.peer_metrics[peer_url].mark_failure(error_msg)
 
     async def sync_loop(self) -> None:
         """
@@ -767,17 +1004,26 @@ class GossipProtocol:
         # Add a small buffer to the total timeout to account for network latency and processing
         timeout = aiohttp.ClientTimeout(total=self.cfg.request_timeout_s + 1.0)
         async with aiohttp.ClientSession(timeout=timeout) as session:
+            logger.info(f"Gossip sync loop started. Interval: {self.cfg.gossip_interval_s}s.")
             while True:
                 peer = self._choose_peer()
                 if peer:
+                    logger.debug(f"Chosen peer for sync: {peer}")
                     await self.sync_once(session, peer)
+                else:
+                    logger.debug("No eligible peers to sync with at this time.")
                 await asyncio.sleep(self.cfg.gossip_interval_s)
 
     def stats(self) -> Dict[str, Any]:
-        """Returns current statistics about the gossip protocol and peer metrics."""
+        """
+        Returns current statistics about the gossip protocol and peer metrics.
+
+        Returns:
+            A dictionary containing node ID, peer list, and detailed peer metrics.
+        """
         return {
             "node_id": self.cfg.node_id,
-            "peers": self.peers,
+            "configured_peers": self.peers,
             "peer_metrics": {peer: asdict(metrics) for peer, metrics in self.peer_metrics.items()},
         }
 
@@ -786,11 +1032,13 @@ class GossipProtocol:
 # NODE + HTTP APP
 # =========================
 
+
 class GossipNode:
     """
     Manages the lifecycle of a gossip node, integrating the configuration,
-    storage, protocol, and exposing HTTP endpoints.
+    storage, protocol, and exposing HTTP endpoints via aiohttp.
     """
+
     def __init__(self, cfg: GossipConfig, policy: Optional[DeltaPolicy] = None):
         """
         Initializes the GossipNode.
@@ -799,24 +1047,27 @@ class GossipNode:
             cfg: The gossip configuration.
             policy: An optional DeltaPolicy for filtering incoming genomes.
         """
-        self.cfg = cfg
-        self.store = SQLiteGenomeStore(cfg.sqlite_path, cfg.node_id, cfg.ttl_s, cfg.max_state)
-        self.protocol = GossipProtocol(cfg, self.store, policy=policy)
+        self.cfg: GossipConfig = cfg
+        self.store: SQLiteGenomeStore = SQLiteGenomeStore(cfg.sqlite_path, cfg.node_id, cfg.ttl_s, cfg.max_state)
+        self.protocol: GossipProtocol = GossipProtocol(cfg, self.store, policy=policy)
         self._bg_tasks: list[asyncio.Task] = []
 
     def build_app(self) -> web.Application:
         """
         Builds and configures the aiohttp web application for the gossip node.
+        Registers routes and startup/cleanup hooks.
 
         Returns:
             The configured aiohttp.web.Application instance.
         """
         app = web.Application()
-        app.add_routes([
-            web.post("/gossip", self.handle_gossip),
-            web.get("/health", self.handle_health),
-            web.get("/stats", self.handle_stats),
-        ])
+        app.add_routes(
+            [
+                web.post("/gossip", self.handle_gossip),
+                web.get("/health", self.handle_health),
+                web.get("/stats", self.handle_stats),
+            ]
+        )
         app.on_startup.append(self.on_startup)
         app.on_cleanup.append(self.on_cleanup)
         return app
@@ -828,67 +1079,105 @@ class GossipNode:
         Args:
             app: The aiohttp application instance.
         """
-        self._bg_tasks.append(asyncio.create_task(self.protocol.sync_loop()))
-        self._bg_tasks.append(asyncio.create_task(self._prune_loop()))
+        logger.info("GossipNode starting up...")
+        self._bg_tasks.append(asyncio.create_task(self.protocol.sync_loop(), name="gossip_sync_loop"))
+        self._bg_tasks.append(asyncio.create_task(self._prune_loop(), name="gossip_prune_loop"))
+        logger.info("Background tasks for gossip sync and pruning started.")
 
     async def on_cleanup(self, app: web.Application) -> None:
         """
-        Aiohttp cleanup hook. Cancels all running background tasks.
+        Aiohttp cleanup hook. Cancels all running background tasks gracefully.
 
         Args:
             app: The aiohttp application instance.
         """
+        logger.info("GossipNode shutting down. Cancelling background tasks...")
         for task in self._bg_tasks:
             task.cancel()
         # Wait for all tasks to finish cancellation, ignoring exceptions
         await asyncio.gather(*self._bg_tasks, return_exceptions=True)
+        logger.info("Background tasks cancelled. GossipNode cleanup complete.")
 
     async def _prune_loop(self) -> None:
         """
         Periodically prunes the genome store based on configured TTL and max_state.
         """
-        # Prune more frequently than TTL to ensure timely cleanup
+        prune_interval = max(5.0, self.cfg.ttl_s / 4)
+        logger.info(f"Prune loop started. Pruning every {prune_interval:.1f}s.")
         while True:
-            await asyncio.sleep(max(5.0, self.cfg.ttl_s / 4))
-            await self.store.prune()
+            await asyncio.sleep(prune_interval)
+            try:
+                deleted_count = await self.store.prune()
+                if deleted_count > 0:
+                    logger.debug(f"Pruned {deleted_count} records from the store.")
+            except Exception as e:
+                logger.error(f"Error during pruning: {e}", exc_info=True)
 
     async def handle_gossip(self, request: web.Request) -> web.Response:
         """
         HTTP POST handler for incoming gossip messages.
+        Parses the JSON payload and passes it to the gossip protocol for processing.
+
+        Args:
+            request: The aiohttp request object.
+        Returns:
+            An aiohttp web.Response.
         """
         try:
             payload = await request.json()
-        except Exception:
+        except json.JSONDecodeError:
+            logger.warning(f"Received invalid JSON from {request.remote}")
             return web.json_response({"error": "invalid_json"}, status=400)
+        except Exception as e:
+            logger.error(f"Error reading JSON from request: {e}", exc_info=True)
+            return web.json_response({"error": "request_payload_error"}, status=400)
         return await self.protocol.incoming(payload)
 
     async def handle_health(self, request: web.Request) -> web.Response:
         """
         HTTP GET handler for health checks.
+        Provides basic node status information.
+
+        Args:
+            request: The aiohttp request object.
+        Returns:
+            An aiohttp web.Response with health status.
         """
-        return web.json_response({
-            "ok": True,
-            "node_id": self.cfg.node_id,
-            "peer_count": len(self.cfg.peers),
-        })
+        return web.json_response(
+            {
+                "ok": True,
+                "node_id": self.cfg.node_id,
+                "peer_count": len(self.cfg.peers),
+                "status": "running",
+            }
+        )
 
     async def handle_stats(self, request: web.Request) -> web.Response:
         """
         HTTP GET handler for node statistics, including store size and protocol metrics.
+
+        Args:
+            request: The aiohttp request object.
+        Returns:
+            An aiohttp web.Response with node statistics.
         """
         size = await self.store.size()
-        return web.json_response({
-            "node_id": self.cfg.node_id,
-            "store_size": size,
-            "protocol": self.protocol.stats(),
-        })
+        return web.json_response(
+            {
+                "node_id": self.cfg.node_id,
+                "store_size": size,
+                "protocol": self.protocol.stats(),
+            }
+        )
 
 
 def main() -> None:
     """
     Main entry point for running the GossipNode as an aiohttp web application.
+    Initializes configuration and starts the web server.
     """
     cfg = GossipConfig()
+    logger.info(f"Starting GossipNode with ID: {cfg.node_id}, binding to {cfg.bind_host}:{cfg.port}")
     node = GossipNode(cfg)
     app = node.build_app()
     web.run_app(app, host=cfg.bind_host, port=cfg.port)

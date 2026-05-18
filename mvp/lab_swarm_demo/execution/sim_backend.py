@@ -1,5 +1,5 @@
 """
-Исполнение в симуляции — просто обновляем капитал.
+Execution in simulation – simply update capital.
 """
 import random
 from typing import Dict, Any
@@ -39,14 +39,28 @@ class SimExecutionBackend(ExecutionBackend):
         Returns:
             A dictionary containing the result of the simulated order execution,
             including success status, new capital, and simulation status.
+            Example:
+            {
+                "success": True,
+                "new_capital": 1005.50,
+                "tx_hash": None,
+                "status": "simulated",
+                "error": None,
+            }
         """
-        # Эмулируем простую симуляцию: капитал растёт или падает случайно
-        change: float = price * amount * random.uniform(-0.01, 0.02)
+        # Emulate a simple simulation: capital grows or falls randomly
+        # The change is based on a random percentage of the trade value (price * amount).
+        # It ranges from -1% to +2% of the trade value.
+        trade_value: float = price * amount
+        change_percentage: float = random.uniform(-0.01, 0.02)
+        change: float = trade_value * change_percentage
+        
         new_capital: float = capital + change
+        
         return {
             "success": True,
             "new_capital": new_capital,
-            "tx_hash": None,
+            "tx_hash": None,  # No transaction hash in simulation
             "status": "simulated",
             "error": None,
         }

@@ -12,73 +12,97 @@ from src.core.crdt_layer import GenomeCRDT, CRDTStorage
 from src.security.gossip_envelope import GossipEnvelope, verify_envelope, b64decode
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from src.core.gossip_filter import GossipFilter
-from swarm_config import config   # добавляем для единообразного доступа к настройкам
+from swarm_config import config
 
 logger = logging.getLogger(__name__)
 
-# Removed duplicate import: from swarm_config import config
-DB_PATH = config.crdt_db_path
+# It's generally better to read config values at usage or pass them,
+# but if DB_PATH is truly global and static after config load, this is acceptable.
+# The original code used `config.crdt_db_path` directly in `__init__`,
+# making this global DB_PATH potentially redundant or misleading if `db_path` arg is used.
+# Removing DB_PATH global and relying on config.crdt_db_path or passed db_path for clarity.
+# DB_PATH = config.crdt_db_path # Removed to avoid confusion with `db_path` argument
+
+# Forward declaration for QuarantineBuffer to avoid circular imports at module level
+class QuarantineBuffer:
+    # This is a dummy class for type hinting, the real one is imported conditionally
+    def __init__(self, memory_api: Any, reputation: Any) -> None: pass
+    async def process(self, genome: Dict[str, Any]) -> None: pass
+
 
 class CRDTAdapter:
     """
-    An adapter that integrates GenomeCRDT with SQLite persistence.
-    Compatible with the existing node_agent.py.
+    Адаптер, интегрирующий GenomeCRDT с SQLite-персистентностью.
+    Предоставляет интерфейс, совместимый с `node_agent.py`, позволяя использовать
+    распределенную структуру данных CRDT для управления геномами.
     """
+    # Type hints for instance attributes initialized outside __init__ or in conditional branches
     _seen_nonces: Dict[str, Set[str]]
     _last_seq: Dict[str, int]
-    quarantine: Optional["QuarantineBuffer"] # Forward reference for QuarantineBuffer
+    quarantine: Optional[QuarantineBuffer] # Use the dummy class for type hinting
 
-    def __init__(self, node_id: str, memory_api: Optional[Any] = None, reputation: Optional[Any] = None, db_path: Optional[str] = None) -> None:
+    def __init__(self,
+                 node_id: str,
+                 memory_api: Optional[Any] = None, # Type could be more specific, e.g., 'MemoryAPI'
+                 reputation: Optional[Any] = None, # Type could be more specific, e.g., 'ReputationSystem'
+                 db_path: Optional[str] = None) -> None:
         """
-        Initializes the CRDTAdapter.
+        Инициализирует CRDTAdapter.
 
         Args:
-            node_id (str): The ID of the current node.
-            memory_api (Optional[Any]): The memory API object, if available.
-            reputation (Optional[Any]): The reputation object, if available.
-            db_path (Optional[str]): The path to the SQLite database file.
-                                      If None, uses `config.crdt_db_path`.
+            node_id (str): Уникальный идентификатор текущего узла.
+            memory_api (Optional[Any]): Объект API памяти, если доступен.
+                                        Используется для взаимодействия с модулем памяти.
+            reputation (Optional[Any]): Объект системы репутации, если доступен.
+                                        Используется для оценки доверия к сообщениям.
+            db_path (Optional[str]): Путь к файлу базы данных SQLite.
+                                      Если None, используется значение из `config.crdt_db_path`.
         """
         self.node_id = node_id
         # Если db_path не передан, используем значение из конфига
         path = db_path or config.crdt_db_path
-        storage = CRDTStorage(path)
-        self.crdt = GenomeCRDT(node_id, storage=storage)
-        self.storage = storage
-        self._seen_nonces = {}
-        self._last_seq = {}
+        self.storage: CRDTStorage = CRDTStorage(path)
+        self.crdt: GenomeCRDT = GenomeCRDT(node_id, storage=self.storage)
+        self._seen_nonces = {} # Tracks nonces for each sender_node_id to prevent replay attacks
+        self._last_seq = {} # Tracks last sequence number for each sender_node_id for ordered delivery
         self.memory_api = memory_api
         self.reputation = reputation
         self.gossip_filter = GossipFilter(max_clock_skew_ms=10_000)
+        self.quarantine: Optional[QuarantineBuffer] = None
+
         if memory_api and reputation:
+            # Import QuarantineBuffer here to avoid circular dependencies
+            # if memory_api or reputation themselves depend on CRDTAdapter.
             from src.memory.quarantine import QuarantineBuffer
             self.quarantine = QuarantineBuffer(memory_api, reputation)
-        else:
-            self.quarantine = None
 
     async def add_genome(self, genome: Dict[str, Any]) -> str:
         """
-        Добавляет геном и возвращает gid.
-        Handles gossip envelopes, custom data types, and standard genome payloads.
+        Добавляет геном или обрабатывает входящий gossip-конверт, сохраняя данные в CRDT.
+
+        Этот метод интеллектуально определяет тип входящих данных:
+        1. GossipEnvelope: Верифицирует подпись (если включено), применяет фильтры,
+           обрабатывает карантин для фактов памяти, затем извлекает и добавляет payload.
+        2. Пользовательские типы данных (напр., heartbeat, meta_command): Сохраняет их
+           как есть, если они содержат поле "type".
+        3. Стандартный геном: Преобразует в канонический формат и сохраняет.
 
         Args:
-            genome (Dict[str, Any]): The genome or gossip envelope to add.
+            genome (Dict[str, Any]): Геном или gossip-конверт, который необходимо добавить.
 
         Returns:
-            str: The globally unique ID (gid) of the added genome, or an empty string
-                 if the genome was invalid or rejected.
+            str: Глобально уникальный идентификатор (GID) добавленного генома.
+                 Возвращает пустую строку, если геном был недействителен или отклонен.
         """
-        # Store original genome for later checks if it wasn't a gossip envelope
-        original_genome = genome
-        sender_id = "local" # Default sender for logging
+        sender_id: str = "local" # Default sender for logging, updated if it's a gossip envelope
+        processed_payload: Dict[str, Any] = genome # Payload might be updated from envelope
 
         # --- ПРОВЕРКА НА GOSSIP ENVELOPE ---
         if isinstance(genome, dict) and genome.get("domain") == "blackswan-gossip-v1":
-            # Используем единый источник конфигурации
             try:
                 envelope = GossipEnvelope(**genome)
-            except Exception:
-                logger.warning("Invalid envelope format, discarding")
+            except Exception as e:
+                logger.warning(f"Invalid gossip envelope format, discarding: {e}")
                 return ""
 
             sender_id = envelope.sender_node_id # Update sender_id for logging
@@ -91,90 +115,97 @@ class CRDTAdapter:
                 timestamp_ms=envelope.timestamp_ms,
                 ttl_ms=envelope.ttl_ms
             ):
-                logger.warning("Gossip message rejected by filter")
+                logger.warning(
+                    f"Gossip message from {envelope.sender_node_id} "
+                    f"with nonce {envelope.nonce} rejected by filter."
+                )
                 return ""
 
             if config.gossip_signing_enabled:
                 # Декодируем публичный ключ из base64
                 try:
-                    sender_pubkey_bytes = b64decode(envelope.sender_pubkey)
-                    pubkey = Ed25519PublicKey.from_public_bytes(sender_pubkey_bytes)
-                except Exception:
-                    logger.warning("Invalid public key in envelope, discarding")
+                    sender_pubkey_bytes: bytes = b64decode(envelope.sender_pubkey)
+                    pubkey: Ed25519PublicKey = Ed25519PublicKey.from_public_bytes(sender_pubkey_bytes)
+                except Exception as e:
+                    logger.warning(f"Invalid public key in envelope from {sender_id}, discarding: {e}")
                     return ""
 
                 now_ms = int(time.time() * 1000)
                 seen_nonces = self._seen_nonces.setdefault(envelope.sender_node_id, set())
                 last_seq = self._last_seq.get(envelope.sender_node_id, -1)
+
                 valid, reason = verify_envelope(envelope, pubkey, seen_nonces, last_seq, now_ms)
                 if not valid:
-                    logger.warning(f"Ignoring invalid signed genome: {reason}")
+                    logger.warning(f"Ignoring invalid signed genome from {sender_id}: {reason}")
                     return ""
+
                 seen_nonces.add(envelope.nonce)
                 self._last_seq[envelope.sender_node_id] = envelope.seq_no
-
-                genome = envelope.payload
+                processed_payload = envelope.payload
 
                 # --- КАРАНТИН ДЛЯ memory.fact ---
-                if self.quarantine and envelope.payload_type == "memory.fact" and config.quarantine_enabled:
-                    await self.quarantine.process(genome)
+                if (self.quarantine and envelope.payload_type == "memory.fact"
+                        and config.quarantine_enabled):
+                    await self.quarantine.process(processed_payload)
 
             else:
-                # Проверка подписи отключена, но фильтр всё равно применяем
-                # Envelope already parsed above
-                genome = envelope.payload
+                # Проверка подписи отключена, но фильтр уже применен выше.
+                # Извлекаем payload без проверки подписи.
+                processed_payload = envelope.payload
 
-                # --- КАРАНТИН ДЛЯ memory.fact ---
-                # Added config.quarantine_enabled check for consistency with the signed path
-                if self.quarantine and envelope.payload_type == "memory.fact" and config.quarantine_enabled:
-                    await self.quarantine.process(genome)
+                # --- КАРАНТИН ДЛЯ memory.fact (даже если подпись отключена) ---
+                if (self.quarantine and envelope.payload_type == "memory.fact"
+                        and config.quarantine_enabled):
+                    await self.quarantine.process(processed_payload)
 
         # --- Пользовательские типы данных (heartbeat, meta_command и т.д.) ---
-        # Note: 'genome' might have been updated to 'envelope.payload' at this point
-        if isinstance(genome, dict) and "type" in genome:
-            gid = genome.get("gid") or str(uuid.uuid4())
+        # Note: 'processed_payload' holds the actual data after potential envelope unwrapping
+        if isinstance(processed_payload, dict) and "type" in processed_payload:
+            gid: str = processed_payload.get("gid") or str(uuid.uuid4())
             # Сохраняем как есть, не преобразуем в стандартный genome
-            self.crdt.upsert(gid, genome)
-            logger.info(f"✅ Custom data imported: {gid[:8]}... (type={genome.get('type')})")
+            self.crdt.upsert(gid, processed_payload)
+            logger.info(f"✅ Custom data imported: {gid[:8]}... (type={processed_payload.get('type')}) from {sender_id}")
             return gid
 
         # --- Обычная обработка genome ---
-        gid = genome.get("gid") or str(uuid.uuid4())
-        payload = {
-            "params": genome.get("params", {}),
-            "fitness": genome.get("fitness", 0.0),
-            "niche": genome.get("niche", "exploration"),
-            "origin": genome.get("origin", self.node_id),
-            "lineage": genome.get("lineage", [self.node_id]),
-            "ts": genome.get("ts", time.time()),
-            "ver": genome.get("ver", 0),
-            "node": genome.get("node", self.node_id),
+        gid = processed_payload.get("gid") or str(uuid.uuid4())
+        payload_to_upsert: Dict[str, Any] = {
+            "params": processed_payload.get("params", {}),
+            "fitness": processed_payload.get("fitness", 0.0),
+            "niche": processed_payload.get("niche", "exploration"),
+            "origin": processed_payload.get("origin", self.node_id), # Origin could be remote or local
+            "lineage": processed_payload.get("lineage", [self.node_id]),
+            "ts": processed_payload.get("ts", time.time()),
+            "ver": processed_payload.get("ver", 0),
+            "node": processed_payload.get("node", self.node_id), # Node that processed it, typically local
         }
-        self.crdt.upsert(gid, payload)
-        # Fixed: Use 'sender_id' which is correctly set for gossip or defaults to 'local'
+        self.crdt.upsert(gid, payload_to_upsert)
+        # Use 'sender_id' which is correctly set for gossip or defaults to 'local'
         logger.info(f"✅ Genome imported: {gid[:8]}... from {sender_id}")
         return gid
 
     async def merge(self, remote_items: Dict[str, Dict[str, Any]]) -> None:
         """
-        Merges remote genome items into the local CRDT state.
+        Объединяет удаленные элементы генома с локальным состоянием CRDT.
+        В настоящее время просто выполняет 'upsert' для каждого элемента.
 
         Args:
-            remote_items (Dict[str, Dict[str, Any]]): A dictionary of genome items
-                                                      where keys are GIDs and values are genome payloads.
+            remote_items (Dict[str, Dict[str, Any]]): Словарь элементов генома,
+                                                      где ключи — это GID, а значения — это payloads генома.
         """
         for gid, genome in remote_items.items():
             self.crdt.upsert(gid, genome)
 
     async def get_nonce(self, account: str) -> int:
         """
-        Retrieves the current nonce for a given account.
+        Извлекает текущий nonce для заданного аккаунта.
+        Nonce хранится как специальный CRDT-запись.
 
         Args:
-            account (str): The account identifier.
+            account (str): Идентификатор аккаунта.
 
         Returns:
-            int: The current nonce, defaults to 0 if not found.
+            int: Текущее значение nonce, по умолчанию 0, если не найдено.
         """
         gid = f"nonce:{account}"
         state = self.crdt.state()
@@ -185,35 +216,36 @@ class CRDTAdapter:
 
     async def set_nonce(self, account: str, nonce: int) -> None:
         """
-        Sets the nonce for a given account.
+        Устанавливает nonce для заданного аккаунта.
 
         Args:
-            account (str): The account identifier.
-            nonce (int): The new nonce value.
+            account (str): Идентификатор аккаунта.
+            nonce (int): Новое значение nonce.
         """
         gid = f"nonce:{account}"
-        data = {
+        data: Dict[str, Any] = {
             "key": gid,
             "value": nonce,
             "timestamp": time.time(),
             "node_id": self.node_id,
+            "type": "nonce_record", # Added a 'type' for easier identification in CRDT state
         }
         self.crdt.upsert(gid, data)
 
     async def get_delta(self, known_versions: Dict[str, int]) -> Dict[str, Dict[str, Any]]:
         """
-        Calculates the delta (new or updated genomes) since a given set of known versions.
+        Вычисляет дельту (новые или обновленные геномы) по сравнению с известным набором версий.
 
         Args:
-            known_versions (Dict[str, int]): A dictionary of GID to version number
-                                              representing the caller's knowledge.
+            known_versions (Dict[str, int]): Словарь GID к номеру версии,
+                                              представляющий знания вызывающей стороны.
 
         Returns:
-            Dict[str, Dict[str, Any]]: A dictionary of GIDs and their full genome payloads
-                                        that are newer than the provided known_versions.
+            Dict[str, Dict[str, Any]]: Словарь GID и их полных payloads генома,
+                                        которые новее, чем предоставленные `known_versions`.
         """
         all_state = self.crdt.state()
-        delta = {}
+        delta: Dict[str, Dict[str, Any]] = {}
         for gid, payload in all_state.items():
             ver = payload.get("ver", 0)
             if gid not in known_versions or known_versions[gid] < ver:
@@ -222,61 +254,64 @@ class CRDTAdapter:
 
     async def get_versions(self) -> Dict[str, int]:
         """
-        Retrieves the current version (ver field) for all active genomes.
+        Извлекает текущую версию (поле 'ver') для всех активных геномов.
 
         Returns:
-            Dict[str, int]: A dictionary of GID to version number.
+            Dict[str, int]: Словарь GID к номеру версии.
         """
         all_state = self.crdt.state()
         return {gid: payload.get("ver", 0) for gid, payload in all_state.items()}
 
     async def get_top(self, n: int = 5) -> List[Dict[str, Any]]:
         """
-        Retrieves the top 'n' genomes based on their 'fitness' score.
+        Извлекает 'n' лучших геномов на основе их показателя 'fitness'.
 
         Args:
-            n (int): The number of top genomes to retrieve. Defaults to 5.
+            n (int): Количество лучших геномов для извлечения. По умолчанию 5.
 
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries, each representing a genome.
+            List[Dict[str, Any]]: Список словарей, каждый из которых представляет геном.
         """
         all_state = self.crdt.state()
+        # Sort based on 'fitness', defaulting to 0.0 if not present
         sorted_genomes = sorted(all_state.values(), key=lambda x: x.get("fitness", 0.0), reverse=True)
         return sorted_genomes[:n]
 
     async def prune(self) -> None:
         """
-        Placeholder for pruning logic. Currently does nothing.
+        Заглушка для логики обрезки (pruning). В текущей реализации не выполняет никаких действий.
+        Метод предусмотрен для будущих расширений, где может потребоваться удаление старых или
+        нерелевантных геномов из CRDT.
         """
         pass
 
     async def prune_heartbeats(self, max_age_seconds: int = 600) -> None:
         """
-        Удаляет heartbeats старше max_age_seconds.
+        Удаляет записи 'heartbeat' из CRDT, которые старше `max_age_seconds`.
 
         Args:
-            max_age_seconds (int): The maximum age in seconds for heartbeats
-                                   before they are pruned. Defaults to 600 seconds (10 minutes).
+            max_age_seconds (int): Максимальный возраст в секундах для сердцебиений,
+                                   прежде чем они будут удалены. По умолчанию 600 секунд (10 минут).
         """
         now = time.time()
-        to_delete = []
+        to_delete: List[str] = []
         for k, v in self.crdt.state().items():
             if isinstance(v, dict) and v.get("type") == "heartbeat":
-                ts = v.get("timestamp", 0)
+                ts = v.get("timestamp", 0.0) # Ensure type is float for comparison
                 if now - ts > max_age_seconds:
                     to_delete.append(k)
         for k in to_delete:
             self.crdt.delete(k)
         if to_delete:
-            logger.info(f"Pruned {len(to_delete)} old heartbeats from CRDT")
+            logger.info(f"Pruned {len(to_delete)} old heartbeats from CRDT.")
 
     @property
     def state(self) -> Dict[str, Dict[str, Any]]:
         """
-        Returns the current state of the CRDT, excluding deleted records.
+        Возвращает текущее состояние CRDT, исключая удаленные записи (tombstones).
 
         Returns:
-            Dict[str, Dict[str, Any]]: A dictionary where keys are GIDs and values are
-                                        the active genome payloads.
+            Dict[str, Dict[str, Any]]: Словарь, где ключи — это GID, а значения —
+                                        активные payloads генома.
         """
         return self.crdt.state()

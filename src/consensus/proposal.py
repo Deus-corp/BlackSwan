@@ -12,6 +12,7 @@ In the future, this will manage:
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,25 +21,60 @@ class Proposal:
     """
     A trade proposal that needs approval from multiple swarm nodes.
     Currently a stub that always returns "approved".
+
+    Attributes:
+        proposer_node_id (str): The ID of the node that initiated the proposal.
+        action (str): The proposed action (e.g., 'buy', 'sell').
+        amount (float): The amount associated with the action.
+        symbol (str): The asset symbol (e.g., 'BTC', 'ETH').
+        signatures (dict[str, str]): A dictionary mapping node IDs to their cryptographic signatures for this proposal.
     """
 
-    def __init__(self, proposer_node_id: str, action: str, amount: float, symbol: str):
-        self.proposer_node_id = proposer_node_id
-        self.action = action
-        self.amount = amount
-        self.symbol = symbol
-        self.signatures: dict = {}
+    def __init__(self, proposer_node_id: str, action: str, amount: float, symbol: str) -> None:
+        """
+        Initialises a new Proposal.
+
+        Args:
+            proposer_node_id (str): The ID of the node initiating the proposal.
+            action (str): The specific action proposed (e.g., 'buy', 'sell').
+            amount (float): The quantity or value involved in the proposal.
+            symbol (str): The asset symbol relevant to the proposal.
+        """
+        self.proposer_node_id: str = proposer_node_id
+        self.action: str = action
+        self.amount: float = amount
+        self.symbol: str = symbol
+        self.signatures: dict[str, str] = {}
 
     def sign(self, node_id: str, signature: str) -> None:
-        """Add a node's cryptographic signature to the proposal."""
+        """
+        Adds a node's cryptographic signature to the proposal.
+
+        Args:
+            node_id (str): The ID of the node providing the signature.
+            signature (str): The cryptographic signature from the node.
+        """
         self.signatures[node_id] = signature
 
     def is_approved(self, quorum: int = 3) -> bool:
-        """Check if enough signatures have been collected."""
+        """
+        Checks if enough signatures have been collected to approve the proposal.
+
+        Args:
+            quorum (int): The minimum number of signatures required for approval. Defaults to 3.
+
+        Returns:
+            bool: True if the number of collected signatures meets or exceeds the quorum, False otherwise.
+        """
         return len(self.signatures) >= quorum
 
-    def to_message(self) -> dict:
-        """Serialise the proposal for gossip transmission."""
+    def to_message(self) -> dict[str, Any]:
+        """
+        Serialises the proposal into a dictionary suitable for gossip transmission or storage.
+
+        Returns:
+            dict[str, Any]: A dictionary representation of the proposal, including signatures.
+        """
         return {
             "proposer_node_id": self.proposer_node_id,
             "action": self.action,
@@ -53,17 +89,47 @@ class ConsensusManager:
     Placeholder for the consensus engine.
     Will eventually handle proposal creation, signature collection,
     Multi-Sig Safe interaction, and final transaction submission.
+
+    Attributes:
+        node_id (str): The ID of the node this manager is associated with.
     """
 
-    def __init__(self, node_id: str):
-        self.node_id = node_id
+    def __init__(self, node_id: str) -> None:
+        """
+        Initialises the ConsensusManager for a specific node.
+
+        Args:
+            node_id (str): The ID of the current node.
+        """
+        self.node_id: str = node_id
         logger.info(f"ConsensusManager initialised (stub) for node {node_id}")
 
     def create_proposal(self, action: str, amount: float, symbol: str) -> Proposal:
-        """Create a new proposal and return it."""
+        """
+        Creates a new trade proposal initiated by this node.
+
+        Args:
+            action (str): The proposed action (e.g., 'buy', 'sell').
+            amount (float): The amount involved in the proposal.
+            symbol (str): The asset symbol.
+
+        Returns:
+            Proposal: The newly created Proposal object.
+        """
         return Proposal(self.node_id, action, amount, symbol)
 
     def process_signature(self, proposal: Proposal, node_id: str, signature: str) -> bool:
-        """Process an incoming signature for a proposal."""
+        """
+        Processes an incoming signature for a given proposal.
+        Adds the signature and then checks if the proposal is approved.
+
+        Args:
+            proposal (Proposal): The proposal object to which the signature belongs.
+            node_id (str): The ID of the node that provided the signature.
+            signature (str): The cryptographic signature string.
+
+        Returns:
+            bool: True if the proposal is approved after adding this signature, False otherwise.
+        """
         proposal.sign(node_id, signature)
         return proposal.is_approved()

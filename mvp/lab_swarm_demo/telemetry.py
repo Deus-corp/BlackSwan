@@ -1,11 +1,13 @@
 """
-Telemetry – единый слой наблюдаемости (логи, события, метрики, Telegram).
+Telemetry – a unified observability layer (logs, events, metrics, Telegram).
 """
 import logging
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, Optional
 from src.core.events import Event
-from swarm_config import config
-from mvp.lab_swarm_demo.mutation_metrics import get_llm_stats, update_llm_impact
+# from swarm_config import config # Unused import, can be removed if not needed elsewhere
+# Mypy might complain about relative imports if src is not properly configured in path.
+# Assuming 'src' is importable.
+# from mvp.lab_swarm_demo.mutation_metrics import get_llm_stats, update_llm_impact # These are passed as callables now
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +30,29 @@ class Telemetry:
             get_llm_stats_func: A callable function to retrieve LLM statistics. Expected to return a dict.
             update_llm_impact_func: A callable function to update LLM impact based on current capital.
         """
-        self.node_id = node_id
-        self.event_store = event_store
-        self.telegram = telegram_notifier
-        self._get_llm_stats = get_llm_stats_func
-        self._update_llm_impact = update_llm_impact_func
+        self.node_id: str = node_id
+        self.event_store: Any = event_store
+        self.telegram: Any = telegram_notifier
+        self._get_llm_stats: Callable[[], Dict[str, Any]] = get_llm_stats_func
+        self._update_llm_impact: Callable[[float], None] = update_llm_impact_func
 
     async def trade(self, step: int, symbol: str, side: str, amount: float,
                     tx_hash: str, status: str, capital_before: float,
                     capital_after: float, trace_id: str) -> None:
-        """Запись события сделки и уведомление."""
+        """
+        Records a trade event and sends a Telegram notification.
+
+        Args:
+            step: The current simulation step.
+            symbol: The trading symbol (e.g., "BTC/USDT").
+            side: The trade side ("buy" or "sell").
+            amount: The amount traded.
+            tx_hash: The transaction hash.
+            status: The status of the trade (e.g., "filled", "pending").
+            capital_before: The node's capital before the trade.
+            capital_after: The node's capital after the trade.
+            trace_id: A unique identifier for the transaction/action chain.
+        """
         self.event_store.append(Event.create(
             node_id=self.node_id,
             event_type="trade_executed",
@@ -68,8 +83,21 @@ class Telemetry:
     def heartbeat(self, step: int, capital: float, dq: float,
                   fitness: float, diversity: float, crdt_size: int,
                   llm_mutations: int, niche_counts: Dict[str, int], trace_id: str) -> None:
-        """Периодическая запись heartbeat."""
-        stats: Dict[str, Any] = { # Added type hint for stats dictionary
+        """
+        Records a periodic heartbeat event containing key node statistics.
+
+        Args:
+            step: The current simulation step.
+            capital: The current capital of the node.
+            dq: The Detection Quotient (survival metric).
+            fitness: The fitness of the node's best genome.
+            diversity: The diversity of the node's genome population.
+            crdt_size: The current size of the CRDT state.
+            llm_mutations: The total number of LLM-driven mutations.
+            niche_counts: A dictionary showing the count of genomes per niche.
+            trace_id: A unique identifier for the action chain.
+        """
+        stats: Dict[str, Any] = {
             "step": step,
             "capital": round(capital, 4),
             "dq": round(dq, 4),
@@ -88,7 +116,14 @@ class Telemetry:
         ))
 
     def mutation_event(self, old_params: Dict[str, float], new_params: Dict[str, float], context: str) -> None:
-        """Запись события мутации (уже частично делается в mutation_engine, но здесь для полноты)."""
+        """
+        Records an LLM mutation event.
+
+        Args:
+            old_params: The parameters before the mutation.
+            new_params: The parameters after the mutation.
+            context: The context or reason for the mutation.
+        """
         self.event_store.append(Event.create(
             node_id=self.node_id,
             event_type="llm_mutation",
@@ -100,13 +135,32 @@ class Telemetry:
             parent_id=None,
         ))
 
-    def update_impact(self, current_capital: float) -> None: # Added type hint for return
+    def update_impact(self, current_capital: float) -> None:
+        """
+        Updates the LLM impact metric based on the node's current capital.
+
+        Args:
+            current_capital: The current capital of the node.
+        """
         self._update_llm_impact(current_capital)
 
-    def get_llm_stats(self) -> Dict[str, Any]: # Assuming Dict[str, Any] as return type
+    def get_llm_stats(self) -> Dict[str, Any]:
+        """
+        Retrieves current LLM statistics.
+
+        Returns:
+            A dictionary containing LLM-related statistics.
+        """
         return self._get_llm_stats()
 
-    async def low_capital_alert(self, capital: float, threshold: float) -> None: # Added type hint for return
+    async def low_capital_alert(self, capital: float, threshold: float) -> None:
+        """
+        Sends a Telegram alert if the node's capital falls below a specified threshold.
+
+        Args:
+            capital: The current capital of the node.
+            threshold: The capital threshold below which an alert is triggered.
+        """
         await self.telegram.send(
             f"⚠️ <b>Low capital alert</b>\n"
             f"Node: {self.node_id}\n"
@@ -116,7 +170,18 @@ class Telemetry:
     async def spore_failure(self, step: int, capital: float, dq: float,
                             fitness: float, diversity: float, crdt_size: int,
                             trace_id: str) -> None:
-        """Событие перед гибелью узла."""
+        """
+        Records an event indicating the impending failure (death) of a node.
+
+        Args:
+            step: The current simulation step.
+            capital: The capital of the node at the time of failure.
+            dq: The Detection Quotient at the time of failure.
+            fitness: The fitness of the node's best genome at the time of failure.
+            diversity: The diversity of the node's genome population at the time of failure.
+            crdt_size: The current size of the CRDT state.
+            trace_id: A unique identifier for the action chain.
+        """
         self.event_store.append(Event.create(
             node_id=self.node_id,
             event_type="spore_failure",
