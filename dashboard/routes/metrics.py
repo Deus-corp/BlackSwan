@@ -10,6 +10,7 @@ from fastapi import APIRouter
 import docker
 from prometheus_client import Gauge, generate_latest, CollectorRegistry
 from fastapi.responses import PlainTextResponse
+from dashboard.docker_service import list_containers, get_container_logs
 
 router = APIRouter()
 registry: CollectorRegistry = CollectorRegistry()
@@ -45,7 +46,6 @@ async def prometheus_metrics() -> PlainTextResponse:
     update_prometheus_metrics(data)
     return PlainTextResponse(generate_latest(registry))
 
-client: docker.client.DockerClient = docker.from_env()
 # Regex pattern to extract metrics from swarm node logs
 LOG_PATTERN: Pattern[str] = re.compile(
     r'SwarmNode:\[([^\]]+)\]\s+step=(\d+)\s+capital=([\d.]+)\s+dq=[\d.]+\s+fitness=([\d.]+)\s+diversity=([\d.]+)\s+crdt_size=(\d+)\s+niche=(\w+)'
@@ -62,20 +62,19 @@ def collect_metrics() -> Dict[str, Dict[str, Any]]:
             are dictionaries of their latest metrics.
     """
     metrics: defaultdict[str, Dict[str, Any]] = defaultdict(dict)
-    containers: List[docker.models.containers.Container] = client.containers.list(
-        filters={"name": "lab_swarm_demo-node", "status": "running"}
-    )
+    containers = list_containers()  # returns list of dicts
     for c in containers:
+        container_name = c['name']
         try:
-            # Fetch the last 200 log lines to ensure recent metrics are captured
-            log: str = c.logs(tail=200).decode('utf-8')
-        except docker.errors.APIError:
-            # Skip container if logs cannot be retrieved (e.g., container might be unhealthy)
+            log = get_container_logs(container_name, tail=200)
+        except Exception:
+            continue
+        if not log:
             continue
         matches: List[Tuple[str, ...]] = LOG_PATTERN.findall(log)
         if matches:
-            last: Tuple[str, ...] = matches[-1]  # Get the latest match
-            node: str = c.name.replace("lab_swarm_demo-", "")
+            last: Tuple[str, ...] = matches[-1]
+            node: str = container_name.replace("lab_swarm_demo-", "")
             metrics[node] = {
                 "step": int(last[1]),
                 "capital": float(last[2]),

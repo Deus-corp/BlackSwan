@@ -402,3 +402,24 @@ def unpause_container(container_name: str) -> str:
         return f"Error unpausing container '{container_name}': {e}"
     except Exception as e:
         return f"An unexpected error occurred: {str(e)}"
+
+def get_container_logs(container_name: str, tail: int = 200) -> str:
+    """
+    Retrieves the last N lines of logs for a specific Docker container.
+
+    Args:
+        container_name: The name of the Docker container.
+        tail: The number of last lines to retrieve. Defaults to 200.
+
+    Returns:
+        The log output as a string, or an empty string on failure.
+    """
+    try:
+        c = _docker_client.containers.get(container_name)
+        return c.logs(tail=tail).decode('utf-8', errors='ignore')
+    except docker.errors.NotFound:
+        logger.error(f"Container '{container_name}' not found.")
+        return ""
+    except Exception as e:
+        logger.error(f"Error getting logs for {container_name}: {e}")
+        return ""

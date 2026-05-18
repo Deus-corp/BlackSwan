@@ -12,7 +12,7 @@ from typing import Any, List, Dict, Union
 
 # Assuming 'mvp/lab_swarm_demo' is in PYTHONPATH or the script
 # is run from the project root.
-from mvp.lab_swarm_demo.swarm_config import config
+from swarm_config import config
 
 logger = logging.getLogger(__name__)
 
