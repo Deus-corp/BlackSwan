@@ -760,7 +760,6 @@ class SwarmNode:
         # Assuming the original intent was broader market interaction.
         ret: float = market_price * fraction * 0.1 # This calculation might need adjustment based on trade_amount.
         self.capital *= (1 + ret)
-        self.capital -= config.trading.transaction_cost # Simulate transaction cost from config
         self.capital_manager.capital = self.capital
         self.capital_manager.apply_dq_delta(0.001)
 

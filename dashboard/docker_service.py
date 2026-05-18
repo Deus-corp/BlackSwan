@@ -4,7 +4,7 @@ Service module for interacting with Docker and Docker Compose for the BlackSwan 
 Provides functions to start, stop, rebuild, get logs, and manage configuration
 for the Dockerized swarm environment.
 """
-
+import logging
 import re
 import subprocess
 import time
@@ -16,6 +16,7 @@ import functools
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 COMPOSE_FILE = PROJECT_ROOT / "mvp" / "lab_swarm_demo" / "docker-compose.async.yml"
 
+logger = logging.getLogger(__name__)
 
 def run_command(cmd: str, cwd: Path = PROJECT_ROOT) -> str:
     """
@@ -218,9 +219,8 @@ def get_current_config() -> Dict[str, str]:
     return config
 
 def list_containers() -> List[Dict[str, str]]:
-    """Lists Docker containers related to the swarm nodes."""
-    client = docker.from_env()
-    containers = client.containers.list(
+    docker_client = docker.from_env()
+    containers = docker_client.containers.list(
         filters={"name": "lab_swarm_demo-node"}, all=True
     )
     result = []
@@ -392,9 +392,9 @@ def unpause_container(container_name: str) -> str:
 
 def get_container_logs(container_name: str, tail: int = 200) -> str:
     """Retrieves the last N lines of logs for a specific Docker container."""
-    client = docker.from_env()
+    docker_client = docker.from_env()
     try:
-        c = client.containers.get(container_name)
+        c = docker_client.containers.get(container_name)
         return c.logs(tail=tail).decode('utf-8', errors='ignore')
     except docker.errors.NotFound:
         logger.error(f"Container '{container_name}' not found.")

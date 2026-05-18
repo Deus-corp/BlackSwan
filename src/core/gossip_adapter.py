@@ -67,6 +67,10 @@ class SafeGossipAdapter:
         """
         self.reputation_manager = rep_man
 
+    async def broadcast(self, message):
+        """Alias for send to maintain compatibility."""
+        return await self.send(message)
+
     # ----- Methods called by node_agent.py -----
 
     def set_champion(self, genome: Dict[str, Any]) -> None:

@@ -123,7 +123,7 @@ class SwarmSync:
                 self.node.gossip_private_key,
                 self.node.gossip_key_id
             )
-            await self.node.gossip.broadcast(envelope)
+            await self.node.gossip.send(envelope)
             logger.debug(f"Node {self.node.node_id} successfully gossiped genome.")
         except Exception as e:
             logger.error(f"Gossip error for node {self.node.node_id}: {e}", exc_info=True)
