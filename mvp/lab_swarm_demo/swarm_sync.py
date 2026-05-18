@@ -16,36 +16,6 @@ from swarm_config import config
 
 logger = logging.getLogger(__name__)
 
-# BUG FIX: sign_envelope is undefined.
-# This is a placeholder function to prevent a NameError.
-# In a real application, this function would handle cryptographic signing
-# and would likely be imported from a dedicated security or utility module.
-# Its actual implementation is critical for security and functionality.
-def sign_envelope(genome_to_share: Dict[str, Any], private_key: Any, key_id: Any) -> Dict[str, Any]:
-    """
-    Placeholder for signing an envelope containing genome data.
-
-    In a production system, this function would cryptographically sign the
-    `genome_to_share` using the provided `private_key` and include the
-    `key_id` for verification.
-
-    Args:
-        genome_to_share: The genome data (a dictionary) to be signed.
-        private_key: The private key object or data used for signing.
-                     Type 'Any' as the specific type is unknown for this placeholder.
-        key_id: An identifier for the key used for signing.
-                Type 'Any' as the specific type is unknown for this placeholder.
-
-    Returns:
-        A dictionary representing the "signed" envelope, including the original
-        data, a dummy signature, and the key ID.
-    """
-    logger.warning("Using placeholder sign_envelope function. "
-                   "This should be replaced with a proper cryptographic implementation for production.")
-    # For a placeholder, we just wrap the data with dummy signature info.
-    return {"data": genome_to_share, "signature": "dummy_signature", "key_id": key_id}
-
-
 class SwarmSync:
     """
     Manages synchronization for a swarm node, handling genome pushes to a gossip network
@@ -79,54 +49,30 @@ class SwarmSync:
         self.node = node
 
     async def push(self) -> None:
-        """
-        Pushes the node's current champion genome to the gossip network.
-
-        This method is called periodically based on the node's `gossip_interval`.
-        It constructs a genome from the node's `current_params` and the champion's
-        fitness, signs it, and broadcasts it.
-        """
-        # Ensure gossip is only performed at specified intervals
+        # Публикуем геном в CRDT; SafeGossipAdapter сам распространит его через дельты
         try:
             gossip_interval = int(self.node.gossip_interval)
         except (ValueError, TypeError):
-            logger.error(f"Invalid gossip_interval: {self.node.gossip_interval}. Skipping push.")
             return
-
         if self.node.step_count % gossip_interval != 0:
             return
 
-        logger.debug(f"Node {self.node.node_id} pushing genome to swarm at step {self.node.step_count}...")
-        try:
-            # Extract champion fitness score robustly
-            champion_value: float = 0.0
-            if hasattr(self.node.engine, 'champion') and self.node.engine.champion:
-                champion_data = self.node.engine.champion
-                # Expecting champion to be a sequence like [genome_object, fitness_score]
-                if isinstance(champion_data, (list, tuple)) and len(champion_data) > 1:
-                    try:
-                        champion_value = float(champion_data[1]) # Ensure it's a float
-                    except (TypeError, ValueError):
-                        logger.warning(f"Could not convert champion fitness '{champion_data[1]}' to float. Using 0.0.")
-                        champion_value = 0.0
-                else:
-                    logger.debug("Node engine.champion is not in expected [genome, fitness] format. Using 0.0 fitness.")
+        champion_value: float = 0.0
+        if hasattr(self.node.engine, 'champion') and self.node.engine.champion:
+            champ = self.node.engine.champion
+            if isinstance(champ, (list, tuple)) and len(champ) > 1:
+                try:
+                    champion_value = float(champ[1])
+                except (TypeError, ValueError):
+                    pass
 
-            genome_to_share: Dict[str, Any] = self.node.make_genome(
-                self.node.current_params,
-                champion_value
-            )
-            
-            # Sign the genome before broadcasting
-            envelope: Dict[str, Any] = sign_envelope(
-                genome_to_share,
-                self.node.gossip_private_key,
-                self.node.gossip_key_id
-            )
-            await self.node.gossip.send(envelope)
-            logger.debug(f"Node {self.node.node_id} successfully gossiped genome.")
+        genome = self.node.make_genome(self.node.current_params, champion_value)
+        # Сохраняем в CRDT – механизм дельт сам доставит соседям
+        try:
+            await self.node.crdt.add_genome(genome)
+            logger.debug(f"Node {self.node.node_id} successfully pushed genome to CRDT.")
         except Exception as e:
-            logger.error(f"Gossip error for node {self.node.node_id}: {e}", exc_info=True)
+            logger.error(f"CRDT push error for node {self.node.node_id}: {e}", exc_info=True)
 
     async def pull(self) -> None:
         """
