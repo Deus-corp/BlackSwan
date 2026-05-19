@@ -208,6 +208,9 @@ class SwarmConfig(BaseSettings):
         default=4, alias="TOTAL_NODES",
         description="Total number of nodes expected in the Swarm network."
     )
+
+    gossip_max_clock_skew_ms: int = Field(default=10_000, alias="GOSSIP_MAX_CLOCK_SKEW_MS")
+
     gossip_signing_enabled: bool = Field(
         default=True, alias="GOSSIP_SIGNING_ENABLED",
         description="Enable/disable cryptographic signing of gossip messages."
