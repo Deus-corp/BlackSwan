@@ -34,6 +34,5 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Копируем код проекта
 COPY . /app
 
-RUN chmod +x /app/mvp/lab_swarm_demo/node_entrypoint_async.sh
-
-ENTRYPOINT ["/app/mvp/lab_swarm_demo/node_entrypoint_async.sh"]
+RUN chmod +x /app/node_entrypoint_async.sh
+ENTRYPOINT ["/app/node_entrypoint_async.sh"]

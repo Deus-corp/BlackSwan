@@ -4,7 +4,7 @@ services:
     build:
       context: ../..
     image: blackswan-node:latest
-    entrypoint: ["/app/mvp/lab_swarm_demo/node_entrypoint_async.sh"]
+    entrypoint: ["/app/node_entrypoint_async.sh"]
     environment:
       - BURN_RATE=0
       - FAILURE_PROB=0.0

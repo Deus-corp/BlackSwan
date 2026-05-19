@@ -2,7 +2,7 @@
 Manages swarm node capital and survival status.
 """
 import logging
-from typing import Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Tuple, Optional, Protocol, runtime_checkable
 
 # Assuming 'swarm_config' module provides a 'config' object with necessary attributes.
 from swarm_config import config
