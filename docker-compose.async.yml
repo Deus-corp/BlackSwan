@@ -2,7 +2,7 @@ services:
   node:
     init: true
     build:
-      context: ../..
+      context: .
     image: blackswan-node:latest
     entrypoint: ["/app/node_entrypoint_async.sh"]
     environment:
@@ -57,15 +57,15 @@ services:
           cpus: '0.3'
           memory: 1G
     volumes:
-      - ../../llama_cpp:/app/llama_cpp:ro
+      - ./llama_cpp:/app/llama_cpp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ../../data/nonce:/app/nonce_data
-      - ../../data/ledgers:/app/data/ledgers
+      - ./data/nonce:/app/nonce_data
+      - ./data/ledgers:/app/data/ledgers
 
   meta-agent:
     init: true
     build:
-      context: ../..
+      context: .
     image: blackswan-node:latest
     entrypoint: ["python", "/app/src/swarms/trade/meta_agent.py"]
     environment:
@@ -86,13 +86,13 @@ services:
       - default
     restart: unless-stopped
     volumes:
-      - ../../llama_cpp:/app/llama_cpp:ro
-      - ../../data/meta_agent:/app/data/meta_agent
-      - ../../data/ledgers:/app/data/ledgers   # для чтения heartbeats
+      - ./llama_cpp:/app/llama_cpp:ro
+      - ./data/meta_agent:/app/data/meta_agent
+      - ./data/ledgers:/app/data/ledgers
 
   security-node:
     build:
-      context: ../..
+      context: .
     image: blackswan-node:latest
     entrypoint: ["python", "/app/src/swarms/security/node.py"]
     environment:
@@ -100,7 +100,7 @@ services:
       - PYTHONPATH=/app
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
     volumes:
-      - ../../data/ledgers:/app/data/ledgers
+      - ./data/ledgers:/app/data/ledgers
       - /var/log:/var/log:ro
     restart: unless-stopped
     init: true
@@ -108,7 +108,7 @@ services:
 
   security-meta-agent:
     build:
-      context: ../..
+      context: .
     image: blackswan-node:latest
     entrypoint: ["python", "/app/src/swarms/security/meta_agent.py"]
     environment:
@@ -117,14 +117,14 @@ services:
       - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
     volumes:
-      - ../../llama_cpp:/app/llama_cpp:ro
-      - ../../data/ledgers:/app/data/ledgers
+      - ./llama_cpp:/app/llama_cpp:ro
+      - ./data/ledgers:/app/data/ledgers
     restart: unless-stopped
     init: true
 
   explorer-node:
     build:
-      context: ../..
+      context: .
     image: blackswan-node:latest
     entrypoint: ["python", "/app/src/swarms/explorer/node.py"]
     environment:
@@ -132,13 +132,13 @@ services:
       - PYTHONPATH=/app
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
     volumes:
-      - ../../data/ledgers:/app/data/ledgers
+      - ./data/ledgers:/app/data/ledgers
     restart: unless-stopped
     init: true
 
   explorer-meta-agent:
     build:
-      context: ../..
+      context: .
     image: blackswan-node:latest
     entrypoint: ["python", "/app/src/swarms/explorer/meta_agent.py"]
     environment:
@@ -147,14 +147,14 @@ services:
       - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
     volumes:
-      - ../../llama_cpp:/app/llama_cpp:ro
-      - ../../data/ledgers:/app/data/ledgers
+      - ./llama_cpp:/app/llama_cpp:ro
+      - ./data/ledgers:/app/data/ledgers
     restart: unless-stopped
     init: true
 
   overseer:
     build:
-      context: ../..
+      context: .
     image: blackswan-node:latest
     entrypoint: ["python", "/app/src/swarms/overseer/node.py"]
     environment:
@@ -163,15 +163,15 @@ services:
       - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
     volumes:
-      - ../../llama_cpp:/app/llama_cpp:ro
-      - ../../data/ledgers:/app/data/ledgers
+      - ./llama_cpp:/app/llama_cpp:ro
+      - ./data/ledgers:/app/data/ledgers
     restart: unless-stopped
     init: true
 
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ../../prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
