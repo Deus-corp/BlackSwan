@@ -32,7 +32,7 @@ for i in $(seq 1 $TOTAL_NODES); do
     if [ -n "$PEERS" ]; then
       PEERS="$PEERS,"
     fi
-    PEERS="${PEERS}http://lab_swarm_demo-node-${i}:${PORT}"
+    PEERS="${PEERS}http://blackswan-node-${i}:${PORT}"
   fi
 done
 
