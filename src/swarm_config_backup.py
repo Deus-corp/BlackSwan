@@ -210,6 +210,7 @@ class SwarmConfig(BaseSettings):
     )
 
     gossip_max_clock_skew_ms: int = Field(default=10_000, alias="GOSSIP_MAX_CLOCK_SKEW_MS")
+    meta_agent_reflect_interval: int = Field(default=100, alias="META_AGENT_REFLECT_INTERVAL")
 
     gossip_signing_enabled: bool = Field(
         default=True, alias="GOSSIP_SIGNING_ENABLED",

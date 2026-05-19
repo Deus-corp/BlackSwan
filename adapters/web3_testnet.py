@@ -9,7 +9,7 @@ from web3.providers import AsyncHTTPProvider
 from web3.middleware import ExtraDataToPOAMiddleware
 from web3.types import TxReceipt, Wei, HexBytes, SignedTx
 from web3.contract import Contract
-from eth_account.local import LocalAccount # Specific type for account
+from eth_account import LocalAccount # Specific type for account
 from loguru import logger
 
 from swarm_config import config
