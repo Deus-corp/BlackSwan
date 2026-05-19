@@ -39,6 +39,7 @@ from mvp.lab_swarm_demo.telemetry import Telemetry
 from mvp.lab_swarm_demo.evolution import EvolutionEngine
 from mvp.lab_swarm_demo.swarm_sync import SwarmSync
 from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation, update_llm_impact, get_llm_stats
+from src.risk.risk_manager import RiskManager
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
