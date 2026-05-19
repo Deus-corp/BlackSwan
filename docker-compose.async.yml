@@ -11,7 +11,8 @@ services:
       - GOSSIP_PORT=9777
       - TOTAL_NODES=4
       - PYTHONUNBUFFERED=1
-      - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      #- LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      - LLM_MODEL=groq
       - GOSSIP_SIGNING_ENABLED=true
       - MEMORY_API_ENABLED=true
       - MARKET_MODE=web3
@@ -38,6 +39,7 @@ services:
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
       - BINANCE_TESTNET_API_SECRET=${BINANCE_TESTNET_API_SECRET}
       - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - NODE_INDEX=${NODE_INDEX:-0}
@@ -57,7 +59,7 @@ services:
           cpus: '0.3'
           memory: 1G
     volumes:
-      - ./llama_cpp:/app/llama_cpp:ro
+      #- ./llama_cpp:/app/llama_cpp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data/nonce:/app/nonce_data
       - ./data/ledgers:/app/data/ledgers
@@ -71,7 +73,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
-      - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      #- LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      - LLM_MODEL=groq
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - GOSSIP_PORT=9777
       - TOTAL_NODES=4
       - GOSSIP_SIGNING_ENABLED=true
@@ -86,7 +90,7 @@ services:
       - default
     restart: unless-stopped
     volumes:
-      - ./llama_cpp:/app/llama_cpp:ro
+      #- ./llama_cpp:/app/llama_cpp:ro
       - ./data/meta_agent:/app/data/meta_agent
       - ./data/ledgers:/app/data/ledgers
 
@@ -114,10 +118,12 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
-      - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      #- LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      - LLM_MODEL=groq
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
     volumes:
-      - ./llama_cpp:/app/llama_cpp:ro
+      #- ./llama_cpp:/app/llama_cpp:ro
       - ./data/ledgers:/app/data/ledgers
     restart: unless-stopped
     init: true
@@ -144,10 +150,12 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
-      - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      #- LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      - LLM_MODEL=groq
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
     volumes:
-      - ./llama_cpp:/app/llama_cpp:ro
+      #- ./llama_cpp:/app/llama_cpp:ro
       - ./data/ledgers:/app/data/ledgers
     restart: unless-stopped
     init: true
@@ -160,10 +168,12 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
-      - LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      #- LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M
+      - LLM_MODEL=groq
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - CRDT_DB_PATH=/app/data/ledgers/swarm_crdt.db
     volumes:
-      - ./llama_cpp:/app/llama_cpp:ro
+      #- ./llama_cpp:/app/llama_cpp:ro
       - ./data/ledgers:/app/data/ledgers
     restart: unless-stopped
     init: true
