@@ -126,7 +126,7 @@ services:
     build:
       context: ../..
     image: blackswan-node:latest
-    entrypoint: ["python", "/app/mvp/lab_swarm_demo/explorer_node_agent.py"]
+    entrypoint: ["python", "/app/src/swarms/explorer/node.py"]
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
@@ -140,7 +140,7 @@ services:
     build:
       context: ../..
     image: blackswan-node:latest
-    entrypoint: ["python", "/app/mvp/lab_swarm_demo/explorer_meta_agent.py"]
+    entrypoint: ["python", "/app/src/swarms/explorer/meta_agent.py"]
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
