@@ -66,7 +66,7 @@ class MultiPairAdapter:
         if not self.adapters:
             logger.warning(f"No adapters initialized for symbols: {symbols} with market mode: {market_mode}")
 
-    def get_adapter(self, symbol: str, account: str = "spot") -> Optional[MultiPairAdapter.AdapterType]:
+    def get_adapter(self, symbol: str, account: str = "spot") -> Optional["MultiPairAdapter.AdapterType"]:
         """
         Retrieves a specific market adapter by symbol and account type.
 
