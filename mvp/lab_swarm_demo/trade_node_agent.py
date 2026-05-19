@@ -87,7 +87,7 @@ class SwarmNode:
         self.gossip_interval: float = config.GOSSIP_INTERVAL
         self.max_state: int = config.MAX_STATE
         self.ttl: int = config.TTL
-        self.max_import: int = config.MAX_import
+        self.max_import: int = config.max_import
         self.import_cooldown: int = config.IMPORT_COOLDOWN
 
         self.swarm_sync: SwarmSync = SwarmSync(self)
