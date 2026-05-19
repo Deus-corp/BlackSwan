@@ -67,7 +67,7 @@ services:
     build:
       context: ../..
     image: blackswan-node:latest
-    entrypoint: ["python", "/app/mvp/lab_swarm_demo/trade_meta_agent.py"]
+    entrypoint: ["python", "/app/src/swarms/trade/meta_agent.py"]
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
@@ -156,7 +156,7 @@ services:
     build:
       context: ../..
     image: blackswan-node:latest
-    entrypoint: ["python", "/app/mvp/lab_swarm_demo/overseer_node.py"]
+    entrypoint: ["python", "/app/src/swarms/overseer/node.py"]
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app

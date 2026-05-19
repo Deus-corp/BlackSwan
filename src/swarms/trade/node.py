@@ -16,7 +16,6 @@ from src.security.reputation_manager import ReputationManager
 from src.intelligence.episodic_memory import EpisodicMemory
 from src.intelligence.semantic_memory import SemanticMemory
 from src.intelligence.llm_client import LLMClient
-# from src.security.gossip_envelope import sign_envelope, generate_key_pair, sha256 # Unused imports
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 from src.core.events import Event
@@ -31,14 +30,14 @@ from swarm_config import config
 from src.core.trading_controller import TradingController
 from src.evolution.mutation_engine import MutationEngine
 from src.economy.roi_dispatcher import ROIDispatcher
-from mvp.lab_swarm_demo.leader import select_leader
-from mvp.lab_swarm_demo.execution import build_backend
-from mvp.lab_swarm_demo.market import MarketSnapshotService, select_best_market
-from mvp.lab_swarm_demo.capital_manager import CapitalManager
-from mvp.lab_swarm_demo.telemetry import Telemetry
-from mvp.lab_swarm_demo.evolution import EvolutionEngine
-from mvp.lab_swarm_demo.swarm_sync import SwarmSync
-from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation, update_llm_impact, get_llm_stats
+from src.trading.leader import select_leader
+from src.trading.execution import build_backend
+from src.trading.market import MarketSnapshotService, select_best_market
+from src.trading.capital_manager import CapitalManager
+from src.observability.telemetry import Telemetry
+from src.evolution.engine import EvolutionEngine
+from src.trading.swarm_sync import SwarmSync
+from src.trading.mutation_metrics import note_llm_mutation, update_llm_impact, get_llm_stats
 from src.risk.risk_manager import RiskManager
 
 logger = logging.getLogger("SwarmNode")

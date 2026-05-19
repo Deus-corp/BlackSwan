@@ -15,7 +15,7 @@ from loguru import logger
 # though a more decoupled approach might use dependency injection or a callback.
 # Ensure this import path is correct for your project structure.
 try:
-    from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation
+    from src.trading.mutation_metrics import note_llm_mutation
 except ImportError:
     logger.warning("Could not import 'note_llm_mutation'. Mutation metrics will not be recorded.")
     def note_llm_mutation() -> None:

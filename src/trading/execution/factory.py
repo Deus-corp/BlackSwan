@@ -14,7 +14,7 @@ try:
     from swarm_config import config
 except ImportError:
     _current_dir: str = os.path.dirname(os.path.abspath(__file__))
-    # Assumes swarm_config.py is located at the project root, e.g., 'mvp/' if this file is in 'mvp/lab_swarm_demo/execution/'
+   
     _root_dir: str = os.path.join(_current_dir, "../../..")
     
     # Only add to sys.path if not already present to avoid redundant entries

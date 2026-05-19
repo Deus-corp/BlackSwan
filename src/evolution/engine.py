@@ -47,7 +47,7 @@ class GossipEnvelopeModel:
 # and their exact definitions are not provided in this context.
 from src.security.gossip_envelope import sign_envelope # type: ignore
 from src.economy.roi_dispatcher import ROIDispatcher # type: ignore
-from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation
+from src.trading.mutation_metrics import note_llm_mutation
 
 logger = logging.getLogger(__name__)
 

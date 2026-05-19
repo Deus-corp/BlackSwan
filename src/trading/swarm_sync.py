@@ -10,7 +10,7 @@ import logging
 import random
 from typing import Any, List, Dict, Union, Callable, Protocol, Optional, Tuple
 
-# Assuming 'mvp/lab_swarm_demo' is in PYTHONPATH or the script
+# Project root is in PYTHONPATH
 # is run from the project root.
 from swarm_config import config
 

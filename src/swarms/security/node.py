@@ -73,7 +73,7 @@ class SecurityNode:
         # List of critical files to monitor for integrity.
         # These paths should be absolute or relative to the execution context.
         self._critical_files_to_monitor: List[str] = [
-            "/app/mvp/lab_swarm_demo/security_node_agent.py",
+            "/app/src/swarms/security/node.py",
             "/app/src/core/crdt_adapter.py",
             "/app/src/intelligence/llm_client.py",
             "/app/swarm_config.py",
