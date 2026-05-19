@@ -9,7 +9,6 @@ from web3.providers import AsyncHTTPProvider
 from web3.middleware import ExtraDataToPOAMiddleware
 from web3.types import TxReceipt, Wei, HexBytes, SignedTx
 from web3.contract import Contract
-from eth_account import LocalAccount # Specific type for account
 from loguru import logger
 
 from swarm_config import config
@@ -117,7 +116,7 @@ class Web3TestnetAdapter:
         self.w3: AsyncWeb3 = AsyncWeb3(AsyncHTTPProvider(self.rpc_url, request_kwargs={"timeout": 60}))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
-        self.account: Optional[LocalAccount] = None # Stores w3.eth.account.LocalAccount object
+        self.account: Optional[Any] = None
         self.nonce_manager: Optional[NonceManager] = None
         self.quoter: Optional[Contract] = None # Web3 contract instance for Quoter
         self.router: Optional[Contract] = None # Web3 contract instance for Router
