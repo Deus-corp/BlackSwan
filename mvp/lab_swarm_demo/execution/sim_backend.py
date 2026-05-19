@@ -11,7 +11,8 @@ class SimExecutionBackend(ExecutionBackend):
     Backend for simulating order execution.
 
     It emulates a simple scenario where capital changes randomly based on a trade,
-    without actual blockchain interaction.
+    without actual blockchain interaction. This is primarily for testing and
+    development of strategies in a controlled, predictable environment.
     """
     async def execute_order(
         self,
@@ -28,16 +29,16 @@ class SimExecutionBackend(ExecutionBackend):
         market fluctuations. This method does not interact with any external systems.
 
         Args:
-            symbol: The trading pair symbol (e.g., "WETH/USDC"). Note: This parameter
-                    is not directly used in the current implementation logic.
-            side: The order side ("buy" or "sell"). Note: This parameter
-                  is not directly used in the current implementation logic.
-            amount: The amount of the base asset to trade.
-            price: The desired price for the trade.
-            capital: The current capital available.
+            symbol (str): The trading pair symbol (e.g., "WETH/USDC"). Note: This parameter
+                          is not directly used in the current implementation logic.
+            side (str): The order side ("buy" or "sell"). Note: This parameter
+                        is not directly used in the current implementation logic.
+            amount (float): The amount of the base asset to trade.
+            price (float): The desired price for the trade.
+            capital (float): The current capital available.
 
         Returns:
-            A dictionary containing the result of the simulated order execution,
+            Dict[str, Any]: A dictionary containing the result of the simulated order execution,
             including success status, new capital, and simulation status.
             Example:
             {

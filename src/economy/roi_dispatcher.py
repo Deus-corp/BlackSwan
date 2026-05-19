@@ -131,7 +131,7 @@ class ROIDispatcher:
             f_star = 0.0
         else:
             # Modified Kelly criterion formula: f* = p - (1-p)/b * phi
-            # This calculates the optimal fraction to bet, scaled by phi.
+            # This calculates the optimal fraction to bet, scaled by phi in a specific way.
             f_star = p - (1.0 - p) / b * phi
 
         # The approved risk is capped at max_risk_per_trade and floored at 0.

@@ -21,15 +21,32 @@ try:
     import psutil
 except ImportError:
     psutil = None
-    print("Warning: psutil not installed. System resource monitoring will be unavailable.", file=sys.stderr)
+    # Log a warning instead of printing to stderr for consistent logging
+    logging.getLogger("Overseer").warning("psutil not installed. System resource monitoring will be unavailable.")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s')
 logger = logging.getLogger("Overseer")
+
+# Constants for better readability and maintainability
+COORDINATION_INTERVAL_SECONDS: int = 150 # Every 2.5 minutes
+TRADE_HEARTBEAT_VALIDITY_SECONDS: int = 600 # Heartbeats valid for 10 minutes
+STALE_TRADE_NODE_THRESHOLD_SECONDS: int = 180 # Node considered stale after 3 minutes
+COMMAND_EXPIRATION_DEFAULT_SECONDS: int = 300 # Default command expiration (5 minutes)
+EXPLORER_COMMAND_EXPIRATION_SECONDS: int = 600 # Specific for explorer commands (10 minutes)
+LLM_MAX_TOKENS_OVERSEER: int = 120
+LLM_TEMPERATURE_OVERSEER: float = 0.1
 
 class OverseerNode:
     """
     OverseerNode acts as a strategic coordinator, analyzing heartbeats from Trade, Security,
     and Explorer swarms and issuing JSON commands via an LLM.
+
+    It collects real-time operational data from various swarm nodes through a CRDT
+    (Conflict-Free Replicated Data Type) system. Based on this aggregated state and
+    system resource metrics, it formulates a prompt for a Large Language Model (LLM)
+    to generate high-level strategic decisions. These decisions, parsed from the LLM's
+    JSON response, are then translated into specific commands (genomes) and injected
+    back into the CRDT, guiding the behavior of the subordinate swarms.
     """
     def __init__(self, node_id: Optional[str] = None) -> None:
         """
@@ -39,7 +56,7 @@ class OverseerNode:
             node_id: A unique identifier for the Overseer node. If None, a UUID-based ID is generated.
         """
         self.node_id: str = node_id or f"overseer-{uuid.uuid4().hex[:8]}"
-        self.llm: LLMClient = LLMClient(n_ctx=8192)
+        self.llm: LLMClient = LLMClient(n_ctx=8192) # Context window for LLM
         self.crdt: CRDTAdapter = CRDTAdapter(node_id=self.node_id, db_path=config.crdt_db_path)
         self.step: int = 0
 
@@ -49,13 +66,18 @@ class OverseerNode:
         It periodically coordinates swarm activities based on a fixed step interval.
         """
         logger.info(f"🧭 Overseer {self.node_id} started")
-        while True:
-            self.step += 1
-            # Coordinate every 150 seconds (2.5 minutes)
-            if self.step % 150 == 0:
-                logger.info(f"📈 Overseer step {self.step}: Initiating coordination cycle.")
-                await self.coordinate()
-            await asyncio.sleep(1.0)
+        try:
+            while True:
+                self.step += 1
+                # Coordinate every COORDINATION_INTERVAL_SECONDS (2.5 minutes)
+                if self.step % COORDINATION_INTERVAL_SECONDS == 0:
+                    logger.info(f"📈 Overseer step {self.step}: Initiating coordination cycle.")
+                    await self.coordinate()
+                await asyncio.sleep(1.0)
+        except asyncio.CancelledError:
+            logger.info(f"Overseer {self.node_id} run cancelled.")
+        except Exception as e:
+            logger.critical(f"Overseer {self.node_id} encountered a fatal error in run loop: {e}", exc_info=True)
 
     async def coordinate(self) -> None:
         """
@@ -69,31 +91,31 @@ class OverseerNode:
             decisions: Dict[str, Any] = {} # Initialize decisions dictionary
 
             # --- Aggregate Trade Swarm Heartbeats ---
-            # Heartbeats considered valid if received within the last 10 minutes (600 seconds).
+            # Heartbeats considered valid if received within the last TRADE_HEARTBEAT_VALIDITY_SECONDS.
             trade_hbs: List[Dict[str, Any]] = [
                 v for v in all_state.values()
                 if isinstance(v, dict) and v.get("type") == "trade_heartbeat"
-                and (now - v.get("timestamp", 0) < 600)
+                and (now - v.get("timestamp", 0) < TRADE_HEARTBEAT_VALIDITY_SECONDS)
             ]
-            trade_nodes: int = len(set(h.get("node_id") for h in trade_hbs))
-            trade_capital: float = sum(h.get("capital", 0.0) for h in trade_hbs)
-            trade_dq: float = sum(h.get("dq", 0.0) for h in trade_hbs) / max(len(trade_hbs), 1)
-            trade_fitness: float = sum(h.get("fitness", 0.0) for h in trade_hbs) / max(len(trade_hbs), 1)
+            trade_nodes: int = len(set(h.get("node_id") for h in trade_hbs if h.get("node_id")))
+            trade_capital: float = sum(float(h.get("capital", 0.0)) for h in trade_hbs)
+            trade_dq: float = sum(float(h.get("dq", 0.0)) for h in trade_hbs) / max(len(trade_hbs), 1)
+            trade_fitness: float = sum(float(h.get("fitness", 0.0)) for h in trade_hbs) / max(len(trade_hbs), 1)
             logger.debug(f"Trade swarm stats: Nodes={trade_nodes}, Capital={trade_capital:.0f}, DQ={trade_dq:.3f}, Fitness={trade_fitness:.3f}")
 
             # --- Check for Stale Trade Nodes ---
-            # Nodes are considered stale if their heartbeat is older than 3 minutes (180 seconds).
-            stale_nodes: List[str] = [
+            # Nodes are considered stale if their heartbeat is older than STALE_TRADE_NODE_THRESHOLD_SECONDS.
+            stale_nodes_ids: Set[str] = set(
                 h.get("node_id") for h in trade_hbs
-                if (now - h.get("timestamp", 0) > 180)
-            ]
-            for node_id_stale in set(stale_nodes):
+                if (now - h.get("timestamp", 0) > STALE_TRADE_NODE_THRESHOLD_SECONDS) and h.get("node_id")
+            )
+            for node_id_stale in stale_nodes_ids:
                 logger.warning(f"🔄 Overseer: Detected stale trade node {node_id_stale}. Requesting restart.")
                 cmd_restart: Dict[str, Any] = {
-                    "type": "sec_command",
+                    "type": "sec_command", # Security swarm can be tasked with restarting nodes
                     "data": {"action": "RESTART_NODE", "node_id": node_id_stale},
                     "timestamp": now,
-                    "expires_at": now + 300, # Command expires in 5 minutes
+                    "expires_at": now + COMMAND_EXPIRATION_DEFAULT_SECONDS, # Command expires in 5 minutes
                     "gid": f"overseer_restart_{int(now)}_{node_id_stale}",
                 }
                 await self.crdt.add_genome(cmd_restart)
@@ -102,10 +124,10 @@ class OverseerNode:
             sec_hbs: List[Dict[str, Any]] = [
                 v for v in all_state.values()
                 if isinstance(v, dict) and v.get("type") == "security_heartbeat"
-                and (now - v.get("timestamp", 0) < 600)
+                and (now - v.get("timestamp", 0) < TRADE_HEARTBEAT_VALIDITY_SECONDS)
             ]
-            sec_nodes: int = len(set(h.get("node_id") for h in sec_hbs))
-            blocked_ips: int = sum(h.get("blocked_ips", 0) for h in sec_hbs)
+            sec_nodes: int = len(set(h.get("node_id") for h in sec_hbs if h.get("node_id")))
+            blocked_ips: int = sum(int(h.get("blocked_ips", 0)) for h in sec_hbs)
             logger.debug(f"Security swarm stats: Nodes={sec_nodes}, Blocked IPs={blocked_ips}")
 
             # --- Check for Security Vulnerability Alerts ---
@@ -113,17 +135,16 @@ class OverseerNode:
                 v for v in all_state.values()
                 if isinstance(v, dict) and v.get("type") == "vulnerability_alert"
             ]
-            if vuln_alerts:
-                logger.warning("🔴 Overseer: Vulnerabilities detected. Forcing 'reduce_risk' decision.")
-                decisions["reduce_risk"] = True # Force this decision
+            # Decision for "reduce_risk" will be forced true if vulnerabilities are detected,
+            # potentially overriding LLM's initial suggestion if applicable.
 
             # --- Aggregate Explorer Swarm Heartbeats and Findings ---
             exp_hbs: List[Dict[str, Any]] = [
                 v for v in all_state.values()
                 if isinstance(v, dict) and v.get("type") == "explorer_heartbeat"
-                and (now - v.get("timestamp", 0) < 600)
+                and (now - v.get("timestamp", 0) < TRADE_HEARTBEAT_VALIDITY_SECONDS)
             ]
-            exp_nodes: int = len(set(h.get("node_id") for h in exp_hbs))
+            exp_nodes: int = len(set(h.get("node_id") for h in exp_hbs if h.get("node_id")))
             findings: int = len([
                 v for v in all_state.values()
                 if isinstance(v, dict) and v.get("type") == "explorer_finding"
@@ -140,11 +161,11 @@ class OverseerNode:
 - System resources: {resources}
 
 Decide:
-1. Should you reduce trade risk? (if DQ > 0.25 or capital < 2000, answer YES)
-2. Should you increase exploration? (if fitness is high and DQ is low, answer YES)
-3. Should you unblock all IPs? (if blocked IPs > 50, answer YES)
-4. Should you spawn more nodes? (if RAM > 500MB free, answer YES)
-5. Should the Explorer continue? (if findings > 100, answer NO)
+1. Should you reduce trade risk? (If trade_dq > 0.25 or trade_capital < 2000, answer YES)
+2. Should you increase exploration? (If trade_fitness is high and trade_dq is low, answer YES)
+3. Should you unblock all IPs? (If blocked_ips > 50, answer YES)
+4. Should you spawn more nodes? (If RAM > 500MB free, answer YES)
+5. Should the Explorer continue? (If findings > 100, answer NO)
 
 Output ONLY a perfectly valid JSON object with these boolean fields: reduce_risk, increase_exploration, unblock_ips, spawn_nodes, continue_explorer.
 Ensure the JSON is fully closed and correctly formatted.
@@ -152,21 +173,26 @@ Example: {{"reduce_risk":false,"increase_exploration":true,"unblock_ips":false,"
 Assistant: """ # The LLM will complete from here.
             
             logger.debug(f"Sending prompt to LLM: {prompt[:500]}...")
-            response: str = self.llm.generate(prompt, max_tokens=120, temperature=0.1) # Increased max_tokens slightly
+            response: str = self.llm.generate(prompt, max_tokens=LLM_MAX_TOKENS_OVERSEER, temperature=LLM_TEMPERATURE_OVERSEER)
             logger.debug(f"Raw LLM response: {response}")
 
             if response:
                 # --- Robust JSON Parsing from LLM Response ---
                 # 1. Attempt to fix common LLM JSON errors:
                 #    - Ensure the response starts and ends with curly braces if it's missing.
-                if not response.strip().startswith('{'):
-                    response = '{' + response.strip()
-                if not response.strip().endswith('}'):
-                    response = response.strip() + '}'
+                clean_response_potential_fix = response.strip()
+                if not clean_response_potential_fix.startswith('{'):
+                    clean_response_potential_fix = '{' + clean_response_potential_fix
+                if not clean_response_potential_fix.endswith('}'):
+                    clean_response_potential_fix = clean_response_potential_fix + '}'
 
                 #    - Add quotes to unquoted keys (e.g., `field: value` -> `"field": value`).
-                #      This regex handles cases like `{"field":` or `{field:`
-                cleaned_response = re.sub(r'([{,]\s*)(\w+)(\s*:)', r'\1"\2"\3', response)
+                #      This regex handles cases like `{field:` or `,"field":`
+                #      It should avoid double quoting already quoted keys.
+                #      (?<!") is negative lookbehind to ensure we don't match if a quote precedes
+                #      (\w+) matches the word (key)
+                #      (?=\s*:) is positive lookahead to ensure it's followed by a colon
+                cleaned_response = re.sub(r'([{,]\s*)(?<!")(\w+)(?=\s*:)', r'\1"\2"', clean_response_potential_fix)
                 logger.debug(f"Cleaned LLM response (quotes added): {cleaned_response[:200]}")
 
                 # 2. Extract the first complete JSON object using bracket balancing.
@@ -185,13 +211,14 @@ Assistant: """ # The LLM will complete from here.
                 
                 if candidate_json_str:
                     try:
-                        decisions_from_llm = json.loads(candidate_json_str)
+                        decisions_from_llm: Dict[str, Any] = json.loads(candidate_json_str)
                         # Ensure all expected keys are present and boolean
-                        for key in ["reduce_risk", "increase_exploration", "unblock_ips", "spawn_nodes", "continue_explorer"]:
+                        expected_keys = ["reduce_risk", "increase_exploration", "unblock_ips", "spawn_nodes", "continue_explorer"]
+                        for key in expected_keys:
                             if key not in decisions_from_llm or not isinstance(decisions_from_llm[key], bool):
                                 logger.warning(f"LLM decision missing or invalid type for '{key}'. Defaulting to False. Raw: {decisions_from_llm}")
                                 decisions_from_llm[key] = False
-                        decisions.update(decisions_from_llm) # Merge with any forced decisions (like from vuln_alerts)
+                        decisions.update(decisions_from_llm) # Merge with any initial decisions
                         logger.info(f"LLM decision parsed: {json.dumps(decisions)}")
                     except json.JSONDecodeError as e:
                         logger.warning(f"Overseer failed to parse LLM JSON: '{candidate_json_str}'. Error: {e}. Full response: '{response}'")
@@ -200,6 +227,11 @@ Assistant: """ # The LLM will complete from here.
             else:
                 logger.warning("Overseer: LLM returned an empty response.")
                 return # Exit if no response to parse
+
+            # --- Apply Forced Decisions (ensure critical safety overrides LLM) ---
+            if vuln_alerts:
+                logger.warning("🔴 Overseer: Vulnerabilities detected. Ensuring 'reduce_risk' decision is TRUE.")
+                decisions["reduce_risk"] = True # Force this decision to be true, overriding LLM if it said false
 
             # --- Apply Decisions ---
             if decisions.get("reduce_risk"):
@@ -217,7 +249,7 @@ Assistant: """ # The LLM will complete from here.
                         "reason": "Overseer safety override: Reducing trade risk due to high DQ, low capital, or vulnerabilities."
                     },
                     "timestamp": time.time(),
-                    "expires_at": time.time() + 300,
+                    "expires_at": time.time() + COMMAND_EXPIRATION_DEFAULT_SECONDS,
                     "gid": f"overseer_reduce_risk_{int(time.time())}",
                 }
                 await self.crdt.add_genome(cmd_reduce_risk)
@@ -238,7 +270,7 @@ Assistant: """ # The LLM will complete from here.
                         "reason": "Overseer: Increasing exploration due to high fitness and low DQ."
                     },
                     "timestamp": time.time(),
-                    "expires_at": time.time() + 300,
+                    "expires_at": time.time() + COMMAND_EXPIRATION_DEFAULT_SECONDS,
                     "gid": f"overseer_increase_exploration_{int(time.time())}",
                 }
                 await self.crdt.add_genome(cmd_increase_exploration)
@@ -249,7 +281,7 @@ Assistant: """ # The LLM will complete from here.
                     "type": "sec_command",
                     "data": {"action": "UNBLOCK_ALL"},
                     "timestamp": time.time(),
-                    "expires_at": time.time() + 600, # Command expires in 10 minutes
+                    "expires_at": time.time() + EXPLORER_COMMAND_EXPIRATION_SECONDS, # Command expires in 10 minutes
                     "gid": f"overseer_sec_unblock_{int(time.time())}",
                 }
                 await self.crdt.add_genome(cmd_unblock_ips)
@@ -264,7 +296,7 @@ Assistant: """ # The LLM will complete from here.
                     "type": "explorer_command",
                     "data": {"action": "PAUSE"},
                     "timestamp": time.time(),
-                    "expires_at": time.time() + 600, # Command expires in 10 minutes
+                    "expires_at": time.time() + EXPLORER_COMMAND_EXPIRATION_SECONDS, # Command expires in 10 minutes
                     "gid": f"overseer_exp_pause_{int(time.time())}",
                 }
                 await self.crdt.add_genome(cmd_pause_explorer)
@@ -282,9 +314,10 @@ Assistant: """ # The LLM will complete from here.
         if psutil is None:
             return "Resource data unavailable (psutil not installed)"
         try:
-            cpu: float = psutil.cpu_percent(interval=None) # Non-blocking call for current CPU usage
-            mem = psutil.virtual_memory()
-            disk = psutil.disk_usage('/')
+            # interval=None provides a non-blocking instant CPU usage value
+            cpu: float = psutil.cpu_percent(interval=None) 
+            mem: Any = psutil.virtual_memory() # psutil.svmem object
+            disk: Any = psutil.disk_usage('/') # psutil.sdiskusage object
             return (
                 f"CPU: {cpu:.1f}%, RAM: {mem.percent:.1f}% ({mem.available // (1024*1024)}MB free), "
                 f"Disk: {disk.percent:.1f}% ({disk.free // (1024*1024)}MB free)"

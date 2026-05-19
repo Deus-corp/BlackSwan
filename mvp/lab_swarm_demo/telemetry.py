@@ -2,22 +2,28 @@
 Telemetry – a unified observability layer (logs, events, metrics, Telegram).
 """
 import logging
-from typing import Dict, Any, Callable, Optional
-from src.core.events import Event
-# from swarm_config import config # Unused import, can be removed if not needed elsewhere
-# Mypy might complain about relative imports if src is not properly configured in path.
-# Assuming 'src' is importable.
-# from mvp.lab_swarm_demo.mutation_metrics import get_llm_stats, update_llm_impact # These are passed as callables now
+from typing import Dict, Any, Callable, Optional, Protocol
+from src.core.events import Event # Assuming 'src' is importable.
 
 logger = logging.getLogger(__name__)
 
+# Define protocols for external dependencies to make type hints more specific
+class EventStoreLike(Protocol):
+    """Protocol for an object that can store events."""
+    def append(self, event: Event) -> None:
+        ...
+
+class TelegramNotifierLike(Protocol):
+    """Protocol for an object that can send Telegram notifications."""
+    async def send(self, message: str) -> None:
+        ...
 
 class Telemetry:
     """
     Unified observability layer for logging, events, metrics, and Telegram notifications.
     Manages recording various events and sending alerts related to node activities.
     """
-    def __init__(self, node_id: str, event_store: Any, telegram_notifier: Any,
+    def __init__(self, node_id: str, event_store: EventStoreLike, telegram_notifier: TelegramNotifierLike,
                  get_llm_stats_func: Callable[[], Dict[str, Any]],
                  update_llm_impact_func: Callable[[float], None]) -> None:
         """
@@ -25,14 +31,14 @@ class Telemetry:
 
         Args:
             node_id: The unique identifier for the node.
-            event_store: An object with an `append` method to store events (e.g., a list or custom EventStore).
-            telegram_notifier: An object with a `send` method for Telegram notifications.
+            event_store: An object with an `append(event: Event)` method to store events.
+            telegram_notifier: An object with an `async send(message: str)` method for Telegram notifications.
             get_llm_stats_func: A callable function to retrieve LLM statistics. Expected to return a dict.
             update_llm_impact_func: A callable function to update LLM impact based on current capital.
         """
         self.node_id: str = node_id
-        self.event_store: Any = event_store
-        self.telegram: Any = telegram_notifier
+        self.event_store: EventStoreLike = event_store
+        self.telegram: TelegramNotifierLike = telegram_notifier
         self._get_llm_stats: Callable[[], Dict[str, Any]] = get_llm_stats_func
         self._update_llm_impact: Callable[[float], None] = update_llm_impact_func
 
@@ -53,7 +59,7 @@ class Telemetry:
             capital_after: The node's capital after the trade.
             trace_id: A unique identifier for the transaction/action chain.
         """
-        self.event_store.append(Event.create(
+        event: Event = Event.create(
             node_id=self.node_id,
             event_type="trade_executed",
             payload={
@@ -68,7 +74,8 @@ class Telemetry:
                 "trace_id": trace_id,
             },
             parent_id=trace_id,
-        ))
+        )
+        self.event_store.append(event)
         await self.telegram.send(
             f"🦢 <b>Trade</b>\n"
             f"Node: {self.node_id}\n"
@@ -124,7 +131,7 @@ class Telemetry:
             new_params: The parameters after the mutation.
             context: The context or reason for the mutation.
         """
-        self.event_store.append(Event.create(
+        event: Event = Event.create(
             node_id=self.node_id,
             event_type="llm_mutation",
             payload={
@@ -133,7 +140,8 @@ class Telemetry:
                 "context": context,
             },
             parent_id=None,
-        ))
+        )
+        self.event_store.append(event)
 
     def update_impact(self, current_capital: float) -> None:
         """
@@ -182,7 +190,7 @@ class Telemetry:
             crdt_size: The current size of the CRDT state.
             trace_id: A unique identifier for the action chain.
         """
-        self.event_store.append(Event.create(
+        event: Event = Event.create(
             node_id=self.node_id,
             event_type="spore_failure",
             payload={
@@ -195,5 +203,6 @@ class Telemetry:
                 "trace_id": trace_id,
             },
             parent_id=trace_id,
-        ))
+        )
+        self.event_store.append(event)
         logger.info(f"[{self.node_id}] spore failure recorded")

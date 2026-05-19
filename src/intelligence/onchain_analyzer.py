@@ -1,7 +1,7 @@
 # src/intelligence/onchain_analyzer.py
 """
-On-Chain Analyzer – расширенный анализ блокчейн-данных через Etherscan API.
-Предоставляет: баланс ETH, историю транзакций, газ, активность кошелька.
+On-Chain Analyzer – provides extended blockchain data analysis via Etherscan API.
+Offers ETH balance, transaction history, gas prices, and wallet activity.
 """
 import asyncio
 import logging
@@ -12,111 +12,121 @@ logger = logging.getLogger(__name__)
 
 class OnChainAnalyzer:
     """
-    Класс для анализа данных блокчейна Ethereum с использованием Etherscan API.
-    Предоставляет методы для получения баланса ETH, количества транзакций,
-    цен на газ и полного отчета по адресу.
+    Class for analyzing Ethereum blockchain data using the Etherscan API.
+    Provides methods to retrieve ETH balance, transaction count, gas prices,
+    and a comprehensive report for a given address.
 
-    Использует aiohttp.ClientSession для асинхронных запросов и поддерживает
-    работу как контекстный менеджер (async with).
+    Utilizes aiohttp.ClientSession for asynchronous requests and supports
+    usage as an asynchronous context manager (`async with`).
     """
     BASE_URL: str = "https://api.etherscan.io/api"
-    DEFAULT_TIMEOUT: float = 10.0 # seconds
+    DEFAULT_TIMEOUT: float = 10.0 # seconds for API requests
 
     def __init__(self, api_key: str = ""):
         """
-        Инициализирует анализатор блокчейна.
+        Initializes the OnChainAnalyzer.
 
         Args:
-            api_key: Ключ API Etherscan. Оставьте пустым для использования без ключа (ограниченные лимиты).
+            api_key (str): The Etherscan API key. Leave empty to use without a key
+                           (subject to stricter rate limits).
         """
         self.api_key: str = api_key
         self.session: Optional[aiohttp.ClientSession] = None
+        if not self.api_key:
+            logger.warning("Etherscan API key is not provided. Requests may be heavily rate-limited or fail.")
+
 
     async def _ensure_session(self) -> None:
         """
-        Гарантирует, что сессия aiohttp.ClientSession активна.
-        Если сессия не существует, она будет создана.
+        Ensures that an aiohttp.ClientSession is active.
+        If a session does not exist or is closed, a new one is created.
         """
-        if self.session is None:
+        if self.session is None or self.session.closed:
             self.session = aiohttp.ClientSession()
+            logger.debug("aiohttp ClientSession created for OnChainAnalyzer.")
 
     async def __aenter__(self) -> "OnChainAnalyzer":
         """
-        Инициализирует асинхронный контекстный менеджер.
-        Создает сессию aiohttp.ClientSession.
+        Initializes the asynchronous context manager.
+        Creates an aiohttp.ClientSession.
         """
         await self._ensure_session()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[BaseException], exc_tb: Optional[Any]) -> None:
         """
-        Выходит из асинхронного контекстного менеджера.
-        Закрывает сессию aiohttp.ClientSession.
+        Exits the asynchronous context manager.
+        Closes the aiohttp.ClientSession.
         """
         await self.close()
 
     async def close(self) -> None:
         """
-        Закрывает текущую сессию aiohttp.ClientSession, если она активна.
+        Closes the current aiohttp.ClientSession if it is active and not already closed.
+        This should be called to release network resources.
         """
         if self.session and not self.session.closed:
             await self.session.close()
             self.session = None
-            logger.debug("aiohttp session closed.")
+            logger.debug("aiohttp session closed for OnChainAnalyzer.")
 
     async def _make_etherscan_request(self, params: Dict[str, Union[str, int]]) -> Optional[Dict[str, Any]]:
         """
-        Приватный метод для выполнения запросов к Etherscan API.
-        Обрабатывает общие ошибки сети и API.
+        Private method to execute requests to the Etherscan API.
+        Handles common network and API errors.
 
         Args:
-            params: Словарь параметров запроса для Etherscan API.
+            params (Dict[str, Union[str, int]]): A dictionary of query parameters for the Etherscan API.
 
         Returns:
-            Словарь с результатом API или None в случае ошибки.
+            Optional[Dict[str, Any]]: A dictionary containing the API response result, or None in case of an error
+                                      or if the API returns an error status.
         """
         await self._ensure_session()
         
-        # Добавляем ключ API, если он предоставлен
+        # Add the API key if provided
+        request_params = params.copy()
         if self.api_key:
-            params["apikey"] = self.api_key
+            request_params["apikey"] = self.api_key
 
         try:
             async with self.session.get(
                 self.BASE_URL,
-                params=params,
+                params=request_params,
                 timeout=aiohttp.ClientTimeout(total=self.DEFAULT_TIMEOUT)
             ) as resp:
-                resp.raise_for_status()  # Вызывает исключение для HTTP-ошибок (4xx или 5xx)
-                data = await resp.json()
+                resp.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
+                data: Dict[str, Any] = await resp.json()
 
                 if data.get("status") == "1":
                     return data
                 else:
                     message: str = data.get("message", "No message provided")
-                    error_result: str = data.get("result", "No result info")
+                    error_result: str = str(data.get("result", "No result info")) # Convert result to string for logging
                     logger.warning(
-                        f"Etherscan API returned an error for parameters {params}: "
+                        f"Etherscan API returned an error for parameters {request_params}: "
                         f"Message: {message}, Result: {error_result}"
+                        f" (Full response: {data})"
                     )
                     return None
         except aiohttp.ClientError as e:
-            logger.error(f"Network or client error during Etherscan request for {params}: {e}")
+            logger.error(f"Network or client error during Etherscan request for {request_params}: {e}")
         except ValueError as e:  # Catch JSON decoding errors
-            logger.error(f"JSON decoding error during Etherscan request for {params}: {e}")
+            logger.error(f"JSON decoding error during Etherscan request for {request_params}: {e}", exc_info=True)
         except Exception as e:
-            logger.exception(f"An unexpected error occurred during Etherscan request for {params}: {e}")
+            logger.exception(f"An unexpected error occurred during Etherscan request for {request_params}: {e}")
         return None
 
     async def get_eth_balance(self, address: str) -> Optional[float]:
         """
-        Получает баланс ETH для указанного адреса.
+        Retrieves the ETH balance for the specified Ethereum address.
 
         Args:
-            address: Ethereum-адрес.
+            address (str): The Ethereum address (e.g., "0x...").
 
         Returns:
-            Баланс ETH в виде float или None в случае ошибки.
+            Optional[float]: The ETH balance as a float, or None in case of an error
+                             or if the address is invalid.
         """
         params: Dict[str, Union[str, int]] = {
             "module": "account",
@@ -124,84 +134,96 @@ class OnChainAnalyzer:
             "address": address,
             "tag": "latest"
         }
-        data = await self._make_etherscan_request(params)
+        data: Optional[Dict[str, Any]] = await self._make_etherscan_request(params)
         if data and "result" in data:
             try:
-                # Etherscan возвращает баланс в Wei в виде строки
+                # Etherscan returns balance in Wei as a string
                 return int(data["result"]) / 1e18
             except (ValueError, TypeError) as e:
-                logger.error(f"Failed to parse balance for {address}: {data['result']} - {e}")
+                logger.error(f"Failed to parse balance for address {address}: '{data['result']}' - {e}", exc_info=True)
         return None
 
-    async def get_transaction_count(self, address: str) -> Optional[int]:
+    async def get_transaction_count(self, address: str, limit: int = 100) -> Optional[int]:
         """
-        Получает количество транзакций для оценки активности кошелька.
-        Примечание: Etherscan API txlist с offset=1 возвращает только 1 транзакцию (если есть).
-        Текущая логика возвращает 1, если есть хотя бы одна транзакция, или 0.
+        Retrieves a count of recent normal transactions for an Ethereum address.
+        Note: Etherscan's public API does not provide a direct total transaction count
+        without pagination. This method fetches up to `limit` (default 100) recent transactions
+        and returns their count as an indicator of activity.
 
         Args:
-            address: Ethereum-адрес.
+            address (str): The Ethereum address (e.g., "0x...").
+            limit (int): The maximum number of recent transactions to fetch to determine activity.
+                         The Etherscan API typically has an upper limit for `offset` (e.g., 1000).
 
         Returns:
-            Количество транзакций (0 или 1) в виде int или None в случае ошибки.
+            Optional[int]: The number of recent transactions fetched (up to `limit`),
+                           or None in case of an error.
         """
         params: Dict[str, Union[str, int]] = {
             "module": "account",
             "action": "txlist",
             "address": address,
             "startblock": 0,
-            "endblock": 99999999,
+            "endblock": 99999999, # Max block number
             "page": 1,
-            "offset": 1, # Fetch only one transaction to check for activity
+            "offset": limit, # Fetch up to 'limit' transactions
             "sort": "desc"
         }
-        data = await self._make_etherscan_request(params)
+        data: Optional[Dict[str, Any]] = await self._make_etherscan_request(params)
         if data and "result" in data:
-            # Etherscan возвращает список транзакций. Если список не пуст, значит, транзакции есть.
-            return len(data["result"])
+            # Etherscan returns a list of transactions. Its length indicates activity.
+            if isinstance(data["result"], list):
+                return len(data["result"])
+            else:
+                logger.warning(f"Etherscan txlist API returned non-list result for {address}: {data['result']}")
         return None
 
     async def get_gas_oracle(self) -> Optional[Dict[str, float]]:
         """
-        Получает текущие цены газа (Safe, Propose, Fast) в Gwei.
+        Retrieves current Ethereum gas prices (Safe, Propose, Fast) in Gwei.
+        These typically correspond to Low, Medium, and High priority gas prices.
 
         Returns:
-            Словарь с ценами газа {"low": ..., "medium": ..., "high": ...}
-            или None в случае ошибки.
+            Optional[Dict[str, float]]: A dictionary with 'low', 'medium', 'high' gas prices in Gwei,
+                                        e.g., `{"low": 20.0, "medium": 25.0, "high": 30.0}`,
+                                        or None in case of an error.
         """
         params: Dict[str, Union[str, int]] = {
             "module": "gastracker",
             "action": "gasoracle"
         }
-        data = await self._make_etherscan_request(params)
+        data: Optional[Dict[str, Any]] = await self._make_etherscan_request(params)
         if data and "result" in data:
             result = data["result"]
             try:
+                # Etherscan provides these as strings; convert to float
                 return {
                     "low": float(result.get("SafeGasPrice", 0.0)),
                     "medium": float(result.get("ProposeGasPrice", 0.0)),
                     "high": float(result.get("FastGasPrice", 0.0)),
                 }
             except (ValueError, TypeError) as e:
-                logger.error(f"Failed to parse gas oracle data: {result} - {e}")
+                logger.error(f"Failed to parse gas oracle data: {result} - {e}", exc_info=True)
         return None
 
-    async def get_full_report(self, address: str) -> Dict[str, Any]:
+    async def get_full_report(self, address: str, tx_limit: int = 100) -> Dict[str, Any]:
         """
-        Формирует сводный отчет по указанному Ethereum-адресу,
-        включающий баланс ETH, количество транзакций и текущие цены на газ.
+        Generates a summary report for the specified Ethereum address,
+        including ETH balance, recent transaction count, and current gas prices.
 
         Args:
-            address: Ethereum-адрес.
+            address (str): The Ethereum address (e.g., "0x...").
+            tx_limit (int): The maximum number of recent transactions to consider for the count.
 
         Returns:
-            Словарь, содержащий balance_eth (Optional[float]),
-            transaction_count (Optional[int]) и gas_prices (Optional[Dict[str, float]]).
+            Dict[str, Any]: A dictionary containing `balance_eth` (Optional[float]),
+                            `transaction_count` (Optional[int]), and `gas_prices` (Optional[Dict[str, float]]).
+                            Defaults to None for values that could not be fetched.
         """
-        # Выполняем запросы параллельно для повышения эффективности
+        # Execute requests in parallel for efficiency
         balance, tx_count, gas = await asyncio.gather(
             self.get_eth_balance(address),
-            self.get_transaction_count(address),
+            self.get_transaction_count(address, tx_limit),
             self.get_gas_oracle()
         )
         return {

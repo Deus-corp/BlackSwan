@@ -17,6 +17,7 @@ class ValidationResult:
 
     Атрибуты:
         status (str): Статус валидации, может быть "accepted", "quarantine" или "rejected".
+                      Ожидаемые значения: "accepted", "quarantine", "rejected".
         reasons (List[str]): Список причин, объясняющих статус валидации.
                               Пуст для "accepted", содержит сообщения для других статусов.
     """
@@ -30,6 +31,9 @@ class AdapterValidator:
     Этот класс предназначен для проверки манифестов адаптеров.
     На текущий момент он служит заглушкой и всегда принимает все манифесты,
     без выполнения реальной логики валидации.
+
+    Атрибуты:
+        policy (Optional[Any]): Политика валидации, которую следует использовать (не реализовано в этой заглушке).
     """
     def __init__(self, policy: Optional[Any] = None) -> None:
         """
@@ -51,9 +55,11 @@ class AdapterValidator:
 
         Args:
             manifest (AdapterManifest): Манифест адаптера, который необходимо валидировать.
+                                        Ожидается экземпляр класса `AdapterManifest`.
 
         Returns:
-            ValidationResult: Результат валидации, всегда со статусом "accepted".
+            ValidationResult: Результат валидации, всегда со статусом "accepted"
+                              и пустым списком причин.
         """
         # В текущей реализации валидатор всегда принимает манифесты.
         return ValidationResult(status="accepted", reasons=[])

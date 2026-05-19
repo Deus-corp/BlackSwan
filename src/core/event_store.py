@@ -6,10 +6,14 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import logging
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union
 
 from .events import Event
+
+# Configure logging for this module
+logger = logging.getLogger(__name__)
 
 
 class EventStore:
@@ -22,7 +26,10 @@ class EventStore:
     retrieval by properties like type, node ID, or timestamp.
     """
 
-    def __init__(self, ledger_path: str | Path, sqlite_path: str | Path | None = None) -> None:
+    ledger_path: Path
+    sqlite_path: Optional[Path]
+
+    def __init__(self, ledger_path: Union[str, Path], sqlite_path: Union[str, Path, None] = None) -> None:
         """
         Initializes the EventStore.
 
@@ -33,10 +40,10 @@ class EventStore:
                          as an index. If provided, parent directories will be created,
                          and the database schema will be initialized.
         """
-        self.ledger_path: Path = Path(ledger_path)
+        self.ledger_path = Path(ledger_path)
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self.sqlite_path: Optional[Path] = Path(sqlite_path) if sqlite_path else None
+        self.sqlite_path = Path(sqlite_path) if sqlite_path else None
         if self.sqlite_path:
             self.sqlite_path.parent.mkdir(parents=True, exist_ok=True)
             self._init_sqlite()
@@ -45,28 +52,37 @@ class EventStore:
         """
         Initializes the SQLite database schema if an SQLite path is provided.
         This method creates the 'events' table and necessary indices if they don't exist.
+
+        Raises:
+            RuntimeError: If SQLite path is not configured when this method is called.
         """
         if self.sqlite_path is None:
+            # This check is defensive; _init_sqlite is only called if sqlite_path exists.
+            logger.error("Attempted to initialize SQLite without a configured path.")
             raise RuntimeError("SQLite path is not configured for EventStore.")
 
-        with sqlite3.connect(self.sqlite_path) as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS events (
-                    event_id TEXT PRIMARY KEY,
-                    ts REAL NOT NULL,
-                    node_id TEXT NOT NULL,
-                    type TEXT NOT NULL,
-                    parent_id TEXT,
-                    hash TEXT NOT NULL,
-                    payload_json TEXT NOT NULL
+        try:
+            with sqlite3.connect(self.sqlite_path) as conn:
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS events (
+                        event_id TEXT PRIMARY KEY,
+                        ts REAL NOT NULL,
+                        node_id TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        parent_id TEXT,
+                        hash TEXT NOT NULL,
+                        payload_json TEXT NOT NULL
+                    )
+                    """
                 )
-                """
-            )
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON events(type)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_events_node ON events(node_id)")
-            conn.commit()
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON events(type)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_events_node ON events(node_id)")
+                conn.commit()
+        except sqlite3.Error as e:
+            logger.error(f"Failed to initialize SQLite database at '{self.sqlite_path}': {e}")
+            raise
 
     def append(self, event: Event) -> None:
         """
@@ -82,55 +98,72 @@ class EventStore:
             sqlite3.Error: If there's an issue inserting into the SQLite index.
         """
         if not event.verify_hash():
-            raise ValueError("Event hash verification failed.")
+            raise ValueError(f"Event hash verification failed for event_id: {event.event_id}.")
 
         line: str = json.dumps(event.to_dict(), ensure_ascii=False)
-        with self.ledger_path.open("a", encoding="utf-8") as f:
-            f.write(line + "\n")
+        try:
+            with self.ledger_path.open("a", encoding="utf-8") as f:
+                f.write(line + "\n")
+        except IOError as e:
+            logger.error(f"Failed to write event to ledger '{self.ledger_path}': {e}")
+            raise
 
         if self.sqlite_path:
-            with sqlite3.connect(self.sqlite_path) as conn:
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO events
-                    (event_id, ts, node_id, type, parent_id, hash, payload_json)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        event.event_id,
-                        event.ts,
-                        event.node_id,
-                        event.type,
-                        event.parent_id,
-                        event.hash,
-                        json.dumps(event.payload, ensure_ascii=False),
-                    ),
-                )
-                conn.commit()
+            try:
+                with sqlite3.connect(self.sqlite_path) as conn:
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO events
+                        (event_id, ts, node_id, type, parent_id, hash, payload_json)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            event.event_id,
+                            event.ts,
+                            event.node_id,
+                            event.type,
+                            event.parent_id,
+                            event.hash,
+                            json.dumps(event.payload, ensure_ascii=False),
+                        ),
+                    )
+                    conn.commit()
+            except sqlite3.Error as e:
+                logger.error(f"Failed to insert event '{event.event_id}' into SQLite index at '{self.sqlite_path}': {e}")
+                raise
 
     def iter_events(self) -> Iterable[Event]:
         """
         Iterates through all events stored in the JSONL ledger file.
-        Lines that cannot be parsed as valid JSON or Event objects are skipped.
+        Lines that cannot be parsed as valid JSON or Event objects are skipped,
+        with a warning logged.
 
         Yields:
             Event: An Event object for each valid line in the ledger.
         """
         if not self.ledger_path.exists():
+            logger.info(f"Ledger file '{self.ledger_path}' does not exist. No events to iterate.")
             return
-        with self.ledger_path.open("r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    event_dict = json.loads(line)
-                    yield Event.from_dict(event_dict)
-                except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-                    # Log potentially malformed JSONL lines, but continue processing.
-                    # KeyError/TypeError/ValueError can occur if from_dict expects certain keys/types.
-                    print(f"Warning: Skipping malformed event line in ledger '{self.ledger_path}': {line[:100]}... Error: {e}")
-                    continue
+        
+        try:
+            with self.ledger_path.open("r", encoding="utf-8") as f:
+                for line_num, line in enumerate(f, 1):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        event_dict = json.loads(line)
+                        yield Event.from_dict(event_dict)
+                    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+                        # Log potentially malformed JSONL lines, but continue processing.
+                        logger.warning(
+                            f"Skipping malformed event line {line_num} in ledger '{self.ledger_path}': "
+                            f"{line[:100]}... Error: {e}"
+                        )
+                        continue
+        except IOError as e:
+            logger.error(f"Error reading ledger file '{self.ledger_path}': {e}")
+            # Decide whether to re-raise or yield nothing. For now, just log and stop iteration.
 
     def tail(self, n: int = 100) -> List[Event]:
         """
@@ -156,8 +189,8 @@ class EventStore:
     def get_by_type(self, event_type: str) -> List[Event]:
         """
         Retrieves all events of a specific type.
-        This method will iterate through the entire ledger, which can be slow
-        for large ledgers without an SQLite index.
+        This method will use the SQLite index if available; otherwise, it iterates
+        through the entire JSONL ledger, which can be slow for large ledgers.
 
         Args:
             event_type: The type of events to filter by.
@@ -166,17 +199,32 @@ class EventStore:
             A list of Event objects matching the specified type.
         """
         if self.sqlite_path:
-            with sqlite3.connect(self.sqlite_path) as conn:
-                cursor = conn.execute("SELECT payload_json FROM events WHERE type = ?", (event_type,))
-                return [Event.from_dict(json.loads(row[0])) for row in cursor.fetchall()]
+            try:
+                with sqlite3.connect(self.sqlite_path) as conn:
+                    cursor = conn.execute("SELECT payload_json FROM events WHERE type = ?", (event_type,))
+                    events: List[Event] = []
+                    for row in cursor.fetchall():
+                        try:
+                            events.append(Event.from_dict(json.loads(row[0])))
+                        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+                            logger.warning(
+                                f"Skipping malformed event from SQLite index for type '{event_type}': "
+                                f"{row[0][:100]}... Error: {e}"
+                            )
+                            continue
+                    return events
+            except sqlite3.Error as e:
+                logger.error(f"Failed to query events by type '{event_type}' from SQLite index: {e}")
+                # Fallback to ledger iteration if SQLite fails, or raise? For now, re-raise.
+                raise
         else:
             return [e for e in self.iter_events() if e.type == event_type]
 
     def get_by_node(self, node_id: str) -> List[Event]:
         """
         Retrieves all events originating from a specific node ID.
-        This method will iterate through the entire ledger, which can be slow
-        for large ledgers without an SQLite index.
+        This method will use the SQLite index if available; otherwise, it iterates
+        through the entire JSONL ledger, which can be slow for large ledgers.
 
         Args:
             node_id: The ID of the node to filter events by.
@@ -185,13 +233,28 @@ class EventStore:
             A list of Event objects originating from the specified node.
         """
         if self.sqlite_path:
-            with sqlite3.connect(self.sqlite_path) as conn:
-                cursor = conn.execute("SELECT payload_json FROM events WHERE node_id = ?", (node_id,))
-                return [Event.from_dict(json.loads(row[0])) for row in cursor.fetchall()]
+            try:
+                with sqlite3.connect(self.sqlite_path) as conn:
+                    cursor = conn.execute("SELECT payload_json FROM events WHERE node_id = ?", (node_id,))
+                    events: List[Event] = []
+                    for row in cursor.fetchall():
+                        try:
+                            events.append(Event.from_dict(json.loads(row[0])))
+                        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+                            logger.warning(
+                                f"Skipping malformed event from SQLite index for node '{node_id}': "
+                                f"{row[0][:100]}... Error: {e}"
+                            )
+                            continue
+                    return events
+            except sqlite3.Error as e:
+                logger.error(f"Failed to query events by node '{node_id}' from SQLite index: {e}")
+                # Fallback to ledger iteration if SQLite fails, or raise? For now, re-raise.
+                raise
         else:
             return [e for e in self.iter_events() if e.node_id == node_id]
 
-    def replay(self, since_ts: float | None = None) -> Iterable[Event]:
+    def replay(self, since_ts: Optional[float] = None) -> Iterable[Event]:
         """
         Replays events from the ledger, optionally starting from a given timestamp.
         If an SQLite index is available, it will use the index for `since_ts` queries
@@ -206,14 +269,28 @@ class EventStore:
             Event: Events from the ledger that match the replay criteria.
         """
         if self.sqlite_path and since_ts is not None:
-            with sqlite3.connect(self.sqlite_path) as conn:
-                cursor = conn.execute("SELECT payload_json FROM events WHERE ts >= ? ORDER BY ts", (since_ts,))
-                for row in cursor:
-                    try:
-                        yield Event.from_dict(json.loads(row[0]))
-                    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-                        print(f"Warning: Skipping malformed event from SQLite index: {row[0][:100]}... Error: {e}")
-                        continue
+            try:
+                with sqlite3.connect(self.sqlite_path) as conn:
+                    cursor = conn.execute("SELECT payload_json FROM events WHERE ts >= ? ORDER BY ts", (since_ts,))
+                    for row in cursor:
+                        try:
+                            yield Event.from_dict(json.loads(row[0]))
+                        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+                            logger.warning(
+                                f"Skipping malformed event from SQLite index during replay (ts >= {since_ts}): "
+                                f"{row[0][:100]}... Error: {e}"
+                            )
+                            continue
+            except sqlite3.Error as e:
+                logger.error(
+                    f"Failed to replay events from SQLite index (since_ts={since_ts}) at '{self.sqlite_path}': {e}"
+                )
+                # Fallback to ledger iteration if SQLite fails.
+                logger.info("Falling back to JSONL ledger iteration for replay due to SQLite error.")
+                # Then proceed to the JSONL fallback logic below
+                for event in self.iter_events():
+                    if since_ts is None or event.ts >= since_ts:
+                        yield event
         else:
             # Fallback to ledger iteration or if since_ts is None
             for event in self.iter_events():

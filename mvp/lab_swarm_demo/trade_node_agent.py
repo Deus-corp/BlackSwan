@@ -16,7 +16,7 @@ from src.security.reputation_manager import ReputationManager
 from src.intelligence.episodic_memory import EpisodicMemory
 from src.intelligence.semantic_memory import SemanticMemory
 from src.intelligence.llm_client import LLMClient
-from src.security.gossip_envelope import sign_envelope, generate_key_pair, sha256
+# from src.security.gossip_envelope import sign_envelope, generate_key_pair, sha256 # Unused imports
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 from src.core.events import Event
@@ -42,6 +42,7 @@ from mvp.lab_swarm_demo.mutation_metrics import note_llm_mutation, update_llm_im
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
+# Basic logging configuration. This is usually done once at the application's entry point.
 logging.basicConfig(level=config.log_level)
 
 EXPECTED_RETURN_RATE: float = config.expected_return_rate
@@ -55,7 +56,8 @@ class SwarmNode:
 
     It integrates various components including CRDT for state synchronization,
     a genetic engine for strategy evolution, an LLM for mutations, and a capital manager
-    for survival.
+    for survival. The node operates autonomously, adapting its strategies based on
+    market conditions and swarm intelligence.
     """
     def __init__(self) -> None:
         """
@@ -85,14 +87,14 @@ class SwarmNode:
         self.gossip_interval: float = config.GOSSIP_INTERVAL
         self.max_state: int = config.MAX_STATE
         self.ttl: int = config.TTL
-        self.max_import: int = config.MAX_IMPORT
+        self.max_import: int = config.MAX_import
         self.import_cooldown: int = config.IMPORT_COOLDOWN
 
         self.swarm_sync: SwarmSync = SwarmSync(self)
 
         # ========== INFRASTRUCTURE LAYER (BODY) ==========
         self.key_manager: KeyManager = KeyManager()
-        self.crypto: CryptoManager = CryptoManager()
+        self.crypto: CryptoManager = CryptoManager() # Manages node's own crypto key pair for signing
 
         self.reputation: ReputationManager = ReputationManager()
         self.reputation_blacklist_threshold: float = 0.3
@@ -117,6 +119,7 @@ class SwarmNode:
 
         if self.memory_api_enabled:
             # Now CRDT is initialized, assign its storage to memory_api
+            # This allows LocalMemoryAPI to use CRDT's underlying storage for persistence.
             self.memory_api.storage = self.crdt.storage
 
         self.gossip: SafeGossipAdapter = SafeGossipAdapter(self.crdt)
@@ -176,8 +179,19 @@ class SwarmNode:
 
         self.state: GlobalState = GlobalState()
         best: Dict[str, Dict[str, float]] = self.state.get_best_genomes(top_n=1)
-        # Initialize with default params if no best genome is found
-        self.current_params: Dict[str, float] = list(best.values())[0] if best else {"max_risk_per_trade": 0.05, "phi_llm": 0.15, "stop_loss_ratio": 0.05, "trailing_stop_ratio": 0.01, "momentum_window": 10, "volatility_threshold": 0.02}
+        # Initialize with default parameters if no best genome is found in GlobalState
+        self.current_params: Dict[str, float] = (
+            list(best.values())[0]
+            if best
+            else {
+                "max_risk_per_trade": 0.05,
+                "phi_llm": 0.15,
+                "stop_loss_ratio": 0.05,
+                "trailing_stop_ratio": 0.01,
+                "momentum_window": 10.0, # Ensure float type
+                "volatility_threshold": 0.02,
+            }
+        )
         self.dispatcher: ROIDispatcher = ROIDispatcher(config=self.current_params)
 
         self.survival: SurvivalEvaluator = SurvivalEvaluator()
@@ -185,7 +199,7 @@ class SwarmNode:
         self.survival.liveness = 1.0
 
         self.curiosity: CuriosityEngine = CuriosityEngine(window_size=10, surprise_threshold=0.3)
-        self.meta_agent: MetaPOMDPAgent = MetaPOMDPAgent() # This seems unused, consider removal if truly not used.
+        self.meta_agent: MetaPOMDPAgent = MetaPOMDPAgent() # This component appears unused in the current implementation.
         self.llm: LLMClient = LLMClient()
 
         self.memory: EpisodicMemory = EpisodicMemory(max_size=500)
@@ -203,7 +217,7 @@ class SwarmNode:
         self._seed_from_memory()
 
         self.trading_controller: TradingController = TradingController(self.node_id)
-        self.nonce_manager: Any = None # Placeholder, will be set for web3 mode
+        self.nonce_manager: Optional[Any] = None # Placeholder, will be set for web3 mode
         self.mutation_engine: MutationEngine = MutationEngine(self.llm, node_id=self.node_id, nonce_manager=self.nonce_manager, event_store=self.event_store)
 
         self.evolution_engine: EvolutionEngine = EvolutionEngine(self)
@@ -211,47 +225,57 @@ class SwarmNode:
         self.capital_manager: CapitalManager = CapitalManager(capital=self.capital)
         self.capital_manager.set_survival(self.survival)
 
+        self.risk_manager = RiskManager()
+
         # Initialize executor with a placeholder adapter; it will be updated in start() for web3.
         self.executor: Any = build_backend(
             node_id=self.node_id,
-            adapter=None, # Placeholder
-            is_leader_func=self.is_leader,
+            adapter=None, # Placeholder adapter
+            is_leader_func=self.is_leader, # Pass the bound method for leader determination
         )
 
-        # Background tasks handles
+        # Background tasks handles and shutdown event
         self._evolution_task: Optional[asyncio.Task[Any]] = None
         self._sync_task: Optional[asyncio.Task[Any]] = None
+        self.shutdown_event: asyncio.Event = asyncio.Event() # Event to signal graceful shutdown
 
     def is_leader(self, block_number: int) -> bool:
         """
         Determines if this node is the leader for a given block number.
+        Leader selection is based on a deterministic function of the block number
+        and node index.
 
         Args:
-            block_number: The current block number (used for leader selection).
+            block_number: The current block number (used as a seed for leader selection).
 
         Returns:
-            True if this node is the leader, False otherwise.
+            True if this node is the leader for the given block, False otherwise.
         """
         leader_index: int = select_leader(self.node_id, block_number, config.total_nodes)
         return self.node_index == leader_index
-    
+
     async def _apply_meta_commands(self) -> None:
         """
         Applies meta-commands received from the CRDT state, adjusting node parameters.
-        These commands are issued by the MetaAgent to influence swarm behavior.
+        These commands are typically issued by a MetaAgent to influence swarm behavior.
+        Only the latest unexpired command is applied.
         """
         try:
             all_state: Dict[str, Any] = self.crdt.state
-            json_commands: List[Dict[str, Any]] = [v for k, v in all_state.items() if isinstance(v, dict) and v.get("type") == "meta_command_json"]
-            
+            json_commands: List[Dict[str, Any]] = [
+                v for k, v in all_state.items()
+                if isinstance(v, dict) and v.get("type") == "meta_command_json"
+            ]
+
             now: float = time.time()
+            # Filter commands that have not expired
             json_commands = [c for c in json_commands if float(c.get("expires_at", now + 1)) > now]
 
             if json_commands:
-                # Get the latest command based on timestamp
+                # Get the latest command based on its timestamp
                 latest_json: Dict[str, Any] = max(json_commands, key=lambda x: float(x.get("timestamp", 0)))
                 data: Dict[str, Any] = latest_json.get("data", {})
-                
+
                 if data.get("action") == "ADJUST_SWARM":
                     params: Dict[str, Any] = data.get("params", {})
                     alpha: float = 0.1 # Smoothing factor for adjustments
@@ -270,41 +294,56 @@ class SwarmNode:
                         mult: float = float(params["exploration_multiplier"])
                         old_rate: float = getattr(self.engine, '_mutation_rate', 0.25)
                         new_rate: float = max(0.1, min(0.7, old_rate * mult)) # Keep exploration rate bounded
-                        if hasattr(self.engine, 'set_mutation_rate'):
+                        if hasattr(self.engine, 'set_mutation_rate') and callable(getattr(self.engine, 'set_mutation_rate')):
                             self.engine.set_mutation_rate(new_rate)
                         logger.info(f"🧠 MetaAgent JSON: exploration rate → {new_rate:.2f}")
 
                     if "survival_bias_adj" in params:
-                        delta: float = max(-0.05, min(0.05, float(params["survival_bias_adj"]))) # Clamp adjustment delta
+                        # Clamp adjustment delta to prevent extreme changes
+                        delta: float = max(-0.05, min(0.05, float(params["survival_bias_adj"])))
                         old_sb: float = self.survival.config.get("lambda", 0.15)
-                        new_sb: float = max(0.1, min(0.9, old_sb + delta)) # Keep survival bias bounded
+                        # Keep survival bias bounded
+                        new_sb: float = max(0.1, min(0.9, old_sb + delta))
                         self.survival.config["lambda"] = new_sb
                         logger.info(f"🧠 MetaAgent JSON: survival lambda → {new_sb:.3f}")
 
                     if "stop_loss_adj" in params:
                         factor: float = float(params["stop_loss_adj"])
                         old_sl: float = self.current_params.get("stop_loss_ratio", 0.05)
-                        new_sl: float = max(0.001, min(0.2, old_sl * factor)) # Keep stop loss ratio bounded
+                        # Keep stop loss ratio bounded
+                        new_sl: float = max(0.001, min(0.2, old_sl * factor))
                         self.current_params["stop_loss_ratio"] = new_sl
                         logger.info(f"🧠 MetaAgent JSON: stop-loss {old_sl:.4f} → {new_sl:.4f}")
 
         except Exception as e:
-            logger.debug(f"Meta command processing skipped: {e}", exc_info=True) # Added exc_info for better debugging
+            logger.debug(f"Meta command processing skipped or failed: {e}", exc_info=True)
 
     async def _evolution_cycle(self) -> None:
-        """Background loop for the evolution engine (genetics, LLM mutations)."""
+        """
+        Background loop for the evolution engine, handling genetic algorithm steps
+        and LLM-based mutations. Runs continuously until cancelled.
+        """
         while True:
             try:
                 await self._tick_evolution()
+            except asyncio.CancelledError:
+                logger.info("Evolution cycle task cancelled.")
+                break # Exit loop cleanly
             except Exception as e:
                 logger.error(f"Evolution cycle error: {e}", exc_info=True)
             await asyncio.sleep(0.5)
 
     async def _sync_cycle(self) -> None:
-        """Background loop for swarm synchronization (gossip, genome import)."""
+        """
+        Background loop for swarm synchronization, managing gossip protocol and
+        genome import/export between nodes. Runs continuously until cancelled.
+        """
         while True:
             try:
                 await self._sync_swarm()
+            except asyncio.CancelledError:
+                logger.info("Sync cycle task cancelled.")
+                break # Exit loop cleanly
             except Exception as e:
                 logger.error(f"Sync cycle error: {e}", exc_info=True)
             await asyncio.sleep(0.5)
@@ -315,7 +354,8 @@ class SwarmNode:
     def node_niche(self) -> str:
         """
         Determines the current operational niche of the node based on its survival
-        quotient and capital.
+        quotient (DQ) and capital. This helps in tailoring evolutionary behavior
+        and resource allocation.
 
         Returns:
             A string indicating the node's current niche ("survival", "capital", "exploration").
@@ -329,34 +369,38 @@ class SwarmNode:
     def accept_genome(self, genome: Dict[str, Any]) -> bool:
         """
         Checks if a given genome should be accepted into the node's population.
+        Criteria include minimum fitness, valid parameter ranges, and reputation
+        of the originating node.
 
         Args:
-            genome: A dictionary representing the genome.
+            genome: A dictionary representing the genome, expected to have 'fitness',
+                    'params', and optionally 'origin_pubkey_hex' keys.
 
         Returns:
             True if the genome meets acceptance criteria, False otherwise.
         """
-        if float(genome.get("fitness", 0)) < 0.001:
-            return False
-        # Ensure parameters are within a reasonable range (0, 10)
-        for v in genome.get("params", {}).values():
-            if not (0 < float(v) < 10):
+        try:
+            if float(genome.get("fitness", 0.0)) < 0.001:
                 return False
-        pubkey_hex: Optional[str] = genome.get("origin_pubkey_hex") # Assuming hex representation
-        if pubkey_hex:
-            # Convert hex string back to bytes for reputation manager
-            try:
-                pubkey_bytes = bytes.fromhex(pubkey_hex)
+            # Ensure parameters are within a reasonable range (0, 10)
+            for v in genome.get("params", {}).values():
+                if not (0.0 < float(v) < 10.0): # Use float for comparison
+                    return False
+            pubkey_hex: Optional[str] = genome.get("origin_pubkey_hex") # Assuming hex representation
+            if pubkey_hex:
+                # Convert hex string back to bytes for reputation manager
+                pubkey_bytes: bytes = bytes.fromhex(pubkey_hex)
                 if not self.reputation.is_trusted(pubkey_bytes):
                     return False
-            except ValueError:
-                logger.debug(f"Invalid pubkey_hex encountered: {pubkey_hex}")
-                return False
-        return True
+            return True
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Failed to accept genome due to data conversion error: {e}, genome: {genome}")
+            return False
 
     def make_genome(self, params: Dict[str, float], fitness: float) -> Dict[str, Any]:
         """
-        Creates a new genome dictionary with specified parameters and fitness.
+        Creates a new genome dictionary with specified parameters and fitness,
+        including node-specific metadata like origin, current niche, and public key.
 
         Args:
             params: A dictionary of parameters for the genome.
@@ -370,9 +414,9 @@ class SwarmNode:
             "fitness": fitness,
             "niche": self.node_niche(),
             "origin": self.node_id,
-            "lineage": [self.node_id],
+            "lineage": [self.node_id], # Starting lineage with self
             "ts": time.time(),
-            "origin_pubkey_hex": self.crypto.public_bytes_hex, # Store public key in hex
+            "origin_pubkey_hex": self.crypto.public_bytes_hex, # Store node's public key in hex
         }
 
     def dict_to_genome(self, d: Dict[str, Any], niche: str = "exploration") -> Genome:
@@ -380,24 +424,29 @@ class SwarmNode:
         Converts a dictionary representation into a Genome object.
 
         Args:
-            d: A dictionary containing genome data.
+            d: A dictionary containing genome data. Expected to have 'params', 'fitness',
+               'niche', and 'lineage' keys.
             niche: The default niche if not specified in the dictionary.
 
         Returns:
             A Genome object.
         """
         # Ensure that params are floats and lineage is a list of strings
-        genome_params: Dict[str, float] = {str(k): float(v) for k, v in d.get("params", d).items() if isinstance(v, (int, float))}
+        genome_params: Dict[str, float] = {
+            str(k): float(v)
+            for k, v in d.get("params", {}).items() # Safely get "params", or an empty dict
+            if isinstance(v, (int, float))
+        }
         genome_fitness: float = float(d.get("fitness", 0.0))
         genome_niche: str = str(d.get("niche", niche))
-        
-        raw_lineage = d.get("lineage", [])
+
+        raw_lineage: Any = d.get("lineage", [])
         if not isinstance(raw_lineage, list):
             raw_lineage = []
-        
-        # Ensure lineage items are strings, and limit length
+
+        # Ensure lineage items are strings, and limit length to prevent data bloat
         genome_lineage: List[str] = [str(item) for item in raw_lineage[-5:]] + [self.node_id]
-        
+
         return Genome(
             params=genome_params,
             fitness=genome_fitness,
@@ -407,7 +456,9 @@ class SwarmNode:
 
     def local_score(self, genome: Genome) -> float:
         """
-        Calculates a local score for a genome, biasing based on node's niche and memory.
+        Calculates a local score for a genome, biasing its fitness based on the node's
+        current niche and historical memory of market conditions. This allows the node
+        to prioritize genomes that align with its current operational state.
 
         Args:
             genome: The Genome object to score.
@@ -422,15 +473,16 @@ class SwarmNode:
         elif genome.niche == "exploration":
             bias += min(0.3, self.curiosity.surprise_threshold)
         elif genome.niche == "capital":
-            bias += min(0.5, self.capital / 2000.0) # Ensure float division
+            # Scale capital influence, ensuring float division and upper bound
+            bias += min(0.5, self.capital / 2000.0)
 
         if len(self.memory) > 0:
             vol: float = self._current_volatility()
-            # Assuming MemoryRecord has compatible types for find_similar
+            # Find similar records based on volatility and survival quotient
             similar: List[MemoryRecord] = self.memory.find_similar(vol, self.survival.dq, top_k=5)
             for rec in similar:
-                # Compare params by value, not by object identity
-                if rec.get("params") == genome.params:
+                # Compare params by value, ensuring 'params' exists and is a dictionary
+                if isinstance(rec, dict) and isinstance(rec.get("params"), dict) and rec["params"] == genome.params:
                     bias += 0.2
                     break
         return base * bias
@@ -441,13 +493,13 @@ class SwarmNode:
         Diversity is measured by the ratio of unique genome parameter sets to the total population size.
 
         Returns:
-            A float representing the population diversity (0.0 to 1.0).
+            A float representing the population diversity (0.0 to 1.0), where 1.0 is maximum diversity.
         """
         pop: List[Genome] = self.engine.population
         if not pop:
             return 0.0
-        
-        # Use a frozen set of items to ensure dictionary key uniqueness for comparison
+
+        # Use a frozenset of items to ensure dictionary key uniqueness for comparison
         # This handles cases where dict order might change but content is the same
         sigs = {frozenset(g.params.items()) for g in pop if isinstance(g, Genome)}
         return len(sigs) / len(pop)
@@ -457,14 +509,15 @@ class SwarmNode:
         Counts the number of genomes belonging to each niche in the population.
 
         Returns:
-            A dictionary where keys are niche names and values are their counts.
+            A dictionary where keys are niche names (e.g., "survival", "capital", "exploration")
+            and values are their respective counts.
         """
         counts: Dict[str, int] = {"survival": 0, "capital": 0, "exploration": 0}
         for g in self.engine.population:
             niche: str
             if isinstance(g, Genome):
                 niche = g.niche
-            elif isinstance(g, dict):
+            elif isinstance(g, dict): # For compatibility if raw dicts are in population
                 niche = g.get("niche", "exploration")
             else:
                 continue # Skip if not a recognizable genome type
@@ -474,22 +527,24 @@ class SwarmNode:
     def _current_volatility(self) -> float:
         """
         Calculates the current market volatility based on previous prices.
+        Uses `_prev_price` and `_prev_prev_price` to determine price change.
 
         Returns:
-            The calculated volatility.
+            The calculated volatility as a float. Returns 0.0 if prices are not sufficiently initialized.
         """
-        # Ensure these are float values, use getattr with defaults
+        # Ensure these are float values, use getattr with defaults for robustness
         prev: float = getattr(self, '_prev_price', 100.0)
         prev_prev: float = getattr(self, '_prev_prev_price', 100.0)
-        
-        # Avoid division by zero
-        denominator = max(1.0, prev_prev)
+
+        # Avoid division by zero by ensuring denominator is at least 1.0
+        denominator: float = max(1.0, prev_prev)
         return abs(prev - prev_prev) / denominator
 
     def _seed_from_memory(self) -> None:
         """
         Seeds the genetic engine's population with relevant genomes from memory.
-        It looks for past trading parameters that performed well under similar market conditions.
+        It looks for past trading parameters that performed well under similar
+        market conditions (volatility and survival quotient).
         """
         if not self.memory.records:
             return
@@ -499,10 +554,11 @@ class SwarmNode:
         for rec in similar:
             try:
                 # Assuming 'params' in MemoryRecord is a Dict[str, float]
-                genome: Genome = self.dict_to_genome({"params": rec["params"]})
-                self.engine.add_genome(genome)
+                if isinstance(rec, dict) and "params" in rec and isinstance(rec["params"], dict):
+                    genome: Genome = self.dict_to_genome({"params": rec["params"]})
+                    self.engine.add_genome(genome)
             except Exception as e:
-                logger.debug(f"Seed from memory skipped for record {rec}: {e}")
+                logger.debug(f"Seed from memory skipped for record {rec}: {e}", exc_info=True)
 
     # ------------------------------------------------------------
     # Market
@@ -526,20 +582,28 @@ class SwarmNode:
                 if tick is not None:
                     scale: float = config.trading.price_scale
                     # Ensure 'price' key exists, defaulting to 'ask' or 50000 if neither
-                    tick['price'] = float(tick.get('price', tick.get('ask', 50000)))
-                    tick['price'] = tick['price'] / scale
+                    # and then scaling it.
+                    price_val: float = float(tick.get('price', tick.get('ask', 50000.0)))
+                    tick['price'] = price_val / scale
+                    tick['symbol'] = symbol # Ensure symbol is present for consistency
                     return tick
-        
+
         if self.market_url:
             try:
                 async with session.get(self.market_url, timeout=1) as resp:
                     resp.raise_for_status() # Raise an exception for bad status codes
                     return await resp.json()
+            except aiohttp.ClientError as e:
+                logger.debug(f"Market URL request failed (ClientError) for {self.market_url}: {e}")
+            except asyncio.TimeoutError:
+                logger.debug(f"Market URL request to {self.market_url} timed out.")
             except Exception as e:
-                logger.debug(f"Market URL request failed: {e}")
-        
+                logger.debug(f"Market URL request failed (Generic Error) for {self.market_url}: {e}")
+
         # Fallback if no market data is obtained
-        return {"price": random.uniform(90, 110)}
+        # Returns a dict that will be compatible with subsequent price processing
+        logger.warning(f"Could not get market data for {symbol}, using simulated fallback price.")
+        return {"price": random.uniform(90.0, 110.0), "symbol": symbol, "timestamp": time.time()}
 
     # ------------------------------------------------------------
     # Main loop
@@ -548,28 +612,31 @@ class SwarmNode:
         """
         The main operational loop of the SwarmNode, handling market interactions,
         survival evaluation, trading, and periodic tasks.
+        This loop continues until a shutdown signal is received or a critical
+        failure/death condition is met.
         """
         async with aiohttp.ClientSession() as session:
             if self.memory_api_enabled:
                 await self.memory_api.load_from_db()
 
-            while True:
+            while not self.shutdown_event.is_set():
                 self.step_count += 1
                 self._trace_id = str(uuid.uuid4())
 
+                # Node failure simulation
                 if self.failure_prob > 0 and random.random() < self.failure_prob:
                     await self.telemetry.spore_failure(
                         step=self.step_count,
                         capital=self.capital,
                         dq=self.survival.dq,
-                        fitness=self.engine.champion[1] if self.engine.champion else 0.0,
+                        fitness=float(self.engine.champion[1]) if self.engine.champion else 0.0,
                         diversity=self.engine.diversity(),
                         crdt_size=len(self.crdt.state),
                         trace_id=self._trace_id,
                     )
-                    logger.info(f"[{self.node_id}] failed and exiting.")
-                    # Use sys.exit() or raise SystemExit here to gracefully stop the loop and tasks.
-                    sys.exit(1)
+                    logger.info(f"[{self.node_id}] simulated failure, initiating graceful shutdown.")
+                    self.shutdown_event.set() # Signal shutdown
+                    break # Exit main loop
 
                 # 1. Market data collection
                 best_symbol, best_market, snapshot = await self._collect_market_snapshot(session)
@@ -578,7 +645,7 @@ class SwarmNode:
                 self._prev_prev_price = self._prev_price
                 self._prev_price = float(best_market.get("price", 100.0))
 
-                # 2. Auto-conversion and Stop-loss logic
+                # 2. Auto-conversion and Stop-loss logic (if applicable)
                 if self.market_mode == "web3":
                     adapter = self.market_adapter.get_adapter(best_symbol)
                     if adapter and hasattr(adapter, 'w3'): # Check if web3 adapter and has w3 attribute
@@ -587,16 +654,19 @@ class SwarmNode:
                             if self.is_leader(block_number):
                                 await self.trading_controller.check_and_rebalance(adapter)
                         except Exception as e:
-                            logger.warning(f"Web3 rebalance check failed: {e}")
+                            logger.warning(f"Web3 rebalance check failed for {best_symbol}: {e}", exc_info=True)
 
                 if self.market_mode == "futures":
-                    adapter = self.market_adapter.get_adapter(best_symbol)
+                    adapter = self.market_adapter.get_adapter(best_symbol, "futures") # Explicitly get futures adapter
                     if adapter and hasattr(adapter, 'exchange') and hasattr(adapter, 'check_stop_loss'):
                         try:
+                            # Fetch positions for the specific symbol
                             positions: List[Dict[str, Any]] = await adapter.exchange.fetch_positions([best_symbol])
                             if positions:
-                                pos: Dict[str, Any] = positions[0] # Assuming one position per symbol
-                                contracts = float(pos.get('contracts', 0.0))
+                                # Assuming one position per symbol is relevant for stop-loss
+                                pos: Dict[str, Any] = positions[0]
+                                contracts_str: Any = pos.get('contracts', '0.0')
+                                contracts: float = float(contracts_str)
                                 if contracts != 0.0:
                                     entry_price: float = float(pos.get('entryPrice', 0.0))
                                     current_price: float = float(best_market['price'])
@@ -611,31 +681,35 @@ class SwarmNode:
                                             f"Capital: {self.capital:.2f}"
                                         )
                                         if self.market_adapter.hedge_enabled:
+                                            # Attempt to close a potential spot hedge position
                                             spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
                                             if spot_adapter:
                                                 try:
                                                     await spot_adapter.close_position(best_symbol)
+                                                    logger.info(f"Hedge position for {best_symbol} closed.")
                                                 except Exception as e:
-                                                    logger.warning(f"Hedge close failed: {e}")
+                                                    logger.warning(f"Hedge position close failed for {best_symbol}: {e}")
                         except Exception as e:
-                            logger.warning(f"Futures stop-loss check failed: {e}", exc_info=True)
+                            logger.warning(f"Futures stop-loss check failed for {best_symbol}: {e}", exc_info=True)
 
                 # 3. Capital Burn
                 self.capital_manager.burn()
                 self.capital = self.capital_manager.capital
                 if not self.capital_manager.is_alive():
-                    logger.info(f"[{self.node_id}] died due to insufficient capital. Exiting.")
-                    sys.exit(0)
+                    logger.info(f"[{self.node_id}] died due to insufficient capital. Initiating graceful shutdown.")
+                    self.shutdown_event.set() # Signal shutdown
+                    break # Exit main loop
 
                 # 4. Survival Evaluation + Trade Execution
-                await self._evaluate_survival_and_trade(best_market, best_symbol)
+                trade_result: Optional[Dict[str, Any]] = await self._evaluate_survival_and_trade(best_market, best_symbol)
+                # Note: capital is updated within _evaluate_survival_and_trade, even if trade fails.
 
-                self._last_market = best_market
+                self._last_market = best_market # Update last market after potential trade
 
-                # 7. Periodic tasks (e.g., heartbeats, CRDT pruning, meta command application)
+                # 5. Periodic tasks (e.g., heartbeats, CRDT pruning, meta command application)
                 await self._periodic_tasks()
 
-                # 8. Low capital alert
+                # 6. Low capital alert
                 self.telemetry.update_impact(self.capital)
                 alert_threshold: float = config.capital_alert_threshold
                 if self.capital < alert_threshold:
@@ -643,18 +717,23 @@ class SwarmNode:
 
                 await asyncio.sleep(0.5)
 
+            logger.info(f"[{self.node_id}] Main loop exited gracefully.")
+
+
     def _recombine(self, g1: Dict[str, Any], g2: Dict[str, Any]) -> Dict[str, Any]:
         """
         Recombines two parent genomes to produce a child genome.
+        Combines parameters, niche, and lineage from parents, introducing slight mutations
+        to encourage exploration.
 
         Args:
-            g1: The first parent genome (dictionary).
-            g2: The second parent genome (dictionary).
+            g1: The first parent genome (dictionary), expected to have 'params', 'niche', 'lineage'.
+            g2: The second parent genome (dictionary), expected to have 'params', 'niche', 'lineage'.
 
         Returns:
-            A new dictionary representing the child genome.
+            A new dictionary representing the child genome, with its fitness initially set to 0.0.
         """
-        all_keys: set = set(g1.get("params", {}).keys()) | set(g2.get("params", {}).keys())
+        all_keys: set[str] = set(g1.get("params", {}).keys()) | set(g2.get("params", {}).keys())
         child_params: Dict[str, float] = {}
         for k in all_keys:
             v1: float = float(g1.get("params", {}).get(k, 0.5))
@@ -664,11 +743,11 @@ class SwarmNode:
                 val *= random.uniform(0.9, 1.1)
             val = max(0.0001, min(10.0, val)) # Clamping the value to a reasonable range
             child_params[k] = val
-        
+
         # Determine child niche based on parents or a random choice
-        child_niche: str = g1.get("niche", "mixed") if random.random() < 0.5 else g2.get("niche", "mixed")
-        
-        # Create lineage
+        child_niche: str = g1.get("niche", "exploration") if random.random() < 0.5 else g2.get("niche", "exploration")
+
+        # Create lineage, limiting length and adding current node
         lineage1 = [str(item) for item in g1.get("lineage", [])[-5:]]
         lineage2 = [str(item) for item in g2.get("lineage", [])[-5:]]
         child_lineage: List[str] = (lineage1 if random.random() < 0.5 else lineage2) + [self.node_id]
@@ -692,9 +771,9 @@ class SwarmNode:
 
         Returns:
             A tuple containing:
-                - The symbol of the best market (str).
-                - The market data of the best market (Dict[str, Any]).
-                - The complete market snapshot (Dict[str, Any]).
+                - The symbol (str) of the best market.
+                - The market data (Dict[str, Any]) of the best market.
+                - The complete market snapshot (Dict[str, Any]) for all symbols.
         """
         snapshot: Dict[str, Any] = await self.market_service.get_snapshot(session)
         best_symbol: str
@@ -704,18 +783,20 @@ class SwarmNode:
 
     async def _evaluate_survival_and_trade(self, market: Dict[str, Any], symbol: str) -> Optional[Dict[str, Any]]:
         """
-        Evaluates trading opportunities based on survival criteria and executes trades.
+        Evaluates trading opportunities based on survival criteria, determines trade size,
+        and attempts to execute a trade. It also handles post-trade capital adjustments
+        and potential hedging for futures markets.
 
         Args:
-            market: Dictionary containing current market data (e.g., price).
-            symbol: The trading symbol.
+            market: Dictionary containing current market data (e.g., "price").
+            symbol: The trading symbol (e.g., "BTC/USDT").
 
         Returns:
             The result of the trade execution (dictionary) if a trade occurred, otherwise None.
         """
-        market_price = float(market.get("price", 0.0))
-        if market_price == 0.0:
-            logger.warning(f"Market price is 0 for {symbol}, skipping trade evaluation.")
+        market_price: float = float(market.get("price", 0.0))
+        if market_price <= 0.0: # Price must be positive for a trade
+            logger.warning(f"Market price is non-positive for {symbol} ({market_price}), skipping trade evaluation.")
             return None
 
         expected_return_amount: float = market_price * EXPECTED_RETURN_RATE
@@ -724,22 +805,34 @@ class SwarmNode:
         if not approved:
             return None
 
+        # Determine fraction of capital to allocate based on strategy
         fraction, _ = self.dispatcher.evaluate(market, self.capital)
         if fraction <= 0:
             return None
 
         # Determine trade side and amount based on configuration and dispatcher output
         side: str = config.trading.test_web3_swap_side # Default or config-driven
-        test_amount: float = config.trading.test_web3_swap_amount # Default or config-driven
+        test_amount_base: float = config.trading.test_web3_swap_amount # Base amount for scaling
 
-        # If fraction is dynamic, convert it to an actual trade amount
-        # This assumes test_amount is a base, and fraction scales it
-        trade_amount = test_amount * fraction 
+        # Scale the base amount by the fraction determined by the dispatcher
+        trade_amount: float = test_amount_base * fraction
         if trade_amount <= 0:
+             logger.debug(f"Calculated trade amount for {symbol} is non-positive ({trade_amount:.4f}), skipping trade.")
              return None
 
         prev_capital: float = self.capital
         trade_result: Optional[Dict[str, Any]] = None
+
+        # Risk Manager: обновляем портфель перед проверкой
+        if hasattr(self, 'risk_manager'):
+            self.risk_manager.update_portfolio_value(self.capital)
+
+        # Risk Manager check
+        if hasattr(self, 'risk_manager'):
+            order_value = trade_amount * market.get("price", 0)   # <-- trade_amount, не test_amount
+            if not self.risk_manager.pre_trade_check(symbol, order_value):   # <-- symbol, не best_symbol
+                logger.info(f"[{self.node_id}] Trade blocked by Risk Manager")
+                return None
 
         try:
             trade_result = await self.executor.execute_order(
@@ -750,37 +843,40 @@ class SwarmNode:
                 capital=self.capital,
             )
         except Exception as e:
-            logger.error(f"Trade execution failed for {symbol} ({side} {trade_amount}): {e}", exc_info=True)
-            trade_result = {"success": False, "status": f"failed: {e}"}
+            logger.error(f"Trade execution failed for {symbol} ({side} {trade_amount:.4f}): {e}", exc_info=True)
+            # Ensure trade_result is a dict even on failure to facilitate consistent logging
+            trade_result = {"success": False, "status": f"failed: {e}", "tx_hash": ""}
 
-        # Simulate return and capital burn (even if trade failed, burn can occur)
-        # Note: The original code applied a return here even if trade_result was None or failed.
-        # This might be intended as a general "market activity" simulation, not tied to specific trade success.
-        # To strictly tie return/burn to trade success, move this block inside `if trade_result and trade_result.get("success")`.
-        # Assuming the original intent was broader market interaction.
-        ret: float = market_price * fraction * 0.1 # This calculation might need adjustment based on trade_amount.
+        # Simulate return and capital burn after attempted trade
+        # IMPORTANT: This capital adjustment happens regardless of whether the `executor.execute_order`
+        # itself reports success or failure. This might be intended as a general
+        # "market activity" simulation or base capital dynamics, not strictly tied
+        # to the success of an individual trade execution call in a simulated environment.
+        # For a real trading system, this would typically only apply on successful trades.
+        ret: float = market_price * fraction * 0.1 # This calculation might need adjustment based on actual trade P&L logic.
         self.capital *= (1 + ret)
-        self.capital_manager.capital = self.capital
-        self.capital_manager.apply_dq_delta(0.001)
+        self.capital_manager.capital = self.capital # Update capital manager's internal state
+        self.capital_manager.apply_dq_delta(0.001) # Small DQ boost for activity
 
         if trade_result and trade_result.get("success"):
-            trade_logger.info(f"TRADE | {symbol} | {side} | status: {trade_result.get('status')} | amount: {trade_amount:.4f}")
+            trade_logger.info(f"TRADE | {symbol} | {side} | status: {trade_result.get('status')} | amount: {trade_amount:.4f} | new capital: {self.capital:.2f}")
             self.telemetry.update_impact(self.capital)
 
-        # Hedge logic for futures
+        # Hedge logic for futures trades
         if self.market_mode == "futures" and self.market_adapter.hedge_enabled:
             hedge_ratio: float = config.hedge_ratio
             spot_adapter = self.market_adapter.get_adapter(symbol, "spot")
-            futures_adapter = self.market_adapter.get_adapter(symbol, "futures")
-            if spot_adapter and futures_adapter:
+            futures_adapter = self.market_adapter.get_adapter(symbol, "futures") # Ensure we get the futures adapter
+            if spot_adapter and futures_adapter and trade_result and trade_result.get("success"):
                 # Hedge side is opposite to the futures trade side
                 side_hedge: str = 'sell' if side == 'buy' else 'buy'
                 hedge_amount: float = abs(trade_amount) * hedge_ratio # Calculate hedge amount based on futures trade
-                
+
                 if hedge_amount > 0:
                     try:
-                        await spot_adapter.place_order(side_hedge, hedge_amount)
-                        logger.info(f"Hedge order placed: {side_hedge} {hedge_amount} {symbol}")
+                        # Assuming place_order needs symbol, side, amount
+                        await spot_adapter.place_order(symbol, side_hedge, hedge_amount)
+                        logger.info(f"Hedge order placed: {side_hedge} {hedge_amount:.4f} {symbol}")
                     except Exception as e:
                         logger.error(f"Hedge order failed for {symbol}: {e}", exc_info=True)
 
@@ -801,16 +897,19 @@ class SwarmNode:
 
     async def _tick_evolution(self) -> None:
         """
-        Executes a single step of the evolution engine.
+        Executes a single step of the evolution engine, which includes
+        selection, crossover, mutation, and fitness evaluation of strategies.
+        This operation depends on having recent market data.
         """
         if self._last_market: # Ensure market data is available for evolution
             await self.evolution_engine.tick(self._last_market)
         else:
-            logger.debug("Skipping evolution tick: _last_market not available.")
+            logger.debug("Skipping evolution tick: _last_market not available yet.")
 
     async def _sync_swarm(self) -> None:
         """
-        Executes a single step of swarm synchronization.
+        Executes a single step of swarm synchronization, involving gossip
+        communication to exchange state and potential genome imports from peers.
         """
         await self.swarm_sync.reconcile()
 
@@ -829,14 +928,15 @@ class SwarmNode:
                 "phi_llm": 0.15,
                 "stop_loss_ratio": 0.02,
                 "trailing_stop_ratio": 0.01,
-                "momentum_window": 10.0, # Ensure float
+                "momentum_window": 10.0,
                 "volatility_threshold": 0.02,
             }
             # Gradually roll back current parameters towards standard values
             for k, std_val in std_params.items():
                 current_val = self.current_params.get(k, std_val)
+                # Weighted average towards standard value to gently adjust
                 self.current_params[k] = current_val * 0.8 + std_val * 0.2
-            self.capital_manager.apply_dq_delta(-0.05) # Penalize DQ
+            self.capital_manager.apply_dq_delta(-0.05) # Penalize DQ to incentivize caution
 
         # Apply meta commands every 50 steps
         if self.step_count % 50 == 0:
@@ -853,6 +953,7 @@ class SwarmNode:
                 current_diversity: float = self.population_diversity()
                 current_crdt_size: int = len(self.crdt.state)
                 current_niche_counts: Dict[str, int] = self.population_niche_counts()
+                llm_mutations_count: int = get_llm_stats()[0]
 
                 self.telemetry.heartbeat(
                     step=self.step_count,
@@ -861,12 +962,12 @@ class SwarmNode:
                     fitness=current_fitness,
                     diversity=current_diversity,
                     crdt_size=current_crdt_size,
-                    llm_mutations=get_llm_stats()[0],
+                    llm_mutations=llm_mutations_count,
                     niche_counts=current_niche_counts,
                     trace_id=self._trace_id,
                 )
 
-                # Duplicate heartbeat to CRDT for MetaAgent
+                # Duplicate heartbeat to CRDT for MetaAgent observation and swarm state
                 heartbeat_payload: Dict[str, Any] = {
                     "type": "heartbeat",
                     "capital": self.capital,
@@ -874,14 +975,16 @@ class SwarmNode:
                     "fitness": current_fitness,
                     "diversity": current_diversity,
                     "crdt_size": current_crdt_size,
-                    "llm_mutations": get_llm_stats()[0],
+                    "llm_mutations": llm_mutations_count,
                     "niche_counts": current_niche_counts,
                     "node_id": self.node_id,
                     "timestamp": time.time(),
                     "trace_id": self._trace_id,
                     "origin_pubkey_hex": self.crypto.public_bytes_hex,
                 }
+                # Using add_genome for generic CRDT updates, as heartbeats are also state changes
                 await self.crdt.add_genome(heartbeat_payload)
+
             except Exception as e:
                 logger.warning(f"Heartbeat failed: {e}", exc_info=True)
 
@@ -890,7 +993,9 @@ class SwarmNode:
             # Deduplicate records by their parameters, keeping the last one for recency.
             # Convert dict.items() to frozenset for hashability
             deduplicated_records: Dict[frozenset[Tuple[str, Any]], MemoryRecord] = {
-                frozenset(rec["params"].items()): rec for rec in self.memory.records
+                frozenset(rec["params"].items()): rec
+                for rec in self.memory.records
+                if isinstance(rec, dict) and "params" in rec and isinstance(rec["params"], dict)
             }
             self.memory.records = list(deduplicated_records.values())
 
@@ -905,7 +1010,7 @@ class SwarmNode:
                     event_type="memory_snapshot_created",
                     payload={
                         "step": self.step_count,
-                        "records_count": len(self.memory_api._records),
+                        "records_count": len(self.memory_api._records), # Access internal list for count
                         "trace_id": self._trace_id,
                     },
                     parent_id=self._trace_id,
@@ -917,21 +1022,28 @@ class SwarmNode:
             await self.crdt.prune() # General CRDT pruning
             await self.crdt.prune_heartbeats(max_age_seconds=600) # Prune old heartbeats
 
+            # Evaluate reputation from imported genomes
             top_genomes: List[Dict[str, Any]] = await self.crdt.get_top(20)
             if top_genomes:
                 sample: Dict[str, Any] = random.choice(top_genomes)
                 pubkey_hex: Optional[str] = sample.get("origin_pubkey_hex")
-                
+
                 # Compare origin_pubkey_hex with current node's public key hex
+                # Only update reputation for genomes from OTHER nodes
                 if pubkey_hex and pubkey_hex != self.crypto.public_bytes_hex:
                     try:
-                        actual_fit: float = self.engine._fitness(sample["params"])
+                        # Ensure 'params' is a dict and its values are floats for fitness evaluation
+                        sample_params: Dict[str, float] = {
+                            k: float(v) for k, v in sample.get("params", {}).items()
+                            if isinstance(v, (int, float))
+                        }
+                        actual_fit: float = self.engine._fitness(sample_params)
                         claimed_fit: float = float(sample.get("fitness", 0.0))
-                        
+
                         # Convert hex string back to bytes for reputation manager
-                        pubkey_bytes = bytes.fromhex(pubkey_hex)
+                        pubkey_bytes: bytes = bytes.fromhex(pubkey_hex)
                         self.reputation.update(pubkey_bytes, claimed_fit, actual_fit)
-                    except (ValueError, KeyError) as e:
+                    except (ValueError, KeyError, TypeError) as e:
                         logger.warning(f"Reputation update skipped due to invalid data in genome {sample.get('gid', 'N/A')}: {e}")
 
             if self.memory_api_enabled:
@@ -942,56 +1054,61 @@ class SwarmNode:
         """
         Initializes and starts the SwarmNode's operations, including network listeners
         and background tasks. This is the main entry point for running the node.
+        It sets up signal handlers for graceful shutdown.
         """
         logger.info(f"[{self.node_id}] starting on port={self.port}, peers={self.peers}")
 
         loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
-        shutdown_event: asyncio.Event = asyncio.Event()
+        # self.shutdown_event is an instance attribute, no need for local creation
 
         if self.tradingview_enabled and self.tradingview_webhook:
             await self.tradingview_webhook.start()
 
         def _shutdown_handler(*args: Any) -> None:
-            logger.info(f"[{self.node_id}] received signal {args[0]}, shutting down gracefully")
-            shutdown_event.set()
+            """Handler for system signals (SIGTERM, SIGINT) to initiate graceful shutdown."""
+            logger.info(f"[{self.node_id}] received signal {args[0]} ({signal.Signals(args[0]).name}), initiating graceful shutdown.")
+            self.shutdown_event.set()
 
         for sig in (signal.SIGTERM, signal.SIGINT):
             try:
-                loop.add_signal_handler(sig, _shutdown_handler)
+                loop.add_signal_handler(sig, _shutdown_handler, sig)
             except NotImplementedError:
-                logger.warning(f"Signal handler for {sig.name} not available on this platform.")
+                logger.warning(f"Signal handler for {signal.Signals(sig).name} not available on this platform. Graceful shutdown might not work with {signal.Signals(sig).name}.")
+            except Exception as e:
+                logger.error(f"Error adding signal handler for {signal.Signals(sig).name}: {e}")
 
-        async def _shutdown_waiter() -> None:
-            await shutdown_event.wait()
+        async def _shutdown_waiter_task() -> None:
+            """Waits for the shutdown event and performs cleanup."""
+            await self.shutdown_event.wait()
             logger.info(f"[{self.node_id}] Shutdown signal received, initiating cleanup.")
-            
+
             # Cancel background tasks
             if self._evolution_task:
                 self._evolution_task.cancel()
                 try:
-                    await self._evolution_task
+                    await self._evolution_task # Await for task to finish cancellation
                 except asyncio.CancelledError:
                     logger.debug("Evolution task cancelled.")
             if self._sync_task:
                 self._sync_task.cancel()
                 try:
-                    await self._sync_task
+                    await self._sync_task # Await for task to finish cancellation
                 except asyncio.CancelledError:
                     logger.debug("Sync task cancelled.")
 
             if self.memory_api_enabled:
                 await self.memory_api.save_to_db()
-                logger.info(f"[{self.node_id}] memory saved before exit")
+                logger.info(f"[{self.node_id}] Memory saved before exit.")
             if self.tradingview_enabled and self.tradingview_webhook:
                 await self.tradingview_webhook.stop()
                 logger.info(f"[{self.node_id}] TradingView webhook stopped.")
-            
+
             # Explicitly close CRDT resources if it has a close method
             if hasattr(self.crdt, 'close') and callable(self.crdt.close):
                 await self.crdt.close()
                 logger.info(f"[{self.node_id}] CRDT resources closed.")
 
-            # Exit the program
+            # Raise SystemExit to propagate the shutdown command and exit the main program gracefully.
             raise SystemExit(0)
 
         if self.market_mode == "web3":
@@ -1001,36 +1118,71 @@ class SwarmNode:
                 adapter = self.market_adapter.get_adapter(sym)
                 if adapter:
                     if hasattr(adapter, 'initialize') and callable(adapter.initialize):
-                        logger.info(f"Initializing web3 adapter for {sym} ...")
+                        logger.info(f"Initializing web3 adapter for {sym}...")
                         await adapter.initialize()
+                    # Assign nonce_manager from the first web3 adapter found
                     if self.nonce_manager is None and hasattr(adapter, 'nonce_manager'):
-                        self.nonce_manager = adapter.nonce_manager
+                        self.nonce_manager = getattr(adapter, 'nonce_manager')
                         self.mutation_engine.nonce_manager = self.nonce_manager
                     if first_adapter_for_executor is None:
                         first_adapter_for_executor = adapter
-            
-            # Update executor with the initialized adapter for web3
+
+            # Update executor with the initialized adapter for web3 operations
             self.executor = build_backend(self.node_id, first_adapter_for_executor, self.is_leader)
+            logger.info(f"[{self.node_id}] Web3 backend initialized with adapter: {type(first_adapter_for_executor).__name__ if first_adapter_for_executor else 'None'}.")
+
 
         # Start background tasks
-        self._evolution_task = asyncio.create_task(self._evolution_cycle())
-        self._sync_task = asyncio.create_task(self._sync_cycle())
+        self._evolution_task = asyncio.create_task(self._evolution_cycle(), name="evolution_cycle")
+        self._sync_task = asyncio.create_task(self._sync_cycle(), name="sync_cycle")
+        shutdown_watcher_task = asyncio.create_task(_shutdown_waiter_task(), name="shutdown_waiter")
 
-        # Gather all main coroutines to run concurrently
-        await asyncio.gather(
-            self.gossip.start(),
-            self.main_loop(),
-            _shutdown_waiter(),
-        )
+        try:
+            # Gather all main coroutines to run concurrently
+            # gossip.start() is expected to be a long-running task
+            await asyncio.gather(
+                self.gossip.start(),
+                self.main_loop(),
+                shutdown_watcher_task,
+            )
+        except SystemExit as e:
+            logger.info(f"[{self.node_id}] Main asyncio.gather caught SystemExit: {e}")
+        except Exception as e:
+            logger.critical(f"[{self.node_id}] Unhandled exception in main gather: {e}", exc_info=True)
+        finally:
+            logger.info(f"[{self.node_id}] All main tasks finished or cancelled. Performing final cleanup steps.")
+            # Ensure cleanup is done even if gather exits prematurely
+            # The _shutdown_waiter_task should handle most of this, but adding explicit cancellation
+            # for robustness in case _shutdown_waiter_task itself gets cancelled or errors.
+            self.shutdown_event.set() # Ensure event is set for any remaining cleanup in _shutdown_waiter_task
+            if self._evolution_task and not self._evolution_task.done():
+                self._evolution_task.cancel()
+                try: await self._evolution_task
+                except asyncio.CancelledError: pass
+            if self._sync_task and not self._sync_task.done():
+                self._sync_task.cancel()
+                try: await self._sync_task
+                except asyncio.CancelledError: pass
+            if shutdown_watcher_task and not shutdown_watcher_task.done():
+                shutdown_watcher_task.cancel()
+                try: await shutdown_watcher_task
+                except asyncio.CancelledError: pass
+            logger.info(f"[{self.node_id}] Final cleanup complete.")
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    # Ensure logging.basicConfig is called only once if running directly
+    if not logging.root.handlers:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    else:
+        # If handlers already exist (e.g., from an IDE), just set level
+        logging.getLogger().setLevel(logging.INFO)
+
     node = SwarmNode()
     try:
         asyncio.run(node.start())
     except KeyboardInterrupt:
-        logger.info("Node stopped via KeyboardInterrupt.")
+        logger.info("Node process interrupted by KeyboardInterrupt.")
     except SystemExit as e:
-        logger.info(f"Node stopped: {e}")
+        logger.info(f"Node process stopped gracefully: {e}")
     except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+        logger.error(f"An unexpected critical error occurred during node execution: {e}", exc_info=True)

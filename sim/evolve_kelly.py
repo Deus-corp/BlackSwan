@@ -18,12 +18,11 @@ from pathlib import Path
 from typing import Optional, Dict, List, Tuple, Final, Union
 
 # Adjust Python path to import modules from the project root
-ROOT = Path(__file__).resolve().parent.parent
+ROOT: Final[Path] = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from sim.engine.environment import MarketEnvironment
 from src.economy.roi_dispatcher import ROIDispatcher
-# GlobalState is imported in the original script but not used; removed.
 
 # --- Configuration for the Genetic Algorithm ---
 POP_SIZE: Final[int] = 10
@@ -69,8 +68,8 @@ def evaluate(params: Dict[str, float], seed: Optional[int] = None) -> float:
     if seed is not None:
         random.seed(seed)
     
-    market = MarketEnvironment(volatility=VOLATILITY, drift=DRIFT)
-    dispatcher = ROIDispatcher(config=params)
+    market: MarketEnvironment = MarketEnvironment(volatility=VOLATILITY, drift=DRIFT)
+    dispatcher: ROIDispatcher = ROIDispatcher(config=params)
     capital: float = INITIAL_CAPITAL
 
     for _ in range(STEPS):
@@ -101,6 +100,7 @@ def evaluate(params: Dict[str, float], seed: Optional[int] = None) -> float:
         
         if fraction > 0: # A trade is proposed
             # Calculate return based on market price movement, fraction invested, and a return factor
+            # For simplicity, assuming 'fraction' is the proportion of capital to be risked.
             ret: float = market_state["price"] * fraction * TRADE_RETURN_FACTOR
             capital *= (1 + ret)
             capital -= TRANSACTION_FEE   # Deduct fixed commission per trade
@@ -184,21 +184,24 @@ for gen in range(GENERATIONS):
     # Fill the rest of the new population through selection, crossover, and mutation
     while len(new_pop) < POP_SIZE:
         # Tournament selection: pick two random individuals and select the fitter one as primary parent
-        i1, i2 = random.sample(range(POP_SIZE), 2)
+        i1: int = random.randrange(POP_SIZE)
+        i2: int = random.randrange(POP_SIZE)
+        # Ensure i1 and i2 are distinct for tournament selection
+        while i2 == i1:
+            i2 = random.randrange(POP_SIZE)
+
         winner_idx: int = i1 if fitnesses[i1] > fitnesses[i2] else i2
         winner_params: Dict[str, float] = population[winner_idx]
 
         # Crossover strategy: either with the elite individual or another tournament winner
         parent2: Dict[str, float]
-        if random.random() < 0.7: # 70% chance to crossover with the best individual of the generation
-            parent2 = population[sorted_indices[0]]  # Crossover with the elite
+        if random.random() < 0.7: # 70% chance to crossover with the best individual of the generation (elite)
+            parent2 = population[sorted_indices[0]]
         else:
             # Otherwise, perform crossover with another individual chosen via tournament selection
-            # To ensure parent2 is distinct from winner_params, another tournament could be run,
-            # but for simplicity, using the winner of a single tournament is common.
-            # Original code intended `population[winner]` which implies `population[winner_idx]`,
-            # so I'm using `winner_params` here for explicit clarity.
-            parent2 = winner_params # Could be a different random choice for more diversity
+            # To ensure parent2 is distinct from winner_params, another tournament could be run.
+            # Here, for simplicity and adherence to implied original intent, a potentially same winner is allowed.
+            parent2 = winner_params
 
         child: Dict[str, float] = crossover(winner_params, parent2)
         

@@ -1,12 +1,11 @@
 """
-base_template.py — единый HTML-шаблон с header/footer и активной вкладкой.
+base_template.py — A unified HTML template with header/footer and active tab highlighting.
 """
-from typing import List, Tuple
 from fastapi import Request
 
 # Constants for default page title and navigation tabs configuration
 DEFAULT_PAGE_TITLE: str = "BlackSwan Control Panel"
-TABS_CONFIG: List[Tuple[str, str, str]] = [
+TABS_CONFIG: list[tuple[str, str, str]] = [
     ("/", "🏠 Main", "main"),
     ("/trades", "📈 Trades", "trades"),
     ("/logs", "📜 Logs", "logs"),
@@ -15,29 +14,30 @@ TABS_CONFIG: List[Tuple[str, str, str]] = [
     ("/settings", "⚙️ Settings", "settings"),
 ]
 
+
 def render_page(request: Request, content: str, title: str = DEFAULT_PAGE_TITLE) -> str:
     """
-    Возвращает полную HTML-страницу с общим header/footer и динамически выделенной активной вкладкой.
+    Returns a complete HTML page with a common header/footer and dynamically highlighted active tab.
 
-    Определяет активную вкладку на основе URL-пути запроса.
-    Генерирует HTML для навигационных вкладок, выделяя активную.
-    Вставляет предоставленное содержимое в основную часть страницы.
+    Determines the active tab based on the request's URL path.
+    Generates HTML for the navigation tabs, highlighting the active one.
+    Inserts the provided content into the main section of the page.
 
     Args:
-        request: Объект запроса FastAPI, используемый для определения текущего URL и активной вкладки.
-        content: HTML-содержимое, которое будет вставлено в `<main>` раздел страницы.
-        title: Заголовок HTML-страницы, отображаемый в теге `<title>`. По умолчанию используется
+        request: The FastAPI request object, used to determine the current URL and active tab.
+        content: The HTML content to be inserted into the `<main>` section of the page.
+        title: The title for the HTML page, displayed in the `<title>` tag. Defaults to
                `DEFAULT_PAGE_TITLE`.
 
     Returns:
-        Полная HTML-страница в виде строки.
+        The complete HTML page as a string.
     """
     # Create a mapping from URL path to tab key for efficient lookup
     path_to_tab_key_map: dict[str, str] = {href: key for href, _, key in TABS_CONFIG}
     active_tab: str = path_to_tab_key_map.get(request.url.path, "")
 
     # Generate HTML for the navigation tabs
-    tabs_html_parts: List[str] = []
+    tabs_html_parts: list[str] = []
     for href, label, key in TABS_CONFIG:
         cls: str = 'class="active"' if key == active_tab else ""
         tabs_html_parts.append(f'<a href="{href}" {cls}>{label}</a>')

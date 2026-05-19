@@ -1,4 +1,3 @@
-# adapters/tradingview_webhook.py
 """
 Приём сигналов от TradingView через webhook и сохранение последнего сигнала.
 """
@@ -16,6 +15,7 @@ class TradingViewWebhook:
     def __init__(self, port: int = 8888):
         """
         Инициализирует TradingViewWebhook с заданным портом.
+
         :param port: Порт, на котором будет слушать webhook-сервер.
         """
         self.port: int = port

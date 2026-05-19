@@ -47,7 +47,7 @@ class Event:
         parent_id: Optional. The ID of a preceding event to which this event relates,
                    establishing a parent-child relationship in an event graph.
         hash: A cryptographic hash (SHA256) of the event's canonical representation,
-              used for integrity verification.
+              used for integrity verification. This field is populated by the .create() method.
     """
     event_id: str
     ts: float
@@ -55,7 +55,7 @@ class Event:
     type: str
     payload: Dict[str, Any]
     parent_id: Optional[str] = None
-    hash: str = "" # This field is populated by the .create() method
+    hash: str = ""
 
     @classmethod
     def create(
@@ -151,17 +151,17 @@ class Event:
             An Event instance populated with data from the dictionary.
 
         Raises:
-            KeyError: If essential keys ("event_id", "ts", "node_id", "type", "payload")
+            KeyError: If essential keys ("event_id", "ts", "node_id", "type")
                       are missing from the input `data`.
             TypeError, ValueError: If `ts` cannot be converted to float or other
                                    type mismatches occur.
         """
         return cls(
             event_id=data["event_id"],
-            ts=float(data["ts"]), # Explicitly convert to float for robustness
+            ts=float(data["ts"]),  # Explicitly convert to float for robustness
             node_id=data["node_id"],
             type=data["type"],
-            payload=data["get"]("payload", {}), # Defensive: ensure payload is a dict, default to empty
-            parent_id=data.get("parent_id"), # Use .get() for optional fields
-            hash=data.get("hash", ""),     # Use .get() for optional fields
+            payload=data.get("payload", {}),  # BUG FIX: changed `data["get"]` to `data.get`
+            parent_id=data.get("parent_id"),  # Use .get() for optional fields
+            hash=data.get("hash", ""),        # Use .get() for optional fields
         )

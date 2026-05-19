@@ -1,8 +1,8 @@
 """
-Абстрактный интерфейс исполнения сделки.
+Abstract interface for trade execution.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
 class ExecutionBackend(ABC):
@@ -36,8 +36,8 @@ class ExecutionBackend(ABC):
             - "success" (bool): True if the order was successful, False otherwise.
             - "new_capital" (float): The updated capital after the trade.
                                      Note: Implementations may provide a placeholder or actual updated value.
-            - "tx_hash" (str | None): A transaction hash or identifier if applicable, None otherwise.
+            - "tx_hash" (Optional[str]): A transaction hash or identifier if applicable, None otherwise.
             - "status" (str): A string indicating the status of the order (e.g., "filled", "rejected", "skipped", "error").
-            - "error" (str | None): An error message if the order failed or was skipped, None otherwise.
+            - "error" (Optional[str]): An error message if the order failed or was skipped, None otherwise.
         """
         ...

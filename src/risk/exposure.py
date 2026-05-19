@@ -25,16 +25,18 @@ class Position:
         Initializes a new Position.
 
         Args:
-            symbol (str): The trading symbol of the asset (e.g., 'AAPL', 'BTC/USD').
-            side (str): The side of the position ('long' or 'short').
-            amount (float): The quantity or size of the position.
-            entry_price (float): The average price at which the position was opened.
+            symbol: The trading symbol of the asset (e.g., 'AAPL', 'BTC/USD').
+            side: The side of the position ('long' or 'short').
+            amount: The quantity or size of the position.
+            entry_price: The average price at which the position was opened.
         """
         self.symbol: str = symbol
         self.side: str = side
         self.amount: float = amount
         self.entry_price: float = entry_price
-        logger.debug(f"Position opened: {self.symbol}, {self.side}, Amount: {self.amount}, Entry: {self.entry_price}")
+        logger.debug(
+            f"Position opened: {self.symbol}, {self.side}, Amount: {self.amount}, Entry: {self.entry_price}"
+        )
 
     def unrealised_pnl(self, current_price: float) -> float:
         """
@@ -44,10 +46,10 @@ class Position:
         would calculate PnL based on `current_price` and `entry_price`.
 
         Args:
-            current_price (float): The current market price of the asset.
+            current_price: The current market price of the asset.
 
         Returns:
-            float: The unrealised PnL.
+            The unrealised PnL.
         """
         # In a real system, this would be:
         # if self.side == 'long':
@@ -71,23 +73,26 @@ class ExposureManager:
         Initializes the ExposureManager with global risk limits.
 
         Args:
-            max_notional (float): The maximum notional value allowed for any single position.
-                                  (Currently not actively enforced).
-            max_daily_loss (float): The maximum aggregate daily loss allowed across all positions.
-                                    If `daily_pnl` drops below `-max_daily_loss`, an error is logged.
+            max_notional: The maximum notional value allowed for any single position.
+                          (Currently not actively enforced).
+            max_daily_loss: The maximum aggregate daily loss allowed across all positions.
+                            If `daily_pnl` drops below `-max_daily_loss`, an error is logged.
         """
         self.max_notional: float = max_notional
         self.max_daily_loss: float = max_daily_loss
         self.positions: Dict[str, Position] = {}
         self.daily_pnl: float = 0.0
-        logger.info(f"ExposureManager initialised (stub) with max_notional={max_notional}, max_daily_loss={max_daily_loss}")
+        logger.info(
+            f"ExposureManager initialised (stub) with max_notional={max_notional}, "
+            f"max_daily_loss={max_daily_loss}"
+        )
 
     def add_position(self, position: Position) -> None:
         """
         Records a new or updates an existing open position.
 
         Args:
-            position (Position): The Position object to add.
+            position: The Position object to add.
         """
         self.positions[position.symbol] = position
         logger.info(f"Position added/updated for {position.symbol}. Current positions: {len(self.positions)}")
@@ -97,10 +102,10 @@ class ExposureManager:
         Closes and removes the position for the given symbol.
 
         Args:
-            symbol (str): The trading symbol of the position to close.
+            symbol: The trading symbol of the position to close.
 
         Returns:
-            Optional[Position]: The closed Position object if found, otherwise None.
+            The closed Position object if found, otherwise None.
         """
         if symbol in self.positions:
             position = self.positions.pop(symbol)
@@ -118,13 +123,13 @@ class ExposureManager:
         portfolio correlation, etc.
 
         Args:
-            symbol (str): The symbol of the asset for the proposed trade.
-            action (str): The intended action ('buy' or 'sell').
-            amount (float): The quantity for the proposed trade.
-            current_price (float): The current market price of the asset.
+            symbol: The symbol of the asset for the proposed trade.
+            action: The intended action ('buy' or 'sell').
+            amount: The quantity for the proposed trade.
+            current_price: The current market price of the asset.
 
         Returns:
-            bool: True if the trade is allowed, False otherwise.
+            True if the trade is allowed, False otherwise.
         """
         logger.debug(f"Pre-trade check for {action} {amount} of {symbol} @ {current_price} (stub: always True)")
         # Future implementations would check against:
@@ -139,10 +144,13 @@ class ExposureManager:
         Updates the total daily PnL and checks if the daily loss limit is breached.
 
         Args:
-            pnl (float): The PnL (profit or loss) incurred from a trade or position update.
+            pnl: The PnL (profit or loss) incurred from a trade or position update.
         """
         self.daily_pnl += pnl
         logger.info(f"Daily PnL updated: {pnl}. Current total daily PnL: {self.daily_pnl:.2f}")
 
         if self.daily_pnl < -self.max_daily_loss:
-            logger.error(f"Daily loss limit reached! Further trading should be halted. Current daily PnL: {self.daily_pnl:.2f} (Limit: {-self.max_daily_loss:.2f})")
+            logger.error(
+                f"Daily loss limit reached! Further trading should be halted. Current daily PnL: "
+                f"{self.daily_pnl:.2f} (Limit: {-self.max_daily_loss:.2f})"
+            )

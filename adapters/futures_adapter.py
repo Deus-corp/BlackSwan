@@ -2,8 +2,8 @@
 import os
 import logging
 import time
-from typing import Dict, Optional, Any
-import ccxt
+from typing import Dict, Optional, Any, List, Union
+import ccxt.async_support as ccxt # Import async_support for awaitable methods
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class FuturesAdapter:
     # Cooldown period for leverage adjustments (in seconds)
     LEVERAGE_ADJUST_COOLDOWN: int = 300  # 5 minutes
 
-    def __init__(self, symbol: str = "BTC/USDT"):
+    def __init__(self, symbol: str = "BTC/USDT") -> None:
         """
         Инициализирует адаптер фьючерсов.
 
@@ -39,18 +39,23 @@ class FuturesAdapter:
         if not self.api_key or not self.api_secret:
             logger.error("API key or secret not found. Futures adapter might not function correctly.")
 
-        # Initialize CCXT exchange client
-        self.exchange: ccxt.Exchange = ccxt.binance({
+        # Initialize CCXT async exchange client
+        self.exchange: ccxt.binance = ccxt.binance({
             'apiKey': self.api_key,
             'secret': self.api_secret,
             'enableRateLimit': True,  # Enable built-in rate limiting
             'options': {'defaultType': 'future'},
             'testnet': True,
         })
-
+    
+    async def ainit(self) -> None:
+        """
+        Асинхронная инициализация адаптера. Должна быть вызвана после __init__.
+        Выполняет операции, требующие await, такие как установка кредитного плеча.
+        """
         try:
             # Set initial leverage for the symbol
-            self.exchange.set_leverage(self.leverage, self.symbol)
+            await self.exchange.set_leverage(self.leverage, self.symbol)
             logger.info(f"Futures adapter ready: {self.symbol}, initial leverage={self.leverage}x")
         except ccxt.NetworkError as e:
             logger.error(f"Network error while setting initial leverage: {e}")
@@ -60,23 +65,30 @@ class FuturesAdapter:
         except Exception as e:
             logger.warning(f"Could not set initial leverage for {self.symbol}: {e}")
 
-    async def get_ticker(self) -> Optional[Dict[str, float]]:
+    async def close(self) -> None:
+        """
+        Закрывает соединение с биржей. Рекомендуется вызывать при завершении работы.
+        """
+        if self.exchange:
+            await self.exchange.close()
+            logger.info("Futures adapter CCXT exchange session closed.")
+
+    async def get_ticker(self) -> Optional[Dict[str, Union[float, str, int]]]:
         """
         Возвращает тикер с последней ценой для установленного символа.
 
         Returns:
-            Optional[Dict[str, float]]: Словарь с информацией о тикере
-            (price, bid, ask, symbol, timestamp) или None в случае ошибки.
+            Optional[Dict[str, Union[float, str, int]]]: Словарь с информацией о тикере
+            ('price', 'bid', 'ask', 'symbol', 'timestamp' (ms)) или None в случае ошибки.
         """
         try:
-            # Note: ccxt methods are synchronous by default unless using ccxt.async_support
-            ticker: Dict[str, Any] = self.exchange.fetch_ticker(self.symbol)
+            ticker: Dict[str, Any] = await self.exchange.fetch_ticker(self.symbol)
             return {
                 "price": float(ticker['last']),
                 "bid": float(ticker['bid']),
                 "ask": float(ticker['ask']),
                 "symbol": self.symbol,
-                "timestamp": float(ticker['timestamp']),
+                "timestamp": int(ticker['timestamp']), # CCXT timestamps are usually milliseconds
             }
         except (ccxt.NetworkError, ccxt.ExchangeError) as e:
             logger.error(f"Futures ticker fetch failed for {self.symbol}: {e}")
@@ -85,7 +97,7 @@ class FuturesAdapter:
             logger.error(f"An unexpected error occurred during ticker fetch: {e}")
             return None
 
-    def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict[str, Any]:
+    async def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict[str, Any]:
         """
         Выставляет лимитный или рыночный ордер.
 
@@ -105,10 +117,10 @@ class FuturesAdapter:
 
         try:
             if price is not None:
-                order: Dict[str, Any] = self.exchange.create_limit_order(self.symbol, side, amount, price)
+                order: Dict[str, Any] = await self.exchange.create_limit_order(self.symbol, side, amount, price)
                 logger.info(f"Futures LIMIT order placed: {side.upper()} {amount} {self.symbol} @ {price}")
             else:
-                order: Dict[str, Any] = self.exchange.create_market_order(self.symbol, side, amount)
+                order: Dict[str, Any] = await self.exchange.create_market_order(self.symbol, side, amount)
                 logger.info(f"Futures MARKET order placed: {side.upper()} {amount} {self.symbol}")
             return order
         except (ccxt.NetworkError, ccxt.ExchangeError) as e:
@@ -118,7 +130,7 @@ class FuturesAdapter:
             logger.error(f"An unexpected error occurred during order placement: {e}")
             return {"error": str(e)}
 
-    def close_position(self, symbol: Optional[str] = None) -> Dict[str, Any]:
+    async def close_position(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
         Закрывает текущую позицию по рынку для заданного символа.
 
@@ -132,7 +144,8 @@ class FuturesAdapter:
         """
         sym: str = symbol or self.symbol
         try:
-            positions: list[Dict[str, Any]] = self.exchange.fetch_positions([sym])
+            # fetch_positions takes an optional list of symbols or None for all
+            positions: List[Dict[str, Any]] = await self.exchange.fetch_positions([sym])
             
             # Filter for the relevant position (assuming one position per symbol in futures)
             open_positions = [p for p in positions if float(p.get('contracts', 0)) != 0]
@@ -146,9 +159,9 @@ class FuturesAdapter:
                     side: str = 'sell' if pos.get('side') == 'long' else 'buy'
                     logger.info(f"Attempting to close {pos.get('side')} position of {amount} {sym}")
                     # Place a market order to close the position
-                    return self.place_order(side, amount)
+                    return await self.place_order(side, amount)
                 else:
-                    logger.info(f"No open position to close for {sym}.")
+                    logger.info(f"No open position to close for {sym} (amount is zero).")
                     return {"info": "No open position"}
             else:
                 logger.info(f"No open position found for {sym}.")
@@ -160,7 +173,7 @@ class FuturesAdapter:
             logger.error(f"An unexpected error occurred during position closure: {e}")
             return {"error": str(e)}
 
-    def fetch_balance(self) -> Dict[str, float]:
+    async def fetch_balance(self) -> Dict[str, float]:
         """
         Возвращает баланс тестового аккаунта, фокусируясь на доступных средствах.
 
@@ -169,9 +182,9 @@ class FuturesAdapter:
                               количество свободных средств (available balance).
         """
         try:
-            balance: Dict[str, Any] = self.exchange.fetch_balance()
+            balance: Dict[str, Any] = await self.exchange.fetch_balance()
             # The 'free' key usually contains a dictionary of available assets
-            return balance.get('free', {}) # This matches Dict[str, float]
+            return {k: float(v) for k, v in balance.get('free', {}).items()} # Ensure float values
         except (ccxt.NetworkError, ccxt.ExchangeError) as e:
             logger.error(f"Balance fetch failed: {e}")
             return {}
@@ -199,9 +212,15 @@ class FuturesAdapter:
         loss_percent: float
         if side == 'long':
             # For long position, loss occurs when current_price < entry_price
+            if entry_price <= 0: # Avoid division by zero
+                logger.warning("Entry price for long position is zero or negative, cannot check stop loss.")
+                return False
             loss_percent = (entry_price - current_price) / entry_price * 100
         else:  # 'short'
             # For short position, loss occurs when current_price > entry_price
+            if entry_price <= 0: # Avoid division by zero
+                logger.warning("Entry price for short position is zero or negative, cannot check stop loss.")
+                return False
             loss_percent = (current_price - entry_price) / entry_price * 100
         
         return loss_percent >= self.stop_loss_percent
@@ -216,7 +235,7 @@ class FuturesAdapter:
             volatility (float): Нормализованное значение волатильности
                                 (например, ATR / price).
         """
-        current_time = time.monotonic()
+        current_time: float = time.monotonic()
         if current_time - self._last_leverage_adjust_timestamp < self.LEVERAGE_ADJUST_COOLDOWN:
             logger.debug(f"Leverage adjustment on cooldown. Next adjustment in {self.LEVERAGE_ADJUST_COOLDOWN - (current_time - self._last_leverage_adjust_timestamp):.1f}s")
             return
@@ -231,8 +250,7 @@ class FuturesAdapter:
         
         if target_leverage is not None and target_leverage != self.leverage:
             try:
-                # Note: ccxt methods are synchronous by default unless using ccxt.async_support
-                self.exchange.set_leverage(target_leverage, self.symbol)
+                await self.exchange.set_leverage(target_leverage, self.symbol)
                 self.leverage = target_leverage
                 self._last_leverage_adjust_timestamp = current_time # Update timestamp on successful adjustment
                 logger.info(f"Leverage adjusted to {self.leverage}x for {self.symbol} (volatility={volatility:.4f})")

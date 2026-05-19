@@ -39,15 +39,16 @@ class Genome:
     Represents a single individual in the genetic algorithm.
 
     Attributes:
-        params: A dictionary of parameters defining the genome's traits.
-        fitness: The evaluated fitness score of the genome.
-        age: The number of generations this genome has survived.
-        niche: A string indicating the genome's role or characteristic (e.g., "exploration").
-        species_id: Identifier for the species this genome belongs to.
-        parents: A tuple of identifiers (or None) for the parent genomes.
-        lineage: A list of strings tracing the genome's evolutionary path.
-        mutation_count: Number of mutations applied to this genome.
-        eval_count: Number of times this genome's fitness has been evaluated.
+        params (Dict[str, float]): A dictionary of parameters defining the genome's traits.
+        fitness (float): The evaluated fitness score of the genome.
+        age (int): The number of generations this genome has survived.
+        niche (str): A string indicating the genome's role or characteristic (e.g., "exploration").
+        species_id (int): Identifier for the species this genome belongs to.
+        parents (Tuple[Optional[Any], Optional[Any]]): A tuple of identifiers (or None) for the parent genomes.
+                                                    Using Any for id(), which is volatile.
+        lineage (List[str]): A list of strings tracing the genome's evolutionary path.
+        mutation_count (int): Number of mutations applied to this genome.
+        eval_count (int): Number of times this genome's fitness has been evaluated.
     """
 
     params: Dict[str, float]
@@ -81,11 +82,11 @@ class Species:
     Represents a group of similar genomes (a species).
 
     Attributes:
-        species_id: Unique identifier for the species.
-        representative: A Genome chosen to represent the species' characteristics.
-        members: A list of indices of genomes belonging to this species in the population.
-        best_fitness: The highest fitness achieved by any member of this species.
-        stagnation: Number of generations without improvement in `best_fitness`.
+        species_id (int): Unique identifier for the species.
+        representative (Genome): A Genome chosen to represent the species' characteristics.
+        members (List[int]): A list of indices of genomes belonging to this species in the population.
+        best_fitness (float): The highest fitness achieved by any member of this species.
+        stagnation (int): Number of generations without improvement in `best_fitness`.
     """
 
     species_id: int
@@ -109,25 +110,25 @@ class GeneticEngine:
     and mutation, and maintains species diversity.
 
     Attributes:
-        pop_size: The target size of the population.
-        base_mutation_rate: The base probability of a parameter mutating.
-        mutation_rate: The current adaptive mutation rate.
-        elite_size: Number of top-performing genomes to carry over directly.
-        tournament_size: Number of genomes to select from for tournament selection.
-        species_threshold: Maximum parameter distance for genomes to be in the same species.
-        max_species: Maximum number of species to allow.
-        novelty_weight: Weight given to novelty score in fitness calculation (currently unused in favor of QD_bonus_weight).
-        qd_bonus_weight: Weight of the novelty bonus from the QD archive in total fitness.
-        qd_archive: A dictionary mapping descriptor tuples to the best Genome found for that descriptor.
-        fitness_fn: Callable to evaluate a genome's parameters, or a default one.
-        population: The current list of genomes.
-        species: A dictionary of active species.
-        _species_seq: Counter for assigning new species IDs.
-        _fitness_cache: Cache for fitness evaluations to avoid recomputing.
-        _last_best_fitness: The best fitness achieved in the previous generation.
-        _stagnation: Number of generations since overall best fitness improved.
-        generation: The current generation number.
-        champion: A tuple of the best genome's parameters and its fitness.
+        pop_size (int): The target size of the population.
+        base_mutation_rate (float): The base probability of a parameter mutating.
+        mutation_rate (float): The current adaptive mutation rate.
+        elite_size (int): Number of top-performing genomes to carry over directly.
+        tournament_size (int): Number of genomes to select from for tournament selection.
+        species_threshold (float): Maximum parameter distance for genomes to be in the same species.
+        max_species (int): Maximum number of species to allow.
+        novelty_weight (float): Weight given to novelty score in fitness calculation (currently unused in favor of QD_bonus_weight).
+        qd_bonus_weight (float): Weight of the novelty bonus from the QD archive in total fitness.
+        qd_archive (Dict[Tuple[int, int], Genome]): A dictionary mapping descriptor tuples to the best Genome found for that descriptor.
+        fitness_fn (Callable[[Dict[str, float]], float]): Callable to evaluate a genome's parameters, or a default one.
+        population (List[Genome]): The current list of genomes.
+        species (Dict[int, Species]): A dictionary of active species.
+        _species_seq (int): Counter for assigning new species IDs.
+        _fitness_cache (Dict[str, float]): Cache for fitness evaluations to avoid recomputing.
+        _last_best_fitness (float): The best fitness achieved in the previous generation.
+        _stagnation (int): Number of generations since overall best fitness improved.
+        generation (int): The current generation number.
+        champion (Tuple[Dict[str, float], float]): A tuple of the best genome's parameters and its fitness.
     """
 
     def __init__(
@@ -142,7 +143,7 @@ class GeneticEngine:
         novelty_weight: float = 0.0,  # Legacy, QD archive takes precedence
         qd_bonus_weight: float = 0.3,
         seed: Optional[int] = None,
-    ):
+    ) -> None:
         if pop_size < 2:
             raise ValueError("pop_size must be >= 2")
         if elite_size < 0:
@@ -187,6 +188,11 @@ class GeneticEngine:
         """
         Initializes the population, optionally with a seed population.
         Fills up to `pop_size` with random genomes if needed.
+
+        Args:
+            seed_population (Optional[Iterable[Dict[str, float]]]): An iterable of
+                                                                     parameter dictionaries
+                                                                     to seed the initial population.
         """
         self.population = []
         if seed_population is not None:
@@ -208,12 +214,18 @@ class GeneticEngine:
         """
         A default fitness function if none is provided.
         Rewards parameters closer to 0.5 and penalizes spread.
+
+        Args:
+            params (Dict[str, float]): The parameters of the genome to evaluate.
+
+        Returns:
+            float: The calculated default fitness score.
         """
         if not params:
             return 0.0
         # Ensure values are floats before processing
         vals: List[float] = [float(v) for v in params.values()]
-        # Check for division by zero if params is empty, though checked above
+        # Check for division by zero if vals is empty
         if not vals:
             return 0.0
         center: float = sum(1.0 - abs(v - 0.5) * 2.0 for v in vals) / len(vals)
@@ -222,16 +234,30 @@ class GeneticEngine:
 
     @staticmethod
     def _hash_params(params: Dict[str, float]) -> str:
-        """Generates a consistent hash for a set of parameters."""
+        """
+        Generates a consistent hash for a set of parameters.
+
+        Args:
+            params (Dict[str, float]): The parameter dictionary.
+
+        Returns:
+            str: A SHA256 hash string.
+        """
         # Sort items for consistent hashing across runs/platforms
-        items = sorted((str(k), round(float(v), 10)) for k, v in params.items())
-        raw = repr(items).encode("utf-8")
+        items: List[Tuple[str, float]] = sorted((str(k), round(float(v), 10)) for k, v in params.items())
+        raw: bytes = repr(items).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
     def _fitness(self, params: Dict[str, float]) -> float:
         """
         Calculates fitness, utilizing a cache to avoid re-evaluating identical parameter sets.
         Handles NaN fitness values.
+
+        Args:
+            params (Dict[str, float]): The parameters of the genome to evaluate.
+
+        Returns:
+            float: The calculated base fitness score.
         """
         key: str = self._hash_params(params)
         cached: Optional[float] = self._fitness_cache.get(key)
@@ -247,6 +273,7 @@ class GeneticEngine:
         """
         Evaluates the fitness of all genomes in the current population.
         Applies a novelty bonus based on the Quality-Diversity archive.
+        Updates species and champion after evaluation.
         """
         for genome in self.population:
             # Calculate base fitness
@@ -272,6 +299,13 @@ class GeneticEngine:
         """
         Calculates the Euclidean distance between two parameter dictionaries.
         Missing keys are treated as having a value of 0.0.
+
+        Args:
+            a (Dict[str, float]): The first parameter dictionary.
+            b (Dict[str, float]): The second parameter dictionary.
+
+        Returns:
+            float: The Euclidean distance.
         """
         keys: set[str] = set(a) | set(b)
         if not keys:
@@ -287,10 +321,9 @@ class GeneticEngine:
         """
         Re-assigns all genomes to species based on their parameter distance
         to existing species representatives. Creates new species if needed.
-        Handles `max_species` by potentially merging or removing species, though not explicitly implemented yet.
         """
         self.species = {}
-        self._species_seq = 0  # Reset species ID counter
+        self._species_seq = 0  # Reset species ID counter for new generation's species
         if not self.population:
             return
 
@@ -300,6 +333,10 @@ class GeneticEngine:
             for species_obj in self.species.values():
                 if self._distance(genome.params, species_obj.representative.params) <= self.species_threshold:
                     species_obj.members.append(idx)
+                    # Update species best fitness if this genome is better
+                    if genome.fitness > species_obj.best_fitness:
+                        species_obj.best_fitness = genome.fitness
+                        species_obj.stagnation = 0
                     assigned = True
                     break
             if not assigned:
@@ -310,6 +347,8 @@ class GeneticEngine:
                     species_id=sid,
                     representative=genome.copy(),  # Representative is a copy of the first member
                     members=[idx],
+                    best_fitness=genome.fitness,
+                    stagnation=0,
                 )
         # TODO: Implement handling for self.max_species, e.g., merging smallest species or culling.
 
@@ -322,13 +361,21 @@ class GeneticEngine:
                     self.population[idx].species_id = sid
 
     def species_count(self) -> int:
-        """Returns the number of active species."""
+        """
+        Returns the number of active species.
+
+        Returns:
+            int: The current number of species.
+        """
         return len(self.species)
 
     def diversity(self) -> float:
         """
         Calculates the diversity of the population based on unique parameter hashes.
         Returns a value between 0.0 and 1.0.
+
+        Returns:
+            float: A measure of population diversity.
         """
         if len(self.population) <= 1:
             return 0.0
@@ -339,6 +386,12 @@ class GeneticEngine:
         """
         Calculates a novelty score for a genome based on its distance to its k-nearest neighbors.
         (Currently only used with `novelty_weight` if > 0, otherwise QD bonus takes over).
+
+        Args:
+            genome (Genome): The genome for which to calculate the novelty score.
+
+        Returns:
+            float: The calculated novelty score.
         """
         if not self.population or len(self.population) == 1:
             return 0.0
@@ -347,7 +400,7 @@ class GeneticEngine:
         if not dists:
             return 0.0
         # Average distance to the 5 nearest neighbors
-        k = min(5, len(dists))
+        k: int = min(5, len(dists))
         if k == 0:
             return 0.0
         return sum(sorted(dists)[:k]) / k
@@ -360,10 +413,13 @@ class GeneticEngine:
         """
         Selects a genome using tournament selection from the entire population.
         Considers both fitness and novelty (if `novelty_weight` > 0).
+
+        Returns:
+            Genome: The winning genome from the tournament.
         """
         if not self.population:
             raise RuntimeError("Population is empty, cannot pick from tournament.")
-        k_val = min(self.tournament_size, len(self.population))
+        k_val: int = min(self.tournament_size, len(self.population))
         contestants: List[Genome] = self._rng.sample(self.population, k=k_val)
         contestants.sort(
             key=lambda g: g.fitness + self.novelty_weight * self.novelty_score(g),
@@ -374,6 +430,9 @@ class GeneticEngine:
     def _ranked_population(self) -> List[Genome]:
         """
         Returns the population sorted by combined fitness (fitness + novelty_weight * novelty_score).
+
+        Returns:
+            List[Genome]: The population sorted by fitness.
         """
         return sorted(
             self.population,
@@ -389,6 +448,13 @@ class GeneticEngine:
         """
         Performs crossover between two parent genomes to create a child.
         Combines parameters and applies blend crossover (BLX-alpha) for some parameters.
+
+        Args:
+            a (Genome): The first parent genome.
+            b (Genome): The second parent genome.
+
+        Returns:
+            Genome: The child genome resulting from crossover.
         """
         keys: list[str] = sorted(set(a.params) | set(b.params))
         child_params: Dict[str, float] = {}
@@ -422,6 +488,12 @@ class GeneticEngine:
         """
         Applies mutations to a genome's parameters.
         Uses an adaptive mutation rate and applies Gaussian perturbation.
+
+        Args:
+            genome (Genome): The genome to mutate.
+
+        Returns:
+            Genome: A new, mutated genome.
         """
         mutated: Genome = genome.copy()
         rate: float = self._adaptive_mutation_rate()
@@ -454,6 +526,9 @@ class GeneticEngine:
         """
         Calculates an adaptive mutation rate based on population diversity and stagnation.
         Higher stagnation or lower diversity leads to higher mutation rates.
+
+        Returns:
+            float: The calculated adaptive mutation rate.
         """
         div: float = self.diversity()
         stagnation_boost: float = min(0.25, self._stagnation * 0.02)  # Max 0.25 boost
@@ -486,12 +561,11 @@ class GeneticEngine:
 
         # 2. Add high-performing genomes from the QD archive to introduce diversity and novelty
         # These are added *after* the main elites and will count towards pop_size.
-        qd_archive_genomes = sorted(self.qd_archive.values(), key=lambda g: g.fitness, reverse=True)
+        qd_archive_genomes: List[Genome] = sorted(self.qd_archive.values(), key=lambda g: g.fitness, reverse=True)
         for genome_from_qd in qd_archive_genomes:
             if len(next_population) >= self.pop_size:
                 break
-            # Ensure QD archive genomes are distinct from elites already copied
-            # This check is basic (param hash), a more robust check might be needed
+            # Ensure QD archive genomes are distinct from elites already copied by comparing param hashes
             if all(self._hash_params(genome_from_qd.params) != self._hash_params(g.params) for g in next_population):
                 next_population.append(genome_from_qd.copy())
 
@@ -504,8 +578,8 @@ class GeneticEngine:
             next_population.append(child)
 
         self.population = next_population[: self.pop_size]  # Ensure population size is maintained
-        self._rebuild_species()
-        self.evaluate_population()  # Final evaluation for the new generation
+        self._rebuild_species() # Rebuild species for the new population
+        self.evaluate_population()  # Final evaluation for the new generation, also updates champion
         self.generation += 1
         self._update_stagnation()
         self._update_champion()
@@ -514,6 +588,9 @@ class GeneticEngine:
         """
         Selects a parent genome, prioritizing species with more members
         and then using a tournament within that species.
+
+        Returns:
+            Genome: The selected parent genome.
         """
         if not self.species:
             return self._tournament_pick()  # Fallback to general tournament
@@ -534,7 +611,7 @@ class GeneticEngine:
         if not species_population:
             return self._tournament_pick() # Fallback if species members are invalid
 
-        k_val = max(1, min(self.tournament_size, len(species_population)))
+        k_val: int = max(1, min(self.tournament_size, len(species_population)))
         contestants: List[Genome] = self._rng.sample(species_population, k=k_val)
         contestants.sort(
             key=lambda g: g.fitness + self.novelty_weight * self.novelty_score(g),
@@ -553,6 +630,7 @@ class GeneticEngine:
             self._stagnation = 0
             for species_obj in self.species.values():
                 species_obj.stagnation = 0  # Reset species stagnation
+                # Update species best fitness if overall best improved beyond its own previous best
                 species_obj.best_fitness = max(species_obj.best_fitness, best_now)
         else:
             self._stagnation += 1
@@ -572,13 +650,21 @@ class GeneticEngine:
     # =========================
 
     def set_mutation_rate(self, rate: float) -> None:
-        """Sets the base mutation rate, clamping it between 0.0 and 1.0."""
+        """
+        Sets the base mutation rate, clamping it between 0.0 and 1.0.
+
+        Args:
+            rate (float): The new mutation rate.
+        """
         self.base_mutation_rate = max(0.0, min(1.0, float(rate)))
         self.mutation_rate = self.base_mutation_rate  # Also update current rate
 
     def set_fitness_fn(self, fn: Callable[[Dict[str, float]], float]) -> None:
         """
         Sets a custom fitness function. Clears the fitness cache and re-evaluates the population.
+
+        Args:
+            fn (Callable[[Dict[str, float]], float]): The new fitness function.
         """
         self.fitness_fn = fn
         self._fitness_cache.clear()
@@ -592,6 +678,12 @@ class GeneticEngine:
         """
         Returns the parameters of the top N best genomes.
         (Legacy method, `get_best` is preferred for full Genome objects).
+
+        Args:
+            top_n (int): The number of top genomes to retrieve.
+
+        Returns:
+            List[Dict[str, float]]: A list of parameter dictionaries for the best genomes.
         """
         ranked: List[Genome] = self._ranked_population()[:top_n]
         return [dict(g.params) for g in ranked]
@@ -600,6 +692,9 @@ class GeneticEngine:
         """
         Safely adds a genome to the population. If the population exceeds `pop_size`,
         the oldest genome (first in list) is removed.
+
+        Args:
+            genome (Genome): The genome to add.
         """
         self.population.append(genome)
         if len(self.population) > self.pop_size:
@@ -607,15 +702,33 @@ class GeneticEngine:
             self.population.pop(0)
 
     def get_best(self, top_n: int = 1) -> List[Genome]:
-        """Returns the top N best Genome objects (copies)."""
+        """
+        Returns the top N best Genome objects (copies).
+
+        Args:
+            top_n (int): The number of top genomes to retrieve.
+
+        Returns:
+            List[Genome]: A list of the best Genome objects.
+        """
         return [g.copy() for g in self._ranked_population()[:top_n]]
 
     def get_champion(self) -> Tuple[Dict[str, float], float]:
-        """Returns the parameters and fitness of the overall champion genome."""
+        """
+        Returns the parameters and fitness of the overall champion genome.
+
+        Returns:
+            Tuple[Dict[str, float], float]: The champion's parameters and fitness.
+        """
         return self.champion
 
     def export_population(self) -> List[Dict[str, float]]:
-        """Exports the parameters of all genomes in the current population."""
+        """
+        Exports the parameters of all genomes in the current population.
+
+        Returns:
+            List[Dict[str, float]]: A list of parameter dictionaries for all genomes.
+        """
         return [dict(g.params) for g in self.population]
 
     # =========================
@@ -625,7 +738,11 @@ class GeneticEngine:
     def _random_params(self) -> Dict[str, float]:
         """
         Generates a dictionary of random parameters within predefined ranges.
-        These parameters are used for initial population generation.
+        These parameters are used for initial population generation and must cover
+        all keys expected by `_compute_descriptor`.
+
+        Returns:
+            Dict[str, float]: A dictionary of random parameters.
         """
         # Ensure all parameters needed by _compute_descriptor are present here
         # and have reasonable ranges to map correctly to the QD grid.
@@ -634,13 +751,23 @@ class GeneticEngine:
             "phi_llm": self._clamp(self._rng.uniform(0.05, 0.35)),
             "exploration_rate": self._clamp(self._rng.uniform(0.05, 0.5)),
             "confidence_floor": self._clamp(self._rng.uniform(0.01, 0.25)),
-            "trailing_stop_ratio": self._clamp(self._rng.uniform(0.005, 0.05)),  # Added for QD descriptor
-            "momentum_window": self._clamp(self._rng.uniform(5.0, 60.0), low=5.0, high=60.0), # Added for QD descriptor
+            "trailing_stop_ratio": self._clamp(self._rng.uniform(0.005, 0.05)),
+            "momentum_window": self._clamp(self._rng.uniform(5.0, 60.0), low=5.0, high=60.0),
         }
 
     @staticmethod
     def _clamp(x: float, low: float = 0.0001, high: float = 1.0) -> float:
-        """Clamps a float value within a specified range [low, high]. Handles NaN."""
+        """
+        Clamps a float value within a specified range [low, high]. Handles NaN.
+
+        Args:
+            x (float): The value to clamp.
+            low (float): The minimum allowed value.
+            high (float): The maximum allowed value.
+
+        Returns:
+            float: The clamped value.
+        """
         if x != x:  # Check for NaN
             return low
         return max(low, min(high, float(x)))
@@ -650,14 +777,20 @@ class GeneticEngine:
         Computes a 2D descriptor (row, col) for the Quality-Diversity archive
         based on specific parameters of the genome.
         The descriptor maps continuous parameter ranges to a 10x10 grid.
+
+        Args:
+            genome (Genome): The genome for which to compute the descriptor.
+
+        Returns:
+            Tuple[int, int]: A tuple (row, col) representing the descriptor in the 10x10 grid.
         """
-        params = genome.params
+        params: Dict[str, float] = genome.params
 
         # Retrieve parameters with sensible defaults if they are missing
-        max_risk_per_trade = params.get("max_risk_per_trade", 0.05)
-        phi_llm = params.get("phi_llm", 0.15)
-        trailing_stop_ratio = params.get("trailing_stop_ratio", 0.01)
-        momentum_window = params.get("momentum_window", 10.0)
+        max_risk_per_trade: float = params.get("max_risk_per_trade", 0.05)
+        phi_llm: float = params.get("phi_llm", 0.15)
+        trailing_stop_ratio: float = params.get("trailing_stop_ratio", 0.01)
+        momentum_window: float = params.get("momentum_window", 10.0)
 
         # Calculate "risk" and "aggressiveness" composite features
         # Min/Max values are derived from _random_params ranges:
@@ -666,20 +799,18 @@ class GeneticEngine:
         # trailing_stop_ratio: [0.005, 0.05]
         # momentum_window: [5.0, 60.0]
 
-        # Feature 1: "risk"
-        # Range: min_risk = 0.01 * 0.05 = 0.0005, max_risk = 0.15 * 0.35 = 0.0525
-        risk = max_risk_per_trade * phi_llm
-        risk_min, risk_max = 0.0005, 0.0525
+        # Feature 1: "risk" - a product of risk per trade and a confidence factor
+        risk: float = max_risk_per_trade * phi_llm
+        risk_min, risk_max = 0.01 * 0.05, 0.15 * 0.35  # Min/Max possible products
         # Normalize and map to 0-9 for the row
-        row = int((risk - risk_min) / (risk_max - risk_min) * 9.999) # Scale to 0-9.999
+        row: int = int((risk - risk_min) / (risk_max - risk_min) * 9.999) # Scale to 0-9.999
         row = min(9, max(0, row))
 
-        # Feature 2: "aggressiveness"
-        # Range: min_agg = 0.005 + 5.0/100.0 = 0.055, max_agg = 0.05 + 60.0/100.0 = 0.65
-        aggressiveness = trailing_stop_ratio + momentum_window / 100.0
-        agg_min, agg_max = 0.055, 0.65
+        # Feature 2: "aggressiveness" - a sum of stop ratio and scaled momentum window
+        aggressiveness: float = trailing_stop_ratio + momentum_window / 100.0 # Scale momentum to a similar magnitude
+        agg_min, agg_max = 0.005 + 5.0/100.0, 0.05 + 60.0/100.0 # Min/Max possible sums
         # Normalize and map to 0-9 for the column
-        col = int((aggressiveness - agg_min) / (agg_max - agg_min) * 9.999) # Scale to 0-9.999
+        col: int = int((aggressiveness - agg_min) / (agg_max - agg_min) * 9.999) # Scale to 0-9.999
         col = min(9, max(0, col))
 
         return (row, col)
@@ -688,6 +819,9 @@ class GeneticEngine:
         """
         Updates the Quality-Diversity (QD) archive. If a cell is empty or the
         new genome has higher fitness than the current occupant, it replaces it.
+
+        Args:
+            genome (Genome): The genome to consider for archiving.
         """
         row, col = self._compute_descriptor(genome)
         key: Tuple[int, int] = (row, col)
@@ -700,6 +834,12 @@ class GeneticEngine:
         Returns a novelty bonus for the genome.
         Returns 1.0 if its descriptor cell in the QD archive is empty,
         0.3 if it's occupied (encouraging exploration of new cells).
+
+        Args:
+            genome (Genome): The genome for which to calculate the bonus.
+
+        Returns:
+            float: The novelty bonus value.
         """
         row, col = self._compute_descriptor(genome)
         key: Tuple[int, int] = (row, col)

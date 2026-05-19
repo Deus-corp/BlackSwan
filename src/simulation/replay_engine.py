@@ -1,6 +1,5 @@
 from typing import Iterator, Dict, Any, Protocol
 
-# Define a Protocol for the expected interface of event_store
 class EventStoreProtocol(Protocol):
     """
     Protocol defining the expected interface for an event store.
@@ -51,6 +50,6 @@ class ReplayEngine:
             A dictionary containing the status of the stub replay and
             the count of events that would have been processed.
         """
-        events = list(self.event_store.iter_events())
+        events: list[Any] = list(self.event_store.iter_events())
         print(f"Replay would process {len(events)} events for run {run_id}")
         return {"status": "stub", "events_count": len(events)}

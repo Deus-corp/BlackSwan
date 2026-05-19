@@ -1,8 +1,9 @@
 """
-Логика выбора лучшего рынка (символа) для сделки.
+Logic for selecting the best market (trading symbol) for a transaction from a given snapshot.
 """
 import random
-from typing import Dict, Tuple, Optional, Any, Union
+import time
+from typing import Dict, Tuple, Optional, Any
 
 # Assuming swarm_config is available and correctly configured
 from swarm_config import config
@@ -12,32 +13,36 @@ EXPECTED_RETURN_RATE: float = config.expected_return_rate
 
 def select_best_market(snapshot: Dict[str, Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
     """
-    Возвращает (symbol, tick_dict) с максимальной ожидаемой доходностью.
+    Selects the market (symbol and its tick data) with the maximum expected return.
 
     Iterates through a market snapshot to find the symbol (market) with the highest
     expected return based on its 'price' and a predefined `EXPECTED_RETURN_RATE`.
-    If no suitable market is found (e.g., empty snapshot or no positive prices),
+    Only markets with positive prices are considered for potential returns.
+    If no suitable market is found (e.g., empty snapshot, all prices non-positive),
     it falls back to a default/simulated market.
 
     Args:
-        snapshot (Dict[str, Dict[str, Any]]): A dictionary where keys are symbols
-                                              (e.g., "WETH/USDC") and values are
-                                              market tick dictionaries, expected to
-                                              contain at least a "price" key.
+        snapshot: A dictionary where keys are symbols (e.g., "WETH/USDC") and values are
+                  market tick dictionaries. Each tick dictionary is expected to
+                  contain at least a "price" key.
 
     Returns:
-        Tuple[str, Dict[str, Any]]: A tuple containing the best symbol and its
-                                    corresponding market tick dictionary. The tick
-                                    dictionary will always contain at least "price"
-                                    and "symbol" keys, even in fallback scenarios.
+        A tuple containing:
+        - The symbol (str) of the best market.
+        - The corresponding market tick dictionary (Dict[str, Any]). This dictionary
+          will always contain at least "price" and "symbol" keys, even in fallback scenarios.
     """
     best_symbol: Optional[str] = None
-    best_expected: float = -1.0
+    best_expected: float = -1.0 # Initialize with a value that any positive return will beat
     best_tick: Optional[Dict[str, Any]] = None
 
     for sym, tick in snapshot.items():
         # Ensure price is treated as a float, defaulting to 0.0 if not present or invalid.
+        # Only consider markets with a positive price for expected return calculation.
         price: float = float(tick.get("price", 0.0))
+        if price <= 0.0:
+            continue
+
         expected: float = price * EXPECTED_RETURN_RATE
 
         if expected > best_expected:
@@ -48,20 +53,17 @@ def select_best_market(snapshot: Dict[str, Dict[str, Any]]) -> Tuple[str, Dict[s
     if best_tick is None:
         # Fallback case: if no market with a positive expected return was found
         # (e.g., snapshot was empty, or all prices were 0 or negative).
-        # We ensure a default market is returned.
-        fallback_symbol: str = list(snapshot.keys())[0] if snapshot else "WETH/USDC"
+        # We ensure a default market is returned for continued operation.
+        fallback_symbol: str = list(snapshot.keys())[0] if snapshot else "BTC/USDT" # Use a common default
         # The fallback tick should mimic the structure expected from the snapshot service.
         fallback_tick: Dict[str, Any] = {
             "price": random.uniform(90.0, 110.0), # Use floats for uniformity
-            "symbol": fallback_symbol
+            "symbol": fallback_symbol,
+            "timestamp": time.time() # Add timestamp for completeness
         }
         return fallback_symbol, fallback_tick
     else:
-        # At this point, best_tick is guaranteed not to be None.
-        # If best_tick is not None, best_symbol must also be not None,
-        # as they are assigned together within the loop.
-        # We use assertions for clarity and to help type checkers confirm non-None types.
-        assert best_symbol is not None, "best_symbol should not be None if best_tick is not None"
+        # At this point, best_tick and best_symbol are guaranteed not to be None.
         # Add the symbol to the best_tick for consistency, if not already present.
         # The snapshot service's fallback already includes it, but adapter data might vary.
         if "symbol" not in best_tick:

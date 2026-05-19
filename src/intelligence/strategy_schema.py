@@ -1,7 +1,7 @@
 """
 strategy_schema.py — Глобальные Pydantic-модели для параметров стратегии и genome.
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict # Import ConfigDict for Pydantic v2
 from typing import Dict, Union
 
 class StrategyParams(BaseModel):
@@ -16,6 +16,9 @@ class StrategyParams(BaseModel):
         momentum_window: Окно для расчета моментума (количество свечей/периодов).
         volatility_threshold: Порог волатильности для активации определенных условий стратегии.
     """
+    # Pydantic v2 model configuration. 'extra='forbid'' prevents additional fields not defined in the schema.
+    model_config = ConfigDict(extra='forbid')
+
     max_risk_per_trade: float = Field(default=0.01, ge=0.0001, le=0.3,
                                       description="Максимальный риск на сделку, как доля от капитала (0.0001-0.3).")
     phi_llm: float = Field(default=0.3, ge=0.01, le=1.0,
@@ -29,10 +32,6 @@ class StrategyParams(BaseModel):
     volatility_threshold: float = Field(default=0.02, ge=0.001, le=0.3,
                                        description="Порог волатильности (0.001-0.3).")
 
-    class Config:
-        """Pydantic configuration."""
-        extra = "forbid"  # Запрещает дополнительные поля, не описанные в схеме.
-
     def to_dict(self) -> Dict[str, Union[float, int]]:
         """
         Преобразует текущие параметры стратегии в словарь.
@@ -40,4 +39,5 @@ class StrategyParams(BaseModel):
         Returns:
             Словарь, представляющий параметры стратегии.
         """
+        # model_dump() is the Pydantic v2 method for converting a model to a dictionary.
         return self.model_dump()

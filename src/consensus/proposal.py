@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 class Proposal:
     """
     A trade proposal that needs approval from multiple swarm nodes.
-    Currently a stub that always returns "approved".
 
     Attributes:
         proposer_node_id (str): The ID of the node that initiated the proposal.
@@ -35,10 +34,10 @@ class Proposal:
         Initialises a new Proposal.
 
         Args:
-            proposer_node_id (str): The ID of the node initiating the proposal.
-            action (str): The specific action proposed (e.g., 'buy', 'sell').
-            amount (float): The quantity or value involved in the proposal.
-            symbol (str): The asset symbol relevant to the proposal.
+            proposer_node_id: The ID of the node initiating the proposal.
+            action: The specific action proposed (e.g., 'buy', 'sell').
+            amount: The quantity or value involved in the proposal.
+            symbol: The asset symbol relevant to the proposal.
         """
         self.proposer_node_id: str = proposer_node_id
         self.action: str = action
@@ -51,8 +50,8 @@ class Proposal:
         Adds a node's cryptographic signature to the proposal.
 
         Args:
-            node_id (str): The ID of the node providing the signature.
-            signature (str): The cryptographic signature from the node.
+            node_id: The ID of the node providing the signature.
+            signature: The cryptographic signature from the node.
         """
         self.signatures[node_id] = signature
 
@@ -61,10 +60,10 @@ class Proposal:
         Checks if enough signatures have been collected to approve the proposal.
 
         Args:
-            quorum (int): The minimum number of signatures required for approval. Defaults to 3.
+            quorum: The minimum number of signatures required for approval. Defaults to 3.
 
         Returns:
-            bool: True if the number of collected signatures meets or exceeds the quorum, False otherwise.
+            True if the number of collected signatures meets or exceeds the quorum, False otherwise.
         """
         return len(self.signatures) >= quorum
 
@@ -73,7 +72,7 @@ class Proposal:
         Serialises the proposal into a dictionary suitable for gossip transmission or storage.
 
         Returns:
-            dict[str, Any]: A dictionary representation of the proposal, including signatures.
+            A dictionary representation of the proposal, including signatures.
         """
         return {
             "proposer_node_id": self.proposer_node_id,
@@ -99,7 +98,7 @@ class ConsensusManager:
         Initialises the ConsensusManager for a specific node.
 
         Args:
-            node_id (str): The ID of the current node.
+            node_id: The ID of the current node.
         """
         self.node_id: str = node_id
         logger.info(f"ConsensusManager initialised (stub) for node {node_id}")
@@ -109,12 +108,12 @@ class ConsensusManager:
         Creates a new trade proposal initiated by this node.
 
         Args:
-            action (str): The proposed action (e.g., 'buy', 'sell').
-            amount (float): The amount involved in the proposal.
-            symbol (str): The asset symbol.
+            action: The proposed action (e.g., 'buy', 'sell').
+            amount: The amount involved in the proposal.
+            symbol: The asset symbol.
 
         Returns:
-            Proposal: The newly created Proposal object.
+            The newly created Proposal object.
         """
         return Proposal(self.node_id, action, amount, symbol)
 
@@ -124,12 +123,12 @@ class ConsensusManager:
         Adds the signature and then checks if the proposal is approved.
 
         Args:
-            proposal (Proposal): The proposal object to which the signature belongs.
-            node_id (str): The ID of the node that provided the signature.
-            signature (str): The cryptographic signature string.
+            proposal: The proposal object to which the signature belongs.
+            node_id: The ID of the node that provided the signature.
+            signature: The cryptographic signature string.
 
         Returns:
-            bool: True if the proposal is approved after adding this signature, False otherwise.
+            True if the proposal is approved after adding this signature, False otherwise.
         """
         proposal.sign(node_id, signature)
         return proposal.is_approved()

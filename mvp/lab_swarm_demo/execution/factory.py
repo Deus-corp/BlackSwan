@@ -1,30 +1,40 @@
 """
-Фабрика для создания ExecutionBackend в зависимости от режима.
+Factory for creating ExecutionBackend instances based on the configured mode.
 """
 import os
 import sys
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 
-# Assuming swarm_config is importable and has a 'config' object with 'market_mode' attribute.
-# Added robust import handling for `swarm_config`.
+# This block handles the import of `swarm_config.config` with a fallback mechanism.
+# It first attempts a standard import. If that fails (e.g., during local development
+# where `swarm_config` might not be in the PYTHONPATH or installed as a package),
+# it temporarily modifies `sys.path` to look in the project's root directory.
+# This approach is generally for specific project structures and should be used with caution.
 try:
     from swarm_config import config
 except ImportError:
-    # Fallback for local testing if swarm_config is not directly importable.
-    # Assumes swarm_config.py is in 'mvp/lab_swarm_demo/' or its parent directory.
-    _current_dir = os.path.dirname(os.path.abspath(__file__))
-    _root_dir = os.path.join(_current_dir, "../../..") # Adjust path as necessary for swarm_config location
+    _current_dir: str = os.path.dirname(os.path.abspath(__file__))
+    # Assumes swarm_config.py is located at the project root, e.g., 'mvp/' if this file is in 'mvp/lab_swarm_demo/execution/'
+    _root_dir: str = os.path.join(_current_dir, "../../..")
+    
+    # Only add to sys.path if not already present to avoid redundant entries
     if _root_dir not in sys.path:
         sys.path.insert(0, _root_dir)
     try:
         from swarm_config import config
     except ImportError:
-        # If still not found, raise the original error or a more specific one.
+        # If still not found, raise a more informative error.
         raise ImportError(
             "Could not import 'config' from 'swarm_config'. "
-            "Ensure swarm_config.py is accessible in PYTHONPATH or located correctly relative to 'execution'."
+            "Ensure swarm_config.py is accessible in PYTHONPATH or located correctly "
+            "relative to 'execution' (expected at the project root)."
         )
 
+# Type-checking import for potential circular dependencies or to avoid runtime imports
+if TYPE_CHECKING:
+    # We might need to import these classes for type hints if they were only used in return types
+    # or if we wanted to avoid runtime import issues, but in this case, direct import is fine.
+    pass
 
 from .backend import ExecutionBackend
 from .sim_backend import SimExecutionBackend
@@ -57,8 +67,6 @@ def build_backend(node_id: str, adapter: Any, is_leader_func: Callable[[int], bo
     if mode == "sim":
         return SimExecutionBackend()
     elif mode in ("web3", "live"):
-        # The `is_leader_func` type hint is corrected here to `Callable[[int], bool]`
-        # to match the `LiveExecutionBackend.__init__` signature, ensuring type consistency.
         return LiveExecutionBackend(node_id, adapter, is_leader_func)
     else:
         raise ValueError(f"Unsupported market mode: {mode}")

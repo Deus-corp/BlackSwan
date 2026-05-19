@@ -2,9 +2,23 @@
 Исполнение на live/web3 (Sepolia через Uniswap V3).
 """
 import logging
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Callable, Optional, Union, TYPE_CHECKING
+from web3 import Web3 # Used for type hinting the adapter's w3 attribute
 
 from .backend import ExecutionBackend
+
+# Define a Protocol for the adapter if TYPE_CHECKING is true, to enhance type safety.
+# This avoids a runtime dependency on a specific adapter implementation but helps static analysis.
+if TYPE_CHECKING:
+    from typing import Protocol
+
+    class Web3AdapterProtocol(Protocol):
+        """
+        Protocol defining the expected interface for the Web3 adapter.
+        """
+        w3: Web3 # Assumes the adapter exposes a web3 instance
+        async def _get_token_balance(self, token_address: str) -> float: ...
+        async def place_order(self, side: str, amount: float, price: float) -> Dict[str, Any]: ...
 
 logger = logging.getLogger(__name__)
 
@@ -20,26 +34,28 @@ class LiveExecutionBackend(ExecutionBackend):
     It interacts with an adapter to place orders, check balances, and verify leadership status.
 
     Assumes the 'adapter' object provides specific methods for Web3 interaction,
-    as detailed in the `__init__` method's docstring.
+    as detailed in the `__init__` method's docstring and the `Web3AdapterProtocol`.
     """
     node_id: str
-    adapter: Any  # Type `Any` because the specific adapter implementation is not defined here.
-                  # A Protocol could be used for stronger typing if the adapter interface is stable.
+    # Type `Any` is used here for `adapter` for runtime flexibility, but `Web3AdapterProtocol`
+    # (defined for static type checking) represents the expected interface.
+    adapter: Union['Web3AdapterProtocol', Any]
     is_leader_func: Callable[[int], bool]
 
-    def __init__(self, node_id: str, adapter: Any, is_leader_func: Callable[[int], bool]) -> None:
+    def __init__(self, node_id: str, adapter: Union['Web3AdapterProtocol', Any], is_leader_func: Callable[[int], bool]) -> None:
         """
         Initializes the LiveExecutionBackend.
 
         Args:
             node_id (str): Identifier for the current node. Used for logging.
-            adapter (Any): An object capable of interacting with the blockchain (e.g., placing orders,
-                           getting balances, accessing web3 instance). It's expected to have at least
-                           the following callable attributes:
-                           - `_get_token_balance(token_address: str) -> float`: To get token balances asynchronously.
-                           - `w3.eth.block_number` (awaitable property/attribute): To get the current block number.
-                           - `place_order(side: str, amount: float, price: float) -> Dict[str, Any]`:
-                             To submit a trade order asynchronously.
+            adapter (Union[Web3AdapterProtocol, Any]): An object capable of interacting with the blockchain
+                                                       (e.g., placing orders, getting balances, accessing web3 instance).
+                                                       It's expected to conform to `Web3AdapterProtocol`, providing at least
+                                                       the following callable attributes:
+                                                       - `_get_token_balance(token_address: str) -> float`: To get token balances asynchronously.
+                                                       - `w3.eth.block_number` (awaitable property/attribute): To get the current block number.
+                                                       - `place_order(side: str, amount: float, price: float) -> Dict[str, Any]`:
+                                                         To submit a trade order asynchronously.
             is_leader_func (Callable[[int], bool]): A callable that takes an integer (block number)
                                                      and returns a boolean, indicating if the current node
                                                      is the leader for that specific block.
@@ -67,6 +83,8 @@ class LiveExecutionBackend(ExecutionBackend):
         implementation implicitly assumes WETH for selling and relies on available
         'capital' (which is assumed to be in USDC) for buying. For a more generic
         backend, the symbol should drive token address selection.
+        The `new_capital` returned is explicitly a placeholder, as actual balance
+        reconciliation would occur through external RPC calls or other mechanisms.
 
         Args:
             symbol (str): The trading pair symbol (e.g., "WETH/USDC").
@@ -77,7 +95,8 @@ class LiveExecutionBackend(ExecutionBackend):
             amount (float): The amount of the base asset (e.g., WETH) to trade.
             price (float): The desired price for the trade (e.g., WETH price in USDC).
             capital (float): The current capital available, assumed to be in the quote
-                             currency (e.g., USDC) for buy orders.
+                             currency (e.g., USDC) for buy orders. This value is used
+                             as a basis, but the returned `new_capital` is currently a placeholder.
 
         Returns:
             Dict[str, Any]: A dictionary containing the result of the order execution,
@@ -86,7 +105,9 @@ class LiveExecutionBackend(ExecutionBackend):
         """
         # Ensure the adapter is properly configured before proceeding
         if not self.adapter or not (hasattr(self.adapter, "place_order") and callable(self.adapter.place_order)):
-            logger.error(f"[{self.node_id}] LiveExecutionBackend requires an adapter with a callable 'place_order' method.")
+            logger.error(
+                f"[{self.node_id}] LiveExecutionBackend requires an adapter with a callable 'place_order' method."
+            )
             return {
                 "success": False,
                 "new_capital": capital,
@@ -101,7 +122,8 @@ class LiveExecutionBackend(ExecutionBackend):
         if side.lower() == "sell":
             try:
                 # Assuming _get_token_balance is an async method of the adapter
-                weth_bal: float = await self.adapter._get_token_balance(WETH_ADDRESS)
+                # Type check ignored because `self.adapter` is `Any` or `Union` and mypy can't verify runtime attributes.
+                weth_bal: float = await self.adapter._get_token_balance(WETH_ADDRESS) # type: ignore [attr-defined]
                 # Ensure we don't try to sell more WETH than available
                 adjusted_amount = min(amount, weth_bal)
                 logger.debug(
@@ -119,7 +141,7 @@ class LiveExecutionBackend(ExecutionBackend):
 
         # Check if the adjusted amount is valid for a trade
         if adjusted_amount <= 0:
-            error_message = "Insufficient balance or adjusted amount is zero/negative for trade."
+            error_message: str = "Insufficient balance or adjusted amount is zero/negative for trade."
             logger.info(f"[{self.node_id}] Skipping order: {error_message}")
             return {
                 "success": False,
@@ -133,8 +155,8 @@ class LiveExecutionBackend(ExecutionBackend):
         block_number: Optional[int] = None
         try:
             # Assuming self.adapter.w3.eth.block_number is an awaitable property or method
-            # `type: ignore [misc]` is used because `self.adapter` is `Any`, and mypy can't verify its attributes.
-            block_number = await self.adapter.w3.eth.block_number  # type: ignore [misc]
+            # Type check ignored because `self.adapter` is `Any` or `Union` and mypy can't verify runtime attributes.
+            block_number = await self.adapter.w3.eth.block_number # type: ignore [attr-defined]
             if not self.is_leader_func(block_number):
                 logger.info(f"[{self.node_id}] Skipping order execution: Not leader for block {block_number}.")
                 return {
@@ -168,7 +190,8 @@ class LiveExecutionBackend(ExecutionBackend):
         try:
             # The `place_order` method on the adapter is expected to handle the actual blockchain interaction.
             # It's assumed to return a dict with 'status' and optionally 'tx_hash', 'error'.
-            result: Dict[str, Any] = await self.adapter.place_order(side=side, amount=adjusted_amount, price=price)
+            # Type check ignored because `self.adapter` is `Any` or `Union` and mypy can't verify runtime attributes.
+            result: Dict[str, Any] = await self.adapter.place_order(side=side, amount=adjusted_amount, price=price) # type: ignore [attr-defined]
 
             if result.get("status") == "success":
                 # Important: The 'new_capital' here is a placeholder.

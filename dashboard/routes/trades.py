@@ -4,9 +4,10 @@ by parsing Docker container logs.
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import docker
+import docker.errors
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -25,44 +26,58 @@ SWAP_PATTERNS: List[re.Pattern[str]] = [
     re.compile(r'ERROR:adapters\.web3_testnet:❌ Swap (reverted|failed).*Tx: (?P<tx_hash>\S+)'),
 ]
 
+# Regex for capturing details from "Attempting real swap" messages
+# This is more robust than splitting the line by spaces.
+ATTEMPTING_SWAP_REGEX: re.Pattern[str] = re.compile(
+    r'Attempting real swap.*?(?P<side>buy|sell)\s+(?P<amount>\d+\.?\d*)\s+(?P<symbol>\S+)'
+)
+
 def collect_trades(tail: int = 200) -> List[Dict[str, str]]:
     """
     Connects to Docker, retrieves logs from 'lab_swarm_demo-node' containers,
     and parses them to collect recent trade (swap) information.
 
     The parsing logic attempts to associate a swap initiation (side, amount, symbol)
-    with its subsequent transaction result (tx_hash, status).
+    with its subsequent transaction result (tx_hash, status) from the logs.
 
     Args:
         tail: The number of last log lines to retrieve from each container.
+              Defaults to 200 to capture recent activity.
 
     Returns:
         A list of dictionaries, where each dictionary represents a unique trade.
         Trades are ordered from most recent to oldest, limited to 50 unique entries.
+        Returns an empty list if Docker is not running or no trades are found.
     """
     trades: List[Dict[str, str]] = []
+    client: Optional[docker.DockerClient] = None
     try:
         client = docker.from_env()
     except docker.errors.DockerException as e:
         print(f"Error connecting to Docker: {e}. Please ensure Docker is running.")
         return []
 
-    containers = client.containers.list(filters={"name": "lab_swarm_demo-node", "status": "running"})
+    containers: List[docker.models.containers.Container] = client.containers.list(
+        filters={"name": "lab_swarm_demo-node", "status": "running"}
+    )
 
     for container in containers:
+        container_name_short: str = container.name.replace("lab_swarm_demo-", "")
+        log_content: str = ""
         try:
-            log: str = container.logs(tail=tail).decode('utf-8', errors='ignore')
+            log_content = container.logs(tail=tail).decode('utf-8', errors='ignore')
         except docker.errors.APIError as e:
             print(f"Error fetching logs for container {container.name}: {e}")
             continue
 
-        lines: List[str] = log.splitlines()
+        lines: List[str] = log_content.splitlines()
 
-        # These variables hold the details of the most recently identified swap *intention*.
-        # They are used to populate trade details when a success/failure transaction is found.
+        # These variables hold the details of the most recently identified swap *intention*
+        # within this container's logs. They are used to populate trade details when a
+        # success/failure transaction is found.
         pending_side: str = 'unknown'
         pending_amount: str = ''
-        pending_symbol: str = 'WETH/USDC' # Default symbol
+        pending_symbol: str = 'WETH/USDC'  # Default symbol
 
         for line in lines:
             # 1. Extract pending swap details from "Leader, swap:" messages
@@ -71,35 +86,22 @@ def collect_trades(tail: int = 200) -> List[Dict[str, str]]:
                 pending_side = leader_match.group(1)
                 pending_amount = leader_match.group(2)
                 pending_symbol = leader_match.group(3)
-                continue
+                continue # Move to the next line
 
-            # 2. Extract pending swap details from older "Attempting real swap" messages
-            if 'Attempting real swap' in line:
-                # This parsing is less precise, trying to find common patterns.
-                # It prioritizes explicit parts and falls back to a generic number match.
-                parts: List[str] = line.split()
-                if len(parts) >= 5:
-                    # Example: "... swap: sell 0.001 WETH/USDC" -> parts[-3] is side, etc.
-                    # This might be ambiguous. The original code's logic is preserved.
-                    potential_side = parts[-3]
-                    potential_amount = parts[-2]
-                    potential_symbol = parts[-1]
-
-                    # Basic validation to avoid picking up unrelated strings
-                    if potential_side in ['buy', 'sell'] and re.match(r'^\d+(\.\d+)?$', potential_amount):
-                        pending_side = potential_side
-                        pending_amount = potential_amount
-                        pending_symbol = potential_symbol
-                    else:
-                        # Fallback for amount if direct parsing fails
-                        amount_match = re.search(r'(\d+\.?\d*)', line)
-                        if amount_match:
-                            pending_amount = amount_match.group(1)
-                elif not pending_amount: # If amount wasn't set by parts[-2]
-                    amount_match = re.search(r'(\d+\.?\d*)', line)
-                    if amount_match:
-                        pending_amount = amount_match.group(1)
-                continue
+            # 2. Extract pending swap details from "Attempting real swap" messages
+            attempting_swap_match: Optional[re.Match[str]] = ATTEMPTING_SWAP_REGEX.search(line)
+            if attempting_swap_match:
+                pending_side = attempting_swap_match.group('side')
+                pending_amount = attempting_swap_match.group('amount')
+                pending_symbol = attempting_swap_match.group('symbol')
+                continue # Move to the next line
+            elif "Attempting real swap" in line and not pending_amount:
+                # Fallback for amount if the specific regex above didn't capture full details
+                # and pending_amount hasn't been set by a more specific log entry.
+                amount_match: Optional[re.Match[str]] = re.search(r'(\d+\.?\d*)', line)
+                if amount_match:
+                    pending_amount = amount_match.group(1)
+                continue # Move to the next line
 
             # 3. Check for specific swap result patterns defined in SWAP_PATTERNS
             tx_hash: Optional[str] = None
@@ -125,28 +127,30 @@ def collect_trades(tail: int = 200) -> List[Dict[str, str]]:
 
             if tx_hash and status:
                 trades.append({
-                    "node": container.name.replace("lab_swarm_demo-", ""),
+                    "node": container_name_short,
                     "side": pending_side,
                     "amount": pending_amount if pending_amount else '—',
                     "symbol": pending_symbol if pending_symbol else 'WETH/USDC',
                     "tx_hash": tx_hash,
                     "status": status,
                 })
-                # Reset pending values, as this transaction is "closed"
-                # (though this state management is simplified and assumes 1:1 pairing)
+                # Reset pending values, as this transaction is "closed".
+                # This simplified state management assumes a 1:1 pairing of initiation to result.
                 pending_side = 'unknown'
                 pending_amount = ''
                 pending_symbol = 'WETH/USDC'
-                continue # Move to next line
+                # Do not continue here, in case a single line contains multiple relevant messages
+                # (though unlikely for these patterns).
 
     # Reverse to get most recent trades first
     trades.reverse()
 
     # Remove duplicate trades based on transaction hash, keeping the most recent one
-    seen_tx_hashes: set[str] = set()
+    seen_tx_hashes: Set[str] = set()
     unique_trades: List[Dict[str, str]] = []
     for trade in trades:
-        if trade['tx_hash'] not in seen_tx_hashes:
+        # Check if tx_hash is valid to avoid duplicates on potentially malformed log entries
+        if 'tx_hash' in trade and trade['tx_hash'] not in seen_tx_hashes:
             seen_tx_hashes.add(trade['tx_hash'])
             unique_trades.append(trade)
 
@@ -179,7 +183,7 @@ TRADES_CONTENT = """
 """
 
 @router.get("/trades", response_class=HTMLResponse)
-def trades_page(request: Request) -> HTMLResponse:
+async def trades_page(request: Request) -> HTMLResponse:
     """
     Renders the trades dashboard page.
 

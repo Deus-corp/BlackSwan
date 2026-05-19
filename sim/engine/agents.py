@@ -52,7 +52,7 @@ class BaseAgent(ABC):
             The proportion of capital to invest (e.g., 0.01 for 1% long,
             -0.01 for 1% short).
         """
-        ...
+        raise NotImplementedError
 
     def update(self, returns: float) -> None:
         """
@@ -70,7 +70,8 @@ class KellyAgent(BaseAgent):
     An agent that uses a modified Kelly criterion for position sizing.
 
     This implementation uses simplified heuristics for estimating probabilities
-    and odds, and a fractional Kelly approach.
+    and odds, and a fractional Kelly approach. The 'phi' coefficient is applied
+    to the 'loss' component of the formula, which is a specific modification.
     """
 
     def __init__(self, capital: float, max_risk: float = 0.02, phi: float = 0.25) -> None:
@@ -106,16 +107,16 @@ class KellyAgent(BaseAgent):
             The proportion of capital to invest, clipped between -max_risk and +max_risk.
         """
         # Simplified: Use volatility as an indicator of risk.
-        # Default to 0.02 if not provided to prevent division by zero or errors.
+        # Default to 0.02 if not provided or if volatility is non-positive, to prevent errors.
         vol: float = market_state.get("volatility_estimate", 0.02)
         if vol <= 0:  # Ensure volatility is positive for odds calculation
-            vol = 0.0001 # Small positive value to avoid division by zero
+            vol = 0.0001  # Small positive value to avoid division by zero or non-sensical odds
 
         # Heuristic for odds (b ≈ return/risk). Here, 0.01 is a placeholder for
-        # expected profit per unit of risk.
+        # expected profit per unit of risk, inversely proportional to volatility.
         odds: float = 0.01 / vol
 
-        # Calculate Kelly fraction: f = p - (1-p)/b
+        # Calculate Kelly fraction: f = p - (1-p)/b.
         # The 'phi' coefficient is applied to the (1-p)/b term, which is a
         # specific modification rather than standard fractional Kelly (phi * f).
         kelly_fraction: float = self.p_success - (1 - self.p_success) / odds * self.phi

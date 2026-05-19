@@ -7,8 +7,9 @@ from typing import Dict, Optional, Any, List, Tuple
 from web3 import AsyncWeb3
 from web3.providers import AsyncHTTPProvider
 from web3.middleware import ExtraDataToPOAMiddleware
-from web3.types import TxReceipt, Wei
-from web3.contract import Contract # Added specific web3 type for contracts
+from web3.types import TxReceipt, Wei, HexBytes, SignedTx
+from web3.contract import Contract
+from eth_account.local import LocalAccount # Specific type for account
 from loguru import logger
 
 from swarm_config import config
@@ -93,6 +94,7 @@ class Web3TestnetAdapter:
     def __init__(self, symbol: str = "WETH/USDC", crdt_adapter: Any = None):
         """
         Инициализирует Web3TestnetAdapter.
+
         :param symbol: Торговая пара, например "WETH/USDC". Используется для идентификации,
                        но не меняет логику работы с WETH/USDC адресами по умолчанию.
         :param crdt_adapter: Опциональный адаптер CRDT. Не используется в этом классе,
@@ -112,10 +114,10 @@ class Web3TestnetAdapter:
         if not self.private_key:
             logger.warning("WEB3_PRIVATE_KEY not set. Web3 adapter will run in read-only mode (no transactions).")
 
-        self.w3 = AsyncWeb3(AsyncHTTPProvider(self.rpc_url, request_kwargs={"timeout": 60}))
+        self.w3: AsyncWeb3 = AsyncWeb3(AsyncHTTPProvider(self.rpc_url, request_kwargs={"timeout": 60}))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
-        self.account: Optional[Any] = None # Stores w3.eth.account.LocalAccount object
+        self.account: Optional[LocalAccount] = None # Stores w3.eth.account.LocalAccount object
         self.nonce_manager: Optional[NonceManager] = None
         self.quoter: Optional[Contract] = None # Web3 contract instance for Quoter
         self.router: Optional[Contract] = None # Web3 contract instance for Router
@@ -130,9 +132,10 @@ class Web3TestnetAdapter:
         и контракты Uniswap V3 (Quoter, Router, WETH, USDC) и Multicall3.
         Должен быть вызван при старте ноды.
         """
+        chain_id: int = 0
         for attempt in range(3):
             try:
-                chain_id: int = await self.w3.eth.chain_id
+                chain_id = await self.w3.eth.chain_id
                 break
             except Exception as e:
                 if attempt < 2:
@@ -173,6 +176,7 @@ class Web3TestnetAdapter:
         Получает параметры газа (maxFeePerGas, maxPriorityFeePerGas)
         на основе истории комиссий EIP-1559.
         В случае неудачи возвращает традиционный gasPrice (удвоенный).
+        
         :return: Словарь с параметрами газа (maxFeePerGas, maxPriorityFeePerGas или gasPrice).
         """
         try:
@@ -180,6 +184,8 @@ class Web3TestnetAdapter:
             max_priority_fee_per_gas: Wei = await self.w3.eth.max_priority_fee
             
             # Fetch base fee from the latest block's fee history
+            # The fee_history method takes (block_count, newest_block, reward_percentiles)
+            # block_count=1, newest_block="latest" gets the baseFeePerGas for the latest block.
             fee_history = await self.w3.eth.fee_history(1, "latest", reward_percentiles=[50])
             base_fee_per_gas: Wei = fee_history["baseFeePerGas"][0]
 
@@ -212,8 +218,8 @@ class Web3TestnetAdapter:
             return None
 
         try:
-            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
-            tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            signed: SignedTx = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            tx_hash: HexBytes = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"{description} tx sent: {tx_hash.hex()}")
 
             receipt: Optional[TxReceipt] = None
@@ -249,7 +255,8 @@ class Web3TestnetAdapter:
     
     async def _sync_nonce_after_failure(self) -> None:
         """
-        Синхронизирует nonce с блокчейном после неудачной транзакции или исключения.
+        Синхронизирует nonce с блокчейном после неудачной транзакции или исключения,
+        чтобы избежать проблем с последующими транзакциями.
         """
         if self.nonce_manager and self.account:
             for attempt in range(3):
@@ -294,7 +301,7 @@ class Web3TestnetAdapter:
         nonce_n: int = await self.nonce_manager.reserve_nonce(self.w3)
         gas_params: Dict[str, Wei] = await self._get_gas_params()
 
-        approve_tx = await token.functions.approve(spender, 2**256 - 1).build_transaction({
+        approve_tx: Dict[str, Any] = await token.functions.approve(spender, 2**256 - 1).build_transaction({
             "from": self.account.address,
             "gas": 100000, # A standard gas limit for ERC-20 approve
             "nonce": nonce_n,
@@ -337,7 +344,7 @@ class Web3TestnetAdapter:
 
         # Retry logic for fetching quotes
         for attempt in range(3):
-            result = await _fetch_quote_once()
+            result: Optional[Dict[str, float]] = await _fetch_quote_once()
             if result:
                 return result
             if attempt < 2:
@@ -403,14 +410,14 @@ class Web3TestnetAdapter:
             nonce: int = await self.nonce_manager.reserve_nonce(self.w3)
             gas_params: Dict[str, Wei] = await self._get_gas_params()
             
-            tx = await self.weth_contract.functions.deposit().build_transaction({
+            tx: Dict[str, Any] = await self.weth_contract.functions.deposit().build_transaction({
                 'from': self.account.address,
                 'value': value,
                 'gas': 50000, # Standard gas limit for WETH deposit
                 'nonce': nonce,
                 **gas_params,
             })
-            receipt = await self._send_transaction_and_wait(tx, f"Wrap {amount_eth} ETH → WETH", timeout=120)
+            receipt: Optional[TxReceipt] = await self._send_transaction_and_wait(tx, f"Wrap {amount_eth} ETH → WETH", timeout=120)
             return receipt.transactionHash.hex() if receipt else None
         except Exception as e:
             logger.error(f"Wrap error for {amount_eth} ETH: {e}")
@@ -431,13 +438,13 @@ class Web3TestnetAdapter:
             nonce: int = await self.nonce_manager.reserve_nonce(self.w3)
             gas_params: Dict[str, Wei] = await self._get_gas_params()
             
-            tx = await self.weth_contract.functions.withdraw(value).build_transaction({
+            tx: Dict[str, Any] = await self.weth_contract.functions.withdraw(value).build_transaction({
                 'from': self.account.address,
                 'gas': 50000, # Standard gas limit for WETH withdraw
                 'nonce': nonce,
                 **gas_params,
             })
-            receipt = await self._send_transaction_and_wait(tx, f"Unwrap {amount_weth} WETH → ETH", timeout=120)
+            receipt: Optional[TxReceipt] = await self._send_transaction_and_wait(tx, f"Unwrap {amount_weth} WETH → ETH", timeout=120)
             return receipt.transactionHash.hex() if receipt else None
         except Exception as e:
             logger.error(f"Unwrap error for {amount_weth} WETH: {e}")
@@ -477,7 +484,7 @@ class Web3TestnetAdapter:
                 token_in_addr = USDC_ADDRESS
                 token_out_addr = WETH_ADDRESS
                 # Fetch current price to estimate USDC needed to buy 'amount' of WETH
-                ticker = await self.get_ticker()
+                ticker: Optional[Dict[str, float]] = await self.get_ticker()
                 estimated_price: float = ticker["price"] if ticker else 2000.0 # Fallback price
                 
                 # Calculate USDC needed to buy 'amount' (of WETH)
@@ -522,7 +529,7 @@ class Web3TestnetAdapter:
                 0 # sqrtPriceLimitX96 (0 means no limit on price)
             )
 
-            tx = await self.router.functions.exactInputSingle(swap_tuple).build_transaction({
+            tx: Dict[str, Any] = await self.router.functions.exactInputSingle(swap_tuple).build_transaction({
                 "from": self.account.address,
                 "gas": 300000, # A generous gas limit for swaps
                 "nonce": safe_nonce,
@@ -564,7 +571,7 @@ class Web3TestnetAdapter:
 
         calls: List[Tuple[str, bytes]] = []
         for i, s in enumerate(swaps):
-            required_keys = ["token_in", "token_out", "fee", "amount_in_wei", "amount_out_min"]
+            required_keys: List[str] = ["token_in", "token_out", "fee", "amount_in_wei", "amount_out_min"]
             if not all(key in s for key in required_keys):
                 logger.error(f"Swap at index {i} is missing required keys. Required: {required_keys}, Got: {s.keys()}")
                 return {"error": f"Invalid swap parameters at index {i}"}
@@ -592,7 +599,7 @@ class Web3TestnetAdapter:
         try:
             # Call tryAggregate with requireSuccess=False so that if one swap fails, others might still succeed.
             # Multicall3 contract address is used for the transaction target.
-            tx = await self.multicall_contract.functions.tryAggregate(False, calls).build_transaction({
+            tx: Dict[str, Any] = await self.multicall_contract.functions.tryAggregate(False, calls).build_transaction({
                 "from": self.account.address,
                 "gas": 500000 * len(swaps), # Dynamic gas limit based on number of swaps, very generous
                 "nonce": safe_nonce,

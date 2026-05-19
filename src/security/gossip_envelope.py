@@ -2,16 +2,19 @@ import json
 import time
 import os
 import base64
-from typing import Optional, Any, List, Literal, Dict
+import logging
+from typing import Optional, Any, List, Literal, Dict, Tuple, Set
 from pydantic import BaseModel, Field, ValidationError
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
 from binascii import Error as BinasciiError # For base64 decoding errors
 
+logger = logging.getLogger(__name__)
+
 # ---------- Constants ----------
-ENVELOPE_VERSION = "1.0"
-DOMAIN_BLACKSWAN_GOSSIP_V1 = "blackswan-gossip-v1"
+ENVELOPE_VERSION: Literal["1.0"] = "1.0"
+DOMAIN_BLACKSWAN_GOSSIP_V1: Literal["blackswan-gossip-v1"] = "blackswan-gossip-v1"
 
 # ---------- Utility Functions ----------
 
@@ -20,10 +23,19 @@ def canonical_dict(obj: Any) -> Any:
     Recursively sorts dictionaries by key and processes lists for consistent serialization.
     This ensures a deterministic representation of the object, which is crucial for
     hashing and signing operations.
+
+    Args:
+        obj: The object (dict, list, or primitive) to make canonical.
+
+    Returns:
+        Any: The canonicalized object.
     """
     if isinstance(obj, dict):
         return {k: canonical_dict(v) for k, v in sorted(obj.items())}
     elif isinstance(obj, list):
+        # Processes elements within lists. For lists of complex objects where order is not
+        # guaranteed or relevant for canonical representation, more advanced sorting might
+        # be needed based on specific domain requirements. Here, element order is preserved.
         return [canonical_dict(item) for item in obj]
     else:
         return obj
@@ -33,6 +45,12 @@ def canonical_json(obj: Any) -> bytes:
     Converts an object to its canonical JSON byte representation.
     The output is deterministic and suitable for hashing and signing.
     Specifically, it sorts keys, removes whitespace, and encodes to UTF-8.
+
+    Args:
+        obj: The object to serialize into canonical JSON.
+
+    Returns:
+        bytes: The canonical JSON representation of the object as UTF-8 bytes.
     """
     return json.dumps(canonical_dict(obj), sort_keys=True, separators=(',', ':')).encode('utf-8')
 
@@ -53,7 +71,16 @@ def sha256(data: bytes) -> str:
 # ---------- Key Encoding / Decoding ----------
 
 def public_key_bytes(pubkey: Ed25519PublicKey) -> bytes:
-    """Alias for public_key_bytes_raw for backward compatibility."""
+    """
+    Returns the raw bytes of an Ed25519 public key.
+    Alias for public_key_bytes_raw for backward compatibility.
+
+    Args:
+        pubkey (Ed25519PublicKey): The public key object.
+
+    Returns:
+        bytes: The raw byte representation of the public key.
+    """
     return public_key_bytes_raw(pubkey)
 
 def public_key_bytes_raw(pubkey: Ed25519PublicKey) -> bytes:
@@ -117,7 +144,7 @@ class GossipEnvelope(BaseModel):
     and cryptographic signature. This Pydantic model ensures type safety
     and structure validation for all envelope fields.
 
-    Fields:
+    Attributes:
         envelope_version (Literal["1.0"]): The version of the envelope format.
         domain (Literal["blackswan-gossip-v1"]): The domain/protocol identifier.
         payload_type (str): Type identifier for the payload content.
@@ -176,16 +203,16 @@ class GossipEnvelope(BaseModel):
 
 # ---------- Key Generation ----------
 
-def generate_key_pair() -> tuple[Ed25519PrivateKey, Ed25519PublicKey]:
+def generate_key_pair() -> Tuple[Ed25519PrivateKey, Ed25519PublicKey]:
     """
     Generates a new Ed25519 private and public key pair.
 
     Returns:
-        tuple[Ed25519PrivateKey, Ed25519PublicKey]: A tuple containing
+        Tuple[Ed25519PrivateKey, Ed25519PublicKey]: A tuple containing
                                                     the generated private and public keys.
     """
-    private_key = Ed25519PrivateKey.generate()
-    public_key = private_key.public_key()
+    private_key: Ed25519PrivateKey = Ed25519PrivateKey.generate()
+    public_key: Ed25519PublicKey = private_key.public_key()
     return private_key, public_key
 
 # ---------- Signing and Verification ----------
@@ -210,7 +237,7 @@ def sign_envelope(
     - If 'sender_pubkey' (as a base64 string) and 'key_id' (as a hex string) are
       provided in `meta` but do not match the `private_key` provided,
       this function will derive them from `private_key` to ensure consistency
-      for signing.
+      for signing. This ensures the envelope accurately reflects the signing key.
 
     Args:
         payload (Any): The actual data to be encapsulated in the envelope.
@@ -220,7 +247,9 @@ def sign_envelope(
                                `timestamp_ms`, `ttl_ms`.
                                `parent_hashes`, `trace_id`, `correlation_id` are optional.
                                `sender_pubkey` and `key_id` will be automatically derived
-                               from the `private_key` if not present or inconsistent.
+                               from the `private_key` if not present or inconsistent,
+                               ensuring the signed envelope uses the correct sender identity
+                               corresponding to the private key.
         private_key (Ed25519PrivateKey): The private key used to sign the envelope.
 
     Returns:
@@ -228,51 +257,61 @@ def sign_envelope(
 
     Raises:
         ValidationError: If the 'meta' dictionary does not contain all required fields
-                         or if fields are of incorrect types after processing.
+                         or if fields are of incorrect types after processing,
+                         or if model validation fails.
     """
-    public_key = private_key.public_key()
-    raw_public_key_bytes = public_key_bytes_raw(public_key)
-    derived_sender_pubkey_b64 = b64encode(raw_public_key_bytes)
-    derived_key_id = public_key_id_from_raw_bytes(raw_public_key_bytes)
+    public_key: Ed25519PublicKey = private_key.public_key()
+    raw_public_key_bytes: bytes = public_key_bytes_raw(public_key)
+    derived_sender_pubkey_b64: str = b64encode(raw_public_key_bytes)
+    derived_key_id: str = public_key_id_from_raw_bytes(raw_public_key_bytes)
 
-    processed_meta = meta.copy()
+    processed_meta: Dict[str, Any] = meta.copy()
 
     # Ensure sender_pubkey is correctly set (base64 string derived from signing key)
-    sender_pubkey_val = processed_meta.get('sender_pubkey')
+    sender_pubkey_val: Any = processed_meta.get('sender_pubkey')
     if isinstance(sender_pubkey_val, bytes):
         processed_meta['sender_pubkey'] = b64encode(sender_pubkey_val)
     if processed_meta.get('sender_pubkey') != derived_sender_pubkey_b64:
+        logger.debug(
+            f"Sender public key in meta ({processed_meta.get('sender_pubkey')}) does not match "
+            f"derived from private key ({derived_sender_pubkey_b64}). Overwriting."
+        )
         processed_meta['sender_pubkey'] = derived_sender_pubkey_b64
 
     # Ensure key_id is correctly set (SHA256 hex from raw public key bytes)
     if processed_meta.get('key_id') != derived_key_id:
+        logger.debug(
+            f"Key ID in meta ({processed_meta.get('key_id')}) does not match "
+            f"derived from private key ({derived_key_id}). Overwriting."
+        )
         processed_meta['key_id'] = derived_key_id
 
     # Calculate payload hash
-    payload_b = canonical_json(payload)
-    payload_hash = sha256(payload_b)
+    payload_b: bytes = canonical_json(payload)
+    payload_hash: str = sha256(payload_b)
 
-    # Create envelope data
-    envelope_data = processed_meta
+    # Create envelope data for Pydantic model instantiation
+    envelope_data: Dict[str, Any] = processed_meta
     envelope_data['payload'] = payload
     envelope_data['payload_hash'] = payload_hash
     envelope_data['signature'] = "" # Temporarily empty for preimage calculation
 
     # Validate and instantiate the envelope model
     try:
-        env = GossipEnvelope(**envelope_data)
+        env: GossipEnvelope = GossipEnvelope(**envelope_data)
     except ValidationError as e:
+        logger.error(f"Failed to create GossipEnvelope from provided metadata: {e}")
         raise ValidationError(f"Failed to create GossipEnvelope from provided metadata: {e}") from e
 
     # Sign the preimage (all fields except signature)
-    env_dict_for_signing = env.model_dump(exclude={'signature'})
-    preimage = canonical_json(env_dict_for_signing)
-    sig_bytes = private_key.sign(preimage)
+    env_dict_for_signing: Dict[str, Any] = env.model_dump(exclude={'signature'})
+    preimage: bytes = canonical_json(env_dict_for_signing)
+    sig_bytes: bytes = private_key.sign(preimage)
     env.signature = b64encode(sig_bytes)
     return env
 
 
-def verify_envelope(envelope: GossipEnvelope, public_key: Ed25519PublicKey, seen_nonces: set[str], last_seq: int, now_ms: int) -> tuple[bool, str]:
+def verify_envelope(envelope: GossipEnvelope, public_key: Ed25519PublicKey, seen_nonces: Set[str], last_seq: int, now_ms: int) -> Tuple[bool, str]:
     """
     Verifies a GossipEnvelope against various criteria to ensure its authenticity, integrity,
     and freshness.
@@ -283,63 +322,93 @@ def verify_envelope(envelope: GossipEnvelope, public_key: Ed25519PublicKey, seen
     Args:
         envelope (GossipEnvelope): The envelope to verify.
         public_key (Ed25519PublicKey): The expected public key of the sender for signature verification.
-                                       This key should be retrieved from a trusted source.
-        seen_nonces (set[str]): A set of nonces already processed by the receiver to detect replay attacks.
+                                       This key should be retrieved from a trusted source (e.g., a peer's
+                                       advertised public key, not necessarily from the envelope itself).
+        seen_nonces (Set[str]): A set of nonces already processed by the receiver to detect replay attacks.
         last_seq (int): The last *valid* sequence number observed from this specific sender node_id.
-                        Used to check for monotonicity.
+                        Used to check for monotonicity. This value should be maintained
+                        per unique `sender_node_id`.
         now_ms (int): The current UTC timestamp in milliseconds.
 
     Returns:
-        tuple[bool, str]: A tuple where the first element is True if the envelope is valid,
+        Tuple[bool, str]: A tuple where the first element is True if the envelope is valid,
                           False otherwise. The second element is an empty string for success,
-                          or a reason string for failure.
+                          or a descriptive reason string for failure.
     """
     if now_ms > envelope.expires_at_ms:
+        logger.debug(f"Envelope {envelope.payload_hash[:8]}... expired. Current: {now_ms}, Expires: {envelope.expires_at_ms}")
         return False, "expired"
 
     if envelope.nonce in seen_nonces:
+        logger.debug(f"Envelope {envelope.payload_hash[:8]}... detected as replay with nonce {envelope.nonce}.")
         return False, "replay"
 
     # NOTE: This check assumes `last_seq` is specific to the `sender_node_id`.
     # It should be maintained per sender to ensure correct monotonic verification.
     if envelope.seq_no <= last_seq:
+        logger.debug(f"Envelope {envelope.payload_hash[:8]}... non-monotonic seq_no. Envelope seq_no: {envelope.seq_no}, Last seen: {last_seq}.")
         return False, f"non-monotonic seq_no: envelope seq_no {envelope.seq_no} is not greater than last seen {last_seq}"
 
     # Verify payload hash to ensure payload integrity
-    actual_payload_hash = sha256(canonical_json(envelope.payload))
+    actual_payload_hash: str = sha256(canonical_json(envelope.payload))
     if actual_payload_hash != envelope.payload_hash:
+        logger.warning(
+            f"Envelope {envelope.payload_hash[:8]}... payload hash mismatch. "
+            f"Expected: {envelope.payload_hash}, Got: {actual_payload_hash}. "
+            f"Sender: {envelope.sender_node_id}"
+        )
         return False, f"payload hash mismatch: expected {envelope.payload_hash}, got {actual_payload_hash}"
 
-    # Verify sender_pubkey and key_id consistency with the provided public_key.
+    # Verify sender_pubkey and key_id consistency with the *provided* public_key.
     # This is a crucial check to prevent an attacker from claiming a false public key
-    # while providing a valid signature from a different key.
-    expected_pubkey_raw_bytes = public_key_bytes_raw(public_key)
-    expected_sender_pubkey_b64 = b64encode(expected_pubkey_raw_bytes)
-    expected_key_id = public_key_id_from_raw_bytes(expected_pubkey_raw_bytes)
+    # while providing a valid signature from a different key. The 'public_key' argument
+    # should be obtained from a trusted source (e.g., an identity registry or initial handshake).
+    expected_pubkey_raw_bytes: bytes = public_key_bytes_raw(public_key)
+    expected_sender_pubkey_b64: str = b64encode(expected_pubkey_raw_bytes)
+    expected_key_id: str = public_key_id_from_raw_bytes(expected_pubkey_raw_bytes)
 
     if envelope.sender_pubkey != expected_sender_pubkey_b64:
+        logger.warning(
+            f"Envelope {envelope.payload_hash[:8]}... sender_pubkey mismatch. "
+            f"Envelope claims: {envelope.sender_pubkey[:16]}..., Expected from trusted key: {expected_sender_pubkey_b64[:16]}... "
+            f"Sender: {envelope.sender_node_id}"
+        )
         return False, (
             f"sender_pubkey in envelope does not match provided public_key. "
-            f"Expected: {expected_sender_pubkey_b64}, Got: {envelope.sender_pubkey}"
+            f"Expected: {expected_sender_pubkey_b64[:16]}..., Got: {envelope.sender_pubkey[:16]}..."
         )
     if envelope.key_id != expected_key_id:
+        logger.warning(
+            f"Envelope {envelope.payload_hash[:8]}... key_id mismatch. "
+            f"Envelope claims: {envelope.key_id[:8]}..., Expected from trusted key: {expected_key_id[:8]}... "
+            f"Sender: {envelope.sender_node_id}"
+        )
         return False, (
             f"key_id in envelope does not match provided public_key. "
-            f"Expected: {expected_key_id}, Got: {envelope.key_id}"
+            f"Expected: {expected_key_id[:8]}..., Got: {envelope.key_id[:8]}..."
         )
 
     # Verify signature
-    env_dict_for_signing = envelope.model_dump(exclude={'signature'})
-    preimage = canonical_json(env_dict_for_signing)
+    env_dict_for_signing: Dict[str, Any] = envelope.model_dump(exclude={'signature'})
+    preimage: bytes = canonical_json(env_dict_for_signing)
     try:
-        signature_bytes = b64decode(envelope.signature)
+        signature_bytes: bytes = b64decode(envelope.signature)
         public_key.verify(signature_bytes, preimage)
     except (InvalidSignature, BinasciiError) as e:
         # InvalidSignature: signature does not match public key or preimage
         # BinasciiError: envelope.signature is not valid base64
+        logger.warning(
+            f"Envelope {envelope.payload_hash[:8]}... signature verification failed. "
+            f"Reason: {type(e).__name__}: {e}. Sender: {envelope.sender_node_id}"
+        )
         return False, f"bad signature or malformed base64 signature string: {e}"
     except Exception as e:
         # Catch any other unexpected errors during verification process
+        logger.error(
+            f"Envelope {envelope.payload_hash[:8]}... unexpected error during signature verification: "
+            f"{type(e).__name__}: {e}. Sender: {envelope.sender_node_id}", exc_info=True
+        )
         return False, f"unexpected error during signature verification: {type(e).__name__}: {e}"
 
+    logger.debug(f"Envelope {envelope.payload_hash[:8]}... successfully verified from sender {envelope.sender_node_id}.")
     return True, ""

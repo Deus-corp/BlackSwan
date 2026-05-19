@@ -61,9 +61,9 @@ llama_cpp/
 *.gguf
 
 # Local test scripts with secrets
-run_model_api.py
 mvp/lab_swarm_demo/improver_agent.py
 mvp/lab_swarm_demo/docker-compose.improver.yml
+src/improver_agent.py
 
 # Environment files (локальные, содержат секреты)
 .env

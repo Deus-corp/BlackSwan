@@ -3,10 +3,11 @@ SwarmConfig – Centralized configuration using Pydantic Settings v2.
 It supports all previous environment variables and attributes for seamless replacement.
 """
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Type, Any
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from loguru import logger # Moved import to top, as print_summary is a core feature
 
 
 # ---------- Nested Blocks (for organization and grouping) ----------
@@ -54,6 +55,10 @@ class TradingSettings(BaseSettings):
     )
 
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
+
+    max_drawdown_limit: float = Field(default=0.1, ge=0.0, le=1.0)
+    max_exposure_per_asset: float = Field(default=0.25, ge=0.0, le=1.0)
+    risk_per_trade_fraction: float = Field(default=0.01, ge=0.0, le=0.1)
 
 
 class LLMSettings(BaseSettings):
@@ -105,14 +110,23 @@ class SecuritySettings(BaseSettings):
 
     @field_validator("web3_private_key", "binance_testnet_api_secret", mode="before")
     @classmethod
-    def ensure_secret(cls, v: Optional[str]) -> Optional[SecretStr]:
+    def ensure_secret(cls: Type[Any], v: Optional[str | SecretStr]) -> Optional[SecretStr]:
         """
         Ensures that sensitive string values are wrapped in Pydantic's SecretStr.
         This helps prevent accidental logging or exposure of secrets.
+
+        Args:
+            cls (Type[Any]): The class itself (implicit in @classmethod).
+            v (Optional[str | SecretStr]): The value to validate, which can be a string or already a SecretStr.
+
+        Returns:
+            Optional[SecretStr]: The value wrapped in SecretStr, or None if the input was None.
         """
         if isinstance(v, str) and v:
             return SecretStr(v)
-        return v
+        if isinstance(v, SecretStr): # If it's already a SecretStr, return it as is.
+            return v
+        return None # Return None if v is None or an empty string
 
 
 class SwarmConfig(BaseSettings):
@@ -302,103 +316,100 @@ class SwarmConfig(BaseSettings):
     # still access configuration attributes using their uppercase, underscored names.
 
     @property
-    def NODE_ID(self) -> str:
+    def NODE_ID(self: "SwarmConfig") -> str:
         """Backward compatibility property for node_id."""
         return self.node_id
 
     @property
-    def PORT(self) -> int:
+    def PORT(self: "SwarmConfig") -> int:
         """Backward compatibility property for port."""
         return self.port
 
     @property
-    def PEERS(self) -> List[str]:
+    def PEERS(self: "SwarmConfig") -> List[str]:
         """Parses the raw peers string into a list of individual peer addresses."""
         return [p.strip() for p in self.peers_raw.split(",") if p.strip()]
 
     @property
-    def MARKET_URL(self) -> Optional[str]:
+    def MARKET_URL(self: "SwarmConfig") -> Optional[str]:
         """Backward compatibility property for market_url."""
         return self.market_url
 
     @property
-    def BURN_RATE(self) -> float:
+    def BURN_RATE(self: "SwarmConfig") -> float:
         """Backward compatibility property for burn_rate."""
         return self.burn_rate
 
     @property
-    def FAILURE_PROB(self) -> float:
+    def FAILURE_PROB(self: "SwarmConfig") -> float:
         """Backward compatibility property for failure_prob."""
         return self.failure_prob
 
     @property
-    def GOSSIP_INTERVAL(self) -> float:
+    def GOSSIP_INTERVAL(self: "SwarmConfig") -> float:
         """Backward compatibility property for gossip_interval."""
         return self.gossip_interval
 
     @property
-    def MAX_STATE(self) -> int:
+    def MAX_STATE(self: "SwarmConfig") -> int:
         """Backward compatibility property for max_state."""
         return self.max_state
 
     @property
-    def TTL(self) -> int:
+    def TTL(self: "SwarmConfig") -> int:
         """Backward compatibility property for ttl."""
         return self.ttl
 
     @property
-    def MAX_IMPORT(self) -> int:
+    def MAX_IMPORT(self: "SwarmConfig") -> int:
         """Backward compatibility property for max_import."""
         return self.max_import
 
     @property
-    def IMPORT_COOLDOWN(self) -> int:
+    def IMPORT_COOLDOWN(self: "SwarmConfig") -> int:
         """Backward compatibility property for import_cooldown."""
         return self.import_cooldown
 
     @property
-    def EXPECTED_RETURN_RATE(self) -> float:
+    def EXPECTED_RETURN_RATE(self: "SwarmConfig") -> float:
         """Backward compatibility property for expected_return_rate."""
         return self.expected_return_rate
 
     @property
-    def MAX_NORMALIZED_CAPITAL(self) -> float:
+    def MAX_NORMALIZED_CAPITAL(self: "SwarmConfig") -> float:
         """Backward compatibility property for max_normalized_capital."""
         return self.max_normalized_capital
     
     @property
-    def EVENT_LEDGER_PATH(self) -> str:
+    def EVENT_LEDGER_PATH(self: "SwarmConfig") -> str:
         """Backward compatibility property for event_ledger_path."""
         return self.event_ledger_path
 
     @property
-    def EVENT_SQLITE_PATH(self) -> str:
+    def EVENT_SQLITE_PATH(self: "SwarmConfig") -> str:
         """Backward compatibility property for event_sqlite_path."""
         return self.event_sqlite_path
 
     @property
-    def CRDT_DB_PATH(self) -> str:
+    def CRDT_DB_PATH(self: "SwarmConfig") -> str:
         """Backward compatibility property for crdt_db_path."""
         return self.crdt_db_path
 
     # Helper Methods
-    def is_production(self) -> bool:
+    def is_production(self: "SwarmConfig") -> bool:
         """
         Checks if the current environment is set to 'production'.
 
         Returns:
-            True if environment is 'production', False otherwise.
+            bool: True if environment is 'production', False otherwise.
         """
         return self.environment == "production"
 
-    def print_summary(self) -> None:
+    def print_summary(self: "SwarmConfig") -> None:
         """
         Prints a summary of the current Swarm configuration to the console
         using the loguru logger.
         """
-        # Importing loguru locally to reduce initial load if not always used,
-        # but generally for configuration summary, a direct import is also common.
-        from loguru import logger
         logger.info(f"Node ID: {self.node_id[:8]}... | Env: {self.environment}")
         logger.info(f"Peers: {len(self.PEERS)} | RPC: {self.web3_rpc_url}")
         logger.info(f"LLM: {self.llm.model_name} | Risk: {self.trading.max_risk_per_trade}")

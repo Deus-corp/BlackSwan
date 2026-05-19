@@ -2,6 +2,7 @@
 Глобальные счётчики мутаций LLM, вынесенные из node_agent для избежания циклических импортов.
 Refactored into a class for better state management.
 """
+import threading
 from typing import Tuple, Optional
 from prometheus_client import Counter, Gauge
 
@@ -9,6 +10,7 @@ class MutationMetrics:
     """
     Manages global LLM mutation counters and their corresponding Prometheus metrics.
     Encapsulates mutation count, total impact, and last known capital to avoid global variables.
+    Provides thread-safe updates for internal state.
     """
     def __init__(self) -> None:
         """
@@ -17,6 +19,7 @@ class MutationMetrics:
         self._llm_mutation_count: int = 0
         self._llm_mutation_total_impact: float = 0.0
         self._last_capital: Optional[float] = None
+        self._lock = threading.Lock() # Added a lock for internal state consistency
 
         self.mutation_counter = Counter(
             'swarm_mutations_total',
@@ -30,44 +33,50 @@ class MutationMetrics:
     def note_llm_mutation(self) -> None:
         """
         Increments the LLM mutation counter and updates the Prometheus counter.
+        Ensures thread-safe update of the internal count.
         """
-        self._llm_mutation_count += 1
+        with self._lock:
+            self._llm_mutation_count += 1
         self.mutation_counter.inc()
 
     def update_llm_impact(self, current_capital: float) -> None:
         """
         Calculates the impact of the last mutation on capital, updates the total impact,
         and sets the Prometheus gauge for average impact.
+        Ensures thread-safe update of internal impact and last capital.
 
         Args:
             current_capital: The current capital value after a mutation.
         """
-        if self._last_capital is not None:
-            impact = current_capital - self._last_capital
-            self._llm_mutation_total_impact += impact
-        self._last_capital = current_capital
+        with self._lock:
+            if self._last_capital is not None:
+                impact = current_capital - self._last_capital
+                self._llm_mutation_total_impact += impact
+            self._last_capital = current_capital
 
-        # Update average impact gauge
-        if self._llm_mutation_count > 0:
-            avg = self._llm_mutation_total_impact / self._llm_mutation_count
-        else:
-            avg = 0.0
-        self.mutation_impact_gauge.set(avg)
+            # Update average impact gauge
+            if self._llm_mutation_count > 0:
+                avg = self._llm_mutation_total_impact / self._llm_mutation_count
+            else:
+                avg = 0.0
+            self.mutation_impact_gauge.set(avg)
 
     def get_llm_stats(self) -> Tuple[int, float]:
         """
         Returns the current LLM mutation count and the average impact of mutations.
+        Ensures thread-safe access to internal stats.
 
         Returns:
             A tuple containing:
                 - The total number of LLM mutations (int).
                 - The average impact of mutations on capital (float).
         """
-        if self._llm_mutation_count > 0:
-            avg = self._llm_mutation_total_impact / self._llm_mutation_count
-        else:
-            avg = 0.0
-        return self._llm_mutation_count, avg
+        with self._lock:
+            if self._llm_mutation_count > 0:
+                avg = self._llm_mutation_total_impact / self._llm_mutation_count
+            else:
+                avg = 0.0
+            return self._llm_mutation_count, avg
 
 # Instantiate the metrics manager for use across modules
 mutation_metrics = MutationMetrics()

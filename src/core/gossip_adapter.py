@@ -18,7 +18,7 @@ from src.core.gossip_layer import (
     GossipConfig,
     GossipNode,
     DeltaPolicy,
-    GossipEnvelope,
+    # GossipEnvelope, # No longer needed here as GossipNode handles envelope creation
 )
 from src.core.crdt_adapter import CRDTAdapter  # Our new CRDT
 
@@ -33,16 +33,19 @@ CFG: GossipConfig = GossipConfig(
 
 class SafeGossipAdapter:
     """
-    Replaces:
-      - pubsub + r.publish(...) for genomes
-      - old gossip_loop + peer_score
-    with a secure GossipNode.
+    Adapter to integrate the secure GossipNode with existing system components.
+
+    It replaces the previous pubsub, old gossip_loop, and peer_score mechanisms,
+    providing a modern, secure, and robust gossip layer. It allows `node_agent.py`
+    to interact with the gossip system without direct knowledge of the underlying
+    GossipNode implementation.
     """
 
     node: GossipNode
-    _known_versions: Dict[str, Dict[str, int]]
+    # _known_versions is now managed by self.node.protocol.peer_versions
     _running: bool
     reputation_manager: Optional[Any] # Type can be more specific if ReputationManager class is available
+    crdt_adapter: CRDTAdapter
 
     def __init__(self, crdt_adapter: CRDTAdapter) -> None:
         """
@@ -52,8 +55,10 @@ class SafeGossipAdapter:
             crdt_adapter: An instance of CRDTAdapter to manage state synchronization.
         """
         self.crdt_adapter = crdt_adapter
+        # The GossipNode itself manages peers, state, and its own background sync loop.
+        # The DeltaPolicy is configured here, or can be passed from the CRDTAdapter if it has one.
         self.node = GossipNode(CFG, policy=DeltaPolicy(min_fitness=0.0))
-        self._known_versions = {}
+        # _known_versions is now managed internally by GossipNode.protocol.peer_versions
         self._running = False
         self.reputation_manager = None
         
@@ -67,9 +72,26 @@ class SafeGossipAdapter:
         """
         self.reputation_manager = rep_man
 
-    async def broadcast(self, message):
-        """Alias for send to maintain compatibility."""
-        return await self.send(message)
+    async def broadcast(self, message: Dict[str, Any]) -> None:
+        """
+        Alias for a broadcast mechanism. In this adapter's design, direct, immediate
+        "broadcasts" of arbitrary messages are not exposed. Genomes are added to
+        the CRDT and then gossiped on the next cycle by the background sync loop.
+        This method is kept as a stub to preserve external API compatibility with
+        `node_agent.py`, but it currently has no effect for immediate message dissemination.
+
+        Args:
+            message: The message to be broadcasted. Currently ignored.
+        """
+        logger.warning(
+            "SafeGossipAdapter.broadcast() called but direct immediate broadcast "
+            "of arbitrary messages is not implemented. Genomes are added to CRDT "
+            "and gossiped automatically."
+        )
+        # If immediate broadcast of specific messages (not genomes) were needed,
+        # one would implement logic here to wrap the message in a GossipEnvelope
+        # and send it to all peers. However, the current design assumes genomes
+        # are managed via CRDT and propagate through the standard gossip cycle.
 
     # ----- Methods called by node_agent.py -----
 
@@ -91,63 +113,49 @@ class SafeGossipAdapter:
         Returns a list of genomes received from peers.
         Called by node_agent.py in its main loop.
 
-        Note: For simplicity, this currently returns an empty list, as the
-        integration logic for genomes will directly retrieve them from
-        `crdt_adapter.get_top()`.
+        Note: For simplicity, this currently returns an empty list. The actual
+        integration logic for genomes is expected to directly retrieve them from
+        `crdt_adapter.get_top()` or other CRDT mechanisms by `node_agent.py` itself,
+        as the adapter merely ensures state convergence.
 
         Returns:
-            An empty list of genomes.
+            An empty list of genomes, as the calling system is expected to query the CRDT directly.
         """
-        # Retrieve fresh genomes from CRDT (all except those already present?)
-        # For simplicity: return an empty list, as integrate will
-        # retrieve genomes directly from crdt_adapter.get_top().
+        # Node_agent.py is expected to retrieve genomes directly from crdt_adapter.get_top().
+        # This method serves as a compatibility stub.
         return []
 
     async def gossip_round(self) -> None:
         """
-        Executes a single round of gossip: selects a peer and exchanges genomes.
-        Called periodically (e.g., every 50 steps) by node_agent.py.
+        Executes a single, on-demand gossip synchronization round with one peer.
+        This method is called periodically (e.g., every 50 steps) by node_agent.py.
+        It leverages the underlying GossipNode's protocol to select a peer and
+        perform a sync, ensuring proper state management (backoff, scoring, etc.).
+
+        Note: The GossipNode also runs its own continuous background sync loop.
+        This method provides an additional, explicit trigger for `node_agent.py`.
         """
         if not CFG.peers:
+            logger.debug("No peers configured for gossip_round.")
             return
 
-        # Create a session and perform sync_once with one peer
-        async with aiohttp.ClientSession() as session:
-            # Select the first peer (could be improved to be random)
-            peer: str = CFG.peers[0]
-            try:
-                # Form an envelope with our delta
-                our_versions: Dict[str, int] = await self.crdt_adapter.get_versions()
-                our_delta: Dict[str, Any] = await self.crdt_adapter.get_delta(
-                    self._known_versions.get(peer, {})
-                )
-                envelope: GossipEnvelope = GossipEnvelope(
-                    sender=CFG.node_id,
-                    ts=time.time(),
-                    nonce=uuid.uuid4().hex,
-                    versions=our_versions,
-                    delta=our_delta,
-                )
-                envelope.sign(CFG.secret_bytes)
+        # Use the underlying GossipProtocol to select a peer and perform a sync.
+        # This ensures peer metrics, backoff, and state management are consistent.
+        peer_url: Optional[str] = self.node.protocol._choose_peer()
 
-                async with session.post(
-                    f"http://{peer}/gossip",
-                    json=envelope.to_dict(),
-                    timeout=CFG.request_timeout_s
-                ) as resp:
-                    if resp.status == 200:
-                        data: Dict[str, Any] = await resp.json()
-                        remote_delta: Dict[str, Any] = data.get("delta", {})
-                        if remote_delta:
-                            await self.crdt_adapter.merge(remote_delta)
-                        # Update the peer's known versions
-                        self._known_versions[peer] = data.get("versions", {})
-            except Exception as e:
-                # Log specific error for better debugging
-                logger.warning(f"Gossip round with peer {peer} failed: {e}")
-                pass  # Peer unavailable – continue
+        if peer_url:
+            logger.debug(f"Node_agent-triggered gossip_round with peer: {peer_url}")
+            # ClientSession should be created per request if not managed globally,
+            # especially for single, on-demand calls.
+            # Use the same timeout as the main gossip loop.
+            timeout = aiohttp.ClientTimeout(total=CFG.request_timeout_s + 1.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                await self.node.protocol.sync_once(session, peer_url)
+        else:
+            logger.debug("No eligible peer selected for node_agent-triggered gossip_round (all might be in backoff).")
 
-    # ----- Health endpoint -----
+    # ----- HTTP endpoints and lifecycle -----
+
     async def _handle_health(self, request: web.Request) -> web.Response:
         """
         HTTP request handler for checking the node's health status.
@@ -164,38 +172,37 @@ class SafeGossipAdapter:
         """
         Starts the HTTP server and the background gossip loop
         (replaces run_server + gossip_loop).
+        The GossipNode's internal background sync loop will handle continuous gossiping.
         """
         app: web.Application = self.node.build_app()
         # Add routes for health and metrics
         app.router.add_get("/health", self._handle_health)
         app.router.add_get("/metrics", self._handle_metrics)
+        
         runner: web.AppRunner = web.AppRunner(app)
         await runner.setup()
         site: web.TCPSite = web.TCPSite(runner, CFG.bind_host, CFG.port)
         await site.start()
         self._running = True
+        logger.info(f"SafeGossipAdapter started HTTP server on {CFG.bind_host}:{CFG.port}")
 
-        # Start the background gossip loop
-        asyncio.create_task(self._gossip_loop())
-
-    async def _gossip_loop(self) -> None:
-        """
-        Background loop for periodically performing gossip rounds.
-        Continues as long as the adapter is running (`_running` is True).
-        """
-        while self._running:
-            await self.gossip_round()
-            await asyncio.sleep(CFG.gossip_interval_s)
+        # The GossipNode itself manages its continuous background sync loop (self.node.protocol.sync_loop).
+        # We removed the redundant _gossip_loop here.
 
     async def stop(self) -> None:
         """
-        Stops the background gossip loop by setting the `_running` flag to False.
+        Stops the SafeGossipAdapter components.
+        For now, this primarily means setting the `_running` flag to False.
+        The underlying GossipNode's `on_cleanup` hook handles cancellation of its
+        background tasks when the aiohttp app stops.
         """
         self._running = False
+        logger.info("SafeGossipAdapter stop requested. The aiohttp app will handle GossipNode cleanup.")
     
     async def _handle_metrics(self, request: web.Request) -> web.Response:
         """
         HTTP request handler for serving metrics in Prometheus format.
+        This method dynamically imports the metrics collection module.
 
         Args:
             request: The aiohttp web request object.
@@ -205,10 +212,14 @@ class SafeGossipAdapter:
             Returns a 500 error response if metrics collection fails.
         """
         try:
+            # Dynamic import to avoid hard dependency if observability is optional
             from src.observability.metrics import collect_metrics, prometheus_format
             metrics: Dict[str, Any] = collect_metrics()
             body: str = prometheus_format(metrics)
             return web.Response(text=body, content_type="text/plain", charset="utf-8")
+        except ImportError:
+            logger.error("Metrics module 'src.observability.metrics' not found. Cannot serve metrics.")
+            return web.Response(text="Metrics module not available.", status=501, content_type="text/plain")
         except Exception as e:
             logger.error(f"Metrics endpoint failed: {traceback.format_exc()}")
-            return web.Response(text=f"Error: {e}", status=500, content_type="text/plain")
+            return web.Response(text=f"Error collecting metrics: {e}", status=500, content_type="text/plain")

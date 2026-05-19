@@ -17,9 +17,17 @@ class IPFSClient:
     """
     Client for interacting with IPFS, supporting a local IPFS daemon
     or a file-system-based fallback for adding and retrieving JSON data.
+
+    It automatically detects daemon availability and switches to a local
+    fallback directory if the daemon is unreachable.
     """
 
-    def __init__(self, host: str = "http://localhost:5001", fallback_dir: str = ".ipfs_fallback"):
+    # Default timeouts for API calls
+    _AVAILABILITY_TIMEOUT: int = 2
+    _ADD_TIMEOUT: int = 10
+    _GET_TIMEOUT: int = 10
+
+    def __init__(self, host: str = "http://localhost:5001", fallback_dir: str = ".ipfs_fallback") -> None:
         """
         Initializes the IPFSClient.
 
@@ -49,19 +57,18 @@ class IPFSClient:
         if self._available is None:
             try:
                 # Use a short timeout for the availability check
-                resp = requests.get(f"{self.host}/api/v0/id", timeout=2)
+                resp: requests.Response = requests.get(f"{self.host}/api/v0/id", timeout=self._AVAILABILITY_TIMEOUT)
                 self._available = resp.status_code == 200
                 if not self._available:
                     print(f"IPFSClient: Daemon at {self.host} responded with status {resp.status_code}.")
             except requests.RequestException as e:
                 self._available = False
                 print(f"IPFSClient: Daemon at {self.host} is not available. Error: {e}")
-        return cast(bool, self._available)
+        return self._available  # No need for cast here as _available is guaranteed to be bool
 
     def add_json(self, data: Dict[str, Any]) -> str:
         """
         Saves a dictionary as JSON to IPFS (or to the fallback directory).
-        Returns the CID (Content Identifier) string.
 
         Args:
             data: The dictionary to be stored as JSON.
@@ -82,7 +89,6 @@ class IPFSClient:
     def get_json(self, cid: str) -> Optional[Dict[str, Any]]:
         """
         Loads JSON data by CID from IPFS (or fallback directory).
-        Returns the dictionary or None on error or if not found.
 
         Args:
             cid: The Content Identifier of the JSON data to retrieve.
@@ -92,16 +98,16 @@ class IPFSClient:
         if self.is_available():
             try:
                 # Use a longer timeout for data retrieval
-                resp = requests.post(f"{self.host}/api/v0/cat?arg={cid}", timeout=10)
+                resp: requests.Response = requests.post(f"{self.host}/api/v0/cat?arg={cid}", timeout=self._GET_TIMEOUT)
                 if resp.status_code == 200:
-                    return resp.json()
+                    return cast(Dict[str, Any], resp.json())
                 else:
                     print(f"IPFSClient: Failed to get JSON {cid} from API, status: {resp.status_code}. Content: {resp.text[:100]}...")
             except requests.RequestException as e:
                 print(f"IPFSClient: Failed to get JSON {cid} via API ({e}), attempting fallback.")
                 self._reset_availability_cache()  # Daemon might be down now
             except json.JSONDecodeError as e:
-                print(f"IPFSClient: Failed to decode JSON from API for CID {cid}: {e}. Response was: {resp.text[:100]}...")
+                print(f"IPFSClient: Failed to decode JSON from API for CID {cid}: {e}. Response was: {getattr(e, 'doc', 'N/A')[:100]}...")
                 self._reset_availability_cache() # Corrupt data might indicate issue with daemon/proxy
         # Fallback
         return self._get_fallback(cid)
@@ -119,13 +125,13 @@ class IPFSClient:
         Returns:
             The CID of the added content.
         Raises:
-            requests.RequestException: If the API call fails.
+            requests.RequestException: If the API call fails (e.g., connection error, bad status).
         """
-        json_bytes = json.dumps(data, indent=2, default=str).encode("utf-8")
-        files = {"file": ("snapshot.json", json_bytes)}
-        resp = requests.post(f"{self.host}/api/v0/add", files=files, timeout=10)
+        json_bytes: bytes = json.dumps(data, indent=2, default=str).encode("utf-8")
+        files: Dict[str, Any] = {"file": ("snapshot.json", json_bytes)}
+        resp: requests.Response = requests.post(f"{self.host}/api/v0/add", files=files, timeout=self._ADD_TIMEOUT)
         resp.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
-        result = resp.json()
+        result: Dict[str, Any] = resp.json()
         cid: str = result["Hash"]
         print(f"IPFSClient: Added JSON via API, CID: {cid}")
         return cid
@@ -142,12 +148,12 @@ class IPFSClient:
         Raises:
             IOError: If writing to the file system fails.
         """
-        json_str = json.dumps(data, indent=2, default=str)
-        cid = hashlib.sha256(json_str.encode("utf-8")).hexdigest()
-        
+        json_str: str = json.dumps(data, indent=2, default=str)
+        cid: str = hashlib.sha256(json_str.encode("utf-8")).hexdigest()
+
         os.makedirs(self.fallback_dir, exist_ok=True)
-        path = os.path.join(self.fallback_dir, f"{cid}.json")
-        
+        path: str = os.path.join(self.fallback_dir, f"{cid}.json")
+
         try:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(json_str)
@@ -167,14 +173,14 @@ class IPFSClient:
         Returns:
             The retrieved JSON data as a dictionary, or None if the file does not exist or cannot be parsed.
         """
-        path = os.path.join(self.fallback_dir, f"{cid}.json")
+        path: str = os.path.join(self.fallback_dir, f"{cid}.json")
         if not os.path.exists(path):
             print(f"IPFSClient: Fallback file not found for CID {cid} at {path}")
             return None
-        
+
         try:
             with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+                data: Dict[str, Any] = json.load(f)
                 print(f"IPFSClient: Retrieved JSON from fallback for CID {cid}")
                 return data
         except json.JSONDecodeError as e:

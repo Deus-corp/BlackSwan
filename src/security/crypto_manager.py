@@ -6,9 +6,12 @@ The hexadecimal representation of the public key serves as the node's unique ide
 which is crucial for verifying signatures and establishing trust within the system.
 """
 import json
+import logging
 from typing import Dict, Any
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.exceptions import InvalidSignature
+
+logger = logging.getLogger(__name__)
 
 class CryptoManager:
     """
@@ -16,14 +19,19 @@ class CryptoManager:
     signing data, and verifying signatures.
     """
 
+    private_key: ed25519.Ed25519PrivateKey
+    public_key: ed25519.Ed25519PublicKey
+    public_bytes_hex: str
+
     def __init__(self):
         """
         Initializes the CryptoManager by generating a new Ed25519 key pair.
-        The public key is stored in its raw hexadecimal format, serving as the node's identifier.
+        The public key is stored in its raw hexadecimal format, serving as the node's
+        unique identifier (Node ID).
         """
-        self.private_key: ed25519.Ed25519PrivateKey = ed25519.Ed25519PrivateKey.generate()
-        self.public_key: ed25519.Ed25519PublicKey = self.private_key.public_key()
-        self.public_bytes_hex: str = self.public_key.public_bytes_raw().hex()
+        self.private_key = ed25519.Ed25519PrivateKey.generate()
+        self.public_key = self.private_key.public_key()
+        self.public_bytes_hex = self.public_key.public_bytes_raw().hex()
 
     def sign(self, data: Dict[str, Any]) -> str:
         """
@@ -63,11 +71,18 @@ class CryptoManager:
             pub_key.verify(signature, message)
             return True
         except (ValueError, InvalidSignature) as e:
-            # ValueError: Indicates an issue with hex decoding or incorrect byte lengths for keys/signatures.
+            # ValueError: Indicates an issue with hex decoding (e.g., malformed public_key_hex or signature_hex)
+            # or incorrect byte lengths for keys/signatures.
             # InvalidSignature: Indicates that the signature does not match the data and public key.
-            # Consider adding logging here: logging.warning(f"Signature verification failed: {e}")
+            logger.warning(
+                f"Signature verification failed for public key '{public_key_hex[:16]}...'. "
+                f"Reason: {type(e).__name__}: {e}"
+            )
             return False
         except Exception as e:
             # Catch any other unexpected errors during the process, e.g., cryptographic library issues.
-            # Consider adding logging here: logging.error(f"An unexpected error occurred during signature verification: {e}")
+            logger.error(
+                f"An unexpected error occurred during signature verification for public key '{public_key_hex[:16]}...'. "
+                f"Reason: {type(e).__name__}: {e}", exc_info=True
+            )
             return False

@@ -8,20 +8,34 @@ import logging
 import re
 import subprocess
 import time
-from pathlib import Path
-from typing import Any, Dict, List, Union
-import docker
 import functools
+from pathlib import Path
+from typing import Any, Dict, List
+import docker
+from docker.client import DockerClient
+
 # Define the project root and Docker Compose file path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 COMPOSE_FILE = PROJECT_ROOT / "mvp" / "lab_swarm_demo" / "docker-compose.async.yml"
 
 logger = logging.getLogger(__name__)
 
+
+@functools.lru_cache(maxsize=1)
+def _get_docker_client() -> DockerClient:
+    """
+    Returns a singleton Docker client instance.
+
+    The client is initialized once on the first call and then cached for subsequent uses.
+    """
+    return docker.from_env()
+
+
 def run_command(cmd: str, cwd: Path = PROJECT_ROOT) -> str:
     """
-    Executes a shell command from the specified current working directory
-    and returns its stdout or stderr output.
+    Executes a shell command from the specified current working directory.
+    It captures stdout and stderr. If the command fails, or if stdout is empty
+    but stderr has content, appropriate messages are logged.
 
     Args:
         cmd: The shell command string to execute.
@@ -29,12 +43,29 @@ def run_command(cmd: str, cwd: Path = PROJECT_ROOT) -> str:
              Defaults to PROJECT_ROOT.
 
     Returns:
-        The combined standard output and standard error of the command.
+        The stripped standard output of the command. If stdout is empty,
+        the stripped standard error is returned.
     """
+    logger.debug(f"Running command: '{cmd}' in '{cwd}'")
     result = subprocess.run(
         cmd, shell=True, capture_output=True, text=True, cwd=cwd, check=False
     )
-    return result.stdout.strip() or result.stderr.strip()
+    stdout_stripped = result.stdout.strip()
+    stderr_stripped = result.stderr.strip()
+
+    if result.returncode != 0:
+        logger.error(f"Command failed with exit code {result.returncode}: {cmd}")
+        if stdout_stripped:
+            logger.error(f"Stdout: {stdout_stripped}")
+        if stderr_stripped:
+            logger.error(f"Stderr: {stderr_stripped}")
+        return stdout_stripped or stderr_stripped
+    elif not stdout_stripped and stderr_stripped:
+        logger.warning(
+            f"Command '{cmd}' produced no stdout, but had stderr: {stderr_stripped}"
+        )
+        return stderr_stripped
+    return stdout_stripped
 
 
 def start_swarm(scale: int = 1) -> str:
@@ -106,6 +137,10 @@ def save_logs_to_disk() -> str:
     Saves logs from individual swarm nodes and a combined log to a timestamped
     directory on disk.
 
+    Note: This function currently attempts to retrieve logs for nodes named
+    'lab_swarm_demo-node-1' through '-4'. If the swarm contains a different
+    number or naming convention for nodes, this range may need adjustment.
+
     Returns:
         A message indicating where the logs were saved.
     """
@@ -114,9 +149,7 @@ def save_logs_to_disk() -> str:
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     # Save individual node logs
-    # Assuming nodes are named lab_swarm_demo-node-1, -node-2, etc.
-    # It attempts to log for nodes 1-4.
-    for i in range(1, 5):
+    for i in range(1, 5):  # Attempts to log for nodes 1-4.
         container_name = f"lab_swarm_demo-node-{i}"
         log = run_command(f"docker logs {container_name} 2>&1")
         (dest_dir / f"node-{i}.log").write_text(log)
@@ -138,9 +171,14 @@ def update_config(new_values: Dict[str, str]) -> str:
     New keys (not found in the file) are appended to the end of the file
     with an assumed indentation of '      - KEY=VALUE'.
 
-    Note: This function uses line-by-line string manipulation, which can be
+    Note: This function uses line-by-line string manipulation, which is
     fragile with complex YAML structures. It aims to preserve the original
     logic of updating existing lines and appending new ones.
+    A significant behavior is that any existing environment variable line
+    identified (e.g., `  KEY=VALUE`) will be rewritten with a leading dash
+    and indentation (e.g., `    - KEY=VALUE`), effectively converting a
+    dictionary style entry to a list style entry in the YAML if it wasn't
+    already. The indentation for new keys is hardcoded to 6 spaces.
 
     Args:
         new_values: A dictionary of {environment_variable_name: new_value}
@@ -149,7 +187,7 @@ def update_config(new_values: Dict[str, str]) -> str:
     Returns:
         A success message.
     """
-    lines = COMPOSE_FILE.read_text().splitlines()
+    lines: List[str] = COMPOSE_FILE.read_text().splitlines()
     updated_keys: set[str] = set()
     new_lines: List[str] = []
 
@@ -162,14 +200,12 @@ def update_config(new_values: Dict[str, str]) -> str:
             ):
                 indent = line[: len(line) - len(line.lstrip())]
                 # Reconstruct the line with the new value, preserving indentation
+                # and ensuring it's in '- KEY=VALUE' format.
                 new_lines.append(f"{indent}- {key}={value}")
                 updated_keys.add(key)
                 replaced = True
                 break
         if not replaced:
-            # If the line was not replaced by any new_values, append it as is.
-            # The original code's `if not any(...)` was slightly redundant
-            # if `replaced` is correctly tracking modifications to the current line.
             new_lines.append(line)
 
     # Append any keys from new_values that were not found and updated in the file.
@@ -192,9 +228,9 @@ def get_current_config() -> Dict[str, str]:
         A dictionary where keys are environment variable names and values are
         their current string values.
     """
-    content = COMPOSE_FILE.read_text()
+    content: str = COMPOSE_FILE.read_text()
     config: Dict[str, str] = {}
-    variables = [
+    variables: List[str] = [
         "LLM_MODEL",
         "BURN_RATE",
         "FAILURE_PROB",
@@ -218,19 +254,29 @@ def get_current_config() -> Dict[str, str]:
             config[var] = match.group(1)
     return config
 
+
 def list_containers() -> List[Dict[str, str]]:
-    docker_client = docker.from_env()
-    containers = docker_client.containers.list(
+    """
+    Lists Docker containers related to the swarm nodes.
+
+    Returns:
+        A list of dictionaries, each containing 'id', 'name', 'status', and 'image'
+        for a swarm node container.
+    """
+    client = _get_docker_client()
+    containers = client.containers.list(
         filters={"name": "lab_swarm_demo-node"}, all=True
     )
-    result = []
+    result: List[Dict[str, str]] = []
     for c in containers:
-        result.append({
-            "id": c.short_id,
-            "name": c.name,
-            "status": c.status,
-            "image": c.image.tags[0] if c.image.tags else "unknown",
-        })
+        result.append(
+            {
+                "id": c.short_id,
+                "name": c.name,
+                "status": c.status,
+                "image": c.image.tags[0] if c.image.tags else "unknown",
+            }
+        )
     return result
 
 
@@ -269,7 +315,8 @@ def get_container_statuses() -> List[Dict[str, str]]:
         A list of dictionaries, each containing 'name', 'status', and 'image'
         for a swarm node container.
     """
-    containers = _docker_client.containers.list(
+    client = _get_docker_client()
+    containers = client.containers.list(
         filters={"name": "lab_swarm_demo-node"}, all=True
     )
     result: List[Dict[str, str]] = []
@@ -294,8 +341,9 @@ def get_container_stats(container_name: str) -> str:
     Returns:
         A formatted string with CPU and memory usage, or an error message.
     """
+    client = _get_docker_client()
     try:
-        c = _docker_client.containers.get(container_name)
+        c = client.containers.get(container_name)
         stats: Dict[str, Any] = c.stats(stream=False)
 
         cpu_delta = (
@@ -316,8 +364,10 @@ def get_container_stats(container_name: str) -> str:
 
         return f"CPU: {cpu_percent:.2f}%, MEM: {mem_usage_mb:.1f}MB / {mem_limit_mb:.1f}MB"
     except docker.errors.NotFound:
+        logger.error(f"Container '{container_name}' not found for stats.")
         return f"Error: Container '{container_name}' not found."
     except Exception as e:
+        logger.error(f"Error getting stats for {container_name}: {e}")
         return f"Error getting stats for {container_name}: {str(e)}"
 
 
@@ -331,9 +381,10 @@ def inspect_container(container_name: str) -> str:
     Returns:
         A formatted string with container details, or an error message.
     """
+    client = _get_docker_client()
     try:
-        c = _docker_client.containers.get(container_name)
-        info = {
+        c = client.containers.get(container_name)
+        info: Dict[str, str] = {
             "ID": c.short_id,
             "Image": c.image.tags[0] if c.image.tags else "none",
             "Status": c.status,
@@ -342,8 +393,10 @@ def inspect_container(container_name: str) -> str:
         }
         return "\n".join(f"{k}: {v}" for k, v in info.items())
     except docker.errors.NotFound:
+        logger.error(f"Container '{container_name}' not found for inspection.")
         return f"Error: Container '{container_name}' not found."
     except Exception as e:
+        logger.error(f"Error inspecting {container_name}: {e}")
         return f"Error inspecting {container_name}: {str(e)}"
 
 
@@ -357,15 +410,19 @@ def pause_container(container_name: str) -> str:
     Returns:
         A success message or an error message.
     """
+    client = _get_docker_client()
     try:
-        c = _docker_client.containers.get(container_name)
+        c = client.containers.get(container_name)
         c.pause()
         return f"Container '{container_name}' paused."
     except docker.errors.NotFound:
+        logger.error(f"Container '{container_name}' not found for pausing.")
         return f"Error: Container '{container_name}' not found."
     except docker.errors.APIError as e:
+        logger.error(f"API Error pausing container '{container_name}': {e}")
         return f"Error pausing container '{container_name}': {e}"
     except Exception as e:
+        logger.error(f"An unexpected error occurred while pausing '{container_name}': {e}")
         return f"An unexpected error occurred: {str(e)}"
 
 
@@ -379,25 +436,40 @@ def unpause_container(container_name: str) -> str:
     Returns:
         A success message or an error message.
     """
+    client = _get_docker_client()
     try:
-        c = _docker_client.containers.get(container_name)
+        c = client.containers.get(container_name)
         c.unpause()
         return f"Container '{container_name}' unpaused."
     except docker.errors.NotFound:
+        logger.error(f"Container '{container_name}' not found for unpausing.")
         return f"Error: Container '{container_name}' not found."
     except docker.errors.APIError as e:
+        logger.error(f"API Error unpausing container '{container_name}': {e}")
         return f"Error unpausing container '{container_name}': {e}"
     except Exception as e:
+        logger.error(f"An unexpected error occurred while unpausing '{container_name}': {e}")
         return f"An unexpected error occurred: {str(e)}"
 
+
 def get_container_logs(container_name: str, tail: int = 200) -> str:
-    """Retrieves the last N lines of logs for a specific Docker container."""
-    docker_client = docker.from_env()
+    """
+    Retrieves the last N lines of logs for a specific Docker container.
+
+    Args:
+        container_name: The name of the Docker container.
+        tail: The number of last lines to retrieve. Defaults to 200.
+
+    Returns:
+        The log output of the container, or an empty string if an error occurs.
+    """
+    client = _get_docker_client()
     try:
-        c = docker_client.containers.get(container_name)
+        c = client.containers.get(container_name)
+        # decode('utf-8', errors='ignore') to handle potential non-UTF8 characters in logs
         return c.logs(tail=tail).decode('utf-8', errors='ignore')
     except docker.errors.NotFound:
-        logger.error(f"Container '{container_name}' not found.")
+        logger.error(f"Container '{container_name}' not found for logs.")
         return ""
     except Exception as e:
         logger.error(f"Error getting logs for {container_name}: {e}")

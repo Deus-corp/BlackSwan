@@ -40,7 +40,7 @@ class CuriosityEngine:
                                                       hypothesis, if any.
     """
 
-    def __init__(self, window_size: int = 20, surprise_threshold: float = 0.5, error_average_window: int = 5):
+    def __init__(self, window_size: int = 20, surprise_threshold: float = 0.5, error_average_window: int = 5) -> None:
         """
         Initializes the CuriosityEngine.
 
@@ -85,9 +85,9 @@ class CuriosityEngine:
         # This calculates a simple moving average of recent prices, including the current one.
         relevant_price_history: List[float] = self.price_history[-min(self.window_size, len(self.price_history)):]
 
-        # Need at least one price to calculate an average, but if only one, predicted == price, error == 0.
-        # Two prices are more useful to establish a "recent" context for deviation.
-        if len(relevant_price_history) == 0:
+        # Need at least one price to calculate an average for prediction.
+        if not relevant_price_history:
+            # Not enough data to make a prediction or calculate an error meaningful for surprise.
             return None
 
         # Predict the "expected" current price based on its own moving average.
@@ -96,6 +96,7 @@ class CuriosityEngine:
         
         # Calculate relative prediction error.
         # Add a small epsilon to the denominator to prevent division by zero if predicted price is 0.
+        # If predicted is near zero, this error can become very large, indicating high surprise.
         error: float = abs(price - predicted) / (predicted + 1e-9)
         self.prediction_errors.append(error)
 
@@ -157,7 +158,8 @@ class CuriosityEngine:
                               - 'adoption_rate': The ratio of adopted hypotheses to tested hypotheses.
                                                 Returns 0.0 if no hypotheses have been tested.
         """
-        adoption_rate: float = self.hypotheses_adopted / max(1.0, float(self.hypotheses_tested))
+        # Ensure division by zero is avoided if no hypotheses have been tested.
+        adoption_rate: float = self.hypotheses_adopted / float(max(1, self.hypotheses_tested))
         return {
             "hypotheses_tested": float(self.hypotheses_tested),
             "hypotheses_adopted": float(self.hypotheses_adopted),

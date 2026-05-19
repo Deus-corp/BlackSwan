@@ -6,7 +6,7 @@ update secret environment variables (.env file), and initiate token approval pro
 
 import subprocess
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Set, Optional
 
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
@@ -80,7 +80,7 @@ SETTINGS_CONTENT = """
 """
 
 @router.get("/settings", response_class=HTMLResponse)
-def settings_page(request: Request) -> HTMLResponse:
+async def settings_page(request: Request) -> HTMLResponse:
     """
     Renders the settings page with configuration forms and token approval options.
 
@@ -94,134 +94,201 @@ def settings_page(request: Request) -> HTMLResponse:
 
 @router.post("/api/update_config")
 async def update_config_form(
-    BURN_RATE: str = Form(...),
-    FAILURE_PROB: str = Form(...),
-    GOSSIP_PORT: str = Form(...),
-    TOTAL_NODES: str = Form(...),
-    PYTHONUNBUFFERED: str = Form(...),
-    LLM_MODEL: str = Form(...),
-    GOSSIP_SIGNING_ENABLED: str = Form(...),
-    MEMORY_API_ENABLED: str = Form(...),
-    MARKET_MODE: str = Form(...),
-    TEST_WEB3_SWAP_AMOUNT: str = Form(...),
-    TEST_WEB3_SWAP_SIDE: str = Form(...),
-    WEB3_POOL_FEE: str = Form(...),
-    PRICE_SCALE: str = Form(...),
-    MIN_WETH_BALANCE: str = Form(...),
-    MIN_ETH_BALANCE: str = Form(...),
-    MAX_USDC_BALANCE: str = Form(...),
-    TRADING_SYMBOLS: str = Form(...),
-    LOG_LEVEL: str = Form(...),
-    INTERNET_RESEARCHER_ENABLED: str = Form(...),
-    TRADINGVIEW_WEBHOOK_ENABLED: str = Form(...),
-    TRADINGVIEW_WEBHOOK_PORT: str = Form(...),
-    ORDERBOOK_ANALYSIS_ENABLED: str = Form(...),
-    HEDGE_ENABLED: str = Form(...),
-    HEDGE_RATIO: str = Form(...),
-    CAPITAL_ALERT_THRESHOLD: str = Form(...),
+    burn_rate: str = Form(..., alias="BURN_RATE"),
+    failure_prob: str = Form(..., alias="FAILURE_PROB"),
+    gossip_port: str = Form(..., alias="GOSSIP_PORT"),
+    total_nodes: str = Form(..., alias="TOTAL_NODES"),
+    pythonunbuffered: str = Form(..., alias="PYTHONUNBUFFERED"),
+    llm_model: str = Form(..., alias="LLM_MODEL"),
+    gossip_signing_enabled: str = Form(..., alias="GOSSIP_SIGNING_ENABLED"),
+    memory_api_enabled: str = Form(..., alias="MEMORY_API_ENABLED"),
+    market_mode: str = Form(..., alias="MARKET_MODE"),
+    test_web3_swap_amount: str = Form(..., alias="TEST_WEB3_SWAP_AMOUNT"),
+    test_web3_swap_side: str = Form(..., alias="TEST_WEB3_SWAP_SIDE"),
+    web3_pool_fee: str = Form(..., alias="WEB3_POOL_FEE"),
+    price_scale: str = Form(..., alias="PRICE_SCALE"),
+    min_weth_balance: str = Form(..., alias="MIN_WETH_BALANCE"),
+    min_eth_balance: str = Form(..., alias="MIN_ETH_BALANCE"),
+    max_usdc_balance: str = Form(..., alias="MAX_USDC_BALANCE"),
+    trading_symbols: str = Form(..., alias="TRADING_SYMBOLS"),
+    log_level: str = Form(..., alias="LOG_LEVEL"),
+    internet_researcher_enabled: str = Form(..., alias="INTERNET_RESEARCHER_ENABLED"),
+    tradingview_webhook_enabled: str = Form(..., alias="TRADINGVIEW_WEBHOOK_ENABLED"),
+    tradingview_webhook_port: str = Form(..., alias="TRADINGVIEW_WEBHOOK_PORT"),
+    orderbook_analysis_enabled: str = Form(..., alias="ORDERBOOK_ANALYSIS_ENABLED"),
+    hedge_enabled: str = Form(..., alias="HEDGE_ENABLED"),
+    hedge_ratio: str = Form(..., alias="HEDGE_RATIO"),
+    capital_alert_threshold: str = Form(..., alias="CAPITAL_ALERT_THRESHOLD"),
 ) -> HTMLResponse:
     """
     Handles the submission of the Docker Compose configuration form.
     It collects all form fields and passes them to the `update_config` service.
 
     Args:
-        BURN_RATE, FAILURE_PROB, etc.: Individual form fields,
-                                       typed as string as received from HTML form.
+        burn_rate (str): The value for BURN_RATE.
+        failure_prob (str): The value for FAILURE_PROB.
+        gossip_port (str): The value for GOSSIP_PORT.
+        total_nodes (str): The value for TOTAL_NODES.
+        pythonunbuffered (str): The value for PYTHONUNBUFFERED.
+        llm_model (str): The value for LLM_MODEL.
+        gossip_signing_enabled (str): The value for GOSSIP_SIGNING_ENABLED.
+        memory_api_enabled (str): The value for MEMORY_API_ENABLED.
+        market_mode (str): The value for MARKET_MODE.
+        test_web3_swap_amount (str): The value for TEST_WEB3_SWAP_AMOUNT.
+        test_web3_swap_side (str): The value for TEST_WEB3_SWAP_SIDE.
+        web3_pool_fee (str): The value for WEB3_POOL_FEE.
+        price_scale (str): The value for PRICE_SCALE.
+        min_weth_balance (str): The value for MIN_WETH_BALANCE.
+        min_eth_balance (str): The value for MIN_ETH_BALANCE.
+        max_usdc_balance (str): The value for MAX_USDC_BALANCE.
+        trading_symbols (str): The value for TRADING_SYMBOLS.
+        log_level (str): The value for LOG_LEVEL.
+        internet_researcher_enabled (str): The value for INTERNET_RESEARCHER_ENABLED.
+        tradingview_webhook_enabled (str): The value for TRADINGVIEW_WEBHOOK_ENABLED.
+        tradingview_webhook_port (str): The value for TRADINGVIEW_WEBHOOK_PORT.
+        orderbook_analysis_enabled (str): The value for ORDERBOOK_ANALYSIS_ENABLED.
+        hedge_enabled (str): The value for HEDGE_ENABLED.
+        hedge_ratio (str): The value for HEDGE_RATIO.
+        capital_alert_threshold (str): The value for CAPITAL_ALERT_THRESHOLD.
 
     Returns:
         An HTMLResponse containing a message about the update status.
     """
-    # Collects all form parameters into a dictionary.
-    # This approach relies on `locals()` containing only the function parameters
-    # at this point. For more robust data handling, a Pydantic model would be
-    # preferred in a larger application.
-    config: Dict[str, str] = {k: v for k, v in locals().items() if k not in ['self', 'update_config_form', 'Form']}
-    msg: str = update_config(config)
+    # Explicitly collecting form parameters into a dictionary is more robust
+    # than relying on locals() and ensures only expected parameters are passed.
+    config_data: Dict[str, str] = {
+        "BURN_RATE": burn_rate,
+        "FAILURE_PROB": failure_prob,
+        "GOSSIP_PORT": gossip_port,
+        "TOTAL_NODES": total_nodes,
+        "PYTHONUNBUFFERED": pythonunbuffered,
+        "LLM_MODEL": llm_model,
+        "GOSSIP_SIGNING_ENABLED": gossip_signing_enabled,
+        "MEMORY_API_ENABLED": memory_api_enabled,
+        "MARKET_MODE": market_mode,
+        "TEST_WEB3_SWAP_AMOUNT": test_web3_swap_amount,
+        "TEST_WEB3_SWAP_SIDE": test_web3_swap_side,
+        "WEB3_POOL_FEE": web3_pool_fee,
+        "PRICE_SCALE": price_scale,
+        "MIN_WETH_BALANCE": min_weth_balance,
+        "MIN_ETH_BALANCE": min_eth_balance,
+        "MAX_USDC_BALANCE": max_usdc_balance,
+        "TRADING_SYMBOLS": trading_symbols,
+        "LOG_LEVEL": log_level,
+        "INTERNET_RESEARCHER_ENABLED": internet_researcher_enabled,
+        "TRADINGVIEW_WEBHOOK_ENABLED": tradingview_webhook_enabled,
+        "TRADINGVIEW_WEBHOOK_PORT": tradingview_webhook_port,
+        "ORDERBOOK_ANALYSIS_ENABLED": orderbook_analysis_enabled,
+        "HEDGE_ENABLED": hedge_enabled,
+        "HEDGE_RATIO": hedge_ratio,
+        "CAPITAL_ALERT_THRESHOLD": capital_alert_threshold,
+    }
+    msg: str = update_config(config_data)
     return HTMLResponse(f"<pre>{msg}</pre>")
 
 @router.post("/api/update_secrets")
 async def update_secrets(
-    WEB3_PRIVATE_KEY: str = Form(""),
-    BINANCE_TESTNET_API_KEY: str = Form(""),
-    BINANCE_TESTNET_API_SECRET: str = Form(""),
-    TELEGRAM_BOT_TOKEN: str = Form(""),
-    TELEGRAM_CHAT_ID: str = Form(""),
-    ETHERSCAN_API_KEY: str = Form(""),
-    WEB3_RPC_URL: str = Form(""),
+    web3_private_key: str = Form("", alias="WEB3_PRIVATE_KEY"),
+    binance_testnet_api_key: str = Form("", alias="BINANCE_TESTNET_API_KEY"),
+    binance_testnet_api_secret: str = Form("", alias="BINANCE_TESTNET_API_SECRET"),
+    telegram_bot_token: str = Form("", alias="TELEGRAM_BOT_TOKEN"),
+    telegram_chat_id: str = Form("", alias="TELEGRAM_CHAT_ID"),
+    etherscan_api_key: str = Form("", alias="ETHERSCAN_API_KEY"),
+    web3_rpc_url: str = Form("", alias="WEB3_RPC_URL"),
 ) -> HTMLResponse:
     """
     Handles the submission of the secrets form, updating the .env file.
     It reads the existing .env file, updates or adds the provided secret keys,
-    and writes the changes back.
+    and writes the changes back while preserving comments and original line order
+    as much as possible.
 
     Args:
-        WEB3_PRIVATE_KEY, BINANCE_TESTNET_API_KEY, etc.: Secret form fields.
-                                                           Default to empty string if not provided.
+        web3_private_key (str): The private key for Web3 operations.
+        binance_testnet_api_key (str): Binance Testnet API key.
+        binance_testnet_api_secret (str): Binance Testnet API secret.
+        telegram_bot_token (str): Telegram bot token.
+        telegram_chat_id (str): Telegram chat ID.
+        etherscan_api_key (str): Etherscan API key.
+        web3_rpc_url (str): Web3 RPC URL.
 
     Returns:
         An HTMLResponse indicating that secrets have been updated and a restart is needed.
     """
-    # Determine the path to the .env file relative to the current script.
-    # This path is hardcoded and assumes a specific project structure.
-    # In a production environment, this path might be better configured
-    # via environment variables or a more dynamic lookup.
-    project_root = Path(__file__).resolve().parent.parent.parent
+    project_root: Path = Path(__file__).resolve().parent.parent.parent
     env_path: Path = project_root / "mvp" / "lab_swarm_demo" / ".env"
 
-    current_lines: list[str] = []
+    current_lines: List[str] = []
     if env_path.exists():
         current_lines = env_path.read_text().splitlines()
 
-    updated_keys: set[str] = set()
-    secret_map: Dict[str, str] = {
-        "WEB3_PRIVATE_KEY": WEB3_PRIVATE_KEY,
-        "BINANCE_TESTNET_API_KEY": BINANCE_TESTNET_API_KEY,
-        "BINANCE_TESTNET_API_SECRET": BINANCE_TESTNET_API_SECRET,
-        "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
-        "TELEGRAM_CHAT_ID": TELEGRAM_CHAT_ID,
-        "ETHERSCAN_API_KEY": ETHERSCAN_API_KEY,
-        "WEB3_RPC_URL": WEB3_RPC_URL,
+    # Map form input names (aliased to original env var names) to their values.
+    # Only include non-empty values from the form.
+    secret_map_from_form: Dict[str, str] = {
+        "WEB3_PRIVATE_KEY": web3_private_key,
+        "BINANCE_TESTNET_API_KEY": binance_testnet_api_key,
+        "BINANCE_TESTNET_API_SECRET": binance_testnet_api_secret,
+        "TELEGRAM_BOT_TOKEN": telegram_bot_token,
+        "TELEGRAM_CHAT_ID": telegram_chat_id,
+        "ETHERSCAN_API_KEY": etherscan_api_key,
+        "WEB3_RPC_URL": web3_rpc_url,
     }
 
-    new_lines: list[str] = []
-    for line in current_lines:
-        replaced = False
-        # Check if the line starts with any of the secret keys from the form
-        for key, value in secret_map.items():
-            # Basic check, does not handle commented lines or quoted values correctly
-            if line.startswith(f"{key}="):
-                new_lines.append(f"{key}={value}")
-                updated_keys.add(key)
-                replaced = True
-                break
-        if not replaced:
-            new_lines.append(line)
+    new_lines_output: List[str] = []
+    keys_processed_from_form: Set[str] = set()
 
-    # Append any keys that were in the form but not found in the original .env file
-    for key, value in secret_map.items():
-        if key not in updated_keys:
-            new_lines.append(f"{key}={value}")
+    for line in current_lines:
+        stripped_line: str = line.strip()
+        updated_this_line: bool = False
+
+        if not stripped_line or stripped_line.startswith("#"):
+            # Preserve empty lines and comments
+            new_lines_output.append(line)
+            continue
+
+        for key, value in secret_map_from_form.items():
+            if stripped_line.startswith(f"{key}="):
+                # Update existing key with new value (even if new value is empty)
+                new_lines_output.append(f"{key}={value}")
+                keys_processed_from_form.add(key)
+                updated_this_line = True
+                break
+        
+        if not updated_this_line:
+            # If the line was not an updated secret, keep it as is
+            new_lines_output.append(line)
+
+    # Append any keys from the form that were not found in the original .env file
+    for key, value in secret_map_from_form.items():
+        if key not in keys_processed_from_form:
+            # Only append if value is not empty, to avoid adding `KEY=` lines unnecessarily
+            # if the user just submitted an empty field for a non-existent key.
+            # However, if the intent is to allow explicit empty settings, remove this check.
+            if value: # Keep original behavior, append even if empty, per `Form("")` default
+                new_lines_output.append(f"{key}={value}")
 
     # Write the updated content back to the .env file, ensuring a trailing newline
-    env_path.write_text("\n".join(new_lines) + "\n")
+    env_path.write_text("\n".join(new_lines_output) + "\n")
     return HTMLResponse("<pre>Secrets updated. Restart swarm to apply.</pre>")
 
 @router.post("/api/approve/{token}")
 async def approve_token(token: str) -> HTMLResponse:
     """
     Initiates a token approval script for WETH or USDC.
+    The script is executed in a subprocess.
 
     Args:
-        token: The token symbol (e.g., 'WETH', 'USDC') to approve.
+        token: The token symbol (e.g., 'WETH', 'USDC') to approve. Case-insensitive.
 
     Returns:
         An HTMLResponse containing the standard output or error from the approval script.
     """
     project_root: Path = Path(__file__).resolve().parent.parent.parent
-    command: list[str]
-    if token.upper() == "WETH":
+    command: List[str]
+    token_upper: str = token.upper()
+
+    if token_upper == "WETH":
         command = ["python", "tools/approve_weth.py"]
-    elif token.upper() == "USDC":
+    elif token_upper == "USDC":
         command = ["python", "tools/approve_usdc.py"]
     else:
         return HTMLResponse(f"<pre>Error: Unknown token '{token}'</pre>", status_code=400)
@@ -232,7 +299,9 @@ async def approve_token(token: str) -> HTMLResponse:
         capture_output=True,
         text=True,
         cwd=project_root,
-        check=False  # Do not raise an exception for non-zero exit codes
+        check=False  # Do not raise an exception for non-zero exit codes; capture output instead
     )
     # Return the stdout or stderr from the script execution
-    return HTMLResponse(f"<pre>{result.stdout or result.stderr}</pre>")
+    # If there's stdout, return it. Otherwise, return stderr.
+    output_message: str = result.stdout.strip() if result.stdout else (result.stderr.strip() if result.stderr else "No output from script.")
+    return HTMLResponse(f"<pre>{output_message}</pre>")

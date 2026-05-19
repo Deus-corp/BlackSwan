@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Dict, Tuple, Any
 
+
 def compute_metrics(history: List[float], risk_free_rate: float = 0.0) -> Dict[str, float]:
     """
     Computes key performance metrics for an investment history.
@@ -28,36 +29,37 @@ def compute_metrics(history: List[float], risk_free_rate: float = 0.0) -> Dict[s
         return {}
 
     # Convert history to a NumPy array for efficient calculations
-    history_arr = np.array(history)
+    history_arr: np.ndarray = np.array(history)
 
     # Calculate periodic returns
-    returns = np.diff(history_arr) / history_arr[:-1]
+    returns: np.ndarray = np.diff(history_arr) / history_arr[:-1]
 
     # Calculate excess returns for Sharpe Ratio
-    excess_returns = returns - risk_free_rate
+    excess_returns: np.ndarray = returns - risk_free_rate
 
     # Sharpe Ratio: (Mean Excess Return) / (Std Dev of Excess Returns)
     # Handle case where standard deviation is zero to prevent division by zero.
-    std_excess_returns = np.std(excess_returns)
-    sharpe_ratio = np.mean(excess_returns) / std_excess_returns if std_excess_returns > 0 else 0.0
+    std_excess_returns: float = np.std(excess_returns)
+    sharpe_ratio: float = np.mean(excess_returns) / std_excess_returns if std_excess_returns > 0 else 0.0
 
     # Maximum Drawdown calculation
     # Accumulate maximum values up to each point
-    peak = np.maximum.accumulate(history_arr)
+    peak: np.ndarray = np.maximum.accumulate(history_arr)
     # Calculate drawdown from peak
-    drawdown = (history_arr - peak) / peak
+    drawdown: np.ndarray = (history_arr - peak) / peak
     # Max drawdown is the minimum (most negative) drawdown
-    max_drawdown = np.min(drawdown)
+    max_drawdown: float = np.min(drawdown)
 
     return {
-        "final_capital": history_arr[-1],
+        "final_capital": float(history_arr[-1]),  # Ensure float type for consistency
         "sharpe_ratio": sharpe_ratio,
         "max_drawdown": max_drawdown,
-        "mean_return": np.mean(returns),
-        "volatility": np.std(returns)
+        "mean_return": float(np.mean(returns)),
+        "volatility": float(np.std(returns))
     }
 
-def plot_results(agents_data: Dict[str, Tuple[List[float], Any]], title: str = "Simulation Results"):
+
+def plot_results(agents_data: Dict[str, Tuple[List[float], Any]], title: str = "Simulation Results") -> None:
     """
     Plots the capital history of agents and the market price over time.
 
@@ -85,21 +87,23 @@ def plot_results(agents_data: Dict[str, Tuple[List[float], Any]], title: str = "
 
     # Plot Market Price over time
     if agents_data:
-        # Assuming all agents interact with the same market
+        # Assuming all agents interact with the same market environment,
+        # we can retrieve market prices from the first available agent.
         sample_agent = list(agents_data.values())[0][1]
         if hasattr(sample_agent, 'market') and hasattr(sample_agent.market, 'prices'):
-            market_prices = sample_agent.market.prices
+            market_prices: List[float] = sample_agent.market.prices
             ax2.plot(market_prices, color='black', alpha=0.7, label="Market Price")
             ax2.set_title("Market Price Over Time")
             ax2.set_xlabel("Simulation Step")
             ax2.set_ylabel("Price")
             ax2.grid(True)
+            ax2.legend() # Add legend for market price
         else:
-            ax2.set_visible(False) # Hide the market price plot if data not available
+            ax2.set_visible(False)  # Hide the market price plot if data not available
             print("Warning: Market price data not found on agent. Market price plot skipped.")
     else:
-        ax2.set_visible(False) # Hide the market price plot if no agent data
+        ax2.set_visible(False)  # Hide the market price plot if no agent data
         print("Warning: No agent data provided. Market price plot skipped.")
 
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # Adjust layout to make space for suptitle
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust layout to make space for suptitle
     plt.show()

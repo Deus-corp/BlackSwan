@@ -7,7 +7,7 @@
 """
 import os
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 import aiohttp
 
@@ -20,16 +20,16 @@ class TelegramNotifier:
     Использует `aiohttp` для взаимодействия с Telegram Bot API.
     Настройки токена бота и ID чата могут быть заданы при инициализации
     или получены из переменных окружения (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID).
+
+    Args:
+        token (Optional[str]): Токен Telegram бота. Если не указан,
+                                   используется переменная окружения TELEGRAM_BOT_TOKEN.
+        chat_id (Optional[str]): ID чата или канала Telegram. Если не указан,
+                                     используется переменная окружения TELEGRAM_CHAT_ID.
     """
-    def __init__(self, token: Optional[str] = None, chat_id: Optional[str] = None):
+    def __init__(self, token: Optional[str] = None, chat_id: Optional[str] = None) -> None:
         """
         Инициализирует уведомитель Telegram.
-
-        Args:
-            token (Optional[str]): Токен Telegram бота. Если не указан,
-                                   используется переменная окружения TELEGRAM_BOT_TOKEN.
-            chat_id (Optional[str]): ID чата или канала Telegram. Если не указан,
-                                     используется переменная окружения TELEGRAM_CHAT_ID.
         """
         self.token: str = token or os.environ.get("TELEGRAM_BOT_TOKEN", "")
         self.chat_id: str = chat_id or os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -58,11 +58,13 @@ class TelegramNotifier:
     async def close(self) -> None:
         """
         Закрывает `aiohttp.ClientSession`, если она была открыта.
-        Рекомендуется вызывать при завершении работы приложения.
+        Рекомендуется вызывать при завершении работы приложения для корректного
+        освобождения ресурсов.
         """
         if self._session and not self._session.closed:
             await self._session.close()
             logger.info("Telegram notifier aiohttp session closed.")
+        self._session = None # Clear the session reference
 
     async def send(self, text: str) -> bool:
         """

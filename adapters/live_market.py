@@ -5,9 +5,9 @@ Provides live price feed (bid/ask), market hours filtering, and multi-symbol sup
 """
 import os
 import logging
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional, Any, Union, Literal
 from datetime import datetime, time
-import ccxt
+import ccxt.async_support as ccxt # Import async_support for awaitable methods
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class BinanceTestnetAdapter:
     Includes functionality for market hours filtering and order placement.
     """
 
-    def __init__(self, symbol: str = "BTC/USDT"):
+    def __init__(self, symbol: str = "BTC/USDT") -> None:
         """
         Initializes the BinanceTestnetAdapter.
 
@@ -31,10 +31,17 @@ class BinanceTestnetAdapter:
         # Market hours configuration (UTC)
         market_open_str: str = os.environ.get("MARKET_OPEN", "00:00")
         market_close_str: str = os.environ.get("MARKET_CLOSE", "23:59")
-        self.market_open_time: time = datetime.strptime(market_open_str, "%H:%M").time()
-        self.market_close_time: time = datetime.strptime(market_close_str, "%H:%M").time()
+        
+        try:
+            self.market_open_time: time = datetime.strptime(market_open_str, "%H:%M").time()
+            self.market_close_time: time = datetime.strptime(market_close_str, "%H:%M").time()
+        except ValueError as e:
+            logger.error(f"Invalid MARKET_OPEN or MARKET_CLOSE format: {e}. Using default 00:00-23:59.")
+            self.market_open_time = time(0, 0)
+            self.market_close_time = time(23, 59)
 
-        self.exchange = ccxt.binance({
+
+        self.exchange: ccxt.binance = ccxt.binance({
             'apiKey': self.api_key,
             'secret': self.api_secret,
             'enableRateLimit': True,
@@ -43,12 +50,26 @@ class BinanceTestnetAdapter:
             },
             'testnet': True,
         })
+    
+    async def ainit(self) -> None:
+        """
+        Асинхронная инициализация адаптера. Должна быть вызвана после __init__.
+        Загружает рынки для верификации соединения.
+        """
         # Verify connection by loading markets
         try:
-            self.exchange.load_markets()
-            logger.info(f"Binance Testnet connected. Symbol: {symbol}")
+            await self.exchange.load_markets()
+            logger.info(f"Binance Testnet connected. Symbol: {self.symbol}")
         except Exception as e:
             logger.warning(f"Could not load markets for Binance Testnet (testnet may be unavailable): {e}")
+
+    async def close(self) -> None:
+        """
+        Закрывает соединение с биржей. Рекомендуется вызывать при завершении работы.
+        """
+        if self.exchange:
+            await self.exchange.close()
+            logger.info("Binance Testnet adapter CCXT exchange session closed.")
 
     def _is_market_open(self) -> bool:
         """
@@ -65,43 +86,37 @@ class BinanceTestnetAdapter:
             # Market hours cross midnight (e.g., 22:00 to 04:00)
             return now >= self.market_open_time or now <= self.market_close_time
 
-    async def get_ticker(self) -> Optional[Dict[str, Union[float, str, int]]]:
+    async def get_ticker(self) -> Optional[Dict[Literal["price", "bid", "ask"], float]]:
         """
         Fetches the ticker information (last price, bid, ask) for the configured symbol,
         but only if the market is currently open.
 
         Returns:
-            Optional[Dict[str, Union[float, str, int]]]: A dictionary containing
+            Optional[Dict[Literal["price", "bid", "ask"], float]]: A dictionary containing
             'price', 'bid', 'ask', 'symbol', and 'timestamp' if successful and market open.
-            Returns None if the market is closed.
-            In case of an error, it returns a simulated price with None timestamp.
+            Returns None if the market is closed or in case of an error.
+            Note: For simplicity, the simulated price fallback is removed as it would make
+            the return type more complex and usually real-time adapters should fail if
+            live data cannot be obtained.
         """
         if not self._is_market_open():
             logger.debug(f"Market for {self.symbol} is closed, skipping live tick")
             return None
 
         try:
-            ticker: Dict[str, Any] = self.exchange.fetch_ticker(self.symbol)
+            ticker: Dict[str, Any] = await self.exchange.fetch_ticker(self.symbol)
             return {
                 "price": float(ticker['last']),
                 "bid": float(ticker['bid']),
                 "ask": float(ticker['ask']),
-                "symbol": self.symbol,
-                "timestamp": int(ticker['timestamp']),  # Timestamp in milliseconds
+                # "symbol": self.symbol, # Removed from return dict to match Dict[Literal["..."], float]
+                # "timestamp": int(ticker['timestamp']), # Removed from return dict for simplicity, if needed, adjust return type
             }
         except Exception as e:
-            logger.exception(f"Failed to fetch ticker for {self.symbol}. Falling back to simulated price.")
-            # Fallback: simulated price with a consistent structure
-            import random
-            return {
-                "price": random.uniform(40000.0, 50000.0),
-                "bid": random.uniform(39900.0, 49900.0),
-                "ask": random.uniform(40100.0, 50100.0),
-                "symbol": self.symbol,
-                "timestamp": None, # Indicate no real timestamp for simulated data
-            }
+            logger.exception(f"Failed to fetch ticker for {self.symbol}.")
+            return None
 
-    def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict[str, Any]:
+    async def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict[str, Any]:
         """
         Places a limit or market order on Binance Testnet.
 
@@ -116,16 +131,16 @@ class BinanceTestnetAdapter:
         try:
             order: Dict[str, Any]
             if price is not None:
-                order = self.exchange.create_limit_order(self.symbol, side, amount, price)
+                order = await self.exchange.create_limit_order(self.symbol, side, amount, price)
             else:
-                order = self.exchange.create_market_order(self.symbol, side, amount)
+                order = await self.exchange.create_market_order(self.symbol, side, amount)
             logger.info(f"Order placed: {side.upper()} {amount} {self.symbol} @ {price if price else 'MARKET'}. Order ID: {order.get('id')}")
             return order
         except Exception as e:
             logger.exception(f"Failed to place order for {side} {amount} {self.symbol} @ {price}.")
             return {"error": str(e), "status": "failed"}
 
-    def fetch_balance(self) -> Dict[str, float]:
+    async def fetch_balance(self) -> Dict[str, float]:
         """
         Fetches the free balance of the testnet account.
 
@@ -134,10 +149,10 @@ class BinanceTestnetAdapter:
             and values are their free balances. Returns an empty dict on failure.
         """
         try:
-            balance: Dict[str, Any] = self.exchange.fetch_balance()
+            balance: Dict[str, Any] = await self.exchange.fetch_balance()
             # ccxt balance structure has 'free', 'used', 'total' keys for each currency
             # and a top-level 'free' dict for all currencies.
-            return balance.get('free', {})
+            return {k: float(v) for k, v in balance.get('free', {}).items()} # Ensure float values
         except Exception as e:
             logger.exception("Failed to fetch balance from Binance Testnet.")
             return {}

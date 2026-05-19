@@ -6,7 +6,7 @@ pre-defined risk limits, such as maximum daily loss.
 Currently, most pre-trade checks are permissive stubs.
 """
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -21,32 +21,34 @@ class CircuitBreaker:
 
     def __init__(self, max_daily_loss: float = 5000.0, max_slippage: float = 0.02) -> None:
         """
-        Initializes the CircuitBreaker with risk thresholds.
+        Initializes the CircuitBreaker with specified risk thresholds.
 
         Args:
-            max_daily_loss (float): The maximum allowed daily loss in currency units.
-                                    If daily PnL drops below -max_daily_loss, trading halts.
-            max_slippage (float): The maximum allowed slippage ratio for a trade.
-                                  (Currently not actively used in checks but stored).
+            max_daily_loss: The maximum allowed daily loss (in currency units).
+                            If daily PnL drops below -max_daily_loss, trading halts.
+            max_slippage: The maximum allowed slippage ratio for a trade.
+                          (Currently stored but not actively used in checks).
         """
         self.max_daily_loss: float = max_daily_loss
         self.max_slippage: float = max_slippage
         self.daily_pnl: float = 0.0
         self.halted: bool = False
-        logger.info(f"CircuitBreaker initialized with max_daily_loss={max_daily_loss}, max_slippage={max_slippage}")
+        logger.info(
+            f"CircuitBreaker initialized with max_daily_loss={max_daily_loss}, max_slippage={max_slippage}"
+        )
 
     def pre_trade_check(self, signal: Dict[str, Any], portfolio: Dict[str, Any]) -> bool:
         """
         Performs checks before a trade is executed.
 
         Args:
-            signal (Dict[str, Any]): The trading signal generated.
-                                     Expected keys might include 'symbol', 'action', 'amount'.
-            portfolio (Dict[str, Any]): The current portfolio state.
-                                        Expected keys might include 'cash', 'positions'.
+            signal: The trading signal generated.
+                    Expected keys might include 'symbol', 'action', 'amount'.
+            portfolio: The current portfolio state.
+                       Expected keys might include 'cash', 'positions'.
 
         Returns:
-            bool: True if the trade is allowed to proceed, False otherwise.
+            True if the trade is allowed to proceed, False otherwise.
         """
         if self.halted:
             logger.warning("Circuit breaker is halted. Preventing trade execution.")
@@ -63,8 +65,8 @@ class CircuitBreaker:
         If the maximum daily loss is reached, the circuit breaker will halt trading.
 
         Args:
-            fill (Dict[str, Any]): Information about the filled trade.
-                                   Expected to contain 'pnl' (float) key.
+            fill: Information about the filled trade.
+                  Expected to contain a 'pnl' (float) key.
         """
         pnl: float = fill.get('pnl', 0.0)
         self.daily_pnl += pnl
@@ -72,11 +74,15 @@ class CircuitBreaker:
 
         if self.daily_pnl < -self.max_daily_loss:
             self.halted = True
-            logger.error(f"Daily loss limit reached! Halting trading. Current daily PnL: {self.daily_pnl:.2f} (Limit: {-self.max_daily_loss:.2f})")
+            logger.error(
+                f"Daily loss limit reached! Halting trading. Current daily PnL: {self.daily_pnl:.2f} "
+                f"(Limit: {-self.max_daily_loss:.2f})"
+            )
 
     def reset_daily(self) -> None:
         """
         Resets the daily PnL counter and unhalts the circuit breaker.
+
         This method should be called at the start of each new trading day.
         """
         self.daily_pnl = 0.0

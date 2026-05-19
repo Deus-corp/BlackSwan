@@ -15,14 +15,15 @@ import time
 import uuid
 import json
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Match
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.intelligence.llm_client import LLMClient
 from swarm_config import config
 
+# Configure logging for the module
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s')
-logger = logging.getLogger("ExplorerMetaAgent")
+logger = logging.getLogger(__name__) # Use __name__ for consistent logging names
 
 class ExplorerMetaAgent:
     """
@@ -31,7 +32,7 @@ class ExplorerMetaAgent:
     It uses an LLM to classify web findings (USEFUL, HARMFUL, NEUTRAL) and
     generates new URLs based on useful findings, publishing them to the CRDT.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the ExplorerMetaAgent with a unique node ID,
         an LLM client configured for smaller contexts, and a CRDT adapter.
@@ -62,7 +63,7 @@ class ExplorerMetaAgent:
     async def reflect(self) -> None:
         """
         Performs the reflection process, which involves:
-        1. Retrieving all "explorer_finding" entries from the CRDT.
+        1. Retrieving "explorer_finding" entries from the CRDT that need classification.
         2. Classifying a subset of these findings using the LLM into categories
            like USEFUL, HARMFUL, or NEUTRAL, and updating their classification in CRDT.
         3. Generating new related URLs based on "USEFUL" findings using the LLM.
@@ -73,7 +74,7 @@ class ExplorerMetaAgent:
         try:
             findings_to_classify: List[Dict[str, Any]] = await self._get_findings_for_classification()
             if not findings_to_classify:
-                logger.debug("No new findings to classify.")
+                logger.debug("No new unclassified findings to process.")
                 return
 
             classified_findings: List[Dict[str, Any]] = await self._classify_findings(findings_to_classify)
@@ -84,35 +85,46 @@ class ExplorerMetaAgent:
 
     async def _get_findings_for_classification(self) -> List[Dict[str, Any]]:
         """
-        Retrieves "explorer_finding" entries from the CRDT that have not yet been classified,
-        or those recently updated.
+        Retrieves "explorer_finding" entries from the CRDT that have not yet been classified.
+
+        It sorts them by timestamp and returns the 5 most recent unclassified findings.
 
         Returns:
             List[Dict[str, Any]]: A list of finding dictionaries suitable for classification.
         """
-        # CRDTAdapter.state is assumed to be an in-memory representation, hence not awaited.
         all_state: Dict[str, Any] = self.crdt.state
-        findings: List[Dict[str, Any]] = [
-            v for k, v in all_state.items()
-            if isinstance(v, dict) and v.get("type") == "explorer_finding"
-        ]
-        # Prioritize unclassified findings or those without a recent classification update
-        # For simplicity, we just take the first N findings to process in a cycle
-        return findings[-5:] # Process the 5 most recent findings
+        unclassified_findings: List[Dict[str, Any]] = []
+
+        for v in all_state.values():
+            if (isinstance(v, dict) and
+                    v.get("type") == "explorer_finding" and
+                    v.get("classification") not in ("USEFUL", "HARMFUL", "NEUTRAL")):
+                # Ensure a timestamp exists for sorting, default to 0 if missing.
+                # Use a copy to avoid modifying the original CRDT state during processing.
+                finding_copy = v.copy()
+                finding_copy.setdefault("timestamp", 0.0)
+                unclassified_findings.append(finding_copy)
+
+        # Sort by timestamp in descending order to get the most recent unclassified ones
+        unclassified_findings.sort(key=lambda x: x.get("timestamp", 0.0), reverse=True)
+
+        # Process up to 5 of the most recent unclassified findings in each cycle
+        return unclassified_findings[:5]
 
     async def _classify_findings(self, findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Classifies a subset of findings using the LLM and updates their classification in the CRDT.
 
         Args:
-            findings (List[Dict[str, Any]]): A list of finding dictionaries to classify.
+            findings: A list of finding dictionaries to classify.
 
         Returns:
-            List[Dict[str, Any]]: The list of findings after classification and CRDT update.
+            The list of findings after classification and CRDT update. Includes
+            both originally classified findings and newly classified ones.
         """
         classified_results: List[Dict[str, Any]] = []
         for f in findings:
-            # Skip if already classified in this run, or if content is missing
+            # Skip if already classified, or if content is missing
             if f.get("classification") in ("USEFUL", "HARMFUL", "NEUTRAL") or not f.get("content_preview"):
                 classified_results.append(f)
                 continue
@@ -125,23 +137,25 @@ Assistant: """
             response: Optional[str] = self.llm.generate(prompt, max_tokens=10, temperature=0.2)
             if response:
                 # Remove XML tags (e.g., <think>, </think>) that LLM sometimes outputs
-                cleaned_response = re.sub(r'<[^>]+>', '', response).strip()
+                cleaned_response: str = re.sub(r'<[^>]+>', '', response).strip()
                 classification: str = cleaned_response.upper()
                 if classification in ("USEFUL", "HARMFUL", "NEUTRAL"):
-                    # Create a copy to avoid modifying the CRDT state directly without proper synchronization
-                    # or unintentional side effects. Add a unique ID for the update.
+                    # IMPORTANT CRDT NOTE: The original code generates a *new* GID for an update.
+                    # This implies that each classification event creates a new CRDT record,
+                    # rather than updating the existing one in place. This specific CRDT
+                    # implementation might reconcile these later. Preserving original behavior.
                     updated_finding = f.copy()
                     updated_finding["classification"] = classification
                     updated_finding["timestamp"] = time.time() # Update timestamp to mark as fresh
-                    updated_finding["gid"] = f"exp_f_{int(time.time())}_{uuid.uuid4().hex[:4]}" # New GID for update
+                    updated_finding["gid"] = f"exp_f_{int(time.time())}_{uuid.uuid4().hex[:4]}" # New GID for this update event
                     await self.crdt.add_genome(updated_finding)
                     classified_results.append(updated_finding)
                     logger.info(f"Classified {url} as: {classification}")
                 else:
-                    logger.warning(f"LLM returned invalid classification '{classification}' for {url}.")
+                    logger.warning(f"LLM returned invalid classification '{classification}' for {url}. Keeping original finding.")
                     classified_results.append(f) # Keep original if classification is invalid
             else:
-                logger.warning(f"LLM failed to classify URL: {url}")
+                logger.warning(f"LLM failed to classify URL: {url}. Keeping original finding.")
                 classified_results.append(f) # Keep original if LLM failed
         return classified_results
 
@@ -151,30 +165,35 @@ Assistant: """
         and publishes them as "explorer_targets" to the CRDT.
 
         Args:
-            classified_findings (List[Dict[str, Any]]): A list of findings, some of which may be classified.
+            classified_findings: A list of findings, some of which may be classified.
         """
         useful_findings: List[Dict[str, Any]] = [f for f in classified_findings if f.get("classification") == "USEFUL"]
         if not useful_findings:
             logger.debug("No useful findings to generate new targets from.")
             return
 
+        # Use up to 3 most recent useful findings for context to generate new URLs
         # Filter for non-None URLs before joining
-        # Use up to 3 most recent useful findings for context
-        url_list: List[str] = [f_url for f in useful_findings[-3:] if (f_url := f.get("url")) is not None]
-        if not url_list:
+        recent_useful_urls: List[str] = [
+            str(f_url) for f in useful_findings[-3:]
+            if (f_url := f.get("url")) is not None and isinstance(f_url, str) and f_url.strip()
+        ]
+
+        if not recent_useful_urls:
             logger.debug("No valid URLs found in useful findings to base new suggestions on.")
             return
 
-        prompt: str = f"User: Based on these useful URLs: {', '.join(url_list)}. Suggest 2 new related URLs. Output ONLY JSON with 'urls' array.\nAssistant: {{"
+        prompt: str = f"User: Based on these useful URLs: {', '.join(recent_useful_urls)}. Suggest 2 new related URLs. Output ONLY JSON with 'urls' array.\nAssistant: {{"
         response: Optional[str] = self.llm.generate(prompt, max_tokens=80, temperature=0.3)
 
         if response:
-            json_match = re.search(r'{.*}', response, re.DOTALL)
+            json_match: Optional[Match[str]] = re.search(r'{.*}', response, re.DOTALL)
             if json_match:
-                candidate_json_str = json_match.group(0)
+                candidate_json_str: str = json_match.group(0)
                 try:
                     data: Dict[str, Any] = json.loads(candidate_json_str)
                     if "urls" in data and isinstance(data["urls"], list):
+                        # Filter for valid, non-empty string URLs
                         new_urls: List[str] = [str(u).strip() for u in data["urls"] if isinstance(u, str) and u.strip()]
                         if new_urls:
                             cmd: Dict[str, Any] = {

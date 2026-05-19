@@ -8,10 +8,30 @@ trade results, and determining the node's liveness status.
 import logging
 from typing import Any, Dict, Optional
 
+"""
+Capital & Risk Manager – управление капиталом, burn-rate, выживаемость.
+
+This module provides the CapitalManager class responsible for managing
+the financial capital of a swarm node, applying burn rates, processing
+trade results, and determining the node's liveness status.
+"""
+import logging
+from typing import Dict, Optional, Protocol, runtime_checkable
+
 # Assuming 'swarm_config' module provides a 'config' object with necessary attributes.
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
+
+
+# Define a Protocol for SurvivalEvaluator to provide better type hints
+@runtime_checkable
+class SurvivalEvaluatorProtocol(Protocol):
+    """
+    A protocol defining the expected interface for a SurvivalEvaluator.
+    """
+    dq: float
+    liveness: float
 
 
 class CapitalManager:
@@ -33,11 +53,11 @@ class CapitalManager:
         self.burn_rate: float = config.burn_rate
         self.alert_threshold: float = config.capital_alert_threshold
 
-        # The 'survival' attribute is expected to be an instance of SurvivalEvaluator
+        # The 'survival' attribute is expected to be an instance of SurvivalEvaluatorProtocol
         # and is set externally after initialization.
-        self.survival: Optional[Any] = None
+        self.survival: Optional[SurvivalEvaluatorProtocol] = None
 
-    def set_survival(self, survival_evaluator: Any) -> None:
+    def set_survival(self, survival_evaluator: SurvivalEvaluatorProtocol) -> None:
         """
         Connects a SurvivalEvaluator instance to the CapitalManager.
 
@@ -45,7 +65,7 @@ class CapitalManager:
         liveness and DQ (Decentralization Quotient) metrics.
 
         Args:
-            survival_evaluator: An instance of SurvivalEvaluator or a similar object
+            survival_evaluator: An instance of SurvivalEvaluatorProtocol or a similar object
                                  that provides 'dq' and 'liveness' attributes.
         """
         self.survival = survival_evaluator
