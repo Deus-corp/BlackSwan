@@ -264,6 +264,10 @@ class SwarmConfig(BaseSettings):
         default=100.0, alias="CAPITAL_ALERT_THRESHOLD",
         description="Threshold below which a capital alert is triggered."
     )
+    capital_watchdog_threshold: float = Field(
+        default=100.0, ge=0.0, alias="CAPITAL_WATCHDOG_THRESHOLD",
+        description="If capital falls below this threshold, the watchdog triggers a shutdown/restart."
+   )
     quarantine_enabled: bool = Field(
         default=False, alias="QUARANTINE_ENABLED",
         description="Enable/disable node quarantine mechanism."

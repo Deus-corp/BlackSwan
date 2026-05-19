@@ -237,11 +237,16 @@ class CRDTStorage:
         В данной реализации `_connect` вызывается внутри блока `with self._lock`,
         обеспечивая, что только один поток использует соединение одновременно.
 
+        Также включает WAL-режим и задаёт таймаут занятости для предотвращения
+        ошибок "database is locked" при конкурентном доступе.
+
         Returns:
             sqlite3.Connection: Объект соединения SQLite.
         """
         conn = sqlite3.connect(self.path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row # Allows accessing columns by name
+        conn.row_factory = sqlite3.Row  # Allows accessing columns by name
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=5000;")
         return conn
 
     def _init_db(self) -> None:
