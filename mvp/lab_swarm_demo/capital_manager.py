@@ -1,19 +1,5 @@
 """
-Capital & Risk Manager – управление капиталом, burn-rate, выживаемость.
-
-This module provides the CapitalManager class responsible for managing
-the financial capital of a swarm node, applying burn rates, processing
-trade results, and determining the node's liveness status.
-"""
-import logging
-from typing import Any, Dict, Optional
-
-"""
-Capital & Risk Manager – управление капиталом, burn-rate, выживаемость.
-
-This module provides the CapitalManager class responsible for managing
-the financial capital of a swarm node, applying burn rates, processing
-trade results, and determining the node's liveness status.
+Manages swarm node capital and survival status.
 """
 import logging
 from typing import Dict, Optional, Protocol, runtime_checkable
@@ -48,6 +34,7 @@ class CapitalManager:
 
         Args:
             capital: The starting capital for the node. Defaults to 1000.0.
+                     Consider loading this from `config` if it needs to be dynamically configured.
         """
         self.capital: float = capital
         self.burn_rate: float = config.burn_rate

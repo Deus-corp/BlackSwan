@@ -7,15 +7,29 @@ import time
 import json
 import os
 import logging
-import random  # Added for dummy MarketEnvironment volatility
-from typing import Dict, Union, Any, Final
+import random
+from typing import Dict, Union, Any, Final, TypedDict # Added TypedDict
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__) # Use a logger instance for better practice
 
-# Assuming sim.engine.environment.MarketEnvironment exists and is importable
-# In a real project, this would typically be part of a proper module import.
+# Define a TypedDict for the structure of market ticks that will be published.
+# This ensures type consistency for the data sent to Redis.
+class MarketTick(TypedDict):
+    """
+    Represents a single market data tick to be published.
+
+    Attributes:
+        price: The current simulated price of the asset.
+        volatility_estimate: An estimate of the market's volatility.
+        drift: The current drift parameter of the market.
+    """
+    price: float
+    volatility_estimate: float
+    drift: float
+
+
 try:
     from sim.engine.environment import MarketEnvironment
     logger.info("Successfully imported MarketEnvironment from 'sim.engine.environment'.")
@@ -102,27 +116,39 @@ def run_market_service() -> None:
             # or a dictionary containing more detailed state information.
             raw_state: Union[float, Dict[str, Any]] = market_env.step()
 
-            # Ensure market_state is always a dictionary (as expected by roi_dispatcher)
-            # This block converts a simple float price into a dictionary if necessary.
-            market_state: Dict[str, Union[float, Any]]
+            # Construct the MarketTick dictionary explicitly, ensuring all required fields are present.
+            market_tick_data: MarketTick
+
             if isinstance(raw_state, dict):
-                # If the MarketEnvironment already returned a dict, use it directly.
-                # Assuming if it's a dict, it's complete with required fields like 'price',
-                # 'volatility_estimate', and 'drift'. If not, additional logic might be
-                # needed here to populate missing fields from global config.
-                market_state = raw_state
+                # If the MarketEnvironment returned a dict, extract the required fields.
+                # Use global config as fallbacks if not explicitly provided in the dict.
+                # Log a warning if 'price' is missing or non-numeric from the dict.
+                price_from_dict = raw_state.get("price")
+                if not isinstance(price_from_dict, (int, float)):
+                    logger.warning(
+                        f"MarketEnvironment returned a dict but 'price' key is missing or non-numeric: "
+                        f"{price_from_dict}. Using 0.0 as fallback."
+                    )
+                    price_val = 0.0
+                else:
+                    price_val = float(price_from_dict)
+
+                market_tick_data = {
+                    "price": price_val,
+                    "volatility_estimate": raw_state.get("volatility_estimate", VOLATILITY), # Fallback to config
+                    "drift": raw_state.get("drift", DRIFT), # Fallback to config
+                }
             else:
                 # If step returned just a price (float), create the expected dictionary
-                # with additional estimated parameters.
-                market_state = {
+                market_tick_data = {
                     "price": raw_state,
-                    "volatility_estimate": VOLATILITY, # Assumed to be an estimate, using configured value
+                    "volatility_estimate": VOLATILITY, # Using configured value as estimate
                     "drift": DRIFT                     # Using configured drift value
                 }
 
             # Publish the market state as a JSON string to the "market_ticks" channel in Redis
-            redis_client.publish(MARKET_CHANNEL, json.dumps(market_state))
-            logger.debug(f"Published market tick: {json.dumps(market_state)}")
+            redis_client.publish(MARKET_CHANNEL, json.dumps(market_tick_data))
+            logger.debug(f"Published market tick: {json.dumps(market_tick_data)}")
 
         except Exception as e:
             logger.error(f"Error during market tick generation or publishing: {e}", exc_info=True)
@@ -132,4 +158,6 @@ def run_market_service() -> None:
         time.sleep(INTERVAL)
 
 if __name__ == "__main__":
+    # This block executes when the script is run directly.
+    # It starts the market simulation and publishing service.
     run_market_service()

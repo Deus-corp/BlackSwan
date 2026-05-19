@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
-# Move docker_service imports to the top for better practice
 from dashboard.docker_service import get_swarm_logs, save_logs_to_disk, list_containers
 from dashboard.routes.base_template import render_page
-from dashboard.docker_service import list_containers
+from typing import Any # Needed for dict type hints
 
 router = APIRouter()
 
@@ -34,7 +33,6 @@ def logs_text() -> PlainTextResponse:
     Retrieves the latest Docker swarm logs as plain text.
     Fetches the last 200 lines of logs.
     """
-    # get_swarm_logs is imported at the top
     return PlainTextResponse(get_swarm_logs(200))
 
 @router.post("/api/save_logs", response_class=PlainTextResponse)
@@ -43,7 +41,6 @@ def save_logs() -> PlainTextResponse:
     Saves the current Docker swarm logs to a file on disk.
     Returns a message indicating the success or failure of the operation.
     """
-    # save_logs_to_disk is imported at the top
     msg: str = save_logs_to_disk()
     return PlainTextResponse(msg)
 
@@ -53,10 +50,9 @@ def container_status() -> PlainTextResponse:
     Retrieves the status of all Docker containers in the swarm.
     Returns a plain text string with each container's name and status.
     """
-    # list_containers is imported at the top
-    containers: list[dict] = list_containers()
+    containers: list[dict[str, Any]] = list_containers()
     if not containers:
         return PlainTextResponse("No containers found.")
-    
-    statuses = [f"{c['name']}: {c['status']}" for c in containers]
+
+    statuses: list[str] = [f"{c['name']}: {c['status']}" for c in containers]
     return PlainTextResponse("\n".join(statuses))

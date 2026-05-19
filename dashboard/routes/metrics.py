@@ -4,14 +4,18 @@ related to Docker swarm nodes, as well as an API endpoint for fetching
 these metrics in JSON format.
 """
 import re
+import logging
 from collections import defaultdict
-from typing import Any, Dict, List, Pattern, Tuple, Union
-from fastapi import APIRouter
+from typing import Any, Union
+
 import docker
+from fastapi import APIRouter
 from prometheus_client import Gauge, generate_latest, CollectorRegistry
 from fastapi.responses import PlainTextResponse
+
 from dashboard.docker_service import list_containers, get_container_logs
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 registry: CollectorRegistry = CollectorRegistry()
 
@@ -21,12 +25,12 @@ fitness_gauge: Gauge = Gauge('swarm_fitness', 'Fitness per node', ['node'], regi
 diversity_gauge: Gauge = Gauge('swarm_diversity', 'Diversity per node', ['node'], registry=registry)
 crdt_size_gauge: Gauge = Gauge('swarm_crdt_size', 'CRDT size per node', ['node'], registry=registry)
 
-def update_prometheus_metrics(metrics_dict: Dict[str, Dict[str, Union[float, int, str]]]) -> None:
+def update_prometheus_metrics(metrics_dict: dict[str, dict[str, Union[float, int, str]]]) -> None:
     """
     Updates Prometheus gauges with metrics obtained from `collect_metrics()`.
 
     Args:
-        metrics_dict (Dict[str, Dict[str, Union[float, int, str]]]): A dictionary
+        metrics_dict (dict[str, dict[str, Union[float, int, str]]]): A dictionary
             where keys are node names and values are dictionaries of their latest metrics.
     """
     for node, data in metrics_dict.items():
@@ -42,38 +46,39 @@ async def prometheus_metrics() -> PlainTextResponse:
     Exposes Prometheus metrics for the swarm nodes.
     Retrieves metrics from containers and updates the Prometheus gauges.
     """
-    data: Dict[str, Dict[str, Any]] = collect_metrics()
+    data: dict[str, dict[str, Any]] = collect_metrics()
     update_prometheus_metrics(data)
     return PlainTextResponse(generate_latest(registry))
 
 # Regex pattern to extract metrics from swarm node logs
-LOG_PATTERN: Pattern[str] = re.compile(
+LOG_PATTERN: re.Pattern[str] = re.compile(
     r'SwarmNode:\[([^\]]+)\]\s+step=(\d+)\s+capital=([\d.]+)\s+dq=[\d.]+\s+fitness=([\d.]+)\s+diversity=([\d.]+)\s+crdt_size=(\d+)\s+niche=(\w+)'
 )
 
-def collect_metrics() -> Dict[str, Dict[str, Any]]:
+def collect_metrics() -> dict[str, dict[str, Any]]:
     """
     Collects metrics from running Docker swarm nodes by parsing their logs.
     It identifies containers by a specific name prefix and extracts the latest
     metrics (step, capital, fitness, diversity, crdt_size, niche) from their logs.
 
     Returns:
-        Dict[str, Dict[str, Any]]: A dictionary where keys are node names and values
+        dict[str, dict[str, Any]]: A dictionary where keys are node names and values
             are dictionaries of their latest metrics.
     """
-    metrics: defaultdict[str, Dict[str, Any]] = defaultdict(dict)
-    containers = list_containers()  # returns list of dicts
+    metrics: defaultdict[str, dict[str, Any]] = defaultdict(dict)
+    containers: list[dict[str, Any]] = list_containers()
     for c in containers:
-        container_name = c['name']
+        container_name: str = c['name']
         try:
-            log = get_container_logs(container_name, tail=200)
+            log: str = get_container_logs(container_name, tail=200)
         except Exception:
+            logger.exception(f"Error fetching logs for container: {container_name}")
             continue
         if not log:
             continue
-        matches: List[Tuple[str, ...]] = LOG_PATTERN.findall(log)
+        matches: list[tuple[str, ...]] = LOG_PATTERN.findall(log)
         if matches:
-            last: Tuple[str, ...] = matches[-1]
+            last: tuple[str, ...] = matches[-1]
             node: str = container_name.replace("lab_swarm_demo-", "")
             metrics[node] = {
                 "step": int(last[1]),
@@ -83,10 +88,10 @@ def collect_metrics() -> Dict[str, Dict[str, Any]]:
                 "crdt_size": int(last[5]),
                 "niche": last[6],
             }
-    return dict(metrics) # Convert defaultdict to dict for cleaner API response
+    return dict(metrics)
 
 @router.get("/api/metrics")
-async def api_metrics() -> Dict[str, Dict[str, Any]]:
+async def api_metrics() -> dict[str, dict[str, Any]]:
     """
     API endpoint to retrieve collected swarm node metrics in JSON format.
     """

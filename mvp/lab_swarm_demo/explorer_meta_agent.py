@@ -15,7 +15,7 @@ import time
 import uuid
 import json
 import re
-from typing import Dict, Any, List, Optional, Match
+from typing import Dict, Any, List, Optional, Match, Literal, TypedDict
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.intelligence.llm_client import LLMClient
@@ -23,7 +23,36 @@ from swarm_config import config
 
 # Configure logging for the module
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s')
-logger = logging.getLogger(__name__) # Use __name__ for consistent logging names
+logger = logging.getLogger(__name__)
+
+
+# --- Type Definitions for CRDT Records ---
+
+class ExplorerFinding(TypedDict):
+    """
+    Represents a web exploration finding stored in the CRDT.
+    Fields are designed to match CRDT entries with specific types and expected content.
+    """
+    type: Literal["explorer_finding"]
+    url: Optional[str] # Can be None if URL was not captured or invalid
+    content_preview: Optional[str] # Can be None if content could not be extracted
+    classification: Literal['USEFUL', 'HARMFUL', 'NEUTRAL', 'unclassified']
+    timestamp: float
+    gid: str # Global ID, unique identifier for the entry
+
+
+class ExplorerTargetsData(TypedDict):
+    """Specific data structure for the 'data' field of explorer_targets."""
+    urls: List[str]
+
+
+class ExplorerTargets(TypedDict):
+    """Represents a set of new URLs suggested for exploration."""
+    type: Literal["explorer_targets"]
+    data: ExplorerTargetsData
+    timestamp: float
+    gid: str # Global ID, unique identifier for the entry
+
 
 class ExplorerMetaAgent:
     """
@@ -72,46 +101,57 @@ class ExplorerMetaAgent:
         Error handling is included to catch issues during LLM interaction or CRDT updates.
         """
         try:
-            findings_to_classify: List[Dict[str, Any]] = await self._get_findings_for_classification()
+            findings_to_classify: List[ExplorerFinding] = await self._get_findings_for_classification()
             if not findings_to_classify:
                 logger.debug("No new unclassified findings to process.")
                 return
 
-            classified_findings: List[Dict[str, Any]] = await self._classify_findings(findings_to_classify)
+            classified_findings: List[ExplorerFinding] = await self._classify_findings(findings_to_classify)
             await self._generate_new_targets(classified_findings)
 
         except Exception as e:
             logger.error(f"ExplorerMetaAgent reflection failed: {e}", exc_info=True)
 
-    async def _get_findings_for_classification(self) -> List[Dict[str, Any]]:
+    async def _get_findings_for_classification(self) -> List[ExplorerFinding]:
         """
         Retrieves "explorer_finding" entries from the CRDT that have not yet been classified.
 
         It sorts them by timestamp and returns the 5 most recent unclassified findings.
 
         Returns:
-            List[Dict[str, Any]]: A list of finding dictionaries suitable for classification.
+            List[ExplorerFinding]: A list of finding dictionaries suitable for classification.
         """
         all_state: Dict[str, Any] = self.crdt.state
-        unclassified_findings: List[Dict[str, Any]] = []
+        unclassified_findings_raw: List[Dict[str, Any]] = []
 
         for v in all_state.values():
             if (isinstance(v, dict) and
                     v.get("type") == "explorer_finding" and
-                    v.get("classification") not in ("USEFUL", "HARMFUL", "NEUTRAL")):
-                # Ensure a timestamp exists for sorting, default to 0 if missing.
-                # Use a copy to avoid modifying the original CRDT state during processing.
-                finding_copy = v.copy()
-                finding_copy.setdefault("timestamp", 0.0)
-                unclassified_findings.append(finding_copy)
+                    v.get("gid") is not None): # GID is essential for CRDT entries
+
+                # Ensure 'classification' is one of the Literal types or 'unclassified'
+                classification_value = v.get("classification")
+                if classification_value not in ('USEFUL', 'HARMFUL', 'NEUTRAL', 'unclassified'):
+                    classification_value = 'unclassified' # Default to unclassified if invalid or missing
+
+                # Only consider findings that are currently unclassified
+                if classification_value == 'unclassified':
+                    finding_copy = v.copy()
+                    finding_copy.setdefault("timestamp", 0.0) # Ensure timestamp for sorting
+                    finding_copy["classification"] = classification_value # Set normalized classification
+                    finding_copy.setdefault("url", None) # Explicitly set to None if missing for TypedDict
+                    finding_copy.setdefault("content_preview", None) # Explicitly set to None if missing for TypedDict
+                    unclassified_findings_raw.append(finding_copy)
+
 
         # Sort by timestamp in descending order to get the most recent unclassified ones
-        unclassified_findings.sort(key=lambda x: x.get("timestamp", 0.0), reverse=True)
+        unclassified_findings_raw.sort(key=lambda x: x.get("timestamp", 0.0), reverse=True)
 
         # Process up to 5 of the most recent unclassified findings in each cycle
-        return unclassified_findings[:5]
+        # Convert raw dictionaries to ExplorerFinding TypedDicts
+        return [ExplorerFinding(**f) for f in unclassified_findings_raw[:5]]
 
-    async def _classify_findings(self, findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _classify_findings(self, findings: List[ExplorerFinding]) -> List[ExplorerFinding]:
         """
         Classifies a subset of findings using the LLM and updates their classification in the CRDT.
 
@@ -122,15 +162,15 @@ class ExplorerMetaAgent:
             The list of findings after classification and CRDT update. Includes
             both originally classified findings and newly classified ones.
         """
-        classified_results: List[Dict[str, Any]] = []
+        classified_results: List[ExplorerFinding] = []
         for f in findings:
-            # Skip if already classified, or if content is missing
-            if f.get("classification") in ("USEFUL", "HARMFUL", "NEUTRAL") or not f.get("content_preview"):
+            # Skip if already classified, or if content_preview is missing
+            if f["classification"] in ("USEFUL", "HARMFUL", "NEUTRAL") or not f.get("content_preview"):
                 classified_results.append(f)
                 continue
 
-            content: str = f.get("content_preview", "")
-            url: str = f.get("url", "N/A")
+            content: str = f.get("content_preview", "") # Can be None, so use .get with default
+            url: str = f.get("url", "N/A") # Can be None, so use .get with default
             prompt: str = f"""User: Classify this web finding from {url}. Content preview: {content}
 Categories: USEFUL, HARMFUL, NEUTRAL. Output ONLY one word.
 Assistant: """
@@ -143,9 +183,10 @@ Assistant: """
                     # IMPORTANT CRDT NOTE: The original code generates a *new* GID for an update.
                     # This implies that each classification event creates a new CRDT record,
                     # rather than updating the existing one in place. This specific CRDT
-                    # implementation might reconcile these later. Preserving original behavior.
-                    updated_finding = f.copy()
-                    updated_finding["classification"] = classification
+                    # implementation might reconcile these later. Preserving original behavior,
+                    # which means creating a new GID and timestamp for the updated classification.
+                    updated_finding: ExplorerFinding = f.copy() # type: ignore [misc] # Copying a TypedDict returns dict, requires cast for re-assignment
+                    updated_finding["classification"] = classification # type: ignore [assignment] # Literal assignment check for mypy
                     updated_finding["timestamp"] = time.time() # Update timestamp to mark as fresh
                     updated_finding["gid"] = f"exp_f_{int(time.time())}_{uuid.uuid4().hex[:4]}" # New GID for this update event
                     await self.crdt.add_genome(updated_finding)
@@ -153,13 +194,14 @@ Assistant: """
                     logger.info(f"Classified {url} as: {classification}")
                 else:
                     logger.warning(f"LLM returned invalid classification '{classification}' for {url}. Keeping original finding.")
-                    classified_results.append(f) # Keep original if classification is invalid
+                    classified_results.append(f) # Keep original if classification is invalid (unclassified)
             else:
                 logger.warning(f"LLM failed to classify URL: {url}. Keeping original finding.")
-                classified_results.append(f) # Keep original if LLM failed
+                # If LLM failed, the finding remains 'unclassified' (or whatever it was before)
+                classified_results.append(f)
         return classified_results
 
-    async def _generate_new_targets(self, classified_findings: List[Dict[str, Any]]) -> None:
+    async def _generate_new_targets(self, classified_findings: List[ExplorerFinding]) -> None:
         """
         Generates new related URLs based on "USEFUL" findings using the LLM
         and publishes them as "explorer_targets" to the CRDT.
@@ -167,7 +209,7 @@ Assistant: """
         Args:
             classified_findings: A list of findings, some of which may be classified.
         """
-        useful_findings: List[Dict[str, Any]] = [f for f in classified_findings if f.get("classification") == "USEFUL"]
+        useful_findings: List[ExplorerFinding] = [f for f in classified_findings if f["classification"] == "USEFUL"]
         if not useful_findings:
             logger.debug("No useful findings to generate new targets from.")
             return
@@ -176,7 +218,7 @@ Assistant: """
         # Filter for non-None URLs before joining
         recent_useful_urls: List[str] = [
             str(f_url) for f in useful_findings[-3:]
-            if (f_url := f.get("url")) is not None and isinstance(f_url, str) and f_url.strip()
+            if (f_url := f["url"]) is not None and isinstance(f_url, str) and f_url.strip()
         ]
 
         if not recent_useful_urls:
@@ -196,13 +238,13 @@ Assistant: """
                         # Filter for valid, non-empty string URLs
                         new_urls: List[str] = [str(u).strip() for u in data["urls"] if isinstance(u, str) and u.strip()]
                         if new_urls:
-                            cmd: Dict[str, Any] = {
+                            cmd: ExplorerTargets = { # type: ignore [assignment] # Safely assign dict to TypedDict after verification
                                 "type": "explorer_targets",
                                 "data": {"urls": new_urls},
                                 "timestamp": time.time(),
                                 "gid": f"exp_targets_{int(time.time())}_{uuid.uuid4().hex[:4]}",
                             }
-                            await self.crdt.add_genome(cmd)
+                            await self.crdt.add_genome(cmd) # type: ignore [arg-type] # CRDTAdapter expects Dict[str, Any]
                             logger.info(f"🔎 ExplorerMetaAgent suggested URLs: {new_urls}")
                         else:
                             logger.warning(f"LLM suggested an empty or invalid list of URLs from response: {response}")

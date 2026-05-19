@@ -1,5 +1,5 @@
 """
-Глобальные счётчики мутаций LLM, вынесенные из node_agent для избежания циклических импортов.
+Global LLM mutation counters, refactored from node_agent to avoid circular imports.
 Refactored into a class for better state management.
 """
 import threading

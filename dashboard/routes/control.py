@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, PlainTextResponse
-from typing import Awaitable, Callable, Any
 
 from dashboard.docker_service import (
     start_swarm,
     stop_swarm,
     rebuild_swarm,
-    update_config, # update_config is imported but not used, good to keep it clean or use it
     get_container_stats,
     inspect_container,
     pause_container,

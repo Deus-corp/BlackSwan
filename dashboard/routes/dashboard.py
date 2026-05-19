@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
+from dashboard.routes.base_template import render_page
+
 router = APIRouter()
 
 DASHBOARD_CONTENT: str = """
