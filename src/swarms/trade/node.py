@@ -265,7 +265,7 @@ class SwarmNode:
         self.ctx.trade_flow = self.trade_flow
         self.ctx.maintenance_service = self.maintenance_service
         self.ctx.heartbeat_publisher = self.heartbeat_publisher
-        self._sync_runtime_context()
+        self.sync_context()
 
         self._seed_from_memory()
 
@@ -355,7 +355,7 @@ class SwarmNode:
             current_params=self.current_params,
         )
 
-    def _sync_runtime_context(self) -> None:
+    def sync_context(self) -> None:
         self.ctx.capital = self.capital
         self.ctx.step_count = self.step_count
         self.ctx.last_import_step = self.last_import_step
@@ -383,7 +383,7 @@ class SwarmNode:
         self.ctx.market_collector = self.market_collector
         self.ctx.swarm_sync = self.swarm_sync
 
-    def _pull_runtime_state(self) -> None:
+    def pull_context(self) -> None:
         self.capital = float(getattr(self.ctx, "capital", self.capital))
         self.step_count = int(getattr(self.ctx, "step_count", self.step_count))
         self.last_import_step = int(getattr(self.ctx, "last_import_step", self.last_import_step))
@@ -391,9 +391,11 @@ class SwarmNode:
         self._prev_prev_price = float(getattr(self.ctx, "prev_prev_price", self._prev_prev_price))
         self._last_market = getattr(self.ctx, "last_market", self._last_market)
         self._trace_id = str(getattr(self.ctx, "trace_id", self._trace_id))
+
         current_params = getattr(self.ctx, "current_params", self.current_params)
         if isinstance(current_params, dict):
             self.current_params = current_params
+
         self.capital_manager.capital = self.capital
 
     def is_leader(self, block_number: int) -> bool:
@@ -638,6 +640,41 @@ class SwarmNode:
             return False
 
         return True
+    
+    async def _run_one_step(self, session: aiohttp.ClientSession) -> bool:
+        self.step_count += 1
+        self._trace_id = str(uuid.uuid4())
+
+        if await self._maybe_trigger_failure_shutdown():
+            return False
+
+        snapshot: MarketSnapshot = await self.market_collector.collect(session)
+        best_symbol: str = snapshot.best_symbol
+        best_market: Dict[str, Any] = snapshot.best_market
+
+        self._prev_prev_price = self._prev_price
+        self._prev_price = float(best_market.get("price", 100.0))
+        self._last_market = best_market
+
+        self.sync_context()
+
+        await self._handle_market_mode_logic(best_symbol, best_market)
+
+        if not self._apply_capital_burn_and_check_alive():
+            return False
+
+        await self.trade_flow.process(snapshot)
+        self.pull_context()
+        self._last_market = best_market
+
+        await self._periodic_tasks(snapshot)
+
+        self.telemetry.update_impact(self.capital)
+        alert_threshold: float = float(config.capital_alert_threshold)
+        if self.capital < alert_threshold:
+            await self.telemetry.low_capital_alert(self.capital, alert_threshold)
+
+        return True
 
     async def main_loop(self) -> None:
         async with aiohttp.ClientSession() as session:
@@ -645,38 +682,9 @@ class SwarmNode:
                 await self.memory_api.load_from_db()
 
             while not self.shutdown_event.is_set():
-                self.step_count += 1
-                self._trace_id = str(uuid.uuid4())
-
-                if await self._maybe_trigger_failure_shutdown():
+                should_continue = await self._run_one_step(session)
+                if not should_continue:
                     break
-
-                snapshot: MarketSnapshot = await self.market_collector.collect(session)
-                best_symbol: str = snapshot.best_symbol
-                best_market: Dict[str, Any] = snapshot.best_market
-
-                self._prev_prev_price = self._prev_price
-                self._prev_price = float(best_market.get("price", 100.0))
-                self._last_market = best_market
-
-                self._sync_runtime_context()
-
-                await self._handle_market_mode_logic(best_symbol, best_market)
-
-                if not self._apply_capital_burn_and_check_alive():
-                    break
-
-                trade_result: Optional[Dict[str, Any]] = await self.trade_flow.process(snapshot)
-                self._pull_runtime_state()
-                self._last_market = best_market
-
-                await self._periodic_tasks(snapshot)
-
-                self.telemetry.update_impact(self.capital)
-                alert_threshold: float = float(config.capital_alert_threshold)
-                if self.capital < alert_threshold:
-                    await self.telemetry.low_capital_alert(self.capital, alert_threshold)
-
                 await asyncio.sleep(0.5)
 
             logger.info("[%s] Main loop exited gracefully.", self.node_id)
@@ -736,7 +744,7 @@ class SwarmNode:
             await self._apply_meta_commands()
 
         if self.step_count % 30 == 0:
-            self._sync_runtime_context()
+            self.sync_context()
             await self.heartbeat_publisher.publish(snapshot)
 
         if (
@@ -744,17 +752,66 @@ class SwarmNode:
             or self.step_count % 500 == 0
             or self.capital < float(config.capital_watchdog_threshold)
         ):
-            self._sync_runtime_context()
+            self.sync_context()
             await self.maintenance_service.run(self.current_params)
 
-    async def start(self) -> None:
-        logger.info("[%s] starting on port=%s, peers=%s", self.node_id, self.port, self.peers)
+    async def _graceful_shutdown(self) -> None:
+        if self._evolution_task:
+            self._evolution_task.cancel()
+            try:
+                await self._evolution_task
+            except asyncio.CancelledError:
+                logger.debug("Evolution task cancelled.")
 
-        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        if self._sync_task:
+            self._sync_task.cancel()
+            try:
+                await self._sync_task
+            except asyncio.CancelledError:
+                logger.debug("Sync task cancelled.")
+
+        if self.memory_api_enabled:
+            await self.memory_api.save_to_db()
+            logger.info("[%s] Memory saved before exit.", self.node_id)
 
         if self.tradingview_enabled and self.tradingview_webhook:
-            await self.tradingview_webhook.start()
+            await self.tradingview_webhook.stop()
+            logger.info("[%s] TradingView webhook stopped.", self.node_id)
 
+        if hasattr(self.crdt, "close") and callable(self.crdt.close):
+            await self.crdt.close()
+            logger.info("[%s] CRDT resources closed.", self.node_id)
+
+    async def _initialize_web3_executor(self) -> None:
+        if self.market_mode != "web3":
+            return
+
+        first_adapter_for_executor: Optional[Any] = None
+        for sym in self.symbols_list:
+            adapter = self.market_adapter.get_adapter(sym)
+            if not adapter:
+                continue
+
+            if hasattr(adapter, "initialize") and callable(adapter.initialize):
+                logger.info("Initializing web3 adapter for %s...", sym)
+                await adapter.initialize()
+
+            if self.nonce_manager is None and hasattr(adapter, "nonce_manager"):
+                self.nonce_manager = getattr(adapter, "nonce_manager")
+                self.mutation_engine.nonce_manager = self.nonce_manager
+
+            if first_adapter_for_executor is None:
+                first_adapter_for_executor = adapter
+
+        self.executor = build_backend(self.node_id, first_adapter_for_executor, self.is_leader)
+        self.ctx.executor = self.executor
+        logger.info(
+            "[%s] Web3 backend initialized with adapter: %s.",
+            self.node_id,
+            type(first_adapter_for_executor).__name__ if first_adapter_for_executor else "None",
+        )
+
+    def _register_signal_handlers(self, loop: asyncio.AbstractEventLoop) -> None:
         def _shutdown_handler(*args: Any) -> None:
             logger.info(
                 "[%s] received signal %s (%s), initiating graceful shutdown.",
@@ -775,98 +832,30 @@ class SwarmNode:
             except Exception as e:
                 logger.error("Error adding signal handler for %s: %s", signal.Signals(sig).name, e)
 
-        async def _shutdown_waiter_task() -> None:
-            await self.shutdown_event.wait()
-            logger.info("[%s] Shutdown signal received, initiating cleanup.", self.node_id)
+    async def _shutdown_watcher(self) -> None:
+        await self.shutdown_event.wait()
+        logger.info("[%s] Shutdown signal received, initiating cleanup.", self.node_id)
 
-            if self._evolution_task:
-                self._evolution_task.cancel()
-                try:
-                    await self._evolution_task
-                except asyncio.CancelledError:
-                    logger.debug("Evolution task cancelled.")
-            if self._sync_task:
-                self._sync_task.cancel()
-                try:
-                    await self._sync_task
-                except asyncio.CancelledError:
-                    logger.debug("Sync task cancelled.")
+        await self._graceful_shutdown()
 
-            if self.memory_api_enabled:
-                await self.memory_api.save_to_db()
-                logger.info("[%s] Memory saved before exit.", self.node_id)
-            if self.tradingview_enabled and self.tradingview_webhook:
-                await self.tradingview_webhook.stop()
-                logger.info("[%s] TradingView webhook stopped.", self.node_id)
+        raise SystemExit(0)
 
-            if hasattr(self.crdt, "close") and callable(self.crdt.close):
-                await self.crdt.close()
-                logger.info("[%s] CRDT resources closed.", self.node_id)
+    async def start(self) -> None:
+        logger.info("[%s] starting on port=%s, peers=%s", self.node_id, self.port, self.peers)
 
-            raise SystemExit(0)
+        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
 
-        if self.market_mode == "web3":
-            first_adapter_for_executor: Optional[Any] = None
-            for sym in self.symbols_list:
-                adapter = self.market_adapter.get_adapter(sym)
-                if adapter:
-                    if hasattr(adapter, "initialize") and callable(adapter.initialize):
-                        logger.info("Initializing web3 adapter for %s...", sym)
-                        await adapter.initialize()
-                    if self.nonce_manager is None and hasattr(adapter, "nonce_manager"):
-                        self.nonce_manager = getattr(adapter, "nonce_manager")
-                        self.mutation_engine.nonce_manager = self.nonce_manager
-                    if first_adapter_for_executor is None:
-                        first_adapter_for_executor = adapter
+        if self.tradingview_enabled and self.tradingview_webhook:
+            await self.tradingview_webhook.start()
 
-            self.executor = build_backend(self.node_id, first_adapter_for_executor, self.is_leader)
-            self.ctx.executor = self.executor
-            logger.info(
-                "[%s] Web3 backend initialized with adapter: %s.",
-                self.node_id,
-                type(first_adapter_for_executor).__name__ if first_adapter_for_executor else "None",
-            )
+        self._register_signal_handlers(loop)
 
-        self._sync_runtime_context()
+        self.sync_context()
         self._evolution_task = asyncio.create_task(self._evolution_cycle(), name="evolution_cycle")
         self._sync_task = asyncio.create_task(self._sync_cycle(), name="sync_cycle")
-        shutdown_watcher_task = asyncio.create_task(_shutdown_waiter_task(), name="shutdown_waiter")
-        self._sync_runtime_context()
-
-        try:
-            await asyncio.gather(
-                self.gossip.start(),
-                self.main_loop(),
-                shutdown_watcher_task,
-            )
-        except SystemExit as e:
-            logger.info("[%s] Main asyncio.gather caught SystemExit: %s", self.node_id, e)
-        except Exception as e:
-            logger.critical("[%s] Unhandled exception in main gather: %s", self.node_id, e, exc_info=True)
-        finally:
-            logger.info("[%s] All main tasks finished or cancelled. Performing final cleanup steps.", self.node_id)
-            self.shutdown_event.set()
-            if self._evolution_task and not self._evolution_task.done():
-                self._evolution_task.cancel()
-                try:
-                    await self._evolution_task
-                except asyncio.CancelledError:
-                    pass
-            if self._sync_task and not self._sync_task.done():
-                self._sync_task.cancel()
-                try:
-                    await self._sync_task
-                except asyncio.CancelledError:
-                    pass
-            if shutdown_watcher_task and not shutdown_watcher_task.done():
-                shutdown_watcher_task.cancel()
-                try:
-                    await shutdown_watcher_task
-                except asyncio.CancelledError:
-                    pass
-            logger.info("[%s] Final cleanup complete.", self.node_id)
-
-
+        shutdown_watcher_task = asyncio.create_task(self._shutdown_watcher(), name="shutdown_watcher")
+        self.sync_context()
+        
 if __name__ == "__main__":
     if not logging.root.handlers:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

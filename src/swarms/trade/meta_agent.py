@@ -196,18 +196,17 @@ class MetaAgentNode:
             logger.error(f"Failed to publish command from MetaAgent {self.node_id}: {e}", exc_info=True)
 
     async def run(self) -> None:
-        """
-        Main execution loop for the MetaAgent.
-        It periodically performs reflection and learning based on swarm data.
-        """
         logger.info(f"🧠 MetaAgent {self.node_id} started. Monitoring: {self.events_jsonl_path}")
         while True:
             self.step += 1
-            if self.step % config.meta_agent_reflect_interval == 0: # Use config for interval
+
+            if self.step % config.meta_agent_reflect_interval == 0:
                 await self.reflect()
-            if self.step % config.meta_agent_learn_interval == 0: # Use config for interval
+
+            if self.step % config.meta_agent_learn_interval == 0:
                 await self._learn_from_experience()
-            await asyncio.sleep(1.0) # Sleep for 1 second per step
+
+            await asyncio.sleep(1.0)
 
     def _compute_sentiment(self, confidence: float, avg_capital: float, avg_dq: float) -> str:
         """
@@ -228,84 +227,99 @@ class MetaAgentNode:
         if confidence >= 0.4:
             return "CURIOUS"
         return "TRANSCENDENT" # Default or high-level sentiment
-
-    async def reflect(self) -> None:
+    
+    def _get_active_heartbeats(self) -> List[Dict[str, Any]]:
         """
-        Performs a reflection cycle: aggregates swarm statistics, engages LLM roles in a debate
-        to derive commands, and potentially publishes the winning command to the CRDT.
+        Returns the current heartbeat set from CRDT state, or the last cached heartbeats
+        if the current state is empty or pruned.
         """
-        logger.debug(f"MetaAgent {self.node_id} initiating reflection at step {self.step}...")
-        try:
-            all_crdt: Dict[str, Any] = self.crdt.state
-            # Filter for heartbeats, assuming they are top-level items in CRDT state for simplicity
-            current_heartbeats: List[Dict[str, Any]] = [
-                v for k, v in all_crdt.items()
-                if isinstance(v, dict) and v.get("type") == "heartbeat"
-            ]
+        all_crdt: Dict[str, Any] = self.crdt.state
+        current_heartbeats: List[Dict[str, Any]] = [
+            v for v in all_crdt.values()
+            if isinstance(v, dict) and v.get("type") == "heartbeat"
+        ]
 
-            # Use last_heartbeats as fallback or complement if CRDT state is empty/pruned
-            if current_heartbeats:
-                self.last_heartbeats = current_heartbeats # Update cache
-            else:
-                current_heartbeats = self.last_heartbeats # Use cached if current is empty
+        if current_heartbeats:
+            self.last_heartbeats = current_heartbeats
+            return current_heartbeats
 
-            # Aggregate statistics from heartbeats
-            node_count: int = 0
-            avg_capital: float = 0.0
-            avg_fitness: float = 0.0
-            avg_dq: float = 0.0
-            dominant_niche: str = "unknown"
+        return self.last_heartbeats
 
-            if current_heartbeats:
-                # Ensure each node is counted only once, even if multiple heartbeats exist for it
-                node_data: Dict[str, Dict[str, Any]] = {}
-                for h in current_heartbeats:
-                    node_id = h.get("node_id")
-                    if node_id:
-                        # Take the latest heartbeat for each node
-                        if node_id not in node_data or h.get("timestamp", 0) > node_data[node_id].get("timestamp", 0):
-                            node_data[node_id] = h
-                
-                valid_heartbeats: List[Dict[str, Any]] = list(node_data.values())
-                node_count = len(valid_heartbeats)
-                
-                if node_count > 0:
-                    total_capital = sum(float(h.get("payload", {}).get("capital", 0.0)) for h in valid_heartbeats)
-                    avg_capital = total_capital / node_count
-                    
-                    total_fitness = sum(float(h.get("payload", {}).get("fitness", 0.0)) for h in valid_heartbeats)
-                    avg_fitness = total_fitness / node_count # Averaging by node count
-                    
-                    dq_values = [float(h.get("payload", {}).get("dq", 0.0)) for h in valid_heartbeats]
-                    avg_dq = sum(dq_values) / len(dq_values) if dq_values else 0.0
-                    
-                    niches: Dict[str, int] = {}
-                    for h in valid_heartbeats:
-                        niche_counts_payload = h.get("payload", {}).get("niche_counts", {})
-                        if isinstance(niche_counts_payload, dict):
-                            for niche, count in niche_counts_payload.items():
-                                try:
-                                    niches[niche] = niches.get(niche, 0) + int(count)
-                                except (ValueError, TypeError):
-                                    logger.warning(f"Invalid niche count value: {count}")
-                    dominant_niche = max(niches, key=niches.get) if niches else "unknown"
-            
-            # Prepare context for LLM
-            context_header_parts: List[str] = []
-            if self.axioms:
-                context_header_parts.append("Axioms: " + "; ".join(self.axioms[:2]))
-            if self.lessons:
-                context_header_parts.append("Lessons: " + "; ".join(self.lessons[-2:]))
-            context_header = ". ".join(context_header_parts) + (". " if context_header_parts else "")
+    def _aggregate_swarm_stats(self, heartbeats: List[Dict[str, Any]]) -> Tuple[int, float, float, float, str]:
+        """
+        Deduplicates heartbeats per node and computes summary statistics.
+        Returns:
+            node_count, avg_capital, avg_fitness, avg_dq, dominant_niche
+        """
+        node_count: int = 0
+        avg_capital: float = 0.0
+        avg_fitness: float = 0.0
+        avg_dq: float = 0.0
+        dominant_niche: str = "unknown"
 
-            best_command: Optional[Dict[str, Any]] = None
-            best_confidence: float = -1.0
-            all_thoughts: List[str] = []
+        if not heartbeats:
+            return node_count, avg_capital, avg_fitness, avg_dq, dominant_niche
 
-            market_context = self._get_market_context(avg_capital, avg_dq)
+        node_data: Dict[str, Dict[str, Any]] = {}
+        for heartbeat in heartbeats:
+            node_id = heartbeat.get("node_id")
+            if not node_id:
+                continue
+            if node_id not in node_data or heartbeat.get("timestamp", 0) > node_data[node_id].get("timestamp", 0):
+                node_data[node_id] = heartbeat
 
-            for role in self.roles:
-                prompt = f"""User: {role['prompt_prefix']}
+        valid_heartbeats: List[Dict[str, Any]] = list(node_data.values())
+        node_count = len(valid_heartbeats)
+
+        if node_count == 0:
+            return node_count, avg_capital, avg_fitness, avg_dq, dominant_niche
+
+        total_capital = sum(float(h.get("payload", {}).get("capital", 0.0)) for h in valid_heartbeats)
+        avg_capital = total_capital / node_count
+
+        total_fitness = sum(float(h.get("payload", {}).get("fitness", 0.0)) for h in valid_heartbeats)
+        avg_fitness = total_fitness / node_count
+
+        dq_values = [float(h.get("payload", {}).get("dq", 0.0)) for h in valid_heartbeats]
+        avg_dq = sum(dq_values) / len(dq_values) if dq_values else 0.0
+
+        niches: Dict[str, int] = {}
+        for heartbeat in valid_heartbeats:
+            niche_counts_payload = heartbeat.get("payload", {}).get("niche_counts", {})
+            if isinstance(niche_counts_payload, dict):
+                for niche, count in niche_counts_payload.items():
+                    try:
+                        niches[niche] = niches.get(niche, 0) + int(count)
+                    except (ValueError, TypeError):
+                        logger.warning(f"Invalid niche count value: {count}")
+
+        dominant_niche = max(niches, key=niches.get) if niches else "unknown"
+        return node_count, avg_capital, avg_fitness, avg_dq, dominant_niche
+
+    def _build_context_header(self) -> str:
+        """
+        Builds a compact context prefix from axioms and recently learned lessons.
+        """
+        context_header_parts: List[str] = []
+        if self.axioms:
+            context_header_parts.append("Axioms: " + "; ".join(self.axioms[:2]))
+        if self.lessons:
+            context_header_parts.append("Lessons: " + "; ".join(self.lessons[-2:]))
+
+        return ". ".join(context_header_parts) + (". " if context_header_parts else "")
+
+    def _build_role_prompt(
+        self,
+        role: Dict[str, Any],
+        context_header: str,
+        node_count: int,
+        avg_capital: float,
+        avg_fitness: float,
+        avg_dq: float,
+        dominant_niche: str,
+        market_context: str,
+    ) -> str:
+        return f"""User: {role['prompt_prefix']}
 {context_header}Swarm Statistics:
 - Number of active nodes: {node_count}
 - Average capital: {avg_capital:.2f}
@@ -319,60 +333,116 @@ The "params" object must contain: "exploration_multiplier", "risk_scale", "survi
 Ensure all parameter values are numeric (float).
 Example: {{"action": "ADJUST_SWARM", "params": {{"exploration_multiplier":1.2,"risk_scale":1.0,"survival_bias_adj":0.0,"stop_loss_adj":1.0,"confidence":0.7}}, "reason":"Increase exploration due to positive trend and low DQ."}}
 Assistant: """
+
+    def _parse_role_response(self, response: str, role_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Robustly parses and normalizes a JSON command returned by the LLM.
+        """
+        json_match = re.search(r"\{.*\}", response, re.DOTALL)
+        if not json_match:
+            return None
+
+        candidate_json_str = json_match.group(0).strip()
+        candidate_json_str = re.sub(r",\s*\}", "}", candidate_json_str)
+        candidate_json_str = re.sub(r",\s*\]", "]", candidate_json_str)
+
+        try:
+            command_json: Any = json.loads(candidate_json_str)
+        except json.JSONDecodeError as jde:
+            logger.warning(
+                f"Failed to load JSON from LLM response (role={role_name}): {jde}. "
+                f"Response: {candidate_json_str[:200]}"
+            )
+            return None
+
+        if not isinstance(command_json, dict):
+            return None
+
+        if "action" not in command_json or "params" not in command_json or "reason" not in command_json:
+            extracted_params = {
+                "exploration_multiplier": command_json.get("exploration_multiplier", 1.0),
+                "risk_scale": command_json.get("risk_scale", 1.0),
+                "survival_bias_adj": command_json.get("survival_bias_adj", 0.0),
+                "stop_loss_adj": command_json.get("stop_loss_adj", 1.0),
+                "confidence": command_json.get("confidence", 0.5),
+            }
+            command_json = {
+                "action": command_json.get("action", "ADJUST_SWARM"),
+                "params": extracted_params,
+                "reason": command_json.get("reason", "No specific reason provided in structured format."),
+            }
+
+        for param_key in ["exploration_multiplier", "risk_scale", "survival_bias_adj", "stop_loss_adj", "confidence"]:
+            if param_key in command_json.get("params", {}):
+                try:
+                    command_json["params"][param_key] = float(command_json["params"][param_key])
+                except (ValueError, TypeError):
+                    logger.warning(
+                        f"Invalid type for param '{param_key}' in role {role_name}. Setting to default 1.0."
+                    )
+                    command_json["params"][param_key] = 1.0
+
+        return command_json
+
+    def _record_reflection(self, sentiment_icon: str, sentiment: str, thought: str, confidence: float) -> None:
+        """
+        Stores the reflection in memory and JSONL, keeping the in-memory cache bounded.
+        """
+        self.memory.append(f"{sentiment_icon} {sentiment} ({self.step}): {thought}")
+        if len(self.memory) > self.max_memory_entries:
+            self.memory = self.memory[-self.max_memory_entries:]
+
+        self._append_to_jsonl("meta_reflection", {
+            "thought": thought,
+            "sentiment": sentiment,
+            "confidence": confidence,
+            "step": self.step,
+        })
+
+    async def reflect(self) -> None:
+        """
+        Performs a reflection cycle: aggregates swarm statistics, engages LLM roles in a debate
+        to derive commands, and potentially publishes the winning command to the CRDT.
+        """
+        logger.debug(f"MetaAgent {self.node_id} initiating reflection at step {self.step}...")
+        try:
+            current_heartbeats = self._get_active_heartbeats()
+            node_count, avg_capital, avg_fitness, avg_dq, dominant_niche = self._aggregate_swarm_stats(current_heartbeats)
+
+            context_header = self._build_context_header()
+            market_context = self._get_market_context(avg_capital, avg_dq)
+
+            best_command: Optional[Dict[str, Any]] = None
+            best_confidence: float = -1.0
+            all_thoughts: List[str] = []
+
+            for role in self.roles:
+                prompt = self._build_role_prompt(
+                    role=role,
+                    context_header=context_header,
+                    node_count=node_count,
+                    avg_capital=avg_capital,
+                    avg_fitness=avg_fitness,
+                    avg_dq=avg_dq,
+                    dominant_niche=dominant_niche,
+                    market_context=market_context,
+                )
+
                 try:
                     response: str = self.llm.generate(prompt, max_tokens=300, temperature=role["temperature"])
                     logger.debug(f"ROLE [{role['name']}] raw response: {response[:500]}")
-                    
-                    command_json: Optional[Dict[str, Any]] = None
 
-                    # Robust JSON parsing
-                    json_match = re.search(r'\{.*\}', response, re.DOTALL)
-                    if json_match:
-                        try:
-                            # Attempt to load the matched string directly. LLM might put extra text around it.
-                            candidate_json_str = json_match.group(0).strip()
-                            # Clean up potential LLM artifacts like trailing commas or multiple newlines within JSON
-                            candidate_json_str = re.sub(r',\s*\}', '}', candidate_json_str)
-                            candidate_json_str = re.sub(r',\s*\]', ']', candidate_json_str)
-
-                            command_json = json.loads(candidate_json_str)
-                        except json.JSONDecodeError as jde:
-                            logger.warning(f"Failed to load JSON from LLM response (role={role['name']}): {jde}. Response: {candidate_json_str[:200]}")
-                            command_json = None # Reset if parsing failed
+                    command_json = self._parse_role_response(response, role["name"])
 
                     if command_json:
-                        # Standardize the structure if the LLM output deviates slightly
-                        if "action" not in command_json or "params" not in command_json or "reason" not in command_json:
-                            # Try to infer and restructure
-                            extracted_params = {
-                                "exploration_multiplier": command_json.get("exploration_multiplier", 1.0),
-                                "risk_scale": command_json.get("risk_scale", 1.0),
-                                "survival_bias_adj": command_json.get("survival_bias_adj", 0.0),
-                                "stop_loss_adj": command_json.get("stop_loss_adj", 1.0),
-                                "confidence": command_json.get("confidence", 0.5),
-                            }
-                            command_json = {
-                                "action": command_json.get("action", "ADJUST_SWARM"), # Default action
-                                "params": extracted_params,
-                                "reason": command_json.get("reason", "No specific reason provided in structured format."),
-                            }
-                        
-                        # Ensure numeric types in params and confidence is float
-                        for param_key in ["exploration_multiplier", "risk_scale", "survival_bias_adj", "stop_loss_adj", "confidence"]:
-                            if param_key in command_json.get("params", {}):
-                                try:
-                                    command_json["params"][param_key] = float(command_json["params"][param_key])
-                                except (ValueError, TypeError):
-                                    logger.warning(f"Invalid type for param '{param_key}' in role {role['name']}. Setting to default 1.0.")
-                                    command_json["params"][param_key] = 1.0
-                                    
                         confidence = float(command_json.get("params", {}).get("confidence", 0.0))
                         reason = command_json.get("reason", "No reason provided.")
                         all_thoughts.append(f"[{role['name']}]: {reason} (Confidence: {confidence:.2f})")
-                        
+
                         if confidence > best_confidence:
                             best_confidence = confidence
                             best_command = command_json
+
                 except Exception as e:
                     logger.warning(f"Role {role['name']} failed to generate or parse command: {e}", exc_info=True)
 
@@ -384,30 +454,28 @@ Assistant: """
                 final_confidence = float(best_command.get("params", {}).get("confidence", 0.0))
                 sentiment = self._compute_sentiment(final_confidence, avg_capital, avg_dq)
                 sentiment_icon = {"CALCULATED": "🧘", "CURIOUS": "🤔", "DESPERATE": "😰", "TRANSCENDENT": "🌌"}.get(sentiment, "")
-                
-                # Add MetaAgent's node_id and expiry to the command for CRDT
+
                 best_command["node_id"] = self.node_id
-                best_command["type"] = "meta_command_json" # Type for CRDT filtering
+                best_command["type"] = "meta_command_json"
                 best_command["timestamp"] = time.time()
-                best_command["expires_at"] = time.time() + config.meta_command_expiry_seconds # Configurable expiry
+                best_command["expires_at"] = time.time() + config.meta_command_expiry_seconds
 
                 await self.publish_command(best_command)
-                logger.info(f"📡 MetaAgent {self.node_id} JSON command (debate winner) [{sentiment_icon} {sentiment}, Confidence: {final_confidence:.2f}]: {best_command}")
+                logger.info(
+                    f"📡 MetaAgent {self.node_id} JSON command (debate winner) "
+                    f"[{sentiment_icon} {sentiment}, Confidence: {final_confidence:.2f}]: {best_command}"
+                )
             else:
                 logger.info(f"MetaAgent {self.node_id} no best command derived from debate.")
 
-            # Record reflection in MetaAgent's memory
             thought = "\n".join(all_thoughts) if all_thoughts else "No decision made in this reflection cycle."
-            self.memory.append(f"{sentiment_icon} {sentiment} ({self.step}): {thought}")
-            if len(self.memory) > self.max_memory_entries:
-                self.memory = self.memory[-self.max_memory_entries:]
-            self._append_to_jsonl("meta_reflection", {
-                "thought": thought,
-                "sentiment": sentiment,
-                "confidence": final_confidence,
-                "step": self.step,
-            })
-            logger.info(f"🧠 MetaAgent {self.node_id} debate summary [{sentiment_icon} {sentiment}, Confidence: {final_confidence:.2f}]:\n{thought}")
+            self._record_reflection(sentiment_icon, sentiment, thought, final_confidence)
+
+            logger.info(
+                f"🧠 MetaAgent {self.node_id} debate summary "
+                f"[{sentiment_icon} {sentiment}, Confidence: {final_confidence:.2f}]:\n{thought}"
+            )
+
         except Exception as e:
             logger.error(f"MetaAgent {self.node_id} reflection cycle failed: {e}", exc_info=True)
             
@@ -450,71 +518,79 @@ Assistant: """
             f"Average DQ: {current_dq:.3f} (trend: {dq_change})"
         )
     
-    async def _learn_from_experience(self) -> None:
+    def _get_meta_commands(self) -> List[Dict[str, Any]]:
         """
-        Analyzes the outcomes of recently issued commands by comparing swarm state
-        (capital, DQ) before and after their execution, then extracts and stores lessons.
+        Returns recent meta commands from CRDT state, sorted by timestamp.
         """
-        logger.debug(f"MetaAgent {self.node_id} initiating learning from experience at step {self.step}...")
-        try:
-            all_crdt: Dict[str, Any] = self.crdt.state
-            
-            # Get recent meta commands
-            commands: List[Dict[str, Any]] = [
-                v for k, v in all_crdt.items()
-                if isinstance(v, dict) and v.get("type") == "meta_command_json"
-            ]
-            commands = sorted(commands, key=lambda x: x.get("timestamp", 0))[-config.meta_agent_commands_to_learn_from:] # Use config for count
+        all_crdt: Dict[str, Any] = self.crdt.state
+        commands: List[Dict[str, Any]] = [
+            v for v in all_crdt.values()
+            if isinstance(v, dict) and v.get("type") == "meta_command_json"
+        ]
+        return sorted(commands, key=lambda x: x.get("timestamp", 0))[-config.meta_agent_commands_to_learn_from:]
 
-            if not commands:
-                logger.debug(f"MetaAgent {self.node_id} no commands to learn from.")
-                return
+    def _get_heartbeats_sorted(self) -> List[Dict[str, Any]]:
+        """
+        Returns all heartbeat events from CRDT state, sorted by timestamp.
+        """
+        all_crdt: Dict[str, Any] = self.crdt.state
+        heartbeats: List[Dict[str, Any]] = [
+            v for v in all_crdt.values()
+            if isinstance(v, dict) and v.get("type") == "heartbeat"
+        ]
+        return sorted(heartbeats, key=lambda x: x.get("timestamp", 0))
 
-            # Get heartbeats, sorted by timestamp
-            heartbeats: List[Dict[str, Any]] = [
-                v for k, v in all_crdt.items()
-                if isinstance(v, dict) and v.get("type") == "heartbeat"
-            ]
-            heartbeats = sorted(heartbeats, key=lambda x: x.get("timestamp", 0))
+    def _find_heartbeat_before(
+        self,
+        heartbeats: List[Dict[str, Any]],
+        cmd_ts: float,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Finds the latest heartbeat that occurred sufficiently before a command.
+        """
+        for h in reversed(heartbeats):
+            h_ts = float(h.get("timestamp", 0))
+            if h_ts < cmd_ts - config.heartbeat_pre_command_window_seconds:
+                return h
+        return None
 
-            lessons: List[str] = []
-            effect_delay_seconds = config.meta_command_effect_delay_seconds # Configurable delay for command effects
+    def _find_heartbeat_after(
+        self,
+        heartbeats: List[Dict[str, Any]],
+        cmd_ts: float,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Finds the first heartbeat that occurred after the effect delay window.
+        """
+        effect_delay_seconds = config.meta_command_effect_delay_seconds
+        for h in heartbeats:
+            h_ts = float(h.get("timestamp", 0))
+            if h_ts > cmd_ts + effect_delay_seconds:
+                return h
+        return None
 
-            for cmd in commands:
-                cmd_ts = float(cmd.get("timestamp", 0))
-                cmd_gid = cmd.get("gid", "N/A")
+    def _build_lesson_prompt(
+        self,
+        cmd: Dict[str, Any],
+        hb_before: Dict[str, Any],
+        hb_after: Dict[str, Any],
+    ) -> str:
+        """
+        Builds the lesson-generation prompt for the LLM.
+        """
+        effect_delay_seconds = config.meta_command_effect_delay_seconds
+        command_payload = {
+            k: v for k, v in cmd.items()
+            if k not in {"gid", "timestamp", "type", "node_id", "expires_at"}
+        }
+        command_data_json_str = json.dumps(command_payload, indent=2)
 
-                # Find heartbeat before the command was issued, ensuring it's clearly prior
-                hb_before: Optional[Dict[str, Any]] = None
-                for h in reversed(heartbeats):
-                    h_ts = float(h.get("timestamp", 0))
-                    # Check if heartbeat is at least X seconds *before* the command
-                    if h_ts < cmd_ts - config.heartbeat_pre_command_window_seconds: # Configurable window
-                        hb_before = h
-                        break
-                
-                # Find heartbeat after the command, allowing time for effects to manifest
-                hb_after: Optional[Dict[str, Any]] = None
-                for h in heartbeats:
-                    h_ts = float(h.get("timestamp", 0))
-                    if h_ts > cmd_ts + effect_delay_seconds:
-                        hb_after = h
-                        break
-                
-                if not hb_before or not hb_after:
-                    logger.debug(f"MetaAgent {self.node_id} not enough heartbeat data to learn for command {cmd_gid}. "
-                                 f"Command timestamp: {cmd_ts}. "
-                                 f"Found before: {hb_before is not None}, Found after: {hb_after is not None}.")
-                    continue
+        capital_before = float(hb_before.get("payload", {}).get("capital", 0.0))
+        capital_after = float(hb_after.get("payload", {}).get("capital", 0.0))
+        dq_before = float(hb_before.get("payload", {}).get("dq", 0.0))
+        dq_after = float(hb_after.get("payload", {}).get("dq", 0.0))
 
-                capital_before = float(hb_before.get("payload", {}).get("capital", 0.0))
-                capital_after = float(hb_after.get("payload", {}).get("capital", 0.0))
-                dq_before = float(hb_before.get("payload", {}).get("dq", 0.0))
-                dq_after = float(hb_after.get("payload", {}).get("dq", 0.0))
-
-                command_data_json_str = json.dumps(cmd.get('data', {}), indent=2)
-
-                lesson_prompt = f"""You are BlackSwan ASI, an expert systems analyst. You previously issued the following command to the swarm:
+        return f"""You are BlackSwan ASI, an expert systems analyst. You previously issued the following command to the swarm:
 ```json
 {command_data_json_str}
 ```
@@ -530,23 +606,65 @@ Observed swarm state *after* command (approx. timestamp {float(hb_after.get("tim
 Considering your axioms (e.g., capital preservation, risk limits, DQ management), what concrete and actionable lesson can be learned from the outcome of this command?
 Focus on the impact on capital and DQ. Output ONE concise sentence starting with "Lesson:".
 """
+    def _extract_lesson(self, response: str) -> Optional[str]:
+        """
+        Extracts a lesson sentence from the LLM response.
+        """
+        if response and "Lesson:" in response:
+            return response.split("Lesson:", 1)[1].strip()
+        return None
+
+    
+    async def _learn_from_experience(self) -> None:
+        """
+        Analyzes the outcomes of recently issued commands by comparing swarm state
+        (capital, DQ) before and after their execution, then extracts and stores lessons.
+        """
+        logger.debug(f"MetaAgent {self.node_id} initiating learning from experience at step {self.step}...")
+        try:
+            commands = self._get_meta_commands()
+            if not commands:
+                logger.debug(f"MetaAgent {self.node_id} no commands to learn from.")
+                return
+
+            heartbeats = self._get_heartbeats_sorted()
+            lessons: List[str] = []
+
+            for cmd in commands:
+                cmd_ts = float(cmd.get("timestamp", 0))
+                cmd_gid = cmd.get("gid", "N/A")
+
+                hb_before = self._find_heartbeat_before(heartbeats, cmd_ts)
+                hb_after = self._find_heartbeat_after(heartbeats, cmd_ts)
+
+                if not hb_before or not hb_after:
+                    logger.debug(
+                        f"MetaAgent {self.node_id} not enough heartbeat data to learn for command {cmd_gid}. "
+                        f"Command timestamp: {cmd_ts}. "
+                        f"Found before: {hb_before is not None}, Found after: {hb_after is not None}."
+                    )
+                    continue
+
+                lesson_prompt = self._build_lesson_prompt(cmd, hb_before, hb_after)
                 response = self.llm.generate(lesson_prompt, max_tokens=100, temperature=0.3)
-                if response and "Lesson:" in response:
-                    lesson = response.split("Lesson:", 1)[1].strip()
+
+                lesson = self._extract_lesson(response)
+                if lesson:
                     lessons.append(lesson)
                 else:
                     logger.warning(f"MetaAgent {self.node_id} LLM did not provide a valid lesson for command {cmd_gid}.")
 
-            # Store unique and recent lessons
             for lesson in lessons:
                 if lesson not in self.lessons:
                     self.lessons.append(lesson)
+
             if len(self.lessons) > self.max_lessons:
                 self.lessons = self.lessons[-self.max_lessons:]
-            
+
             if lessons:
                 self._append_to_jsonl("meta_lesson", {"lessons_learned": lessons})
                 logger.info(f"🧠 MetaAgent {self.node_id} learned {len(lessons)} new lessons: {lessons}")
+
         except Exception as e:
             logger.error(f"MetaAgent {self.node_id} learning from experience failed: {e}", exc_info=True)
 
