@@ -51,6 +51,7 @@ from swarm_config import config
 from .context import RuntimeContext, TradeNodeConfig
 from .maintenance.service import MaintenanceService
 from .market.snapshot import MarketCollector, MarketSnapshot
+from .meta.commands import apply_meta_commands
 from .trading.flow import TradeFlowService
 
 logger = logging.getLogger("SwarmNode")
@@ -400,60 +401,7 @@ class SwarmNode:
         return self.node_index == leader_index
 
     async def _apply_meta_commands(self) -> None:
-        try:
-            all_state: Dict[str, Any] = self.crdt.state
-            json_commands: List[Dict[str, Any]] = [
-                v for v in all_state.values()
-                if isinstance(v, dict) and v.get("type") == "meta_command_json"
-            ]
-
-            now: float = time.time()
-            json_commands = [c for c in json_commands if float(c.get("expires_at", now + 1)) > now]
-
-            if json_commands:
-                latest_json: Dict[str, Any] = max(json_commands, key=lambda x: float(x.get("timestamp", 0)))
-                data: Dict[str, Any] = latest_json.get("data", {})
-
-                if data.get("action") == "ADJUST_SWARM":
-                    params: Dict[str, Any] = data.get("params", {})
-                    alpha: float = 0.1
-
-                    if "risk_scale" in params:
-                        raw_risk_scale: float = float(params["risk_scale"])
-                        adjustment: float = alpha * math.tanh(raw_risk_scale - 1.0)
-                        old_risk: float = self.current_params.get("max_risk_per_trade", 0.05)
-                        new_risk: float = old_risk * (1 + adjustment)
-                        new_risk = max(0.005, min(0.15, new_risk))
-                        self.current_params["max_risk_per_trade"] = new_risk
-                        logger.info("🧠 MetaAgent JSON: risk %.4f → %.4f", old_risk, new_risk)
-
-                    if "exploration_multiplier" in params:
-                        mult: float = float(params["exploration_multiplier"])
-                        old_rate: float = float(getattr(self.engine, "_mutation_rate", 0.25))
-                        new_rate: float = max(0.1, min(0.7, old_rate * mult))
-                        if hasattr(self.engine, "set_mutation_rate") and callable(getattr(self.engine, "set_mutation_rate")):
-                            self.engine.set_mutation_rate(new_rate)
-                        else:
-                            setattr(self.engine, "_mutation_rate", new_rate)
-                        logger.info("🧠 MetaAgent JSON: exploration rate → %.2f", new_rate)
-
-                    if "survival_bias_adj" in params:
-                        delta: float = max(-0.05, min(0.05, float(params["survival_bias_adj"])))
-                        old_sb: float = float(self.survival.config.get("lambda", 0.15)) if hasattr(self.survival, "config") else 0.15
-                        new_sb: float = max(0.1, min(0.9, old_sb + delta))
-                        if hasattr(self.survival, "config") and isinstance(self.survival.config, dict):
-                            self.survival.config["lambda"] = new_sb
-                        logger.info("🧠 MetaAgent JSON: survival lambda → %.3f", new_sb)
-
-                    if "stop_loss_adj" in params:
-                        factor: float = float(params["stop_loss_adj"])
-                        old_sl: float = self.current_params.get("stop_loss_ratio", 0.05)
-                        new_sl: float = max(0.001, min(0.2, old_sl * factor))
-                        self.current_params["stop_loss_ratio"] = new_sl
-                        logger.info("🧠 MetaAgent JSON: stop-loss %.4f → %.4f", old_sl, new_sl)
-
-        except Exception as e:
-            logger.debug("Meta command processing skipped or failed: %s", e, exc_info=True)
+        await apply_meta_commands(self)
 
     async def _evolution_cycle(self) -> None:
         while True:
@@ -619,6 +567,78 @@ class SwarmNode:
         logger.warning("Could not get market data for %s, using simulated fallback price.", symbol)
         return {"price": random.uniform(90.0, 110.0), "symbol": symbol, "timestamp": time.time()}
 
+    async def _handle_market_mode_logic(self, best_symbol: str, best_market: Dict[str, Any]) -> None:
+        if self.market_mode == "web3":
+            adapter = self.market_adapter.get_adapter(best_symbol)
+            if adapter and hasattr(adapter, "w3"):
+                try:
+                    block_number: int = await adapter.w3.eth.block_number
+                    if self.is_leader(block_number):
+                        await self.trading_controller.check_and_rebalance(adapter)
+                except Exception as e:
+                    logger.warning("Web3 rebalance check failed for %s: %s", best_symbol, e, exc_info=True)
+
+        if self.market_mode == "futures":
+            adapter = self.market_adapter.get_adapter(best_symbol, "futures")
+            if adapter and hasattr(adapter, "exchange") and hasattr(adapter, "check_stop_loss"):
+                try:
+                    positions: List[Dict[str, Any]] = await adapter.exchange.fetch_positions([best_symbol])
+                    if positions:
+                        pos: Dict[str, Any] = positions[0]
+                        contracts_str: Any = pos.get("contracts", "0.0")
+                        contracts: float = float(contracts_str)
+                        if contracts != 0.0:
+                            entry_price: float = float(pos.get("entryPrice", 0.0))
+                            current_price: float = float(best_market["price"])
+                            side: str = "long" if contracts > 0 else "short"
+                            if adapter.check_stop_loss(entry_price, current_price, side):
+                                logger.info("Stop-loss triggered for %s", best_symbol)
+                                await adapter.close_position(best_symbol)
+                                await self.telegram_notifier.send(
+                                    f"🛑 <b>Stop-loss triggered</b>\n"
+                                    f"Node: {self.node_id}\n"
+                                    f"Symbol: {best_symbol}\n"
+                                    f"Capital: {self.capital:.2f}"
+                                )
+                                if self.market_adapter.hedge_enabled:
+                                    spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
+                                    if spot_adapter:
+                                        try:
+                                            await spot_adapter.close_position(best_symbol)
+                                            logger.info("Hedge position for %s closed.", best_symbol)
+                                        except Exception as e:
+                                            logger.warning("Hedge position close failed for %s: %s", best_symbol, e)
+                except Exception as e:
+                    logger.warning("Futures stop-loss check failed for %s: %s", best_symbol, e, exc_info=True)
+
+    async def _maybe_trigger_failure_shutdown(self) -> bool:
+        if self.failure_prob > 0 and random.random() < self.failure_prob:
+            await self.telemetry.spore_failure(
+                step=self.step_count,
+                capital=self.capital,
+                dq=self.survival.dq,
+                fitness=float(self.engine.champion[1]) if self.engine.champion else 0.0,
+                diversity=self.engine.diversity(),
+                crdt_size=len(self.crdt.state),
+                trace_id=self._trace_id,
+            )
+            logger.info("[%s] simulated failure, initiating graceful shutdown.", self.node_id)
+            self.shutdown_event.set()
+            return True
+        return False
+    
+    def _apply_capital_burn_and_check_alive(self) -> bool:
+        self.capital_manager.burn()
+        self.capital = self.capital_manager.capital
+        self.ctx.capital = self.capital
+
+        if not self.capital_manager.is_alive():
+            logger.info("[%s] died due to insufficient capital. Initiating graceful shutdown.", self.node_id)
+            self.shutdown_event.set()
+            return False
+
+        return True
+
     async def main_loop(self) -> None:
         async with aiohttp.ClientSession() as session:
             if self.memory_api_enabled:
@@ -628,18 +648,7 @@ class SwarmNode:
                 self.step_count += 1
                 self._trace_id = str(uuid.uuid4())
 
-                if self.failure_prob > 0 and random.random() < self.failure_prob:
-                    await self.telemetry.spore_failure(
-                        step=self.step_count,
-                        capital=self.capital,
-                        dq=self.survival.dq,
-                        fitness=float(self.engine.champion[1]) if self.engine.champion else 0.0,
-                        diversity=self.engine.diversity(),
-                        crdt_size=len(self.crdt.state),
-                        trace_id=self._trace_id,
-                    )
-                    logger.info("[%s] simulated failure, initiating graceful shutdown.", self.node_id)
-                    self.shutdown_event.set()
+                if await self._maybe_trigger_failure_shutdown():
                     break
 
                 snapshot: MarketSnapshot = await self.market_collector.collect(session)
@@ -652,55 +661,9 @@ class SwarmNode:
 
                 self._sync_runtime_context()
 
-                if self.market_mode == "web3":
-                    adapter = self.market_adapter.get_adapter(best_symbol)
-                    if adapter and hasattr(adapter, "w3"):
-                        try:
-                            block_number: int = await adapter.w3.eth.block_number
-                            if self.is_leader(block_number):
-                                await self.trading_controller.check_and_rebalance(adapter)
-                        except Exception as e:
-                            logger.warning("Web3 rebalance check failed for %s: %s", best_symbol, e, exc_info=True)
+                await self._handle_market_mode_logic(best_symbol, best_market)
 
-                if self.market_mode == "futures":
-                    adapter = self.market_adapter.get_adapter(best_symbol, "futures")
-                    if adapter and hasattr(adapter, "exchange") and hasattr(adapter, "check_stop_loss"):
-                        try:
-                            positions: List[Dict[str, Any]] = await adapter.exchange.fetch_positions([best_symbol])
-                            if positions:
-                                pos: Dict[str, Any] = positions[0]
-                                contracts_str: Any = pos.get("contracts", "0.0")
-                                contracts: float = float(contracts_str)
-                                if contracts != 0.0:
-                                    entry_price: float = float(pos.get("entryPrice", 0.0))
-                                    current_price: float = float(best_market["price"])
-                                    side: str = "long" if contracts > 0 else "short"
-                                    if adapter.check_stop_loss(entry_price, current_price, side):
-                                        logger.info("Stop-loss triggered for %s", best_symbol)
-                                        await adapter.close_position(best_symbol)
-                                        await self.telegram_notifier.send(
-                                            f"🛑 <b>Stop-loss triggered</b>\n"
-                                            f"Node: {self.node_id}\n"
-                                            f"Symbol: {best_symbol}\n"
-                                            f"Capital: {self.capital:.2f}"
-                                        )
-                                        if self.market_adapter.hedge_enabled:
-                                            spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
-                                            if spot_adapter:
-                                                try:
-                                                    await spot_adapter.close_position(best_symbol)
-                                                    logger.info("Hedge position for %s closed.", best_symbol)
-                                                except Exception as e:
-                                                    logger.warning("Hedge position close failed for %s: %s", best_symbol, e)
-                        except Exception as e:
-                            logger.warning("Futures stop-loss check failed for %s: %s", best_symbol, e, exc_info=True)
-
-                self.capital_manager.burn()
-                self.capital = self.capital_manager.capital
-                self.ctx.capital = self.capital
-                if not self.capital_manager.is_alive():
-                    logger.info("[%s] died due to insufficient capital. Initiating graceful shutdown.", self.node_id)
-                    self.shutdown_event.set()
+                if not self._apply_capital_burn_and_check_alive():
                     break
 
                 trade_result: Optional[Dict[str, Any]] = await self.trade_flow.process(snapshot)
