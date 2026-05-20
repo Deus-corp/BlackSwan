@@ -1,8 +1,7 @@
 """Typed configuration and runtime context for the trade swarm node.
 
-This module is the foundation for the structured refactor.
-It intentionally centralizes the node's external dependencies and runtime flags,
-so the rest of the trade subsystem can be split into focused services.
+This module should stay as a thin dependency container.
+It must not contain business logic such as heartbeat generation or scoring.
 """
 
 from __future__ import annotations
@@ -32,11 +31,7 @@ class SupportsClose(Protocol):
 
 @dataclass(slots=True)
 class TradeNodeConfig:
-    """Validated configuration subset used by the trade node.
-
-    This is intentionally narrower than the global config object.
-    Keep the surface area small so downstream services depend only on what they need.
-    """
+    """Validated configuration subset used by the trade node."""
 
     node_id: str
     port: int
@@ -77,38 +72,44 @@ class RuntimeContext:
     """Dependency container for the trade swarm runtime."""
 
     config: TradeNodeConfig
-
     crdt: SupportsState & SupportsGenomeWrite
-    reputation: Any
-    telemetry: Any
-    event_store: Any
 
-    capital_manager: Any
-    risk_manager: Any
-    survival: Any
-    curiosity: Any
-    llm: Any
-    memory: Any
-    semantic: Any
+    reputation: Any = None
+    telemetry: Any = None
+    event_store: Any = None
+    memory_api: Any = None
 
-    key_manager: Any
-    crypto: Any
+    capital_manager: Any = None
+    risk_manager: Any = None
+    survival: Any = None
+    curiosity: Any = None
+    llm: Any = None
+    memory: Any = None
+    semantic: Any = None
 
-    market_adapter: Any
-    market_service: Any
-    trading_controller: Any
-    executor: Any
-    mutation_engine: Any
-    evolution_engine: Any
-    swarm_sync: Any
+    key_manager: Any = None
+    crypto: Any = None
 
-    internet_researcher: Any
-    telegram_notifier: Any
-    tradingview_webhook: Any | None = None
+    market_adapter: Any = None
+    market_service: Any = None
+    market_collector: Any = None
+    trading_controller: Any = None
+    executor: Any = None
+    mutation_engine: Any = None
+    evolution_engine: Any = None
+    swarm_sync: Any = None
+
+    internet_researcher: Any = None
+    telegram_notifier: Any = None
+    trade_flow: Any = None
+    maintenance_service: Any = None
+    heartbeat_publisher: Any = None
+    tradingview_webhook: Any = None
     orderbook_analyzers: Dict[str, Any] = field(default_factory=dict)
 
     engine: Any = None
     meta_agent: Any = None
+    dispatcher: Any = None
 
     node_index: int = 0
     gossip_seq_no: int = 0
@@ -132,78 +133,4 @@ class RuntimeContext:
     evolution_task: Any = None
     sync_task: Any = None
 
-    market_adapter: Any
-    dispatcher: Any
-
-    current_params: Dict[str, Any]
-
-    trace_id: str
-    step_count: int
-
-    capital: float
-
-    executor: Any
-    capital_manager: Any
-
-    def to_heartbeat_payload(self) -> Dict[str, Any]:
-        """Return a compact, typed heartbeat payload for swarm coordination."""
-        return {
-            "type": "trade_heartbeat",
-            "node_id": self.config.node_id,
-            "timestamp": __import__("time").time(),
-            "capital": self.capital,
-            "dq": float(getattr(self.survival, "dq", 0.0)),
-            "fitness": float(self._current_fitness()),
-            "diversity": float(self._population_diversity()),
-            "crdt_size": len(getattr(self.crdt, "state", {})),
-            "llm_mutations": self._llm_mutations(),
-            "niche_counts": self._niche_counts(),
-            "trace_id": self.trace_id,
-            "origin_pubkey_hex": getattr(self.crypto, "public_bytes_hex", ""),
-            "schema_version": 1,
-        }
-
-    def _current_fitness(self) -> float:
-        try:
-            champ = getattr(self.engine, "champion", None)
-            if not champ:
-                return 0.0
-            # Champion may be a tuple/list or object depending on the engine implementation.
-            if isinstance(champ, (list, tuple)) and len(champ) > 1:
-                return float(champ[1])
-            if hasattr(champ, "fitness"):
-                return float(champ.fitness)
-            return 0.0
-        except Exception:
-            return 0.0
-
-    def _population_diversity(self) -> float:
-        try:
-            if self.engine and hasattr(self.engine, "diversity"):
-                return float(self.engine.diversity())
-            return 0.0
-        except Exception:
-            return 0.0
-
-    def _llm_mutations(self) -> int:
-        try:
-            if self.engine and hasattr(self.engine, "llm_mutations"):
-                return int(self.engine.llm_mutations)
-            return 0
-        except Exception:
-            return 0
-
-    def _niche_counts(self) -> Dict[str, int]:
-        try:
-            if self.engine and hasattr(self.engine, "population"):
-                counts = {"survival": 0, "capital": 0, "exploration": 0}
-                for item in self.engine.population:
-                    niche = getattr(item, "niche", None)
-                    if niche is None and isinstance(item, dict):
-                        niche = item.get("niche", "exploration")
-                    if niche in counts:
-                        counts[niche] += 1
-                return counts
-            return {"survival": 0, "capital": 0, "exploration": 0}
-        except Exception:
-            return {"survival": 0, "capital": 0, "exploration": 0}
+    current_params: Dict[str, Any] = field(default_factory=dict)

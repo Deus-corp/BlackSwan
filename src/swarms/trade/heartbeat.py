@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .context import RuntimeContext
 from .market.snapshot import MarketSnapshot
@@ -56,25 +57,49 @@ class HeartbeatPublisher:
     def __init__(self, ctx: RuntimeContext) -> None:
         self._ctx = ctx
 
-    async def publish(self, snapshot: MarketSnapshot) -> None:
+    async def publish(self, snapshot: Optional[MarketSnapshot] = None) -> None:
         heartbeat = TradeHeartbeat(
             schema_version=1,
             node_id=self._ctx.config.node_id,
-            timestamp=__import__("time").time(),
-            capital=float(self._ctx.capital),
+            timestamp=time.time(),
+            capital=float(getattr(self._ctx, "capital", 0.0)),
             dq=float(getattr(self._ctx.survival, "dq", 0.0)),
             fitness=float(self._current_fitness()),
             diversity=float(self._population_diversity()),
             crdt_size=len(getattr(self._ctx.crdt, "state", {})),
             llm_mutations=int(self._llm_mutations()),
             niche_counts=self._niche_counts(),
-            trace_id=self._ctx.trace_id,
+            trace_id=str(getattr(self._ctx, "trace_id", "")),
             origin_pubkey_hex=getattr(self._ctx.crypto, "public_bytes_hex", ""),
-            best_symbol=snapshot.best_symbol,
-            best_price=snapshot.price_for(snapshot.best_symbol),
-            market_mode=self._ctx.config.market_mode,
+            best_symbol=self._best_symbol(snapshot),
+            best_price=self._best_price(snapshot),
+            market_mode=str(getattr(self._ctx.config, "market_mode", "")),
         )
         await self._ctx.crdt.add_genome(heartbeat.to_dict())
+
+    def _fallback_snapshot(self) -> MarketSnapshot:
+        symbol = str(getattr(self._ctx, "primary_symbol", "BTC/USDT"))
+        last_market = getattr(self._ctx, "last_market", None)
+        market = dict(last_market) if isinstance(last_market, dict) else {"price": 0.0, "symbol": symbol}
+        if "symbol" not in market:
+            market["symbol"] = symbol
+        return MarketSnapshot(
+            best_symbol=symbol,
+            best_market=market,
+            markets={symbol: market},
+            timestamp=time.time(),
+        )
+
+    def _best_symbol(self, snapshot: Optional[MarketSnapshot]) -> str:
+        snap = snapshot or self._fallback_snapshot()
+        return str(getattr(snap, "best_symbol", "BTC/USDT"))
+
+    def _best_price(self, snapshot: Optional[MarketSnapshot]) -> float:
+        snap = snapshot or self._fallback_snapshot()
+        try:
+            return float(snap.price_for(snap.best_symbol))
+        except Exception:
+            return 0.0
 
     def _current_fitness(self) -> float:
         try:

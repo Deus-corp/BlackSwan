@@ -1,12 +1,11 @@
 """Meta-command handling for the trade swarm node.
 
-This service applies coordination commands emitted by overseer/meta-agents.
-Key properties:
-- commands are versioned by gid;
-- expired commands are ignored;
-- each gid is applied at most once per node runtime;
-- parameter updates are clamped to safe ranges;
-- application is idempotent from the node's point of view.
+This module applies coordination commands emitted by overseer / meta-agents.
+It follows the same service-oriented style as heartbeat and risk:
+- dependency injection via RuntimeContext;
+- no inline node state scanning outside the service;
+- one-time application per command gid;
+- conservative clamping of all parameter changes.
 """
 
 from __future__ import annotations
@@ -17,14 +16,14 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Set
 
-from .context import RuntimeContext
+from ..context import RuntimeContext
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("SwarmNode.MetaCommands")
 
 
 @dataclass(slots=True, frozen=True)
 class MetaCommand:
-    """Normalized command envelope extracted from CRDT state."""
+    """Normalized meta-command envelope extracted from CRDT state."""
 
     gid: str
     timestamp: float
@@ -38,7 +37,7 @@ class MetaCommand:
 
 
 class MetaCommandService:
-    """Applies meta-commands from the shared state exactly once per gid."""
+    """Applies meta-commands from shared state exactly once per gid."""
 
     def __init__(self, ctx: RuntimeContext) -> None:
         self._ctx = ctx
@@ -46,9 +45,9 @@ class MetaCommandService:
         self._last_applied_ts: float = 0.0
 
     async def apply_pending(self) -> bool:
-        """Apply the latest unexpired command from CRDT.
+        """Apply the latest unexpired command from CRDT state.
 
-        Returns True if a command was applied during this call.
+        Returns True when a command was applied during this call.
         """
         command = self._latest_unexpired_command()
         if command is None:
@@ -67,6 +66,7 @@ class MetaCommandService:
         state = getattr(self._ctx.crdt, "state", {})
         now = time.time()
         candidates = []
+
         for value in state.values():
             if not isinstance(value, dict):
                 continue
@@ -77,8 +77,16 @@ class MetaCommandService:
             if not raw_gid:
                 continue
 
-            ts = float(value.get("timestamp", 0.0))
-            expires_at = float(value.get("expires_at", ts))
+            try:
+                ts = float(value.get("timestamp", 0.0))
+            except Exception:
+                ts = 0.0
+
+            try:
+                expires_at = float(value.get("expires_at", ts))
+            except Exception:
+                expires_at = ts
+
             if expires_at <= now:
                 continue
 
@@ -99,7 +107,7 @@ class MetaCommandService:
         if not candidates:
             return None
 
-        # Prefer newest timestamp, then newest expiry.
+        # Newest timestamp first, then newest expiry.
         candidates.sort(key=lambda c: (c.timestamp, c.expires_at))
         return candidates[-1]
 
@@ -136,10 +144,17 @@ class MetaCommandService:
             raw_risk_scale = float(params["risk_scale"])
             alpha = 0.1
             adjustment = alpha * math.tanh(raw_risk_scale - 1.0)
-            old_risk = float(self._ctx.config.__dict__.get("max_risk_per_trade", 0.05))
+
+            current_params = getattr(self._ctx, "current_params", None)
+            if not isinstance(current_params, dict):
+                logger.warning("Current params unavailable for risk_scale meta-command")
+                return False
+
+            old_risk = float(current_params.get("max_risk_per_trade", 0.05))
             new_risk = old_risk * (1.0 + adjustment)
             new_risk = max(0.005, min(0.15, new_risk))
-            self._ctx.config.__dict__["max_risk_per_trade"] = new_risk
+            current_params["max_risk_per_trade"] = new_risk
+
             logger.info("Meta-command: risk %.4f -> %.4f", old_risk, new_risk)
             return True
         except Exception as exc:
@@ -149,12 +164,19 @@ class MetaCommandService:
     def _apply_exploration_multiplier(self, params: Dict[str, Any]) -> bool:
         try:
             mult = float(params["exploration_multiplier"])
-            old_rate = float(getattr(self._ctx.engine, "_mutation_rate", 0.25))
+            engine = getattr(self._ctx, "engine", None)
+            if engine is None:
+                logger.warning("Engine unavailable for exploration_multiplier meta-command")
+                return False
+
+            old_rate = float(getattr(engine, "_mutation_rate", 0.25))
             new_rate = max(0.1, min(0.7, old_rate * mult))
-            if hasattr(self._ctx.engine, "set_mutation_rate") and callable(self._ctx.engine.set_mutation_rate):
-                self._ctx.engine.set_mutation_rate(new_rate)
+
+            if hasattr(engine, "set_mutation_rate") and callable(getattr(engine, "set_mutation_rate")):
+                engine.set_mutation_rate(new_rate)
             else:
-                setattr(self._ctx.engine, "_mutation_rate", new_rate)
+                setattr(engine, "_mutation_rate", new_rate)
+
             logger.info("Meta-command: exploration rate %.3f -> %.3f", old_rate, new_rate)
             return True
         except Exception as exc:
@@ -168,9 +190,11 @@ class MetaCommandService:
             if not isinstance(survival_cfg, dict):
                 logger.warning("Survival config unavailable for meta-command application")
                 return False
+
             old_sb = float(survival_cfg.get("lambda", 0.15))
             new_sb = max(0.1, min(0.9, old_sb + delta))
             survival_cfg["lambda"] = new_sb
+
             logger.info("Meta-command: survival lambda %.3f -> %.3f", old_sb, new_sb)
             return True
         except Exception as exc:
@@ -184,9 +208,11 @@ class MetaCommandService:
             if not isinstance(current_params, dict):
                 logger.warning("Current params unavailable for meta-command application")
                 return False
+
             old_sl = float(current_params.get("stop_loss_ratio", 0.05))
             new_sl = max(0.001, min(0.2, old_sl * factor))
             current_params["stop_loss_ratio"] = new_sl
+
             logger.info("Meta-command: stop-loss %.4f -> %.4f", old_sl, new_sl)
             return True
         except Exception as exc:
