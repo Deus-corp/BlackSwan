@@ -20,6 +20,6 @@ numpy
 python-dotenv
 scipy
 urllib3
-llama-cpp-python
+#llama-cpp-python
 pytest-asyncio
 google-generativeai

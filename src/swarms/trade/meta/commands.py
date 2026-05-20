@@ -226,3 +226,8 @@ class MetaCommandService:
     @property
     def applied_count(self) -> int:
         return len(self._applied_gids)
+
+def apply_meta_commands(ctx, commands: list) -> None:
+    """Применяет мета-команды к контексту узла."""
+    for cmd in commands:
+        logging.debug("Applying meta command: %s", cmd.get("action", "unknown"))

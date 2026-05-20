@@ -11,8 +11,8 @@ import logging
 import subprocess
 from typing import Optional
 
-from .memory import FirewallPolicy, SecurityMemory, command_exists
-from .shared_runtime import new_gid
+from src.swarms.security.memory import FirewallPolicy, SecurityMemory, command_exists
+from src.swarms.security.memory import new_gid
 
 logger = logging.getLogger(__name__)
 

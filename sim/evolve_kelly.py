@@ -154,82 +154,83 @@ population: List[Dict[str, float]] = [random_params() for _ in range(POP_SIZE)]
 best_overall: Optional[Dict[str, float]] = None
 best_fitness: float = 0.0
 
-print("=== Запуск эволюции стратегии Kelly ===\n")
-for gen in range(GENERATIONS):
-    # Evaluate all individuals in the current population
-    fitnesses: List[float] = []
-    for params in population:
-        # All individuals within a generation are evaluated under the same market conditions (same seed),
-        # allowing for fair comparison within the generation. The seed changes each generation for diversity.
-        fit: float = evaluate(params, seed=gen * 100)
-        fitnesses.append(fit)
+if __name__ == "__main__":
+    print("=== Запуск эволюции стратегии Kelly ===\n")
+    for gen in range(GENERATIONS):
+        # Evaluate all individuals in the current population
+        fitnesses: List[float] = []
+        for params in population:
+            # All individuals within a generation are evaluated under the same market conditions (same seed),
+            # allowing for fair comparison within the generation. The seed changes each generation for diversity.
+            fit: float = evaluate(params, seed=gen * 100)
+            fitnesses.append(fit)
+            
+            # Update overall best individual found so far
+            if fit > best_fitness:
+                best_fitness = fit
+                best_overall = copy.deepcopy(params)
+
+        # Log generation statistics
+        avg_fit: float = statistics.mean(fitnesses)
+        max_fit: float = max(fitnesses)
+        print(f"Поколение {gen+1}: средний капитал = {avg_fit:.2f}, максимальный = {max_fit:.2f}")
+
+        # Selection (elitism + tournament)
+        # Sort indices based on fitness in descending order to identify the elite
+        sorted_indices: List[int] = sorted(range(POP_SIZE), key=lambda i: fitnesses[i], reverse=True)
         
-        # Update overall best individual found so far
-        if fit > best_fitness:
-            best_fitness = fit
-            best_overall = copy.deepcopy(params)
-
-    # Log generation statistics
-    avg_fit: float = statistics.mean(fitnesses)
-    max_fit: float = max(fitnesses)
-    print(f"Поколение {gen+1}: средний капитал = {avg_fit:.2f}, максимальный = {max_fit:.2f}")
-
-    # Selection (elitism + tournament)
-    # Sort indices based on fitness in descending order to identify the elite
-    sorted_indices: List[int] = sorted(range(POP_SIZE), key=lambda i: fitnesses[i], reverse=True)
-    
-    # Elitism: carry over the best individual directly to the next generation
-    new_pop: List[Dict[str, float]] = [population[sorted_indices[0]]]
-    
-    # Fill the rest of the new population through selection, crossover, and mutation
-    while len(new_pop) < POP_SIZE:
-        # Tournament selection: pick two random individuals and select the fitter one as primary parent
-        i1: int = random.randrange(POP_SIZE)
-        i2: int = random.randrange(POP_SIZE)
-        # Ensure i1 and i2 are distinct for tournament selection
-        while i2 == i1:
-            i2 = random.randrange(POP_SIZE)
-
-        winner_idx: int = i1 if fitnesses[i1] > fitnesses[i2] else i2
-        winner_params: Dict[str, float] = population[winner_idx]
-
-        # Crossover strategy: either with the elite individual or another tournament winner
-        parent2: Dict[str, float]
-        if random.random() < 0.7: # 70% chance to crossover with the best individual of the generation (elite)
-            parent2 = population[sorted_indices[0]]
-        else:
-            # Otherwise, perform crossover with another individual chosen via tournament selection
-            # To ensure parent2 is distinct from winner_params, another tournament could be run.
-            # Here, for simplicity and adherence to implied original intent, a potentially same winner is allowed.
-            parent2 = winner_params
-
-        child: Dict[str, float] = crossover(winner_params, parent2)
+        # Elitism: carry over the best individual directly to the next generation
+        new_pop: List[Dict[str, float]] = [population[sorted_indices[0]]]
         
-        # Mutation: apply mutation with a certain probability
-        if random.random() < 0.3: # 30% chance for mutation
-            child = mutate(child, scale=0.1) # Mutation scale
+        # Fill the rest of the new population through selection, crossover, and mutation
+        while len(new_pop) < POP_SIZE:
+            # Tournament selection: pick two random individuals and select the fitter one as primary parent
+            i1: int = random.randrange(POP_SIZE)
+            i2: int = random.randrange(POP_SIZE)
+            # Ensure i1 and i2 are distinct for tournament selection
+            while i2 == i1:
+                i2 = random.randrange(POP_SIZE)
+
+            winner_idx: int = i1 if fitnesses[i1] > fitnesses[i2] else i2
+            winner_params: Dict[str, float] = population[winner_idx]
+
+            # Crossover strategy: either with the elite individual or another tournament winner
+            parent2: Dict[str, float]
+            if random.random() < 0.7: # 70% chance to crossover with the best individual of the generation (elite)
+                parent2 = population[sorted_indices[0]]
+            else:
+                # Otherwise, perform crossover with another individual chosen via tournament selection
+                # To ensure parent2 is distinct from winner_params, another tournament could be run.
+                # Here, for simplicity and adherence to implied original intent, a potentially same winner is allowed.
+                parent2 = winner_params
+
+            child: Dict[str, float] = crossover(winner_params, parent2)
+            
+            # Mutation: apply mutation with a certain probability
+            if random.random() < 0.3: # 30% chance for mutation
+                child = mutate(child, scale=0.1) # Mutation scale
+            
+            new_pop.append(child)
         
-        new_pop.append(child)
-    
-    population = new_pop # Replace old population with the new, evolved one
+        population = new_pop # Replace old population with the new, evolved one
 
-print(f"\n=== Лучшие параметры после {GENERATIONS} поколений ===")
-if best_overall is not None:
-    print(f"max_risk_per_trade = {best_overall['max_risk_per_trade']:.4f}")
-    print(f"phi_llm = {best_overall['phi_llm']:.4f}")
-    print(f"Достигнутый капитал = {best_fitness:.2f}")
-else:
-    print("No best parameters found (possible if GENERATIONS is 0 or all fitnesses were 0).")
+    print(f"\n=== Лучшие параметры после {GENERATIONS} поколений ===")
+    if best_overall is not None:
+        print(f"max_risk_per_trade = {best_overall['max_risk_per_trade']:.4f}")
+        print(f"phi_llm = {best_overall['phi_llm']:.4f}")
+        print(f"Достигнутый капитал = {best_fitness:.2f}")
+    else:
+        print("No best parameters found (possible if GENERATIONS is 0 or all fitnesses were 0).")
 
-# Comparison with standard parameters from documentation
-standard_params: Dict[str, float] = {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
-# Evaluate standard parameters with a distinct seed to ensure a fair, independent comparison
-standard_fitness: float = evaluate(standard_params, seed=999)
-print(f"\nКапитал со стандартными параметрами (0.05, 0.15): {standard_fitness:.2f}")
+    # Comparison with standard parameters from documentation
+    standard_params: Dict[str, float] = {"max_risk_per_trade": 0.05, "phi_llm": 0.15}
+    # Evaluate standard parameters with a distinct seed to ensure a fair, independent comparison
+    standard_fitness: float = evaluate(standard_params, seed=999)
+    print(f"\nКапитал со стандартными параметрами (0.05, 0.15): {standard_fitness:.2f}")
 
-# Calculate and print improvement
-if best_overall is not None:
-    improvement: float = best_fitness - standard_fitness
-    print(f"Улучшение: {improvement:.2f}")
-else:
-    print("Cannot calculate improvement as no best parameters were found.")
+    # Calculate and print improvement
+    if best_overall is not None:
+        improvement: float = best_fitness - standard_fitness
+        print(f"Улучшение: {improvement:.2f}")
+    else:
+        print("Cannot calculate improvement as no best parameters were found.")

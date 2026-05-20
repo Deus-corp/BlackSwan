@@ -10,7 +10,7 @@ try:
 except ImportError:  # pragma: no cover
     psutil = None
 
-from .models import OverseerDecision, SwarmSnapshot
+from src.swarms.overseer.models import OverseerDecision, SwarmSnapshot
 
 TRADE_DQ_HIGH_THRESHOLD = 0.25
 TRADE_CAPITAL_LOW_THRESHOLD = 2000.0

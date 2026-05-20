@@ -9,8 +9,8 @@ import time
 import uuid
 from typing import Any, Dict
 
-from .interfaces import GenomeSink
-from .models import OverseerDecision, SwarmSnapshot
+from src.swarms.overseer.interfaces import GenomeSink
+from src.swarms.overseer.models import OverseerDecision, SwarmSnapshot
 
 logger = logging.getLogger(__name__)
 

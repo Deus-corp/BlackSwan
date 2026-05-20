@@ -22,16 +22,18 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, TypedDict
 from urllib.parse import urlparse
 
-from .memory import (
+from src.swarms.security.memory import (
     FirewallPolicy,
+    SecurityPolicy,
     SecurityCommand,
     SecurityEvent,
     SecurityEventType,
     SecurityMemory,
     command_exists,
     extract_domain,
+    new_gid,
 )
-from .firewall import FirewallManager
+from src.swarms.security.firewall import FirewallManager
 
 
 def now_ts() -> int:

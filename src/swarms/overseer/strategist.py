@@ -8,8 +8,8 @@ import logging
 import re
 from typing import Any, Dict, Protocol
 
-from .interfaces import LLMGenerator
-from .models import SwarmSnapshot
+from src.swarms.overseer.interfaces import LLMGenerator
+from src.swarms.overseer.models import SwarmSnapshot
 
 logger = logging.getLogger(__name__)
 

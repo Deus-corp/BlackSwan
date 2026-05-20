@@ -14,3 +14,27 @@ logs/
 
 # Git
 .git/
+
+.git
+.venv
+__pycache__
+*.pyc
+.eggs
+*.egg-info
+llama_cpp
+data
+logs
+prometheus_data
+grafana_data
+assets
+docs
+formal
+site
+*.md
+*.db
+*.sqlite3
+Dockerfile
+docker-compose*.yml
+.env
+.env.example
+node_entrypoint_async.sh

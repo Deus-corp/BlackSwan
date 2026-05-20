@@ -12,8 +12,8 @@ try:
 except ImportError:  # pragma: no cover
     psutil = None
 
-from .interfaces import StateSource
-from .models import SwarmSnapshot
+from src.swarms.overseer.interfaces import StateSource
+from src.swarms.overseer.models import SwarmSnapshot
 
 logger = logging.getLogger(__name__)
 

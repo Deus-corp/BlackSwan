@@ -13,11 +13,11 @@ from src.core.crdt_adapter import CRDTAdapter
 from src.intelligence.llm_client import LLMClient
 from swarm_config import config
 
-from .collector import StateCollector
-from .executor import ActionExecutor
-from .policy import PolicyEngine
-from .strategist import LLMStrategist
-from .models import OverseerDecision, SwarmSnapshot
+from src.swarms.overseer.collector import StateCollector
+from src.swarms.overseer.models import OverseerDecision, SwarmSnapshot
+from src.swarms.overseer.executor import ActionExecutor
+from src.swarms.overseer.policy import PolicyEngine
+from src.swarms.overseer.strategist import LLMStrategist
 
 logger = logging.getLogger(__name__)
 

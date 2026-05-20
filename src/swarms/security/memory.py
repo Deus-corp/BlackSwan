@@ -2,11 +2,14 @@
 """SQLite-backed security memory and event chain storage."""
 
 from __future__ import annotations
+from dataclasses import dataclass, field
 
 import json
 import os
 import sqlite3
 import time
+import shutil
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Literal
 
@@ -50,6 +53,19 @@ class SecurityCommand(TypedDict, total=False):
     expires_at: float
     provenance: Dict[str, Any]
     data: Dict[str, Any]
+
+@dataclass
+class FirewallPolicy:
+    """Stored firewall policy."""
+    rules: List[Dict[str, Any]] = field(default_factory=list)
+    timestamp: float = 0.0
+
+@dataclass
+class SecurityPolicy:
+    """High-level security policy."""
+    allow_emergency_flush: bool = False
+    auto_unblock_after: int = 3600
+    max_blocked_ips: int = 1000
 
 
 class SecurityMemory:
@@ -450,3 +466,17 @@ class SecurityMemory:
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM robots_cache WHERE domain = ?", (domain,)).fetchone()
         return dict(row) if row else None
+    
+def command_exists(cmd: str) -> bool:
+    """Check if a command exists in PATH."""
+    return shutil.which(cmd) is not None
+
+def extract_domain(url: str) -> str:
+    """Extract domain from URL."""
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    return parsed.hostname or ""
+
+def new_gid() -> str:
+    """Generate a new globally unique identifier."""
+    return str(uuid.uuid4())
