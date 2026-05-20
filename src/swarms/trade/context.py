@@ -132,6 +132,19 @@ class RuntimeContext:
     evolution_task: Any = None
     sync_task: Any = None
 
+    market_adapter: Any
+    dispatcher: Any
+
+    current_params: Dict[str, Any]
+
+    trace_id: str
+    step_count: int
+
+    capital: float
+
+    executor: Any
+    capital_manager: Any
+
     def to_heartbeat_payload(self) -> Dict[str, Any]:
         """Return a compact, typed heartbeat payload for swarm coordination."""
         return {

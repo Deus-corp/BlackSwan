@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 
-from .context import RuntimeContext
+from ..context import RuntimeContext
 
 
 @dataclass(slots=True)

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
 from .context import RuntimeContext
-from .market_snapshot import MarketSnapshot
+from .market.snapshot import MarketSnapshot
 
 
 @dataclass(slots=True, frozen=True)

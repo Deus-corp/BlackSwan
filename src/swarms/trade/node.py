@@ -40,6 +40,11 @@ from src.trading.swarm_sync import SwarmSync
 from src.trading.mutation_metrics import note_llm_mutation, update_llm_impact, get_llm_stats
 from src.risk.risk_manager import RiskManager
 
+from .trading.flow import TradeFlowService
+from .market.snapshot import MarketCollector
+from src.trading.heartbeat_publisher import HeartbeatPublisher
+from .maintenance.service import MaintenanceService
+
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
 # Basic logging configuration. This is usually done once at the application's entry point.
@@ -151,6 +156,8 @@ class SwarmNode:
             market_mode=self.market_mode,
         )
 
+        self.market_collector = MarketCollector(self.ctx)
+
         if self.market_mode == "web3":
             for sym in symbols_list:
                 adapter = self.market_adapter.get_adapter(sym)
@@ -213,6 +220,16 @@ class SwarmNode:
         self._prev_prev_price: float = 100.0
         self._last_market: Optional[Dict[str, Any]] = None
         self._trace_id: str = "" # Initialize trace_id for event tracing
+
+        self.trade_flow = TradeFlowService(
+            self.ctx
+        )
+
+        self.maintenance_service = MaintenanceService(self.ctx)
+
+        self.heartbeat_publisher = (
+            HeartbeatPublisher(self.ctx)
+        )
 
         self._seed_from_memory()
 
@@ -639,7 +656,9 @@ class SwarmNode:
                     break # Exit main loop
 
                 # 1. Market data collection
-                best_symbol, best_market, snapshot = await self._collect_market_snapshot(session)
+                snapshot = await self.market_collector.collect(session)
+                best_symbol = snapshot.best_symbol
+                best_market = snapshot.best_market
 
                 # Update prices for volatility calculation
                 self._prev_prev_price = self._prev_price
@@ -701,8 +720,7 @@ class SwarmNode:
                     break # Exit main loop
 
                 # 4. Survival Evaluation + Trade Execution
-                trade_result: Optional[Dict[str, Any]] = await self._evaluate_survival_and_trade(best_market, best_symbol)
-                # Note: capital is updated within _evaluate_survival_and_trade, even if trade fails.
+                trade_result: Optional[Dict[str, Any]] = await self.trade_flow.process(snapshot)
 
                 self._last_market = best_market # Update last market after potential trade
 
@@ -919,136 +937,24 @@ class SwarmNode:
         including capital watchdog, meta-command application, heartbeats,
         memory management, and CRDT pruning.
         """
-        # Watchdog: protection against capital decrease
-        if self.capital < config.capital_watchdog_threshold:
-            logger.warning(f"[{self.node_id}] Watchdog: low capital ({self.capital:.2f}), gradual rollback of parameters")
-            # Define a standard set of parameters for rollback
-            std_params: Dict[str, float] = {
-                "max_risk_per_trade": 0.05,
-                "phi_llm": 0.15,
-                "stop_loss_ratio": 0.02,
-                "trailing_stop_ratio": 0.01,
-                "momentum_window": 10.0,
-                "volatility_threshold": 0.02,
-            }
-            # Gradually roll back current parameters towards standard values
-            for k, std_val in std_params.items():
-                current_val = self.current_params.get(k, std_val)
-                # Weighted average towards standard value to gently adjust
-                self.current_params[k] = current_val * 0.8 + std_val * 0.2
-            self.capital_manager.apply_dq_delta(-0.05) # Penalize DQ to incentivize caution
-
         # Apply meta commands every 50 steps
         if self.step_count % 50 == 0:
             await self._apply_meta_commands()
 
         # Send heartbeat every 30 steps
         if self.step_count % 30 == 0:
-            try:
-                current_fitness: float = 0.0
-                if self.engine.champion:
-                    # Ensure champion[1] (fitness) is a float
-                    current_fitness = float(self.engine.champion[1])
+            self.ctx.capital = self.capital
+            self.ctx.step_count = self.step_count
+            self.ctx.trace_id = self._trace_id
 
-                current_diversity: float = self.population_diversity()
-                current_crdt_size: int = len(self.crdt.state)
-                current_niche_counts: Dict[str, int] = self.population_niche_counts()
-                llm_mutations_count: int = get_llm_stats()[0]
+            await self.heartbeat_publisher.publish()
 
-                self.telemetry.heartbeat(
-                    step=self.step_count,
-                    capital=self.capital,
-                    dq=self.survival.dq,
-                    fitness=current_fitness,
-                    diversity=current_diversity,
-                    crdt_size=current_crdt_size,
-                    llm_mutations=llm_mutations_count,
-                    niche_counts=current_niche_counts,
-                    trace_id=self._trace_id,
-                )
+        if self.step_count % 200 == 0 or self.step_count % 500 == 0 or self.capital < config.capital_watchdog_threshold:
+            self.ctx.capital = self.capital
+            self.ctx.step_count = self.step_count
+            self.ctx.trace_id = self._trace_id
 
-                # Duplicate heartbeat to CRDT for MetaAgent observation and swarm state
-                heartbeat_payload: Dict[str, Any] = {
-                    "type": "heartbeat",
-                    "capital": self.capital,
-                    "dq": self.survival.dq,
-                    "fitness": current_fitness,
-                    "diversity": current_diversity,
-                    "crdt_size": current_crdt_size,
-                    "llm_mutations": llm_mutations_count,
-                    "niche_counts": current_niche_counts,
-                    "node_id": self.node_id,
-                    "timestamp": time.time(),
-                    "trace_id": self._trace_id,
-                    "origin_pubkey_hex": self.crypto.public_bytes_hex,
-                }
-                # Using add_genome for generic CRDT updates, as heartbeats are also state changes
-                await self.crdt.add_genome(heartbeat_payload)
-
-            except Exception as e:
-                logger.warning(f"Heartbeat failed: {e}", exc_info=True)
-
-        # Memory management and CRDT pruning every 500 steps
-        if self.step_count % 500 == 0:
-            # Deduplicate records by their parameters, keeping the last one for recency.
-            # Convert dict.items() to frozenset for hashability
-            deduplicated_records: Dict[frozenset[Tuple[str, Any]], MemoryRecord] = {
-                frozenset(rec["params"].items()): rec
-                for rec in self.memory.records
-                if isinstance(rec, dict) and "params" in rec and isinstance(rec["params"], dict)
-            }
-            self.memory.records = list(deduplicated_records.values())
-
-            if len(self.memory.records) > self.memory.max_size:
-                # If still over max_size after deduplication, truncate from oldest
-                self.memory.records = self.memory.records[-self.memory.max_size:]
-
-            if self.memory_api_enabled:
-                await self.memory_api.save_to_db()
-                self.event_store.append(Event.create(
-                    node_id=self.node_id,
-                    event_type="memory_snapshot_created",
-                    payload={
-                        "step": self.step_count,
-                        "records_count": len(self.memory_api._records), # Access internal list for count
-                        "trace_id": self._trace_id,
-                    },
-                    parent_id=self._trace_id,
-                ))
-
-        # Semantic memory derivation and CRDT deep pruning every 200 steps
-        if self.step_count % 200 == 0:
-            self.semantic.derive_rules(self.memory.to_dict_list())
-            await self.crdt.prune() # General CRDT pruning
-            await self.crdt.prune_heartbeats(max_age_seconds=600) # Prune old heartbeats
-
-            # Evaluate reputation from imported genomes
-            top_genomes: List[Dict[str, Any]] = await self.crdt.get_top(20)
-            if top_genomes:
-                sample: Dict[str, Any] = random.choice(top_genomes)
-                pubkey_hex: Optional[str] = sample.get("origin_pubkey_hex")
-
-                # Compare origin_pubkey_hex with current node's public key hex
-                # Only update reputation for genomes from OTHER nodes
-                if pubkey_hex and pubkey_hex != self.crypto.public_bytes_hex:
-                    try:
-                        # Ensure 'params' is a dict and its values are floats for fitness evaluation
-                        sample_params: Dict[str, float] = {
-                            k: float(v) for k, v in sample.get("params", {}).items()
-                            if isinstance(v, (int, float))
-                        }
-                        actual_fit: float = self.engine._fitness(sample_params)
-                        claimed_fit: float = float(sample.get("fitness", 0.0))
-
-                        # Convert hex string back to bytes for reputation manager
-                        pubkey_bytes: bytes = bytes.fromhex(pubkey_hex)
-                        self.reputation.update(pubkey_bytes, claimed_fit, actual_fit)
-                    except (ValueError, KeyError, TypeError) as e:
-                        logger.warning(f"Reputation update skipped due to invalid data in genome {sample.get('gid', 'N/A')}: {e}")
-
-            if self.memory_api_enabled:
-                stats: Dict[str, Any] = await self.memory_api.compress()
-                logger.info(f"Memory compression stats: {stats}")
+            await self.maintenance_service.run(self.current_params)
 
     async def start(self) -> None:
         """
