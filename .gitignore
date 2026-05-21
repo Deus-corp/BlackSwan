@@ -75,4 +75,4 @@ data/improver_proposals/
 # Excluded paths (already covered by broader patterns)
 # src/swarms/improver/agent.py
 # src/swarms/improver
-# data/
+# data/.env
