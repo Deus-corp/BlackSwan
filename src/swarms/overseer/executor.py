@@ -7,29 +7,47 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Set, Final
 
 from src.swarms.overseer.interfaces import GenomeSink
 from src.swarms.overseer.models import OverseerDecision, SwarmSnapshot
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
-COMMAND_EXPIRATION_DEFAULT_SECONDS = 300
-EXPLORER_COMMAND_EXPIRATION_SECONDS = 600
-COMMAND_COOLDOWN_SECONDS = 600
+COMMAND_EXPIRATION_DEFAULT_SECONDS: Final[int] = 300
+EXPLORER_COMMAND_EXPIRATION_SECONDS: Final[int] = 600
+COMMAND_COOLDOWN_SECONDS: Final[int] = 600
 
-_VOLATILE_KEYS = {"timestamp", "expires_at", "gid"}
+_VOLATILE_KEYS: Final[Set[str]] = {"timestamp", "expires_at", "gid"}
 
 
 class ActionExecutor:
-    """Emits commands into CRDT with deduplication and cooldown."""
+    """Emits commands into CRDT with deduplication and cooldown.
+
+    Attributes:
+        _sink: GenomeSink instance for persisting commands.
+        _last_emitted_at: Dictionary tracking the last emission time for each command key.
+        _last_fingerprint: Dictionary tracking the last fingerprint for each command key.
+    """
 
     def __init__(self, sink: GenomeSink) -> None:
-        self._sink = sink
+        """Initialize the ActionExecutor with a GenomeSink.
+
+        Args:
+            sink: GenomeSink instance for persisting commands.
+        """
+        self._sink: GenomeSink = sink
         self._last_emitted_at: Dict[str, float] = {}
         self._last_fingerprint: Dict[str, str] = {}
 
     async def apply(self, snapshot: SwarmSnapshot, decision: OverseerDecision, now: float) -> None:
+        """Apply overseer decisions to the swarm based on the current snapshot.
+
+        Args:
+            snapshot: Current state of the swarm.
+            decision: Decision made by the overseer.
+            now: Current timestamp.
+        """
         for stale_node_id in snapshot.stale_trade_nodes:
             await self._emit_restart_command("trade", stale_node_id, now)
         for stale_node_id in snapshot.stale_security_nodes:
@@ -93,7 +111,7 @@ class ActionExecutor:
                 "Spawn nodes recommended, but external orchestrator integration is not wired yet."
             )
 
-        if decision.continue_explorer is False:
+        if not decision.continue_explorer:
             await self._emit_command(
                 "pause_explorer",
                 {
@@ -107,6 +125,13 @@ class ActionExecutor:
             )
 
     async def _emit_restart_command(self, swarm: str, node_id: str, now: float) -> None:
+        """Emit a restart command for a stale node.
+
+        Args:
+            swarm: Type of the swarm (e.g., "trade", "security", "explorer").
+            node_id: ID of the node to restart.
+            now: Current timestamp.
+        """
         command_key = f"restart:{swarm}:{node_id}"
         command = {
             "type": "sec_command",
@@ -119,6 +144,13 @@ class ActionExecutor:
         logger.warning("Detected stale %s node %s. Requesting restart.", swarm, node_id)
 
     async def _emit_command(self, command_key: str, command: Dict[str, Any], now: float) -> None:
+        """Emit a command if it should be emitted based on cooldown and fingerprint checks.
+
+        Args:
+            command_key: Key identifying the command.
+            command: Command to emit.
+            now: Current timestamp.
+        """
         if not self._should_emit(command_key, command, now):
             logger.debug("Skipping command '%s' due to cooldown or identical payload.", command_key)
             return
@@ -133,9 +165,19 @@ class ActionExecutor:
         self._last_fingerprint[command_key] = self._fingerprint(command)
 
     def _should_emit(self, command_key: str, command: Dict[str, Any], now: float) -> bool:
-        last_at = self._last_emitted_at.get(command_key)
-        fingerprint = self._fingerprint(command)
-        last_fp = self._last_fingerprint.get(command_key)
+        """Check if a command should be emitted based on cooldown and fingerprint.
+
+        Args:
+            command_key: Key identifying the command.
+            command: Command to check.
+            now: Current timestamp.
+
+        Returns:
+            bool: True if the command should be emitted, False otherwise.
+        """
+        last_at: Optional[float] = self._last_emitted_at.get(command_key)
+        fingerprint: str = self._fingerprint(command)
+        last_fp: Optional[str] = self._last_fingerprint.get(command_key)
 
         if last_at is not None and (now - last_at) < COMMAND_COOLDOWN_SECONDS:
             return False
@@ -152,7 +194,19 @@ class ActionExecutor:
         expiration_seconds: int,
         action_type: str,
     ) -> Dict[str, Any]:
-        now = time.time()
+        """Create a meta command dictionary.
+
+        Args:
+            gid_prefix: Prefix for the global ID.
+            reason: Reason for the command.
+            params: Parameters for the command.
+            expiration_seconds: Expiration time in seconds.
+            action_type: Type of the action.
+
+        Returns:
+            Dict[str, Any]: Constructed meta command.
+        """
+        now: float = time.time()
         return {
             "type": action_type,
             "data": {
@@ -167,12 +221,28 @@ class ActionExecutor:
 
     @classmethod
     def _fingerprint(cls, command: Dict[str, Any]) -> str:
-        stable = cls._strip_volatile(command)
-        payload = json.dumps(stable, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        """Generate a fingerprint for a command by hashing its stable content.
+
+        Args:
+            command: Command to fingerprint.
+
+        Returns:
+            str: SHA-256 fingerprint of the command's stable content.
+        """
+        stable: Any = cls._strip_volatile(command)
+        payload: str = json.dumps(stable, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @classmethod
     def _strip_volatile(cls, value: Any) -> Any:
+        """Strip volatile keys from a dictionary or list.
+
+        Args:
+            value: Dictionary or list to process.
+
+        Returns:
+            Any: Processed dictionary or list with volatile keys removed.
+        """
         if isinstance(value, dict):
             return {
                 key: cls._strip_volatile(inner)

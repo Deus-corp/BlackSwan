@@ -5,9 +5,11 @@ This module initializes the FastAPI application, mounts static files,
 registers API routers, and sets up Prometheus metrics endpoints.
 """
 
+from __future__ import annotations
+
 import os
 import sys
-from typing import Dict, Union, TypedDict
+from typing import Dict, Union, TypedDict, Final
 
 import uvicorn
 from fastapi import FastAPI
@@ -15,28 +17,21 @@ from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from prometheus_client import CollectorRegistry, Gauge, generate_latest
 
-# Add the parent directory to sys.path for relative imports
-# This ensures that 'dashboard' can be imported as a package even when
-# app.py is run directly as a script.
+HOST: Final[str] = os.getenv("HOST", "0.0.0.0")
+PORT: Final[int] = int(os.getenv("PORT", "8080"))
+LOG_LEVEL: Final[str] = os.getenv("LOG_LEVEL", "info")
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-# Initialize FastAPI app before any other app-related operations
 app = FastAPI(title="BlackSwan Control Panel")
 
-# Mount static files
-# Using an absolute path for robustness
 static_files_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_files_dir), name="static")
 
-# Import and register API routers
-# The 'update_prometheus_metrics' from 'dashboard.routes.metrics' is for internal
-# use within that router. This app.py defines its own global metrics and an update
-# function for them.
 from dashboard.routes.control import router as control_router
 from dashboard.routes.dashboard import router as dashboard_router
 from dashboard.routes.logs import router as logs_router
 from dashboard.routes.main import router as main_router
-# collect_metrics is used by this app.py to fetch data for global metrics
 from dashboard.routes.metrics import collect_metrics, router as metrics_router
 from dashboard.routes.mutations import router as mutations_router
 from dashboard.routes.settings import router as settings_router
@@ -51,12 +46,8 @@ app.include_router(control_router)
 app.include_router(trades_router)
 app.include_router(mutations_router)
 
-# --- Prometheus metrics setup for application-level monitoring ---
-# A dedicated registry ensures these metrics are isolated from any others
-# that might be managed by specific routers.
 registry = CollectorRegistry()
 
-# Define Prometheus Gauges
 capital_gauge = Gauge(
     'swarm_capital', 'Capital per node', ['node'], registry=registry
 )
@@ -71,7 +62,6 @@ crdt_size_gauge = Gauge(
 )
 
 
-# Define a TypedDict for better type hinting of the inner metrics dictionary
 class NodeMetrics(TypedDict):
     capital: Union[float, int]
     fitness: Union[float, int]
@@ -92,8 +82,14 @@ def _update_global_prometheus_gauges(
         metrics_dict: A dictionary where keys are node names (str) and values
                       are dictionaries (NodeMetrics) containing metric names (str)
                       and their corresponding values (float or int).
+
+    Raises:
+        ValueError: If any metric value is non-finite.
     """
     for node, data in metrics_dict.items():
+        for key, value in data.items():
+            if not np.isfinite(value):
+                raise ValueError(f"Non-finite value encountered for node '{node}', metric '{key}': {value}")
         capital_gauge.labels(node=node).set(data.get('capital', 0))
         fitness_gauge.labels(node=node).set(data.get('fitness', 0))
         diversity_gauge.labels(node=node).set(data.get('diversity', 0))
@@ -109,19 +105,11 @@ def prometheus_metrics() -> PlainTextResponse:
     updates the global Prometheus gauges defined in this file, and
     then returns the latest metrics in Prometheus text format.
     """
-    # Calls collect_metrics from dashboard.routes.metrics to get current system data
     data: Dict[str, NodeMetrics] = collect_metrics()
-    # Updates the global gauges defined in this file with the collected data
     _update_global_prometheus_gauges(data)
-    # Returns the latest metrics from the dedicated registry in Prometheus format
     return PlainTextResponse(generate_latest(registry).decode("utf-8"))
 
 
 if __name__ == "__main__":
-    # Constants for Uvicorn server configuration
-    HOST: str = "0.0.0.0"
-    PORT: int = 8080
-    LOG_LEVEL: str = "info"
-
     print(f"🌐 Панель управления запущена на http://localhost:{PORT}")
     uvicorn.run(app, host=HOST, port=PORT, log_level=LOG_LEVEL)

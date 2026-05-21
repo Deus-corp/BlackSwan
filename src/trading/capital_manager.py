@@ -2,19 +2,21 @@
 Manages swarm node capital and survival status.
 """
 import logging
-from typing import Any, Dict, Tuple, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Tuple, Optional, Protocol, runtime_checkable, Final
 
-# Assuming 'swarm_config' module provides a 'config' object with necessary attributes.
 from swarm_config import config
 
-logger = logging.getLogger(__name__)
+logger: Final = logging.getLogger(__name__)
 
 
-# Define a Protocol for SurvivalEvaluator to provide better type hints
 @runtime_checkable
 class SurvivalEvaluatorProtocol(Protocol):
     """
     A protocol defining the expected interface for a SurvivalEvaluator.
+    
+    Attributes:
+        dq: float - Decentralization Quotient, must be in range [0.0, 1.0].
+        liveness: float - Liveness metric, must be in range [0.0, 1.0].
     """
     dq: float
     liveness: float
@@ -27,21 +29,35 @@ class CapitalManager:
     This class tracks the node's capital, applies a defined burn rate,
     processes the financial outcomes of trades, and evaluates the node's
     operational liveness based on its capital and a linked SurvivalEvaluator.
+    
+    Attributes:
+        capital: float - Current capital of the node.
+        burn_rate: float - Rate at which capital is depleted per burn cycle.
+        alert_threshold: float - Threshold for capital alerts.
+        survival: Optional[SurvivalEvaluatorProtocol] - Linked survival evaluator.
     """
+    __slots__ = ('capital', 'burn_rate', 'alert_threshold', 'survival')
+
     def __init__(self, capital: float = 1000.0) -> None:
         """
         Initializes the CapitalManager with a starting capital and configuration settings.
 
         Args:
-            capital: The starting capital for the node. Defaults to 1000.0.
-                     Consider loading this from `config` if it needs to be dynamically configured.
+            capital: The starting capital for the node. Must be non-negative. Defaults to 1000.0.
+
+        Raises:
+            ValueError: If capital, config.burn_rate, or config.capital_alert_threshold is negative.
         """
+        if capital < 0:
+            raise ValueError("Capital must be non-negative.")
+        if config.burn_rate < 0:
+            raise ValueError("Burn rate must be non-negative.")
+        if config.capital_alert_threshold < 0:
+            raise ValueError("Capital alert threshold must be non-negative.")
+
         self.capital: float = capital
         self.burn_rate: float = config.burn_rate
         self.alert_threshold: float = config.capital_alert_threshold
-
-        # The 'survival' attribute is expected to be an instance of SurvivalEvaluatorProtocol
-        # and is set externally after initialization.
         self.survival: Optional[SurvivalEvaluatorProtocol] = None
 
     def set_survival(self, survival_evaluator: SurvivalEvaluatorProtocol) -> None:
@@ -53,8 +69,16 @@ class CapitalManager:
 
         Args:
             survival_evaluator: An instance of SurvivalEvaluatorProtocol or a similar object
-                                 that provides 'dq' and 'liveness' attributes.
+                             that provides 'dq' and 'liveness' attributes. Both attributes must be
+                             in the range [0.0, 1.0].
+
+        Raises:
+            ValueError: If dq or liveness attributes are outside the range [0.0, 1.0].
         """
+        if not (0.0 <= survival_evaluator.dq <= 1.0):
+            raise ValueError("DQ must be in the range [0.0, 1.0].")
+        if not (0.0 <= survival_evaluator.liveness <= 1.0):
+            raise ValueError("Liveness must be in the range [0.0, 1.0].")
         self.survival = survival_evaluator
 
     def burn(self) -> None:
@@ -63,9 +87,7 @@ class CapitalManager:
 
         Ensures that capital does not fall below zero.
         """
-        self.capital -= self.burn_rate
-        # Ensure capital does not go below zero, indicating complete depletion.
-        self.capital = max(0.0, self.capital)
+        self.capital = max(0.0, self.capital - self.burn_rate)
         logger.debug(f"Capital after burn: {self.capital:.4f}")
 
     def apply_trade(self, result: Dict[str, Any]) -> float:
@@ -82,8 +104,6 @@ class CapitalManager:
         Returns:
             The change in capital resulting from the trade. Currently always returns 0.0.
         """
-        # TODO: Implement actual capital update based on trade results.
-        # This is a placeholder; real calculation should be moved here from external logic.
         logger.info(f"Trade result received: {result}. Capital not updated as method is a stub.")
         return 0.0
 
@@ -123,10 +143,14 @@ class CapitalManager:
         or trades.
 
         Args:
-            delta: The amount by which to increase the DQ. Defaults to 0.001.
+            delta: The amount by which to increase the DQ. Must be non-negative. Defaults to 0.001.
+
+        Raises:
+            ValueError: If delta is negative.
         """
+        if delta < 0:
+            raise ValueError("Delta must be non-negative.")
         if self.survival:
-            # Assuming 'dq' is a mutable attribute of the survival object
             self.survival.dq = min(1.0, self.survival.dq + delta)
             logger.debug(f"DQ updated to: {self.survival.dq:.4f}")
         else:

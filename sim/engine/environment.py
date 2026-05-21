@@ -1,5 +1,13 @@
+"""
+A simple market model simulating asset price evolution using Geometric Brownian Motion (GBM).
+
+The price movement follows the formula: dS/S = μ*dt + σ*dW, where dt=1 for each step.
+"""
+
+from __future__ import annotations
+
+from typing import List, Dict, Final
 import numpy as np
-from typing import List, Dict
 
 
 class MarketEnvironment:
@@ -8,6 +16,7 @@ class MarketEnvironment:
 
     The price movement follows the formula: dS/S = μ*dt + σ*dW, where dt=1 for each step.
     """
+    __slots__ = ('volatility', 'drift', 'lookback_period', 'prices')
 
     def __init__(self, volatility: float = 0.02, drift: float = 0.0, lookback_period: int = 100) -> None:
         """
@@ -20,6 +29,9 @@ class MarketEnvironment:
                    A value of 0 results in a pure random walk.
             lookback_period: The number of recent returns to consider when estimating market volatility.
                              Must be a positive integer.
+
+        Raises:
+            ValueError: If `volatility` is negative, `drift` is not a number, or `lookback_period` is not a positive integer.
         """
         if not isinstance(volatility, (int, float)) or volatility < 0:
             raise ValueError("Volatility must be a non-negative float.")
@@ -28,10 +40,10 @@ class MarketEnvironment:
         if not isinstance(lookback_period, int) or lookback_period <= 0:
             raise ValueError("Lookback period must be a positive integer.")
 
-        self.volatility: float = volatility
-        self.drift: float = drift
-        self.lookback_period: int = lookback_period
-        self.prices: List[float] = [1.0]  # Initial price of the asset
+        self.volatility: Final[float] = volatility
+        self.drift: Final[float] = drift
+        self.lookback_period: Final[int] = lookback_period
+        self.prices: List[float] = [1.0]
 
     def step(self) -> float:
         """
@@ -42,12 +54,15 @@ class MarketEnvironment:
 
         Returns:
             The newly calculated price of the asset.
+
+        Raises:
+            ValueError: If the new price is not finite or positive.
         """
         last_price: float = self.prices[-1]
-        # Calculate returns using a normal distribution
-        # dS/S = μ*dt + σ*dW, with dt=1 for each step
         returns: float = np.random.normal(loc=self.drift, scale=self.volatility)
         new_price: float = last_price * (1 + returns)
+        if not np.isfinite(new_price) or new_price <= 0:
+            raise ValueError("New price must be finite and positive.")
         self.prices.append(new_price)
         return new_price
 
@@ -70,28 +85,16 @@ class MarketEnvironment:
         current_price: float = self.prices[-1]
         volatility_estimate: float
 
-        # Need at least 2 prices to calculate a return
         if len(self.prices) < 2:
             volatility_estimate = self.volatility
         else:
-            # Determine the start index for slicing prices.
-            # We need `lookback_period` returns, which requires `lookback_period + 1` price points.
-            # `max(0, ...)` ensures we don't go beyond the actual start of the list.
             start_index: int = max(0, len(self.prices) - (self.lookback_period + 1))
-
-            # Slice the prices array to get the relevant history
             recent_prices_arr: np.ndarray = np.array(self.prices[start_index:])
-
-            # Calculate periodic returns from the sliced prices
-            # np.diff requires at least 2 elements. We've ensured len(self.prices) >= 2 above.
-            # If recent_prices_arr has only one element, np.diff will return an empty array.
             returns: np.ndarray = np.diff(recent_prices_arr) / recent_prices_arr[:-1]
 
             if returns.size > 0:
                 volatility_estimate = np.std(returns)
             else:
-                # This case should ideally not be reached if len(self.prices) >= 2,
-                # but serves as a robust fallback.
                 volatility_estimate = self.volatility
 
         return {

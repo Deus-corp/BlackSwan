@@ -8,14 +8,14 @@ import json
 import os
 import logging
 import random
-from typing import Dict, Union, Any, Final, TypedDict # Added TypedDict
+from typing import Dict, Union, Any, Final, TypedDict, Optional
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__) # Use a logger instance for better practice
+if not logging.getLogger().handlers:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger: Final[logging.Logger] = logging.getLogger(__name__)
 
-# Define a TypedDict for the structure of market ticks that will be published.
-# This ensures type consistency for the data sent to Redis.
+
 class MarketTick(TypedDict):
     """
     Represents a single market data tick to be published.
@@ -37,22 +37,32 @@ except ImportError:
     logger.error("Could not import MarketEnvironment from 'sim.engine.environment'. "
                  "Please ensure 'sim' package is installed and accessible.")
     logger.warning("Using dummy MarketEnvironment due to import error. Prices will have basic simulation.")
+    
     class MarketEnvironment:
         """
         A dummy MarketEnvironment class used when the actual 'sim' package cannot be imported.
         Simulates basic price movements with drift and volatility.
         """
+        __slots__ = ('_price', 'volatility', 'drift')
+
         def __init__(self, volatility: float, drift: float) -> None:
             """
             Initializes the dummy market environment.
 
             Args:
-                volatility: The volatility parameter for price simulation.
+                volatility: The volatility parameter for price simulation. Must be non-negative.
                 drift: The drift parameter for price simulation.
+
+            Raises:
+                ValueError: If volatility is negative.
             """
-            self._price: float = 100.0  # Starting price
-            self.volatility: float = volatility
-            self.drift: float = drift
+            if not isinstance(volatility, (int, float)) or volatility < 0:
+                raise ValueError("volatility must be a non-negative number.")
+            if not isinstance(drift, (int, float)):
+                raise ValueError("drift must be a number.")
+            self._price: float = 100.0
+            self.volatility: float = float(volatility)
+            self.drift: float = float(drift)
 
         def step(self) -> float:
             """
@@ -61,20 +71,12 @@ except ImportError:
             Returns:
                 The new simulated price as a float.
             """
-            # Apply drift: price tends to increase/decrease by a percentage
             price_change_drift = self._price * self.drift
-            
-            # Apply volatility: random fluctuation around the current price
-            # Using random.uniform for more direct control over the range.
-            # Fluctuation is between -volatility * self._price and +volatility * self._price
             price_change_volatility = self._price * self.volatility * random.uniform(-1.0, 1.0)
-            
             self._price += price_change_drift + price_change_volatility
-            
-            # Ensure price does not fall below a nominal minimum
             self._price = max(0.01, self._price)
-            
-            return self._price # For the dummy, we return just the price as a float
+            return self._price
+
 
 # Configuration from environment variables
 REDIS_URL: Final[str] = os.environ.get("REDIS_URL", "redis://localhost:6379")
@@ -82,6 +84,7 @@ DRIFT: Final[float] = float(os.environ.get("DRIFT", "0.002"))
 VOLATILITY: Final[float] = float(os.environ.get("VOLATILITY", "0.01"))
 INTERVAL: Final[float] = float(os.environ.get("INTERVAL", "2.0"))
 MARKET_CHANNEL: Final[str] = "market_ticks"
+
 
 def run_market_service() -> None:
     """
@@ -92,37 +95,33 @@ def run_market_service() -> None:
     MarketEnvironment (either real or dummy), and publishes the resulting
     market state (price, volatility_estimate, drift) as JSON to a Redis channel
     at a specified interval.
+
+    Raises:
+        ValueError: If INTERVAL is not a positive number.
     """
-    redis_client: redis.Redis
+    if not isinstance(INTERVAL, (int, float)) or INTERVAL <= 0:
+        raise ValueError("INTERVAL must be a positive number.")
+
+    redis_client: Optional[redis.Redis] = None
     try:
-        # Initialize Redis client for publishing market data
         redis_client = redis.Redis.from_url(REDIS_URL)
-        redis_client.ping() # Test connection
+        redis_client.ping()
         logger.info("Successfully connected to Redis.")
     except redis.exceptions.ConnectionError as e:
         logger.error(f"Could not connect to Redis at {REDIS_URL}: {e}")
-        return # Exit if Redis connection fails
+        return
 
-    # Initialize market simulation environment with configured volatility and drift
     market_env: MarketEnvironment = MarketEnvironment(volatility=VOLATILITY, drift=DRIFT)
 
     logger.info(f"Market service started, publishing every {INTERVAL}s to Redis channel '{MARKET_CHANNEL}'")
     logger.info(f"Market parameters: Drift={DRIFT}, Volatility={VOLATILITY}")
 
-    # Main loop for market tick generation and publishing
     while True:
         try:
-            # Generate the next market state step. It can return either a simple price (float)
-            # or a dictionary containing more detailed state information.
             raw_state: Union[float, Dict[str, Any]] = market_env.step()
-
-            # Construct the MarketTick dictionary explicitly, ensuring all required fields are present.
             market_tick_data: MarketTick
 
             if isinstance(raw_state, dict):
-                # If the MarketEnvironment returned a dict, extract the required fields.
-                # Use global config as fallbacks if not explicitly provided in the dict.
-                # Log a warning if 'price' is missing or non-numeric from the dict.
                 price_from_dict = raw_state.get("price")
                 if not isinstance(price_from_dict, (int, float)):
                     logger.warning(
@@ -135,29 +134,25 @@ def run_market_service() -> None:
 
                 market_tick_data = {
                     "price": price_val,
-                    "volatility_estimate": raw_state.get("volatility_estimate", VOLATILITY), # Fallback to config
-                    "drift": raw_state.get("drift", DRIFT), # Fallback to config
+                    "volatility_estimate": raw_state.get("volatility_estimate", VOLATILITY),
+                    "drift": raw_state.get("drift", DRIFT),
                 }
             else:
-                # If step returned just a price (float), create the expected dictionary
                 market_tick_data = {
                     "price": raw_state,
-                    "volatility_estimate": VOLATILITY, # Using configured value as estimate
-                    "drift": DRIFT                     # Using configured drift value
+                    "volatility_estimate": VOLATILITY,
+                    "drift": DRIFT
                 }
 
-            # Publish the market state as a JSON string to the "market_ticks" channel in Redis
-            redis_client.publish(MARKET_CHANNEL, json.dumps(market_tick_data))
-            logger.debug(f"Published market tick: {json.dumps(market_tick_data)}")
+            if redis_client:
+                redis_client.publish(MARKET_CHANNEL, json.dumps(market_tick_data))
+                logger.debug(f"Published market tick: {json.dumps(market_tick_data)}")
 
         except Exception as e:
             logger.error(f"Error during market tick generation or publishing: {e}", exc_info=True)
-            # Log the error and continue, as a transient error shouldn't stop the entire service.
 
-        # Pause for the specified interval before the next market tick generation
         time.sleep(INTERVAL)
 
+
 if __name__ == "__main__":
-    # This block executes when the script is run directly.
-    # It starts the market simulation and publishing service.
     run_market_service()

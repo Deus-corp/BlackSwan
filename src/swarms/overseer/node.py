@@ -7,7 +7,7 @@ import logging
 import os
 import time
 import uuid
-from typing import Optional
+from typing import Optional, Final, Dict, Any
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.intelligence.llm_client import LLMClient
@@ -19,25 +19,58 @@ from src.swarms.overseer.executor import ActionExecutor
 from src.swarms.overseer.policy import PolicyEngine
 from src.swarms.overseer.strategist import LLMStrategist
 
-logger = logging.getLogger(__name__)
+logger: Final = logging.getLogger(__name__)
 
-DEFAULT_COORDINATION_INTERVAL_SECONDS = 150
-MIN_FAILURE_BACKOFF_SECONDS = 5
-MAX_FAILURE_BACKOFF_SECONDS = 60
+DEFAULT_COORDINATION_INTERVAL_SECONDS: Final[int] = 150
+MIN_FAILURE_BACKOFF_SECONDS: Final[int] = 5
+MAX_FAILURE_BACKOFF_SECONDS: Final[int] = 60
 
 
 class OverseerNode:
-    """Orchestrates collection, policy, LLM strategy, and execution."""
+    """Orchestrates collection, policy, LLM strategy, and execution for the swarm.
+
+    Attributes:
+        node_id: Unique identifier for this overseer node.
+        coordination_interval_seconds: Interval between coordination cycles in seconds.
+        llm: LLM client for generating strategic suggestions.
+        crdt: CRDT adapter for state synchronization.
+        collector: Collects state snapshots from the swarm.
+        policy: Evaluates hard rules and merges decisions.
+        strategist: Generates LLM-based strategic suggestions.
+        executor: Applies decisions to the swarm.
+        _next_coordination_at: Monotonic time for the next coordination cycle.
+        _coordinate_lock: Lock to prevent concurrent coordination cycles.
+        _failure_backoff_seconds: Current backoff duration after failures.
+    """
+    __slots__ = (
+        "node_id", "coordination_interval_seconds", "llm", "crdt", 
+        "collector", "policy", "strategist", "executor", 
+        "_next_coordination_at", "_coordinate_lock", "_failure_backoff_seconds"
+    )
 
     def __init__(
         self,
         node_id: Optional[str] = None,
         coordination_interval_seconds: Optional[int] = None,
     ) -> None:
+        """Initialize the OverseerNode.
+
+        Args:
+            node_id: Unique identifier for this node. If None, a random ID is generated.
+            coordination_interval_seconds: Interval between coordination cycles in seconds.
+                If None, uses the default or environment variable.
+
+        Raises:
+            ValueError: If `coordination_interval_seconds` is not positive.
+        """
         self.node_id = node_id or f"overseer-{uuid.uuid4().hex[:8]}"
-        self.coordination_interval_seconds = coordination_interval_seconds or int(
+        
+        interval = coordination_interval_seconds or int(
             os.environ.get("OVERSEER_COORDINATION_INTERVAL_SECONDS", DEFAULT_COORDINATION_INTERVAL_SECONDS)
         )
+        if interval <= 0:
+            raise ValueError("coordination_interval_seconds must be positive")
+        self.coordination_interval_seconds = interval
 
         self.llm = LLMClient(n_ctx=8192)
         self.crdt = CRDTAdapter(node_id=self.node_id, db_path=config.crdt_db_path)
@@ -52,6 +85,12 @@ class OverseerNode:
         self._failure_backoff_seconds = MIN_FAILURE_BACKOFF_SECONDS
 
     async def run(self) -> None:
+        """Run the overseer node's main coordination loop.
+
+        Raises:
+            asyncio.CancelledError: If the loop is cancelled by the user.
+            Exception: For unexpected fatal errors in the run loop.
+        """
         logger.info(
             "🧭 Overseer %s started (interval=%ss)",
             self.node_id,
@@ -88,6 +127,11 @@ class OverseerNode:
             raise
 
     async def coordinate(self) -> bool:
+        """Execute a single coordination cycle.
+
+        Returns:
+            bool: True if the cycle completed successfully, False otherwise.
+        """
         if self._coordinate_lock.locked():
             logger.warning("Overseer coordination already in progress; skipping this cycle.")
             return False
@@ -98,6 +142,8 @@ class OverseerNode:
                 snapshot = self.collector.collect()
                 hard_rules = self.policy.evaluate_hard_rules(snapshot)
                 llm_suggestions = await self.strategist.suggest(snapshot)
+                if not isinstance(llm_suggestions, dict):
+                    raise ValueError("llm_suggestions must be a dictionary")
                 decision = self.policy.merge(hard_rules, llm_suggestions)
 
                 self._log_cycle(snapshot, hard_rules, decision, llm_suggestions)
@@ -119,8 +165,16 @@ class OverseerNode:
         snapshot: SwarmSnapshot,
         hard_rules: OverseerDecision,
         decision: OverseerDecision,
-        llm_suggestions: dict[str, bool],
+        llm_suggestions: Dict[str, bool],
     ) -> None:
+        """Log details of a coordination cycle for observability.
+
+        Args:
+            snapshot: The swarm state snapshot used in the cycle.
+            hard_rules: The decision based on hard rules.
+            decision: The final merged decision.
+            llm_suggestions: The LLM-generated strategic suggestions.
+        """
         logger.info(
             "Snapshot: trade_nodes=%s trade_capital=%.2f trade_dq=%.4f trade_fitness=%.4f "
             "security_nodes=%s blocked_ips=%s explorer_nodes=%s findings=%s vuln_alerts=%s",
@@ -161,10 +215,15 @@ class OverseerNode:
 
 
 def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
-    )
+    """Entry point for the overseer node.
+
+    Configures logging and starts the overseer node.
+    """
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
+        )
     node = OverseerNode()
     asyncio.run(node.run())
 

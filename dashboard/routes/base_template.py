@@ -1,11 +1,14 @@
 """
 base_template.py — A unified HTML template with header/footer and active tab highlighting.
 """
+from __future__ import annotations
+
+from typing import Final
 from fastapi import Request
 
 # Constants for default page title and navigation tabs configuration
-DEFAULT_PAGE_TITLE: str = "BlackSwan Control Panel"
-TABS_CONFIG: list[tuple[str, str, str]] = [
+DEFAULT_PAGE_TITLE: Final[str] = "BlackSwan Control Panel"
+TABS_CONFIG: Final[list[tuple[str, str, str]]] = [
     ("/", "🏠 Main", "main"),
     ("/trades", "📈 Trades", "trades"),
     ("/logs", "📜 Logs", "logs"),
@@ -31,7 +34,15 @@ def render_page(request: Request, content: str, title: str = DEFAULT_PAGE_TITLE)
 
     Returns:
         The complete HTML page as a string.
+
+    Raises:
+        ValueError: If `request` or `content` is `None`.
     """
+    if request is None:
+        raise ValueError("Request object cannot be None.")
+    if content is None:
+        raise ValueError("Content cannot be None.")
+
     # Create a mapping from URL path to tab key for efficient lookup
     path_to_tab_key_map: dict[str, str] = {href: key for href, _, key in TABS_CONFIG}
     active_tab: str = path_to_tab_key_map.get(request.url.path, "")

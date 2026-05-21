@@ -3,12 +3,11 @@ Logic for selecting the best market (trading symbol) for a transaction from a gi
 """
 import random
 import time
-from typing import Dict, Tuple, Optional, Any
+from typing import Dict, Tuple, Optional, Any, Final, cast
 
-# Assuming swarm_config is available and correctly configured
 from swarm_config import config
 
-EXPECTED_RETURN_RATE: float = config.expected_return_rate
+EXPECTED_RETURN_RATE: Final[float] = config.expected_return_rate
 
 
 def select_best_market(snapshot: Dict[str, Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
@@ -31,15 +30,26 @@ def select_best_market(snapshot: Dict[str, Dict[str, Any]]) -> Tuple[str, Dict[s
         - The symbol (str) of the best market.
         - The corresponding market tick dictionary (Dict[str, Any]). This dictionary
           will always contain at least "price" and "symbol" keys, even in fallback scenarios.
+
+    Raises:
+        ValueError: If `snapshot` is not a dictionary or if `EXPECTED_RETURN_RATE` is not positive.
     """
+    if not isinstance(snapshot, dict):
+        raise ValueError("Snapshot must be a dictionary.")
+    if EXPECTED_RETURN_RATE <= 0.0:
+        raise ValueError("EXPECTED_RETURN_RATE must be a positive float.")
+
     best_symbol: Optional[str] = None
-    best_expected: float = -1.0 # Initialize with a value that any positive return will beat
+    best_expected: float = -1.0
     best_tick: Optional[Dict[str, Any]] = None
 
     for sym, tick in snapshot.items():
-        # Ensure price is treated as a float, defaulting to 0.0 if not present or invalid.
-        # Only consider markets with a positive price for expected return calculation.
-        price: float = float(tick.get("price", 0.0))
+        if not isinstance(tick, dict):
+            continue
+        try:
+            price: float = float(tick.get("price", 0.0))
+        except (TypeError, ValueError):
+            continue
         if price <= 0.0:
             continue
 
@@ -50,22 +60,20 @@ def select_best_market(snapshot: Dict[str, Dict[str, Any]]) -> Tuple[str, Dict[s
             best_symbol = sym
             best_tick = tick
 
-    if best_tick is None:
-        # Fallback case: if no market with a positive expected return was found
-        # (e.g., snapshot was empty, or all prices were 0 or negative).
-        # We ensure a default market is returned for continued operation.
-        fallback_symbol: str = list(snapshot.keys())[0] if snapshot else "BTC/USDT" # Use a common default
-        # The fallback tick should mimic the structure expected from the snapshot service.
+    if best_tick is None or best_symbol is None:
+        fallback_symbol: str = list(snapshot.keys())[0] if snapshot else "BTC/USDT"
+        if not snapshot:
+            logger.warning("Empty snapshot provided, using default fallback symbol.")
         fallback_tick: Dict[str, Any] = {
-            "price": random.uniform(90.0, 110.0), # Use floats for uniformity
+            "price": random.uniform(90.0, 110.0),
             "symbol": fallback_symbol,
-            "timestamp": time.time() # Add timestamp for completeness
+            "timestamp": time.time()
         }
         return fallback_symbol, fallback_tick
     else:
-        # At this point, best_tick and best_symbol are guaranteed not to be None.
-        # Add the symbol to the best_tick for consistency, if not already present.
-        # The snapshot service's fallback already includes it, but adapter data might vary.
         if "symbol" not in best_tick:
             best_tick["symbol"] = best_symbol
         return best_symbol, best_tick
+
+
+logger = logging.getLogger(__name__)

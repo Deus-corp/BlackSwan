@@ -1,0 +1,28 @@
+{
+  "original_path": "src/trading/capital_manager.py",
+  "proposed_path": "src/trading/capital_manager.py",
+  "strategy": "optimize",
+  "risk": 0.0,
+  "score": 28.67,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "notes": [
+      "pytest_failed"
+    ]
+  },
+  "summary": "Added type hints (`Final`, `__slots__`). Enhanced input validation for `capital`, `config.burn_rate`, `config.capital_alert_threshold`, `delta`, and `SurvivalEvaluatorProtocol` attributes. Improved docstrings with detailed attribute descriptions and `Raises` sections. Added validation for `dq` and `liveness` in `set_survival`.",
+  "critique": "{\n  \"critique\": {\n    \"src/trading/capital_manager.py\": {\n      \"correctness\": {\n        \"strengths\": [\n          \"Use of `Final` and `__slots__` improves immutability and memory efficiency.\",\n          \"Input validation for `capital` and `delta` enhances robustness.\",\n          \"Detailed docstrings with `Raises` sections improve maintainability.\",\n          \"Error handling and logging in `apply_trade` and `burn` methods are robust.\"\n        ],\n        \"weaknesses\": [\n          \"No validation for `config.burn_rate` or `config.capital_alert_threshold` in `__init__`; ensure they are non-negative.\",\n          \"The `SurvivalEvaluatorProtocol` lacks validation for `dq` and `liveness` attribute ranges (0.0 to 1.0).\",\n          \"Placeholder `...` in `SurvivalEvaluatorProtocol` should be replaced with explicit `raise NotImplementedError`.\"\n        ],\n        \"risk\": \"Low. Changes are safe but require additional validation for `config` values and protocol attributes.\",\n        \"improvements\": [\n          \"Add validation for `config.burn_rate` and `config.capital_alert_threshold` in `__init__`.\",\n          \"Validate `dq` and `liveness` attributes in `set_survival` to ensure they are within [0.0, 1.0].\",\n          \"Replace `...` in `SurvivalEvaluatorProtocol` with `raise NotImplementedError`.\"\n        ]\n      }\n    },\n    \"src/trading/heartbeat_publisher.py\": {\n      \"correctness\": {\n        \"strengths\": [\n          \"Use of `CRDTProtocol` and `__slots__` improves type safety and memory efficiency.\",\n          \"Input validation for `node_id` and `crdt` ensures robustness.\",\n          \"Error handling and logging in `publish` method are comprehensive.\"\n        ],\n        \"weaknesses\": [\n          \"No validation for `node_id` uniqueness or format (e.g., UUID).\",\n          \"Placeholder `...` in `CRDTProtocol` should be replaced with explicit `raise NotImplementedError`.\",\n          \"No retry mechanism for failed heartbeat publishing.\"\n        ],\n        \"risk\": \"Low. Changes are safe but could benefit from additional validation and resilience.\",\n        \"improvements\": [\n          \"Add validation for `node_id` format (e.g., UUID or regex pattern).\",\n          \"Replace `...` in `CRDTProtocol` with `raise NotImplementedError`.\",\n          \"Implement retry logic for failed heartbeat publishing.\"\n        ]\n      }\n    },\n    \"src/trading/leader.py\": {\n      \"correctness\": {\n        \"strengths\": [\n          \"Use of `Final` for `DEFAULT_TOTAL_NODES` improves immutability.\",\n          \"Input validation for `node_id`, `block_number`, and `total_nodes` ensures robustness.\",\n          \"Detailed docstrings with `Raises` sections enhance clarity.\"\n        ],\n        \"weaknesses\": [\n          \"No validation for `node_id` format or uniqueness.\",\n          \"No handling for edge cases where `block_number` is negative or extremely large.\"\n        ],\n        \"risk\": \"Low. Changes are safe but could benefit from additional validation.\",\n        \"improvements\": [\n          \"Add validation for `node_id` format (e.g., UUID or regex pattern).\",\n          \"Add validation for `block_number` to ensure it is non-negative.\"\n        ]\n      }\n    }\n  }\n}",
+  "tags": [
+    "typing",
+    "validation",
+    "docstrings",
+    "optimization"
+  ],
+  "original_fingerprint": "a2a7145af89e19961c3f42819163d08c547f6ccf368558b9e8b71098181de4ef",
+  "new_fingerprint": "7ebcdc9ae76c4e3893a9dd7628ecb78e5a6a1cb5d3d450a74f9c0fb112688ae9",
+  "timestamp": 1779369243
+}

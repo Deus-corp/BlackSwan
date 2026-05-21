@@ -6,9 +6,9 @@ pre-defined risk limits, such as maximum daily loss.
 Currently, most pre-trade checks are permissive stubs.
 """
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Final, Optional
 
-logger = logging.getLogger(__name__)
+logger: Final = logging.getLogger(__name__)
 
 
 class CircuitBreaker:
@@ -18,6 +18,7 @@ class CircuitBreaker:
     It monitors daily PnL and can halt trading if a maximum daily loss
     threshold is breached. Includes pre-trade and post-trade checks.
     """
+    __slots__ = ('max_daily_loss', 'max_slippage', 'daily_pnl', 'halted')
 
     def __init__(self, max_daily_loss: float = 5000.0, max_slippage: float = 0.02) -> None:
         """
@@ -28,9 +29,17 @@ class CircuitBreaker:
                             If daily PnL drops below -max_daily_loss, trading halts.
             max_slippage: The maximum allowed slippage ratio for a trade.
                           (Currently stored but not actively used in checks).
+
+        Raises:
+            ValueError: If `max_daily_loss` or `max_slippage` are not positive numbers.
         """
-        self.max_daily_loss: float = max_daily_loss
-        self.max_slippage: float = max_slippage
+        if max_daily_loss <= 0.0:
+            raise ValueError("max_daily_loss must be a positive number.")
+        if max_slippage < 0.0:
+            raise ValueError("max_slippage must be a non-negative number.")
+
+        self.max_daily_loss: Final[float] = max_daily_loss
+        self.max_slippage: Final[float] = max_slippage
         self.daily_pnl: float = 0.0
         self.halted: bool = False
         logger.info(
@@ -49,12 +58,18 @@ class CircuitBreaker:
 
         Returns:
             True if the trade is allowed to proceed, False otherwise.
+
+        Raises:
+            ValueError: If `signal` or `portfolio` are not dictionaries.
         """
+        if not isinstance(signal, dict):
+            raise ValueError("signal must be a dictionary.")
+        if not isinstance(portfolio, dict):
+            raise ValueError("portfolio must be a dictionary.")
+
         if self.halted:
             logger.warning("Circuit breaker is halted. Preventing trade execution.")
             return False
-        # In the future: implement checks for exposure, volatility, liquidity,
-        # max position size, correlation limits, etc.
         logger.debug(f"Pre-trade check passed for signal: {signal.get('symbol', 'N/A')}")
         return True
 
@@ -67,8 +82,17 @@ class CircuitBreaker:
         Args:
             fill: Information about the filled trade.
                   Expected to contain a 'pnl' (float) key.
+
+        Raises:
+            ValueError: If `fill` is not a dictionary or if 'pnl' is not a number.
         """
-        pnl: float = fill.get('pnl', 0.0)
+        if not isinstance(fill, dict):
+            raise ValueError("fill must be a dictionary.")
+        try:
+            pnl: float = float(fill.get('pnl', 0.0))
+        except (TypeError, ValueError) as e:
+            raise ValueError("fill['pnl'] must be a number.") from e
+
         self.daily_pnl += pnl
         logger.debug(f"Post-trade check: PnL from fill={pnl}, Daily PnL updated to {self.daily_pnl}")
 

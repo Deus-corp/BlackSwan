@@ -1,0 +1,30 @@
+{
+  "original_path": "src/intelligence/semantic_memory.py",
+  "proposed_path": "src/intelligence/semantic_memory.py",
+  "strategy": "optimize",
+  "risk": 0.05,
+  "score": 12.75,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "notes": [
+      "changed_too_much",
+      "pytest_failed"
+    ]
+  },
+  "summary": "Added `from __future__ import annotations` for native type hints. Integrated `logging` for error and informational messages. Added input validation for `episodic_records`, `current_params`, `market_volatility`, and `dq`. Improved robustness in `derive_rules` by safely accessing nested parameters. Added `__repr__` method for better debugging. Refactored loops for clarity and efficiency. Translated docstrings to English.",
+  "critique": "",
+  "tags": [
+    "typing",
+    "refactor",
+    "logging",
+    "validation",
+    "docstrings"
+  ],
+  "original_fingerprint": "018c94c105e6af5f68ffcc362fd0f359069d165b741f39e80375dba4f5b9d70a",
+  "new_fingerprint": "11d359f7e846e98325a7f1ce76d15f32bb30f2374ca8330bd343c76147fd526c",
+  "timestamp": 1779363179
+}
