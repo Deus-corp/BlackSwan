@@ -1,0 +1,34 @@
+{
+  "original_path": "adapters/tradingview_webhook.py",
+  "proposed_path": "adapters/tradingview_webhook.py",
+  "strategy": "docstring",
+  "risk": 0.01,
+  "score": 14.93,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "patch_applied_ok": true,
+    "notes": [
+      "pytest_failed",
+      "fallback_used"
+    ]
+  },
+  "summary": "Enhanced docstrings in TradingViewWebhook class for better clarity and maintainability.",
+  "critique": "The proposal misaligns with the pattern's intent by focusing solely on docstrings without addressing type safety or error handling. Scope is overly broad for the stated goal, and lack of validation results increases risk.",
+  "tags": [
+    "docstring",
+    "typing",
+    "python",
+    "patch_first"
+  ],
+  "patches": [],
+  "original_fingerprint": "587fb377982b2814efdc585165132af4bf0aa9599632467c4ee7ff0585e568c4",
+  "new_fingerprint": "587fb377982b2814efdc585165132af4bf0aa9599632467c4ee7ff0585e568c4",
+  "timestamp": 1779373928,
+  "fallback_used": true,
+  "patch_only_python": true,
+  "allow_full_rewrite_python": false
+}

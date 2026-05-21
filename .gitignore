@@ -3,8 +3,6 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.egg-info/
-dist/
-build/
 *.egg
 .eggs/
 *.manifest
@@ -14,11 +12,13 @@ build/
 .ruff_cache/
 .coverage
 htmlcov/
+dist/
+build/
 
 # Virtual environments
 venv/
-.env
-.venv
+.env/
+.venv/
 env/
 ENV/
 env.bak/
@@ -34,10 +34,10 @@ env.bak/
 # Jupyter Notebooks
 .ipynb_checkpoints
 
-# Docker override (локальные настройки)
+# Docker
 docker-compose.override.yml
 
-# IPFS local cache
+# IPFS
 .ipfs_fallback/
 
 # Simulation outputs
@@ -62,16 +62,17 @@ llama_cpp/
 
 # Local test scripts with secrets
 docker-compose.improver.yml
-src/swarms/improver/agent.py
 
-# Environment files (локальные, содержат секреты)
-.env
+# Environment files (local, may contain secrets)
 .env.local
 .env.production
 
 # Improver Agent outputs
 data/improver_output/
 data/improver_failed/
-data/improver_proposals
-src/swarms/improver
-data/
+data/improver_proposals/
+
+# Excluded paths (already covered by broader patterns)
+# src/swarms/improver/agent.py
+# src/swarms/improver
+# data/

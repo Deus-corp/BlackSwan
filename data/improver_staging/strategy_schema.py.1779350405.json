@@ -1,0 +1,28 @@
+{
+  "original_path": "src/intelligence/strategy_schema.py",
+  "proposed_path": "src/intelligence/strategy_schema.py",
+  "strategy": "optimize",
+  "risk": 0.0,
+  "score": 14.27,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "notes": [
+      "changed_too_much",
+      "pytest_failed"
+    ]
+  },
+  "summary": "Added `from __future__ import annotations` for native type hints. Implemented a `__repr__` method for better debugging of `StrategyParams` instances. Enhanced the docstring for the `to_dict` method to clarify that `model_dump()` is the idiomatic Pydantic v2 approach.",
+  "critique": "",
+  "tags": [
+    "typing",
+    "docstrings",
+    "refactor"
+  ],
+  "original_fingerprint": "b9af7b43455874cd15af340b392c16400533803fdbc1752cd687e4992cb0f8c0",
+  "new_fingerprint": "89ac09dc6992cb0ef773203f1e2bffb12ff85d7e67e720a0c396d499f693541b",
+  "timestamp": 1779350405
+}

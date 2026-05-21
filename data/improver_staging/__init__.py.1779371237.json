@@ -1,0 +1,35 @@
+{
+  "original_path": "src/swarms/security/__init__.py",
+  "proposed_path": "src/swarms/security/__init__.py",
+  "strategy": "optimize",
+  "risk": 0.0,
+  "score": 15.1,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "patch_applied_ok": true,
+    "notes": [
+      "pytest_failed",
+      "fallback_used"
+    ]
+  },
+  "summary": "Added __all__ export list to security module",
+  "critique": "Change is under-specified and over-scoped. Empty `patches` and missing validation undermine safety. Narrow focus to explicit `__all__` definition and add tests.",
+  "tags": [
+    "refactor",
+    "typing",
+    "optimize",
+    "python",
+    "patch_first"
+  ],
+  "patches": [],
+  "original_fingerprint": "60b2be2d6e3903d64318d9c97cdc14930378b933c4bc336c3a7793357b06a290",
+  "new_fingerprint": "60b2be2d6e3903d64318d9c97cdc14930378b933c4bc336c3a7793357b06a290",
+  "timestamp": 1779371237,
+  "fallback_used": true,
+  "patch_only_python": true,
+  "allow_full_rewrite_python": false
+}

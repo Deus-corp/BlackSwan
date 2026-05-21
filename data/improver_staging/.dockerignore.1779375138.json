@@ -1,0 +1,34 @@
+{
+  "original_path": ".dockerignore",
+  "proposed_path": ".dockerignore",
+  "strategy": "bugfix",
+  "risk": 0.01,
+  "score": 23.57,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "patch_applied_ok": false,
+    "notes": [
+      "pytest_failed"
+    ]
+  },
+  "summary": "Fixed .dockerignore negation patterns for volume-mounted data directories",
+  "critique": "Proposals are too broad and lack validation. Focus on one file, fix tests, and prove type safety with tooling before expanding. Dockerignore changes should be separate.",
+  "tags": [
+    "docker",
+    "volume",
+    "bugfix",
+    "text",
+    "patch_first"
+  ],
+  "patches": [],
+  "original_fingerprint": "931b3739e3ef3714736fbb8217f443ae1fb9c5d8aaf8b7280e5b8ed9ab7eba0b",
+  "new_fingerprint": "4b3620502cf3fc8fc4561db1cad7540b7b7a8555705efb8f7b5da6d888fb768f",
+  "timestamp": 1779375138,
+  "fallback_used": false,
+  "patch_only_python": true,
+  "allow_full_rewrite_python": false
+}

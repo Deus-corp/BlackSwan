@@ -1,0 +1,34 @@
+{
+  "original_path": "dashboard/app.py",
+  "proposed_path": "dashboard/app.py",
+  "strategy": "typing",
+  "risk": 0.01,
+  "score": 14.7,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "patch_applied_ok": true,
+    "notes": [
+      "pytest_failed",
+      "fallback_used"
+    ]
+  },
+  "summary": "Added missing numpy import and enhanced type safety in metrics update function",
+  "critique": "Proposed changes lack specificity and introduce risk due to unverified patches, missing imports, and unresolved test failures. Scope is too broad for a typing-focused improvement.",
+  "tags": [
+    "typing",
+    "bugfix",
+    "python",
+    "patch_first"
+  ],
+  "patches": [],
+  "original_fingerprint": "94a198fcd803d405f6c7f62d8e568fd0e251ee77bfb8d10e3d5e6d1a6051e342",
+  "new_fingerprint": "94a198fcd803d405f6c7f62d8e568fd0e251ee77bfb8d10e3d5e6d1a6051e342",
+  "timestamp": 1779374556,
+  "fallback_used": true,
+  "patch_only_python": true,
+  "allow_full_rewrite_python": false
+}

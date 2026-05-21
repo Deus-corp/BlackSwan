@@ -1,0 +1,34 @@
+{
+  "original_path": "src/intelligence/adapters/validator.py",
+  "proposed_path": "src/intelligence/adapters/validator.py",
+  "strategy": "docstring",
+  "risk": 0.0,
+  "score": 14.88,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "patch_applied_ok": true,
+    "notes": [
+      "pytest_failed",
+      "fallback_used"
+    ]
+  },
+  "summary": "Enhanced docstrings in validator.py for better clarity and maintainability.",
+  "critique": "Changes are too broad and lack validation. Docstring improvements are low-risk but bundled with unverified type hints. Pytest failures and fallback usage indicate untested assumptions. Narrow scope and add test coverage before merging.",
+  "tags": [
+    "docstring",
+    "typing",
+    "python",
+    "patch_first"
+  ],
+  "patches": [],
+  "original_fingerprint": "98b1a17364212cda168996f28a1ddd5317a9e49cbd5b36e2a8aab6f288c6ec59",
+  "new_fingerprint": "98b1a17364212cda168996f28a1ddd5317a9e49cbd5b36e2a8aab6f288c6ec59",
+  "timestamp": 1779370536,
+  "fallback_used": true,
+  "patch_only_python": true,
+  "allow_full_rewrite_python": false
+}

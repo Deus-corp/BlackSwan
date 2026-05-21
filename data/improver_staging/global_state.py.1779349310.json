@@ -1,0 +1,28 @@
+{
+  "original_path": "src/core/global_state.py",
+  "proposed_path": "src/core/global_state.py",
+  "strategy": "typing",
+  "risk": 0.05,
+  "score": 26.77,
+  "validation": {
+    "syntactically_valid": true,
+    "compile_ok": true,
+    "ruff_ok": null,
+    "mypy_ok": null,
+    "pytest_ok": false,
+    "notes": [
+      "pytest_failed"
+    ]
+  },
+  "summary": "Improved type hints to use lowercase `dict`, `list`, `str | None` etc. where `from __future__ import annotations` is active. Added a `__repr__` method for better debugging. Introduced input validation in `__init__` to ensure `initial_state` is a dictionary if provided. Added validation to `restore` for `cid` to be a non-empty string. Enhanced `update` to validate `component` as a non-empty string. In `verify_invariants`, added explicit type checks for state values (e.g., `crdt_root`, `l2_snapshot`, `last_audit_timestamp`) and ensured float conversion for `reserve`. Added type validation in `from_json` to ensure decoded JSON is a dictionary. Added robust input validation in `save_genome` for `strategy_id` (non-empty string) and `params` (dictionary type). Added validation to `get_best_genomes` to ensure `top_n` is a non-negative integer.",
+  "critique": "",
+  "tags": [
+    "typing",
+    "validation",
+    "docstrings",
+    "refactor"
+  ],
+  "original_fingerprint": "ef61c6205395456f47783f00de3d055f973e5b90a2ec14ec89d116b936c1e29f",
+  "new_fingerprint": "7e56bdee36c86cebef14dc8373cf56cb139637ab520ae4f8f5f2bf64c98741f5",
+  "timestamp": 1779349310
+}
