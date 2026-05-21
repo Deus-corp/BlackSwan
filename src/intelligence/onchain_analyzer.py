@@ -3,9 +3,11 @@
 On-Chain Analyzer – provides extended blockchain data analysis via Etherscan API.
 Offers ETH balance, transaction history, gas prices, and wallet activity.
 """
+from __future__ import annotations # For native type hints like dict[str, Any]
+
 import asyncio
 import logging
-from typing import Optional, Dict, Any, List, Union
+from typing import Any, Optional # Use native generics like dict, list
 import aiohttp
 
 logger = logging.getLogger(__name__)
@@ -30,11 +32,18 @@ class OnChainAnalyzer:
             api_key (str): The Etherscan API key. Leave empty to use without a key
                            (subject to stricter rate limits).
         """
+        if not isinstance(api_key, str):
+            raise TypeError("API key must be a string.")
         self.api_key: str = api_key
         self.session: Optional[aiohttp.ClientSession] = None
         if not self.api_key:
             logger.warning("Etherscan API key is not provided. Requests may be heavily rate-limited or fail.")
 
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the OnChainAnalyzer instance.
+        """
+        return f"OnChainAnalyzer(api_key={'<configured>' if self.api_key else '<none>'})"
 
     async def _ensure_session(self) -> None:
         """
@@ -45,7 +54,7 @@ class OnChainAnalyzer:
             self.session = aiohttp.ClientSession()
             logger.debug("aiohttp ClientSession created for OnChainAnalyzer.")
 
-    async def __aenter__(self) -> "OnChainAnalyzer":
+    async def __aenter__(self) -> OnChainAnalyzer:
         """
         Initializes the asynchronous context manager.
         Creates an aiohttp.ClientSession.
@@ -70,16 +79,16 @@ class OnChainAnalyzer:
             self.session = None
             logger.debug("aiohttp session closed for OnChainAnalyzer.")
 
-    async def _make_etherscan_request(self, params: Dict[str, Union[str, int]]) -> Optional[Dict[str, Any]]:
+    async def _make_etherscan_request(self, params: dict[str, str | int]) -> Optional[dict[str, Any]]:
         """
         Private method to execute requests to the Etherscan API.
         Handles common network and API errors.
 
         Args:
-            params (Dict[str, Union[str, int]]): A dictionary of query parameters for the Etherscan API.
+            params (dict[str, str | int]): A dictionary of query parameters for the Etherscan API.
 
         Returns:
-            Optional[Dict[str, Any]]: A dictionary containing the API response result, or None in case of an error
+            Optional[dict[str, Any]]: A dictionary containing the API response result, or None in case of an error
                                       or if the API returns an error status.
         """
         await self._ensure_session()
@@ -96,7 +105,7 @@ class OnChainAnalyzer:
                 timeout=aiohttp.ClientTimeout(total=self.DEFAULT_TIMEOUT)
             ) as resp:
                 resp.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
-                data: Dict[str, Any] = await resp.json()
+                data: dict[str, Any] = await resp.json()
 
                 if data.get("status") == "1":
                     return data
@@ -122,25 +131,29 @@ class OnChainAnalyzer:
         Retrieves the ETH balance for the specified Ethereum address.
 
         Args:
-            address (str): The Ethereum address (e.g., "0x...").
+            address (str): The Ethereum address (e.g., "0x..."). Must be a non-empty string.
 
         Returns:
             Optional[float]: The ETH balance as a float, or None in case of an error
                              or if the address is invalid.
         """
-        params: Dict[str, Union[str, int]] = {
+        if not isinstance(address, str) or not address.strip():
+            logger.error(f"Invalid Ethereum address provided: '{address}'. Must be a non-empty string.")
+            return None
+
+        params: dict[str, str | int] = {
             "module": "account",
             "action": "balance",
             "address": address,
             "tag": "latest"
         }
-        data: Optional[Dict[str, Any]] = await self._make_etherscan_request(params)
+        data: Optional[dict[str, Any]] = await self._make_etherscan_request(params)
         if data and "result" in data:
             try:
                 # Etherscan returns balance in Wei as a string
                 return int(data["result"]) / 1e18
             except (ValueError, TypeError) as e:
-                logger.error(f"Failed to parse balance for address {address}: '{data['result']}' - {e}", exc_info=True)
+                logger.error(f"Failed to parse balance for address {address}: '{data.get('result')}' - {e}", exc_info=True)
         return None
 
     async def get_transaction_count(self, address: str, limit: int = 100) -> Optional[int]:
@@ -151,15 +164,23 @@ class OnChainAnalyzer:
         and returns their count as an indicator of activity.
 
         Args:
-            address (str): The Ethereum address (e.g., "0x...").
+            address (str): The Ethereum address (e.g., "0x..."). Must be a non-empty string.
             limit (int): The maximum number of recent transactions to fetch to determine activity.
                          The Etherscan API typically has an upper limit for `offset` (e.g., 1000).
+                         Must be a positive integer.
 
         Returns:
             Optional[int]: The number of recent transactions fetched (up to `limit`),
                            or None in case of an error.
         """
-        params: Dict[str, Union[str, int]] = {
+        if not isinstance(address, str) or not address.strip():
+            logger.error(f"Invalid Ethereum address provided: '{address}'. Must be a non-empty string.")
+            return None
+        if not isinstance(limit, int) or limit <= 0:
+            logger.error(f"Invalid limit provided for transaction count: {limit}. Must be a positive integer. Defaulting to 100.")
+            limit = 100 # Fallback to default if invalid
+
+        params: dict[str, str | int] = {
             "module": "account",
             "action": "txlist",
             "address": address,
@@ -169,30 +190,30 @@ class OnChainAnalyzer:
             "offset": limit, # Fetch up to 'limit' transactions
             "sort": "desc"
         }
-        data: Optional[Dict[str, Any]] = await self._make_etherscan_request(params)
+        data: Optional[dict[str, Any]] = await self._make_etherscan_request(params)
         if data and "result" in data:
             # Etherscan returns a list of transactions. Its length indicates activity.
             if isinstance(data["result"], list):
                 return len(data["result"])
             else:
-                logger.warning(f"Etherscan txlist API returned non-list result for {address}: {data['result']}")
+                logger.warning(f"Etherscan txlist API returned non-list result for {address}: {data.get('result')}")
         return None
 
-    async def get_gas_oracle(self) -> Optional[Dict[str, float]]:
+    async def get_gas_oracle(self) -> Optional[dict[str, float]]:
         """
         Retrieves current Ethereum gas prices (Safe, Propose, Fast) in Gwei.
         These typically correspond to Low, Medium, and High priority gas prices.
 
         Returns:
-            Optional[Dict[str, float]]: A dictionary with 'low', 'medium', 'high' gas prices in Gwei,
+            Optional[dict[str, float]]: A dictionary with 'low', 'medium', 'high' gas prices in Gwei,
                                         e.g., `{"low": 20.0, "medium": 25.0, "high": 30.0}`,
                                         or None in case of an error.
         """
-        params: Dict[str, Union[str, int]] = {
+        params: dict[str, str | int] = {
             "module": "gastracker",
             "action": "gasoracle"
         }
-        data: Optional[Dict[str, Any]] = await self._make_etherscan_request(params)
+        data: Optional[dict[str, Any]] = await self._make_etherscan_request(params)
         if data and "result" in data:
             result = data["result"]
             try:
@@ -206,20 +227,32 @@ class OnChainAnalyzer:
                 logger.error(f"Failed to parse gas oracle data: {result} - {e}", exc_info=True)
         return None
 
-    async def get_full_report(self, address: str, tx_limit: int = 100) -> Dict[str, Any]:
+    async def get_full_report(self, address: str, tx_limit: int = 100) -> dict[str, Any]:
         """
         Generates a summary report for the specified Ethereum address,
         including ETH balance, recent transaction count, and current gas prices.
 
         Args:
-            address (str): The Ethereum address (e.g., "0x...").
+            address (str): The Ethereum address (e.g., "0x..."). Must be a non-empty string.
             tx_limit (int): The maximum number of recent transactions to consider for the count.
+                            Must be a positive integer.
 
         Returns:
-            Dict[str, Any]: A dictionary containing `balance_eth` (Optional[float]),
-                            `transaction_count` (Optional[int]), and `gas_prices` (Optional[Dict[str, float]]).
+            dict[str, Any]: A dictionary containing `balance_eth` (Optional[float]),
+                            `transaction_count` (Optional[int]), and `gas_prices` (Optional[dict[str, float]]).
                             Defaults to None for values that could not be fetched.
         """
+        if not isinstance(address, str) or not address.strip():
+            logger.error(f"Invalid Ethereum address provided for full report: '{address}'. Must be a non-empty string.")
+            return {
+                "balance_eth": None,
+                "transaction_count": None,
+                "gas_prices": None
+            }
+        if not isinstance(tx_limit, int) or tx_limit <= 0:
+            logger.error(f"Invalid tx_limit for full report: {tx_limit}. Must be a positive integer. Defaulting to 100.")
+            tx_limit = 100
+
         # Execute requests in parallel for efficiency
         balance, tx_count, gas = await asyncio.gather(
             self.get_eth_balance(address),
@@ -229,5 +262,5 @@ class OnChainAnalyzer:
         return {
             "balance_eth": balance,
             "transaction_count": tx_count,
-            "gas_prices": gas,
+            "gas_prices": gas
         }

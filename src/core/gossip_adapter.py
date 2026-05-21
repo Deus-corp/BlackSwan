@@ -7,7 +7,7 @@ import os
 import time
 import uuid
 import traceback
-from typing import Dict, Optional, Any, List
+from typing import Any
 import aiohttp
 from aiohttp import web
 
@@ -41,10 +41,11 @@ class SafeGossipAdapter:
     GossipNode implementation.
     """
 
+    __slots__ = ('node', '_running', 'reputation_manager', 'crdt_adapter')
+
     node: GossipNode
-    # _known_versions is now managed by self.node.protocol.peer_versions
     _running: bool
-    reputation_manager: Optional[Any] # Type can be more specific if ReputationManager class is available
+    reputation_manager: Any | None # Type can be more specific if ReputationManager class is available
     crdt_adapter: CRDTAdapter
 
     def __init__(self, crdt_adapter: CRDTAdapter) -> None:
@@ -53,15 +54,27 @@ class SafeGossipAdapter:
 
         Args:
             crdt_adapter: An instance of CRDTAdapter to manage state synchronization.
+
+        Raises:
+            TypeError: If `crdt_adapter` is not an instance of `CRDTAdapter`.
         """
+        if not isinstance(crdt_adapter, CRDTAdapter):
+            raise TypeError("crdt_adapter must be an instance of CRDTAdapter.")
+
         self.crdt_adapter = crdt_adapter
         # The GossipNode itself manages peers, state, and its own background sync loop.
         # The DeltaPolicy is configured here, or can be passed from the CRDTAdapter if it has one.
         self.node = GossipNode(CFG, policy=DeltaPolicy(min_fitness=0.0))
-        # _known_versions is now managed internally by GossipNode.protocol.peer_versions
         self._running = False
         self.reputation_manager = None
         
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the SafeGossipAdapter object.
+        """
+        node_id_prefix = self.node.node_id[:8] if self.node.node_id else "None"
+        return f"SafeGossipAdapter(node_id_prefix={node_id_prefix}, running={self._running})"
+
     def set_reputation_manager(self, rep_man: Any) -> None:
         """
         Sets the reputation manager for the adapter.
@@ -72,7 +85,7 @@ class SafeGossipAdapter:
         """
         self.reputation_manager = rep_man
 
-    async def broadcast(self, message: Dict[str, Any]) -> None:
+    async def broadcast(self, message: dict[str, Any]) -> None:
         """
         Alias for a broadcast mechanism. In this adapter's design, direct, immediate
         "broadcasts" of arbitrary messages are not exposed. Genomes are added to
@@ -82,7 +95,13 @@ class SafeGossipAdapter:
 
         Args:
             message: The message to be broadcasted. Currently ignored.
+
+        Raises:
+            TypeError: If `message` is not a dictionary.
         """
+        if not isinstance(message, dict):
+            raise TypeError("Message for broadcast must be a dictionary.")
+
         logger.warning(
             "SafeGossipAdapter.broadcast() called but direct immediate broadcast "
             "of arbitrary messages is not implemented. Genomes are added to CRDT "
@@ -95,20 +114,26 @@ class SafeGossipAdapter:
 
     # ----- Methods called by node_agent.py -----
 
-    def set_champion(self, genome: Dict[str, Any]) -> None:
+    def set_champion(self, genome: dict[str, Any]) -> None:
         """
         Saves a champion genome to the CRDT and prepares it for gossip publication.
         Called by node_agent.py when a new champion emerges.
 
         Args:
             genome: A dictionary representing the champion genome.
+
+        Raises:
+            TypeError: If `genome` is not a dictionary.
         """
+        if not isinstance(genome, dict):
+            raise TypeError("Genome for champion must be a dictionary.")
+
         # Save the genome locally (asynchronously, node_agent.py does not wait)
         asyncio.create_task(self.crdt_adapter.add_genome(genome))
         # Publication will happen automatically on the next gossip cycle
         # because the new genome is already in CRDT.
 
-    def pull_genomes(self) -> List[Dict[str, Any]]:
+    def pull_genomes(self) -> list[dict[str, Any]]:
         """
         Returns a list of genomes received from peers.
         Called by node_agent.py in its main loop.
@@ -141,7 +166,7 @@ class SafeGossipAdapter:
 
         # Use the underlying GossipProtocol to select a peer and perform a sync.
         # This ensures peer metrics, backoff, and state management are consistent.
-        peer_url: Optional[str] = self.node.protocol._choose_peer()
+        peer_url: str | None = self.node.protocol._choose_peer()
 
         if peer_url:
             logger.debug(f"Node_agent-triggered gossip_round with peer: {peer_url}")
@@ -214,7 +239,7 @@ class SafeGossipAdapter:
         try:
             # Dynamic import to avoid hard dependency if observability is optional
             from src.observability.metrics import collect_metrics, prometheus_format
-            metrics: Dict[str, Any] = collect_metrics()
+            metrics: dict[str, Any] = collect_metrics()
             body: str = prometheus_format(metrics)
             return web.Response(text=body, content_type="text/plain", charset="utf-8")
         except ImportError:

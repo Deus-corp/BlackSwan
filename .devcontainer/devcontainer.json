@@ -1,0 +1,39 @@
+{
+  "name": "BlackSwan Dev Environment",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "target": "final"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.linting.mypyEnabled": true,
+        "editor.formatOnSave": true,
+        "python.formatting.provider": "black"
+      }
+    }
+  },
+  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt",
+  "runArgs": [
+    "--env-file",
+    ".env",
+    "-v",
+    "/var/run/docker.sock:/var/run/docker.sock"
+  ],
+  "forwardPorts": [9777, 8888, 9090, 3000],
+  "mounts": [
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/data,target=/app/data,type=bind,consistency=cached"
+  ],
+  "remoteUser": "root"
+}

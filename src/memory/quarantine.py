@@ -1,17 +1,27 @@
-# src/memory/quarantine.py
-"""
-Quarantine buffer for incoming MemoryRecords.
-Validates signature, sender reputation, and confidence before storing.
-"""
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING, runtime_checkable
 from src.memory.local_memory import MemoryRecord, LocalMemoryAPI
 
+# Define a protocol for ReputationManager to avoid circular import issues at runtime
+# and enable type checking for the dependency.
+@runtime_checkable
+class ReputationManagerProtocol(Protocol):
+    """
+    Protocol defining the expected interface for a ReputationManager.
+    """
+    def is_trusted(self, entity_id: str) -> bool:
+        """
+        Checks if the given entity ID is considered trusted.
+        """
+        ...
+
 # Using TYPE_CHECKING to avoid potential circular imports at runtime
-# if CryptoManager or ReputationManager also import from local_memory.
+# if CryptoManager also imports from local_memory.
 if TYPE_CHECKING:
     from src.security.crypto_manager import CryptoManager
-    from src.security.reputation_manager import ReputationManager
+    # ReputationManager is now handled by ReputationManagerProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +33,31 @@ class QuarantineBuffer:
     """
 
     # --- Configuration Constants ---
-    # Minimum confidence score for a record to be accepted.
     MIN_CONFIDENCE_THRESHOLD: float = 0.3
 
-    def __init__(self, memory_api: LocalMemoryAPI, reputation: 'ReputationManager'):
+    def __init__(self, memory_api: LocalMemoryAPI, reputation: ReputationManagerProtocol):
         """
         Initializes the QuarantineBuffer.
 
         Args:
             memory_api: An instance of LocalMemoryAPI to store validated records.
-            reputation: An instance of ReputationManager to check sender trustworthiness.
-        """
-        self.memory: LocalMemoryAPI = memory_api
-        self.reputation: 'ReputationManager' = reputation
-        # CryptoManager is used statically, so no need to pass an instance or import at module level.
+            reputation: An instance of ReputationManagerProtocol to check sender trustworthiness.
 
-    async def process(self, raw: Dict[str, Any]) -> bool:
+        Raises:
+            TypeError: If `memory_api` is not `LocalMemoryAPI` or `reputation` does not conform to `ReputationManagerProtocol`.
+        """
+        if not isinstance(memory_api, LocalMemoryAPI):
+            raise TypeError("memory_api must be an instance of LocalMemoryAPI.")
+        if not isinstance(reputation, ReputationManagerProtocol):
+            raise TypeError("reputation must conform to ReputationManagerProtocol.")
+
+        self.memory: LocalMemoryAPI = memory_api
+        self.reputation: ReputationManagerProtocol = reputation
+
+    def __repr__(self) -> str:
+        return f"QuarantineBuffer(memory_api={self.memory.__class__.__name__}, reputation={self.reputation.__class__.__name__})"
+
+    async def process(self, raw: dict[str, Any]) -> bool:
         """
         Processes an incoming raw dictionary, attempts to parse it into a MemoryRecord,
         and then performs validation checks before saving it to local memory.
@@ -56,7 +75,14 @@ class QuarantineBuffer:
 
         Returns:
             True if the record passed all checks and was successfully stored, False otherwise.
+
+        Raises:
+            TypeError: If `raw` is not a dictionary.
         """
+        if not isinstance(raw, dict):
+            logger.warning(f"Quarantine: Received non-dictionary raw data. Type: {type(raw)}, Data: {raw}")
+            return False
+
         # 1. Convert to MemoryRecord object
         try:
             record: MemoryRecord = MemoryRecord(**raw)
@@ -87,7 +113,7 @@ class QuarantineBuffer:
 
             # The exact payload used for signing must match what's provided for verification.
             # Assuming the signed content consists of 'payload', 'kind', and 'scope'.
-            signed_data_for_verification: Dict[str, Any] = {
+            signed_data_for_verification: dict[str, Any] = {
                 "payload": record.payload,
                 "kind": record.kind,
                 "scope": record.scope

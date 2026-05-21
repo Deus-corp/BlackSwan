@@ -60,12 +60,31 @@ class FirewallPolicy:
     rules: List[Dict[str, Any]] = field(default_factory=list)
     timestamp: float = 0.0
 
+    @classmethod
+    def from_env(cls) -> "FirewallPolicy":
+        """Создаёт политику из переменных окружения."""
+        import os
+        return cls(
+            rules=[],
+            timestamp=0.0,
+        )
+
 @dataclass
 class SecurityPolicy:
     """High-level security policy."""
     allow_emergency_flush: bool = False
     auto_unblock_after: int = 3600
     max_blocked_ips: int = 1000
+
+    @classmethod
+    def from_env(cls) -> "SecurityPolicy":
+        """Создаёт политику из переменных окружения."""
+        import os
+        return cls(
+            allow_emergency_flush=os.getenv("SEC_ALLOW_EMERGENCY_FLUSH_INPUT", "false").lower() == "true",
+            auto_unblock_after=int(os.getenv("SEC_AUTO_UNBLOCK_AFTER", "3600")),
+            max_blocked_ips=int(os.getenv("SEC_MAX_BLOCKED_IPS", "1000")),
+        )
 
 
 class SecurityMemory:

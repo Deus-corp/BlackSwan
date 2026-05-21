@@ -1,9 +1,6 @@
 # Модели ИИ (подключаются через volume)
 llama_cpp/
 
-# Данные времени выполнения (логи, базы, память)
-data/
-
 # Логи и временные файлы
 docs/logs/
 logs/
@@ -15,21 +12,34 @@ logs/
 # Git
 .git/
 
-.git
-.venv
-__pycache__
+# Кеш и мусор
+__pycache__/
 *.pyc
 .eggs
 *.egg-info
-llama_cpp
-data
-logs
-prometheus_data
-grafana_data
-assets
-docs
-formal
-site
+
+# Медиа и статика
+assets/
+site/
+
+# Документация (оставляем только код)
+docs/
+formal/
+
+# Графана и прометеус (хранятся в томах)
+prometheus_data/
+grafana_data/
+
+# Основные данные времени выполнения, КРОМЕ папок, монтируемых как volume
+data/*
+!data/improver_memory/
+!data/improver_output/
+!data/improver_failed/
+!data/improver_proposals/
+!data/ledgers/
+!data/nonce/
+
+# Файлы проекта, не нужные в образе
 *.md
 *.db
 *.sqlite3

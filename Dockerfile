@@ -10,5 +10,5 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY . /app
-RUN chmod +x /app/node_entrypoint_async.sh
+RUN if [ -f /app/node_entrypoint_async.sh ]; then chmod +x /app/node_entrypoint_async.sh; fi
 ENTRYPOINT ["/app/node_entrypoint_async.sh"]

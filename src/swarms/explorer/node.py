@@ -32,6 +32,10 @@ import httpx
 from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
 
+def fingerprint_text(text: str) -> str:
+    import hashlib
+    return hashlib.sha256(text.encode()).hexdigest()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",

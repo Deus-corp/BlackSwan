@@ -10,10 +10,10 @@ import json
 import time
 import uuid
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def _canonical_json(data: Dict[str, Any]) -> str:
+def _canonical_json(data: dict[str, Any]) -> str:
     """
     Generates a canonical JSON string for hashing.
     Ensures consistent key ordering and no unnecessary whitespace,
@@ -28,7 +28,7 @@ def _canonical_json(data: Dict[str, Any]) -> str:
     return json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Event:
     """
     Represents an immutable event within the BlackSwan swarm's append-only ledger.
@@ -53,8 +53,8 @@ class Event:
     ts: float
     node_id: str
     type: str
-    payload: Dict[str, Any]
-    parent_id: Optional[str] = None
+    payload: dict[str, Any]
+    parent_id: str | None = None
     hash: str = ""
 
     @classmethod
@@ -62,9 +62,9 @@ class Event:
         cls,
         node_id: str,
         event_type: str,
-        payload: Dict[str, Any],
-        parent_id: Optional[str] = None,
-        ts: Optional[float] = None,
+        payload: dict[str, Any],
+        parent_id: str | None = None,
+        ts: float | None = None,
     ) -> Event:
         """
         Creates a new Event instance, automatically generating a unique ID,
@@ -80,13 +80,23 @@ class Event:
 
         Returns:
             A new Event instance with all fields populated, including the calculated hash.
+
+        Raises:
+            ValueError: If `node_id` or `event_type` are empty, or `payload` is not a dict.
         """
+        if not isinstance(node_id, str) or not node_id.strip():
+            raise ValueError("node_id must be a non-empty string.")
+        if not isinstance(event_type, str) or not event_type.strip():
+            raise ValueError("event_type must be a non-empty string.")
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a dictionary.")
+
         event_id: str = str(uuid.uuid4())
         timestamp: float = time.time() if ts is None else ts
 
         # Create a dictionary representing the event's core content for hashing.
         # The 'hash' field itself is excluded from this base for calculation.
-        base_for_hash: Dict[str, Any] = {
+        base_for_hash: dict[str, Any] = {
             "event_id": event_id,
             "ts": timestamp,
             "node_id": node_id,
@@ -115,7 +125,7 @@ class Event:
         Returns:
             True if the re-calculated hash matches the stored hash, False otherwise.
         """
-        base_for_hash: Dict[str, Any] = {
+        base_for_hash: dict[str, Any] = {
             "event_id": self.event_id,
             "ts": self.ts,
             "node_id": self.node_id,
@@ -126,7 +136,7 @@ class Event:
         expected_hash: str = hashlib.sha256(_canonical_json(base_for_hash).encode("utf-8")).hexdigest()
         return expected_hash == self.hash
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Converts the Event instance into a dictionary representation.
 
@@ -137,7 +147,7 @@ class Event:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Event:
+    def from_dict(cls, data: dict[str, Any]) -> Event:
         """
         Creates an Event instance from a dictionary.
         This is typically used when deserializing an event from storage or a network.
@@ -151,17 +161,37 @@ class Event:
             An Event instance populated with data from the dictionary.
 
         Raises:
-            KeyError: If essential keys ("event_id", "ts", "node_id", "type")
-                      are missing from the input `data`.
-            TypeError, ValueError: If `ts` cannot be converted to float or other
-                                   type mismatches occur.
+            ValueError: If essential keys ("event_id", "ts", "node_id", "type", "payload")
+                        are missing or have invalid types/values from the input `data`.
+            TypeError: If `ts` cannot be converted to float.
         """
+        if not isinstance(data, dict):
+            raise TypeError("Input data must be a dictionary.")
+
+        required_keys = {"event_id": str, "ts": (float, int), "node_id": str, "type": str, "payload": dict}
+        for key, expected_type in required_keys.items():
+            if key not in data:
+                raise ValueError(f"Missing essential key: '{key}' in event data.")
+            if not isinstance(data[key], expected_type):
+                # Allow int for ts as float() can convert it
+                if key == "ts" and isinstance(data[key], int):
+                    pass
+                else:
+                    raise ValueError(f"Invalid type for key '{key}': expected {expected_type}, got {type(data[key])}.")
+            if isinstance(data[key], str) and not data[key].strip() and key != "payload": # payload can be empty dict
+                raise ValueError(f"Key '{key}' cannot be an empty string.")
+
+        try:
+            ts_value = float(data["ts"])
+        except (TypeError, ValueError) as e:
+            raise TypeError(f"'ts' value cannot be converted to float: {data['ts']} - {e}") from e
+
         return cls(
             event_id=data["event_id"],
-            ts=float(data["ts"]),  # Explicitly convert to float for robustness
+            ts=ts_value,
             node_id=data["node_id"],
             type=data["type"],
-            payload=data.get("payload", {}),  # BUG FIX: changed `data["get"]` to `data.get`
-            parent_id=data.get("parent_id"),  # Use .get() for optional fields
+            payload=data.get("payload", {}), # Corrected: `data.get` for robustness and bug fix
+            parent_id=data.get("parent_id"), # Use .get() for optional fields
             hash=data.get("hash", ""),        # Use .get() for optional fields
         )
