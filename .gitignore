@@ -74,3 +74,4 @@ data/improver_output/
 data/improver_failed/
 data/improver_proposals
 src/swarms/improver
+data/
