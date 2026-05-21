@@ -54,7 +54,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | 
 logger = logging.getLogger("ImproverAgent")
 
 
-SCAN_DIRS = ["src", "adapters", "sim", "dashboard", "."]
+SCAN_DIRS = ["src", "adapters", "sim", "dashboard"]
 OUTPUT_DIR = Path("./data/improver_output")
 FAILED_DIR = Path("./data/improver_failed")
 PROPOSALS_DIR = Path("./data/improver_proposals")
@@ -441,6 +441,10 @@ class ImproverAgent:
             await asyncio.sleep(SLEEP_BETWEEN_CYCLES)
 
     async def _process_all_files(self) -> None:
+        # Всегда проверяем swarm_config.py, даже если корень исключён
+        config_path = "swarm_config.py"
+        if os.path.exists(config_path) and not self._should_skip(config_path):
+            await self._improve_batch([config_path])
         batch: List[str] = []
         for scan_dir in self.scan_dirs:
             if not os.path.exists(scan_dir):
