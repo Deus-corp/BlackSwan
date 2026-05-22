@@ -1,19 +1,28 @@
 """
-Execution in simulation – simply update capital.
+Execution backend implementation for simulated trading environments.
 """
+
 import random
-from typing import Dict, Any
+from typing import Any, Dict, TypedDict
 from .backend import ExecutionBackend
 
+class ExecutionResult(TypedDict):
+    """Type definition for order execution results."""
+    success: bool
+    new_capital: float
+    tx_hash: str | None
+    status: str
+    error: str | None
 
 class SimExecutionBackend(ExecutionBackend):
     """
-    Backend for simulating order execution.
+    Backend for simulating order execution without blockchain interaction.
 
-    It emulates a simple scenario where capital changes randomly based on a trade,
-    without actual blockchain interaction. This is primarily for testing and
-    development of strategies in a controlled, predictable environment.
+    This implementation emulates market fluctuations by applying a random
+    percentage change to the trade value, allowing for deterministic or
+    stochastic strategy testing.
     """
+
     async def execute_order(
         self,
         symbol: str,
@@ -21,47 +30,33 @@ class SimExecutionBackend(ExecutionBackend):
         amount: float,
         price: float,
         capital: float,
-    ) -> Dict[str, Any]:
+    ) -> ExecutionResult:
         """
-        Simulates the execution of a trading order.
+        Simulate the execution of a trading order.
 
-        The capital is updated by a random percentage of the trade value to simulate
-        market fluctuations. This method does not interact with any external systems.
+        The capital is adjusted by a random factor between -1% and +2% of the
+        total trade value to simulate market volatility.
 
         Args:
-            symbol (str): The trading pair symbol (e.g., "WETH/USDC"). Note: This parameter
-                          is not directly used in the current implementation logic.
-            side (str): The order side ("buy" or "sell"). Note: This parameter
-                        is not directly used in the current implementation logic.
-            amount (float): The amount of the base asset to trade.
-            price (float): The desired price for the trade.
-            capital (float): The current capital available.
+            symbol: The trading pair identifier (e.g., "WETH/USDC").
+            side: The order direction ("buy" or "sell").
+            amount: The quantity of the base asset being traded.
+            price: The reference price for the execution.
+            capital: The current capital available for trading.
 
         Returns:
-            Dict[str, Any]: A dictionary containing the result of the simulated order execution,
-            including success status, new capital, and simulation status.
-            Example:
-            {
-                "success": True,
-                "new_capital": 1005.50,
-                "tx_hash": None,
-                "status": "simulated",
-                "error": None,
-            }
+            ExecutionResult: A dictionary containing the simulated execution outcome.
         """
-        # Emulate a simple simulation: capital grows or falls randomly
-        # The change is based on a random percentage of the trade value (price * amount).
-        # It ranges from -1% to +2% of the trade value.
-        trade_value: float = price * amount
-        change_percentage: float = random.uniform(-0.01, 0.02)
-        change: float = trade_value * change_percentage
+        trade_value = price * amount
         
-        new_capital: float = capital + change
+        # Generate a random fluctuation factor between -0.01 and 0.02
+        fluctuation = random.uniform(-0.01, 0.02)
+        capital_adjustment = trade_value * fluctuation
         
         return {
             "success": True,
-            "new_capital": new_capital,
-            "tx_hash": None,  # No transaction hash in simulation
+            "new_capital": capital + capital_adjustment,
+            "tx_hash": None,
             "status": "simulated",
             "error": None,
         }

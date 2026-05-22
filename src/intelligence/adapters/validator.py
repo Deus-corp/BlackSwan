@@ -1,65 +1,51 @@
-# src/intelligence/adapters/validator.py
-"""
-Заглушка валидатора LoRA-адаптеров.
+from __future__ import annotations
 
-Этот модуль содержит заглушку для валидатора манифестов LoRA-адаптеров.
-На текущий момент он пропускает все входящие манифесты, помечая их как "accepted".
-"""
 from dataclasses import dataclass, field
-from typing import Optional, List, Any
-# Assuming AdapterManifest is defined in a sibling module within .manifest
+from typing import Any, Final, Literal, Optional, List
 from .manifest import AdapterManifest
 
-@dataclass
+ValidationStatus = Literal["accepted", "quarantine", "rejected"]
+
+@dataclass(frozen=True, slots=True)
 class ValidationResult:
     """
-    Представляет результат валидации манифеста LoRA-адаптера.
+    Represents the outcome of a LoRA-adapter manifest validation.
 
-    Атрибуты:
-        status (str): Статус валидации, может быть "accepted", "quarantine" или "rejected".
-                      Ожидаемые значения: "accepted", "quarantine", "rejected".
-        reasons (List[str]): Список причин, объясняющих статус валидации.
-                              Пуст для "accepted", содержит сообщения для других статусов.
+    Attributes:
+        status: The validation status (accepted, quarantine, or rejected).
+        reasons: A list of descriptive reasons if status is not 'accepted'.
     """
-    status: str
+    status: ValidationStatus
     reasons: List[str] = field(default_factory=list)
 
 class AdapterValidator:
     """
-    Заглушка валидатора для манифестов LoRA-адаптеров.
+    Validator implementation for LoRA-adapter manifests.
 
-    Этот класс предназначен для проверки манифестов адаптеров.
-    На текущий момент он служит заглушкой и всегда принимает все манифесты,
-    без выполнения реальной логики валидации.
-
-    Атрибуты:
-        policy (Optional[Any]): Политика валидации, которую следует использовать (не реализовано в этой заглушке).
+    This class acts as a template for manifest validation. Currently,
+    it provides a pass-through implementation but is structured to
+    support pluggable validation policies in future iterations.
     """
+
+    __slots__ = ("_policy",)
+
     def __init__(self, policy: Optional[Any] = None) -> None:
         """
-        Инициализирует AdapterValidator.
+        Initializes the validator with an optional policy.
 
         Args:
-            policy (Optional[Any]): Политика валидации, которую следует использовать.
-                                     В текущей реализации не используется, но может быть
-                                     использована в будущем для настройки логики валидации.
+            policy: Configuration or rule set to guide validation logic.
         """
-        self.policy: Optional[Any] = policy
+        self._policy: Final[Optional[Any]] = policy
 
     def validate(self, manifest: AdapterManifest) -> ValidationResult:
         """
-        Валидирует предоставленный манифест адаптера.
-
-        В текущей реализации, этот метод всегда возвращает статус "accepted",
-        игнорируя содержимое манифеста.
+        Executes validation logic on the provided manifest.
 
         Args:
-            manifest (AdapterManifest): Манифест адаптера, который необходимо валидировать.
-                                        Ожидается экземпляр класса `AdapterManifest`.
+            manifest: The LoRA-adapter manifest to evaluate.
 
         Returns:
-            ValidationResult: Результат валидации, всегда со статусом "accepted"
-                              и пустым списком причин.
+            A ValidationResult object containing the outcome of the process.
         """
-        # В текущей реализации валидатор всегда принимает манифесты.
         return ValidationResult(status="accepted", reasons=[])

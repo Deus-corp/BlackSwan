@@ -1,61 +1,80 @@
 """
-Receives signals from TradingView via webhook and saves the latest signal.
+Receives signals from TradingView via webhook and stores the latest signal.
 """
 import logging
-from aiohttp import web
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, Final
 
-logger = logging.getLogger(__name__)
+from aiohttp import web
+from aiohttp.web import Request, Response, Application, AppRunner, TCPSite
+
+logger: logging.Logger = logging.getLogger(__name__)
+
 
 class TradingViewWebhook:
     """
-    A class to create a webhook server that receives signals from TradingView.
-    Saves the latest received signal and provides methods to start and stop the server.
-    """
-    def __init__(self, port: int = 8888) -> None:
-        """
-        Initializes TradingViewWebhook with the given port.
+    A server that receives signals from TradingView via POST requests.
 
-        :param port: The port on which the webhook server will listen.
+    Maintains state of the most recent signal received and provides a lifecycle
+    interface for the underlying aiohttp application.
+    """
+
+    def __init__(self, port: int = 8888, host: str = "0.0.0.0") -> None:
+        """
+        Initializes the TradingViewWebhook server instance.
+
+        :param port: The network port to bind to.
+        :param host: The host interface to bind to.
         """
         self.port: int = port
+        self.host: str = host
         self.latest_signal: Optional[Dict[str, Any]] = None
-        self.app: web.Application = web.Application()
-        self.app.router.add_post('/tradingview', self.handle_signal)
-        self._runner: Optional[web.AppRunner] = None
 
-    async def handle_signal(self, request: web.Request) -> web.Response:
+        self.app: Application = Application()
+        self.app.router.add_post("/tradingview", self.handle_signal)
+        self._runner: Optional[AppRunner] = None
+
+    async def handle_signal(self, request: Request) -> Response:
         """
-        Handles incoming POST requests from TradingView on the '/tradingview' route.
-        Parses the request body as JSON, saves it as `latest_signal`
-        and returns a JSON response with the operation status.
+        Handles incoming POST requests containing JSON payloads from TradingView.
 
-        :param request: The aiohttp.web.Request object.
-        :return: The aiohttp.web.Response JSON response with status "ok" or "error".
+        :param request: The incoming aiohttp request.
+        :return: A JSON response indicating success or failure.
         """
         try:
-            data: Dict[str, Any] = await request.json()
+            data = await request.json()
+            if not isinstance(data, dict):
+                raise ValueError("Payload must be a JSON object")
+
             self.latest_signal = data
-            logger.info(f"Received TradingView signal: {data}")
+            logger.info("Successfully processed TradingView signal.")
             return web.json_response({"status": "ok"})
-        except Exception as e:
-            logger.error(f"Failed to parse TradingView signal: {e}")
-            return web.json_response({"status": "error", "message": str(e)}, status=400)
+
+        except (ValueError, Exception) as e:
+            logger.error("Failed to process TradingView signal: %s", e)
+            return web.json_response(
+                {"status": "error", "message": str(e)},
+                status=400
+            )
 
     async def start(self) -> None:
         """
-        Starts the webhook server on '0.0.0.0' and the specified port.
+        Starts the webhook server, setting up the runner and TCP site.
         """
-        self._runner = web.AppRunner(self.app)
+        if self._runner is not None:
+            logger.warning("Webhook server is already running.")
+            return
+
+        self._runner = AppRunner(self.app)
         await self._runner.setup()
-        site = web.TCPSite(self._runner, '0.0.0.0', self.port)
+        site: TCPSite = TCPSite(self._runner, self.host, self.port)
         await site.start()
-        logger.info(f"TradingView webhook listening on port {self.port}")
+        logger.info("TradingView webhook listening on %s:%d", self.host, self.port)
 
     async def stop(self) -> None:
         """
-        Stops the webhook server if it was started.
+        Gracefully stops the webhook server and cleans up resources.
         """
-        if self._runner:
+        if self._runner is not None:
             await self._runner.cleanup()
-            logger.info(f"TradingView webhook on port {self.port} stopped.")
+            self._runner = None
+            logger.info("TradingView webhook on port %d stopped.", self.port)

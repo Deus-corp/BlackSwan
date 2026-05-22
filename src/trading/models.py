@@ -1,20 +1,23 @@
 """
 Typed data models for inter-service communication.
+
+Provides robust data structures for market monitoring, trade execution,
+node state synchronization, and evolutionary genome management.
 """
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 
 
-@dataclass
+@dataclass(frozen=True)
 class MarketSnapshot:
     """
-    Represents a snapshot of market data for a specific symbol.
+    Represents a point-in-time snapshot of market data for a specific instrument.
 
     Attributes:
-        symbol: The identifier for the market instrument (e.g., "BTC/USD").
-        price: The current price of the instrument.
-        volume: The trading volume at the time of the snapshot. Defaults to 0.0.
-        extra: A dictionary for any additional, unstructured market data.
+        symbol: The ticker symbol (e.g., "BTC/USD").
+        price: The current market price.
+        volume: The total trading volume at the time of snapshot.
+        extra: Dictionary for additional unstructured metadata.
     """
     symbol: str
     price: float
@@ -22,33 +25,33 @@ class MarketSnapshot:
     extra: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(frozen=True)
 class TradeDecision:
     """
-    Represents a decision made to execute a trade.
+    Represents a validated decision to execute a specific market order.
 
     Attributes:
-        action: The type of trade action, typically "buy" or "sell".
-        amount: The quantity of the asset to trade.
-        symbol: The identifier for the market instrument to trade.
-        price: The price at which the trade is intended to be executed.
+        action: Execution intent, specifically 'buy' or 'sell'.
+        amount: Quantity of the asset to be traded.
+        symbol: Target trading pair.
+        price: Target limit or reference price for the execution.
     """
-    action: str          # "buy" / "sell"
+    action: str
     amount: float
     symbol: str
     price: float
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExecutionResult:
     """
-    Represents the result of a trade execution.
+    Represents the terminal outcome of a trade execution request.
 
     Attributes:
-        success: A boolean indicating whether the trade execution was successful.
-        tx_hash: An optional transaction hash or identifier for the executed trade.
-        status: A string describing the status of the execution (e.g., "completed", "pending", "failed").
-        error: An optional error message if the execution failed.
+        success: Whether the transaction was successfully processed.
+        tx_hash: Optional unique identifier for the transaction.
+        status: Lifecycle state (e.g., 'completed', 'pending', 'failed').
+        error: Description of failure if applicable.
     """
     success: bool
     tx_hash: Optional[str] = None
@@ -59,17 +62,17 @@ class ExecutionResult:
 @dataclass
 class NodeState:
     """
-    Represents the current state of a trading node in the swarm.
+    Represents the operational metrics and state of a trading node.
 
     Attributes:
-        node_id: A unique identifier for the trading node.
-        capital: The current financial capital available to the node.
-        dq: A metric for data quality or decision quality.
-        liveness: A metric indicating the node's activity or responsiveness.
-        fitness: An overall performance metric for the node.
-        diversity: A metric indicating the uniqueness or spread of the node's strategy.
-        crdt_size: The size of the Conflict-free Replicated Data Type (CRDT) data managed by the node.
-        niche: A string describing the strategic niche or role of the node.
+        node_id: Unique identifier for the agent instance.
+        capital: Available liquidity for trading.
+        dq: Data Quality score.
+        liveness: Heartbeat/responsiveness metric.
+        fitness: Current performance/reward metric.
+        diversity: Strategy innovation index.
+        crdt_size: Payload size of synchronized state data.
+        niche: Defined operational strategy or role.
     """
     node_id: str
     capital: float
@@ -84,14 +87,14 @@ class NodeState:
 @dataclass
 class GenomeCandidate:
     """
-    Represents a candidate genome (set of parameters) for evaluation in the swarm.
+    Represents a parameter configuration for a trading strategy candidate.
 
     Attributes:
-        params: A dictionary of parameters defining the genome.
-        fitness: The evaluated fitness score of this genome. Defaults to 0.0.
-        niche: A string describing the strategic niche of the genome (e.g., "exploration", "exploitation").
-        origin: A string indicating where this genome originated (e.g., "mutation", "crossover", "initial").
-        lineage: A list of identifiers for parent genomes, tracing its evolutionary path.
+        params: Mapping of hyper-parameters defining the strategy.
+        fitness: Evaluated success score of the strategy.
+        niche: Strategic category (e.g., 'exploration', 'exploitation').
+        origin: Source of evolution (e.g., 'mutation', 'crossover').
+        lineage: List of parent node/genome IDs for path tracing.
     """
     params: Dict[str, float]
     fitness: float = 0.0

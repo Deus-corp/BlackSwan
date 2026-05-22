@@ -1,4 +1,4 @@
-"""LLM strategist for soft overseer suggestions."""
+"""LLM-driven strategic recommendation engine for the overseer system."""
 
 from __future__ import annotations
 
@@ -6,29 +6,25 @@ import asyncio
 import json
 import logging
 import re
-from typing import Any, Dict, Protocol
+from typing import Any, Dict, Final
 
 from src.swarms.overseer.interfaces import LLMGenerator
 from src.swarms.overseer.models import SwarmSnapshot
 
-logger = logging.getLogger(__name__)
+logger: Final = logging.getLogger(__name__)
 
-LLM_MAX_TOKENS_OVERSEER = 120
-LLM_TEMPERATURE_OVERSEER = 0.1
-
-
-class StrategistClient(Protocol):
-    def generate(self, prompt: str, *, max_tokens: int, temperature: float) -> str:
-        ...
+LLM_MAX_TOKENS_OVERSEER: Final[int] = 120
+LLM_TEMPERATURE_OVERSEER: Final[float] = 0.1
 
 
 class LLMStrategist:
-    """Requests only non-critical recommendations from the LLM."""
+    """Requests non-critical behavioral adjustments from the LLM based on swarm state."""
 
     def __init__(self, llm: LLMGenerator) -> None:
         self._llm = llm
 
     async def suggest(self, snapshot: SwarmSnapshot) -> Dict[str, bool]:
+        """Generates strategic boolean recommendations based on current snapshot."""
         prompt_payload = {
             "trade": {
                 "nodes": snapshot.trade_nodes,
@@ -50,10 +46,9 @@ class LLMStrategist:
 
         prompt = (
             "You are BlackSwan Overseer.\n"
-            "Return ONLY valid JSON with boolean fields:\n"
-            "reduce_risk, increase_exploration, unblock_ips, spawn_nodes, continue_explorer.\n"
-            "Do not enforce safety policy; that is handled elsewhere.\n"
-            "All omitted fields default to false, except continue_explorer defaults to true.\n"
+            "Return ONLY valid JSON with keys: reduce_risk, increase_exploration, "
+            "unblock_ips, spawn_nodes, continue_explorer.\n"
+            "Values must be booleans. Default all to false, except continue_explorer (true).\n"
             f"State: {json.dumps(prompt_payload, ensure_ascii=False, sort_keys=True)}\n"
             "Answer:"
         )
@@ -73,29 +68,23 @@ class LLMStrategist:
         if not parsed:
             return {}
 
-        expected = [
-            "reduce_risk",
-            "increase_exploration",
-            "unblock_ips",
-            "spawn_nodes",
-            "continue_explorer",
-        ]
         return {
-            key: parsed.get(key, False) if isinstance(parsed.get(key, False), bool) else False
-            for key in expected
+            "reduce_risk": bool(parsed.get("reduce_risk", False)),
+            "increase_exploration": bool(parsed.get("increase_exploration", False)),
+            "unblock_ips": bool(parsed.get("unblock_ips", False)),
+            "spawn_nodes": bool(parsed.get("spawn_nodes", False)),
+            "continue_explorer": bool(parsed.get("continue_explorer", True)),
         }
 
     @staticmethod
     def _parse_json_object(response: str) -> Dict[str, Any]:
+        """Sanitizes and attempts to parse LLM response as JSON."""
         if not isinstance(response, str):
             return {}
 
         text = response.strip()
-        if not text:
-            return {}
-
-        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
-        text = re.sub(r"\s*```$", "", text)
+        # Strip markdown wrappers
+        text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE | re.MULTILINE)
 
         start = text.find("{")
         end = text.rfind("}")
@@ -105,17 +94,17 @@ class LLMStrategist:
         candidate = text[start : end + 1]
 
         try:
-            parsed = json.loads(candidate)
-            return parsed if isinstance(parsed, dict) else {}
+            return json.loads(candidate)
         except json.JSONDecodeError:
-            # Best-effort repair for bare keys.
+            # Attempt to fix keys missing quotes
             repaired = re.sub(
-                r'([{,]\s*)(?<!")([A-Za-z_][A-Za-z0-9_]*)(?=\s*:)',
+                r'([{]\s*)(?<!")([A-Za-z_][A-Za-z0-9_]*)(?=\s*:)',
                 r'\1"\2"',
                 candidate,
             )
             try:
-                parsed = json.loads(repaired)
-                return parsed if isinstance(parsed, dict) else {}
+                data = json.loads(repaired)
+                return data if isinstance(data, dict) else {}
             except json.JSONDecodeError:
+                logger.debug("Failed to parse LLM response as JSON")
                 return {}

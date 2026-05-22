@@ -2,28 +2,37 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, Sequence, Optional
 
-from src.swarms.improver.models import FileItem, MemoryHit, ImprovementResult
+from src.swarms.improver.models import FileItem, ImprovementResult, MemoryHit
+
+PYTHON_CONTENT_LIMIT = 32_000
+NON_PYTHON_CONTENT_LIMIT = 14_000
+MEMORY_HIT_LIMIT = 8
+CRITIC_HIT_LIMIT = 6
 
 
 def trim_text(text: str, limit: int) -> str:
+    """Truncates text if it exceeds the specified character limit."""
     if len(text) <= limit:
         return text
     keep = max(0, limit - 40)
-    return text[:keep] + "\n# [TRUNCATED]\n"
+    return f"{text[:keep]}\n# [TRUNCATED]\n"
 
 
 def _strip_code_fences(text: str) -> str:
+    """Removes markdown code fences from the provided text."""
     cleaned = text.strip()
     cleaned = re.sub(r"^```(?:json|python|py)?\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s*```$", "", cleaned)
     return cleaned.strip()
 
 
-def _extract_balanced_json(text: str) -> str | None:
+def _extract_balanced_json(text: str) -> Optional[str]:
+    """Finds and extracts a balanced JSON object or array from a string."""
     start_obj = text.find("{")
     start_arr = text.find("[")
+    
     if start_obj == -1 and start_arr == -1:
         return None
 
@@ -37,6 +46,7 @@ def _extract_balanced_json(text: str) -> str | None:
     depth = 0
     in_string = False
     escape = False
+
     for i in range(start, len(text)):
         ch = text[i]
         if in_string:
@@ -60,7 +70,7 @@ def _extract_balanced_json(text: str) -> str | None:
 
 
 def repair_json_text(text: str) -> str:
-    """Best-effort cleanup for model output before json.loads."""
+    """Attempts to repair malformed JSON string into a parseable format."""
     if not text:
         return ""
 
@@ -72,58 +82,44 @@ def repair_json_text(text: str) -> str:
     try:
         json.loads(cleaned)
         return cleaned
-    except Exception:
+    except (json.JSONDecodeError, ValueError):
         pass
 
     balanced = _extract_balanced_json(cleaned)
     if balanced:
-        balanced = re.sub(r",(\s*[}\]])", r"\1", balanced)
         try:
             json.loads(balanced)
             return balanced
-        except Exception:
-            pass
-
-    start = min([i for i in [cleaned.find("{"), cleaned.find("[")] if i != -1], default=-1)
-    end = max(cleaned.rfind("}"), cleaned.rfind("]"))
-    if start != -1 and end != -1 and end > start:
-        snippet = cleaned[start : end + 1]
-        snippet = re.sub(r"\s+", " ", snippet)
-        snippet = re.sub(r",(\s*[}\]])", r"\1", snippet)
-        try:
-            json.loads(snippet)
-            return snippet
-        except Exception:
+        except (json.JSONDecodeError, ValueError):
             pass
 
     return cleaned
 
 
-def safe_json_extract(text: str) -> Any | None:
-    if not text:
-        return None
-
+def safe_json_extract(text: str) -> Optional[Any]:
+    """Attempts to extract and parse JSON from raw text safely."""
     repaired = repair_json_text(text)
     if not repaired:
         return None
 
-    for candidate in (repaired, _strip_code_fences(text)):
-        try:
-            return json.loads(candidate)
-        except Exception:
-            pass
-    return None
+    try:
+        return json.loads(repaired)
+    except (json.JSONDecodeError, ValueError):
+        return None
 
 
 def _compact_hit(hit: MemoryHit) -> Dict[str, Any]:
+    """Reduces memory hit payloads to fit context windows."""
     payload = dict(hit.payload)
-    for key in ("summary", "critique", "description"):
-        if isinstance(payload.get(key), str) and len(payload[key]) > 500:
-            payload[key] = payload[key][:500]
+    for key in ("summary", "critique", "description", "notes"):
+        if isinstance(payload.get(key), str) and len(payload[key]) > 700:
+            payload[key] = payload[key][:700]
     return {"kind": hit.kind, "score": hit.score, "payload": payload}
 
 
-def _serialize_file(item: FileItem, *, content_limit: int = 12_000) -> Dict[str, Any]:
+def _serialize_file(item: FileItem) -> Dict[str, Any]:
+    """Serializes a file item into a dictionary for prompts."""
+    content_limit = PYTHON_CONTENT_LIMIT if item.language == "python" else NON_PYTHON_CONTENT_LIMIT
     return {
         "path": item.path,
         "language": item.language,
@@ -134,190 +130,67 @@ def _serialize_file(item: FileItem, *, content_limit: int = 12_000) -> Dict[str,
     }
 
 
-def _python_full_file_schema() -> Dict[str, Any]:
-    return {
-        "files": [
-            {
-                "path": "path/to/file.py",
-                "code": "full improved file content",
-                "summary": "short summary",
-                "risk": 0.0,
-                "tags": ["typing", "refactor"],
-            }
-        ],
-        "overall_summary": "short summary",
-        "overall_risk": 0.0,
-        "should_repair": False,
-        "critique_notes": "",
-    }
-
-
-def _non_python_optional_patch_schema() -> Dict[str, Any]:
-    return {
-        "files": [
-            {
-                "path": "path/to/file.txt",
-                "action": "replace_file",
-                "code": "full improved file content",
-                "summary": "short summary",
-                "risk": 0.0,
-                "tags": ["cleanup"],
-                "patches": [
-                    {
-                        "type": "replace_block",
-                        "target": "target-name",
-                        "new_code": "replacement text",
-                        "summary": "why this patch exists",
-                        "reason": "why this is safe",
-                        "confidence": 0.0,
-                        "scope": "file",
-                    }
-                ],
-                "notes": "",
-            }
-        ],
-        "overall_summary": "short summary",
-        "overall_risk": 0.0,
-        "should_repair": False,
-        "critique_notes": "",
-    }
-
-
-def build_python_prompt(
-    file_item: FileItem,
-    context_hits: Sequence[MemoryHit],
-    strategy: str,
-) -> str:
-    """Strict Python prompt: full-file JSON only. No patch schema exposed."""
+def build_python_prompt(file_item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> str:
+    """Builds a prompt for Python file optimization."""
     prompt_obj = {
-        "task": "Improve the Python file and return ONLY valid JSON.",
+        "task": "Rewrite the entire Python file and return ONLY valid JSON.",
+        "model_behavior": {
+            "priority": "full_file_rewrite",
+            "allowed_style": "safe_deep_refactor",
+            "large_file_policy": "do_not_shorten_or_truncate_the_file",
+        },
         "strategy": strategy,
         "constraints": [
             "Return exactly one JSON object.",
             "The JSON must contain a 'files' array.",
-            "Each file object must include 'path', 'code', 'summary', 'risk', and 'tags'.",
-            "For Python files, 'code' must contain the full improved source code.",
-            "Do not return patches or partial edits for Python files.",
-            "Do not add markdown, explanations, or extra keys outside the schema.",
-            "Preserve runtime behavior unless fixing a clear bug.",
+            "For Python files, 'code' must contain the complete improved source code.",
+            "Do not return patches or partial edits.",
+            "Preserve public behavior and interfaces.",
+            "Add type hints and docstrings.",
+            "Do not include markdown or explanations."
         ],
         "file": _serialize_file(file_item),
-        "context": [_compact_hit(hit) for hit in context_hits[:8]],
-        "output_schema": _python_full_file_schema(),
+        "context": [_compact_hit(hit) for hit in context_hits[:MEMORY_HIT_LIMIT]],
     }
-    return json.dumps(prompt_obj, ensure_ascii=False, separators=(",", ":"))
+    return json.dumps(prompt_obj, ensure_ascii=False)
 
 
-def build_non_python_prompt(
-    file_item: FileItem,
-    context_hits: Sequence[MemoryHit],
-    strategy: str,
-    prefer_patch: bool = True,
-) -> str:
-    """Non-Python prompt can still allow patches, but full-file output remains supported."""
+def build_non_python_prompt(file_item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> str:
+    """Builds a prompt for non-Python file optimization."""
     prompt_obj = {
-        "task": "Improve the file and return ONLY valid JSON.",
+        "task": "Rewrite the file and return ONLY valid JSON.",
+        "model_behavior": {"priority": "full_file_rewrite"},
         "strategy": strategy,
-        "constraints": [
-            "Return exactly one JSON object.",
-            "The JSON must contain a 'files' array.",
-            "For non-Python files, patches are allowed if helpful.",
-            "If using patches, include target and new_code.",
-            "If a full replacement is safer, provide 'code'.",
-            "Do not add markdown, explanations, or extra commentary.",
-        ],
         "file": _serialize_file(file_item),
-        "context": [_compact_hit(hit) for hit in context_hits[:8]],
-        "preferred_output_mode": "patch" if prefer_patch else "replace_file",
-        "output_schema": _non_python_optional_patch_schema(),
+        "context": [_compact_hit(hit) for hit in context_hits[:MEMORY_HIT_LIMIT]],
     }
-    return json.dumps(prompt_obj, ensure_ascii=False, separators=(",", ":"))
+    return json.dumps(prompt_obj, ensure_ascii=False)
 
 
-def build_critic_prompt(
-    file_items: Sequence[FileItem],
-    drafted_results: Sequence[ImprovementResult],
-    context_hits: Sequence[MemoryHit],
-    strategy: str,
-) -> str:
-    proposals = []
-    for item, result in zip(file_items, drafted_results):
-        proposals.append(
-            {
-                "path": item.path,
-                "original_fingerprint": item.fingerprint,
-                "result_summary": result.summary,
-                "risk": result.risk,
-                "strategy": result.strategy,
-                "tags": result.memory_tags,
-                "changed_lines_ratio": round(result.changed_lines_ratio, 4),
-                "code_preview": trim_text(result.code, 2500),
-            }
-        )
-
+def build_critic_prompt(file_items: Sequence[FileItem], drafted_results: Sequence[ImprovementResult], context_hits: Sequence[MemoryHit], strategy: str) -> str:
+    """Builds a prompt for critiquing proposed changes."""
+    proposals = [
+        {
+            "path": item.path,
+            "result_summary": result.summary,
+            "risk": result.risk,
+            "code_preview": trim_text(result.code, 3500),
+        } for item, result in zip(file_items, drafted_results)
+    ]
+    
     prompt_obj = {
         "task": "Critique the proposed file changes. Return ONLY JSON.",
         "strategy": strategy,
-        "rules": [
-            "Focus on correctness, risk, scope creep, and whether changes are too broad.",
-            "Point out any output that looks unsafe or under-specified.",
-            "Prefer concise but actionable critique.",
-        ],
-        "context": [_compact_hit(hit) for hit in context_hits[:6]],
+        "context": [_compact_hit(hit) for hit in context_hits[:CRITIC_HIT_LIMIT]],
         "proposals": proposals,
-        "output_schema": {
-            "approved": False,
-            "overall_risk": 0.0,
-            "blocking_issues": ["..."],
-            "non_blocking_suggestions": ["..."],
-            "preferred_action": "accept|revise|reject",
-            "critique": "short review text",
-        },
     }
-    return json.dumps(prompt_obj, ensure_ascii=False, separators=(",", ":"))
-
-
-def build_proposals_prompt(
-    memory_patterns: Sequence[Dict[str, Any]],
-    strategy_stats: Dict[str, Dict[str, float]],
-    project_dirs: Sequence[str],
-) -> str:
-    prompt_obj = {
-        "task": "Analyze the project and propose 2-3 new Python modules or subfolders that could improve quality, reliability, or autonomy.",
-        "project_dirs": list(project_dirs),
-        "memory_patterns": list(memory_patterns),
-        "strategy_stats": strategy_stats,
-        "constraints": [
-            "Return only JSON.",
-            "Keep proposal descriptions concrete.",
-            "Avoid vague 'improve everything' style suggestions.",
-        ],
-        "output_schema": {
-            "proposals": [
-                {
-                    "path": "src/new_module.py",
-                    "description": "...",
-                    "reason": "...",
-                    "code_skeleton": "...",
-                    "risk": 0.0,
-                    "tags": ["memory", "metrics"],
-                }
-            ],
-            "summary": "short summary",
-        },
-    }
-    return json.dumps(prompt_obj, ensure_ascii=False, separators=(",", ":"))
+    return json.dumps(prompt_obj, ensure_ascii=False)
 
 
 def build_json_repair_prompt(raw_text: str, expected_schema: Dict[str, Any]) -> str:
-    prompt_obj = {
-        "task": "Repair the text into valid JSON only. No markdown, no explanation.",
+    """Builds a prompt specifically for fixing broken JSON output."""
+    return json.dumps({
+        "task": "Repair the text into valid JSON only.",
         "expected_schema": expected_schema,
         "raw_text": trim_text(raw_text, 18_000),
-        "constraints": [
-            "Return only the repaired JSON object or array.",
-            "Preserve the original meaning.",
-            "Do not add commentary.",
-        ],
-    }
-    return json.dumps(prompt_obj, ensure_ascii=False, separators=(",", ":"))
+    }, ensure_ascii=False)

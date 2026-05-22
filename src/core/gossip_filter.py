@@ -1,114 +1,88 @@
 """
 Gossip message filter: replay protection, monotonic sequence numbers, timestamp validation.
 
-This module provides a standalone `GossipFilter` class that can be used to check
-the validity of incoming gossip messages based on nonce, sequence number, and timestamp.
-It helps prevent message replays and ensures message order for a given sender.
+This module provides a robust `GossipFilter` class used to validate incoming gossip
+messages by checking for replayed nonces, non-monotonic sequence numbers, and 
+expired or clock-skewed timestamps.
 """
 import time
 import logging
-from typing import Dict, Optional, Set, Tuple
+from collections import deque
+from typing import Dict, Deque, Set, Optional, Final
 
-logger = logging.getLogger(__name__)
+logger: Final = logging.getLogger(__name__)
 
 class GossipFilter:
     """
-    Checks each incoming gossip message (regardless of type).
-    Stores a 'seen' cache for nonces and the last sequence number for each sender.
+    Validates incoming gossip messages to prevent replay and out-of-order delivery.
 
     Attributes:
-        max_clock_skew_ms: The maximum allowed clock skew in milliseconds.
-        _seen_nonces: A dictionary mapping sender_node_id to a set of seen nonces.
-        _last_seq: A dictionary mapping sender_node_id to its last received sequence number.
+        max_clock_skew_ms: Maximum allowed deviation from system clock in milliseconds.
+        max_nonce_cache: Maximum number of nonces tracked per sender.
+        _seen_nonces: Internal map of sender ID to a set of recent nonces.
+        _last_seq: Internal map of sender ID to the last accepted sequence number.
     """
 
-    _seen_nonces: Dict[str, Set[str]]
-    _last_seq: Dict[str, int]
+    __slots__ = ("max_clock_skew_ms", "max_nonce_cache", "_seen_nonces", "_last_seq")
 
-    def __init__(self, max_clock_skew_ms: int = 10_000) -> None:
+    def __init__(self, max_clock_skew_ms: int = 10_000, max_nonce_cache: int = 10_000) -> None:
+        self.max_clock_skew_ms: int = max_clock_skew_ms
+        self.max_nonce_cache: int = max_nonce_cache
+        self._seen_nonces: Dict[str, Set[str]] = {}
+        self._last_seq: Dict[str, int] = {}
+
+    def check(
+        self, 
+        sender_node_id: str, 
+        nonce: Optional[str], 
+        seq_no: Optional[int],
+        timestamp_ms: Optional[int], 
+        ttl_ms: Optional[int] = None
+    ) -> bool:
         """
-        Initializes the GossipFilter.
+        Validates message metadata for security and ordering.
 
         Args:
-            max_clock_skew_ms: The maximum allowed clock skew in milliseconds
-                               between sender and receiver timestamps. Defaults to 10 seconds.
-        """
-        self.max_clock_skew_ms = max_clock_skew_ms
-        self._seen_nonces = {}   # sender_node_id -> set of nonces
-        self._last_seq = {}            # sender_node_id -> last seq_no
-
-    def check(self, sender_node_id: str, nonce: Optional[str], seq_no: Optional[int],
-              timestamp_ms: Optional[int], ttl_ms: Optional[int] = None) -> bool:
-        """
-        Checks a message based on cryptographic nonce for replay protection,
-        monotonic sequence numbers, and temporal timestamps.
-        Returns True if the message can be accepted based on these criteria.
-
-        Args:
-            sender_node_id: The ID of the message sender node.
-            nonce: A single-use number (nonce) for replay protection. Can be None.
-            seq_no: A sequential number to ensure monotonicity. Can be None.
-            timestamp_ms: The message's timestamp in milliseconds (Unix epoch). Can be None.
-            ttl_ms: The Time-To-Live of the message in milliseconds (if specified). Can be None.
+            sender_node_id: Unique identifier for the sending node.
+            nonce: Unique message identifier used for replay protection.
+            seq_no: Monotonic sequence number for ordering.
+            timestamp_ms: Epoch time of message creation.
+            ttl_ms: Duration for which the message is considered valid.
 
         Returns:
-            True if the message passed all checks, False otherwise.
+            True if the message passes all security/ordering checks, False otherwise.
         """
         now_ms: int = int(time.time() * 1000)
 
-        # 1. Expiration check (if ttl and timestamp are specified)
-        if timestamp_ms is not None and ttl_ms is not None:
-            expires_at: int = timestamp_ms + ttl_ms
-            if now_ms > expires_at:
-                logger.debug(
-                    "Gossip message from %s expired (now: %d ms, expires: %d ms)",
-                    sender_node_id, now_ms, expires_at
-                )
-                return False
-            # Check for messages from too far in the future
-            if timestamp_ms > now_ms + self.max_clock_skew_ms:
-                logger.debug(
-                    "Gossip message from %s from too far future (skew: %d ms, max_skew: %d ms)",
-                    sender_node_id, timestamp_ms - now_ms, self.max_clock_skew_ms
-                )
-                return False
-            # Check for messages too old, even if not expired by TTL
-            if timestamp_ms < now_ms - self.max_clock_skew_ms:
-                logger.debug(
-                    "Gossip message from %s is too old (skew: %d ms, max_skew: %d ms)",
-                    sender_node_id, now_ms - timestamp_ms, self.max_clock_skew_ms
-                )
+        # 1. Temporal Validation
+        if timestamp_ms is not None:
+            # Check for messages from the future or too far in the past
+            skew = abs(now_ms - timestamp_ms)
+            if skew > self.max_clock_skew_ms:
+                logger.debug("Gossip rejection: skew %d ms exceeds limit for %s", skew, sender_node_id)
                 return False
 
+            # Expiration check via TTL
+            if ttl_ms is not None and now_ms > (timestamp_ms + ttl_ms):
+                logger.debug("Gossip rejection: expired message from %s", sender_node_id)
+                return False
 
-        # 2. Replay protection using nonce (if nonce is specified)
+        # 2. Replay Protection (Nonce)
         if nonce is not None:
-            seen: Set[str] = self._seen_nonces.setdefault(sender_node_id, set())
+            seen = self._seen_nonces.setdefault(sender_node_id, set())
             if nonce in seen:
-                logger.debug("Replay nonce detected for %s: %s", sender_node_id, nonce)
+                logger.debug("Gossip rejection: replay detected from %s (nonce: %s)", sender_node_id, nonce)
                 return False
-            seen.add(nonce)
-            # Optionally limit cache size for this sender
-            if len(seen) > 10000:
-                # Simple cleanup: clear the entire set.
-                # A more sophisticated LRU or rolling window might be preferred
-                # to avoid potential replay issues immediately after a cache clear.
-                # For high-volume systems, this should be a more robust LRU cache.
-                logger.warning(
-                    "Nonce cache for sender %s exceeded 10000 entries, clearing it. "
-                    "Consider a more robust LRU cache if replay protection is critical over long periods.",
-                    sender_node_id
-                )
+            
+            if len(seen) >= self.max_nonce_cache:
                 seen.clear()
+            seen.add(nonce)
 
-        # 3. Monotonic sequence number (if specified)
+        # 3. Ordering Protection (Monotonic Sequence)
         if seq_no is not None:
-            last: int = self._last_seq.get(sender_node_id, -1)
-            if seq_no <= last:
-                logger.debug(
-                    "Non-monotonic seq_no from %s: %d <= %d (last_seq: %d)",
-                    sender_node_id, seq_no, last, last
-                )
+            last_seq = self._last_seq.get(sender_node_id, -1)
+            if seq_no <= last_seq:
+                logger.debug("Gossip rejection: seq_no %d not monotonic for %s", seq_no, sender_node_id)
                 return False
             self._last_seq[sender_node_id] = seq_no
 
@@ -116,12 +90,8 @@ class GossipFilter:
 
     def reset(self, sender_node_id: str) -> None:
         """
-        Resets the state (seen nonces and last sequence number) for a specific sender.
-        This might be called upon detecting a sender restart or a significant protocol error.
-
-        Args:
-            sender_node_id: The ID of the sender node for which to reset the state.
+        Clears the state for a specific sender to handle node restarts or state desync.
         """
         self._seen_nonces.pop(sender_node_id, None)
         self._last_seq.pop(sender_node_id, None)
-        logger.info(f"GossipFilter state reset for sender: {sender_node_id}")
+        logger.info("GossipFilter state reset for sender: %s", sender_node_id)

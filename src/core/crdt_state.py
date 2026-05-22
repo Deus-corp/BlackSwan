@@ -1,117 +1,87 @@
 """
-LWW-Register CRDT для репликации состояния.
-Каждый ключ хранит значение и timestamp.
-При конфликте побеждает запись с наибольшим timestamp.
+Last-Write-Wins (LWW) Register CRDT implementation for distributed state replication.
 
-Этот модуль представляет собой простую реализацию Last-Write-Wins (LWW) Register CRDT.
-Он используется для базовой репликации состояния, где конфликт разрешается
-на основе временной метки последней записи.
+This module provides a thread-safe LWW-Register structure. Conflicts are resolved
+by selecting the value associated with the highest timestamp. 
 
-ПРЕДУПРЕЖДЕНИЕ: Эта реализация CRDTState является упрощенной и постепенно
-заменяется более продвинутой системой GenomeCRDT (см. `crdt_adapter.py` и `crdt_layer.py`),
-которая предлагает лучшие гарантии согласованности и персистентность.
+NOTE: This is a legacy implementation. Please prefer GenomeCRDT systems for production.
 """
 import threading
 import time
-from typing import Any, Dict, Optional, TypedDict, Union
+from typing import Any, Dict, Optional, TypedDict
 
-# Define a TypedDict for the internal structure of a CRDT entry for better type safety
-class _CRDTEntry(TypedDict):
-    """
-    Represents a single entry in the LWW CRDT state.
-    """
+class CRDTEntry(TypedDict):
+    """Structure representing a timestamped CRDT entry."""
     value: Any
     timestamp: float
 
-
 class CRDTState:
     """
-    Implements a Last-Write-Wins (LWW) Register CRDT for state replication.
-    Each key stores a value and a timestamp.
-    In case of a conflict, the entry with the largest timestamp wins.
-    This class is thread-safe.
+    Thread-safe Last-Write-Wins (LWW) Register CRDT.
+    
+    Attributes:
+        node_id (str): Unique identifier for the local node.
     """
-    def __init__(self, node_id: str) -> None:
-        """
-        Initializes the CRDTState with a unique node identifier.
 
-        Args:
-            node_id: A unique identifier for this node.
-        """
+    def __init__(self, node_id: str) -> None:
+        """Initializes the CRDT state store."""
         self.node_id: str = node_id
-        # State stores key -> {"value": Any, "timestamp": float}
-        self.state: Dict[str, _CRDTEntry] = {}
-        self._lock = threading.Lock() # Simple lock for thread safety
+        self._state: Dict[str, CRDTEntry] = {}
+        self._lock = threading.RLock()
 
     def update(self, key: str, value: Any) -> None:
         """
-        Locally updates a key with a new value and the current timestamp.
-        Local updates always take precedence as their timestamp is guaranteed to be newer
-        or equal to any previous local timestamp for the same key.
+        Updates a key locally with the current system timestamp.
 
         Args:
-            key: The key to update.
-            value: The new value to associate with the key.
+            key: The state key to update.
+            value: The data to store.
         """
         with self._lock:
-            self.state[key] = {
+            self._state[key] = {
                 "value": value,
                 "timestamp": time.time()
             }
 
-    def merge(self, remote_state: Dict[str, _CRDTEntry]) -> bool:
+    def merge(self, remote_state: Dict[str, CRDTEntry]) -> bool:
         """
-        Merges the current state with a remote state.
-        For each key present in both states, the entry with the higher timestamp wins.
-        New keys from the remote state are added.
+        Merges remote state into local state using LWW resolution.
 
         Args:
-            remote_state: The remote CRDT state (a dictionary) to merge with.
-                          Expected format: {key: {"value": Any, "timestamp": float}}
+            remote_state: Dictionary of entries to integrate.
 
         Returns:
-            True if any changes were made to the local state as a result of the merge, False otherwise.
+            bool: True if the local state was modified.
         """
         changed = False
         with self._lock:
-            for key, remote_entry in remote_state.items():
-                # Validate remote_entry structure (basic check)
-                if not isinstance(remote_entry, dict) or "value" not in remote_entry or "timestamp" not in remote_entry:
-                    # Log a warning or raise an error for malformed remote entries
-                    # For simplicity, invalid entries are skipped.
-                    continue 
+            for key, entry in remote_state.items():
+                if not isinstance(entry, dict) or "value" not in entry or "timestamp" not in entry:
+                    continue
 
-                # If key is not in local state, add it directly
-                if key not in self.state:
-                    self.state[key] = remote_entry
-                    changed = True
-                # If key is in local state, compare timestamps and update if remote is newer
-                elif remote_entry["timestamp"] > self.state[key]["timestamp"]:
-                    self.state[key] = remote_entry
+                local_entry = self._state.get(key)
+                if local_entry is None or entry["timestamp"] > local_entry["timestamp"]:
+                    self._state[key] = entry
                     changed = True
         return changed
 
     def get(self, key: str) -> Optional[Any]:
         """
-        Retrieves the value associated with a key.
+        Retrieves the value for a given key.
 
         Args:
-            key: The key whose value is to be retrieved.
+            key: The lookup key.
 
         Returns:
-            The value associated with the key, or None if the key does not exist.
+            The stored value if found, else None.
         """
         with self._lock:
-            entry = self.state.get(key)
-            return entry["value"] if entry else None
+            entry = self._state.get(key)
+            return entry["value"] if entry is not None else None
 
-    def to_dict(self) -> Dict[str, _CRDTEntry]:
+    def to_dict(self) -> Dict[str, CRDTEntry]:
         """
-        Serializes the current state into a dictionary suitable for transmission over a network.
-        Returns a copy of the internal state.
-
-        Returns:
-            Dict[str, _CRDTEntry]: A dictionary representing the current CRDT state.
+        Returns a thread-safe shallow copy of the state.
         """
         with self._lock:
-            return dict(self.state) # Return a copy to prevent external modification
+            return self._state.copy()

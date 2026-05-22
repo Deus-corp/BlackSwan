@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, asdict
+from typing import Any, Dict, Optional, cast
 
 from .context import RuntimeContext
 from .market.snapshot import MarketSnapshot
@@ -31,24 +31,10 @@ class TradeHeartbeat:
     market_mode: str
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "type": "trade_heartbeat",
-            "schema_version": self.schema_version,
-            "node_id": self.node_id,
-            "timestamp": self.timestamp,
-            "capital": self.capital,
-            "dq": self.dq,
-            "fitness": self.fitness,
-            "diversity": self.diversity,
-            "crdt_size": self.crdt_size,
-            "llm_mutations": self.llm_mutations,
-            "niche_counts": dict(self.niche_counts),
-            "trace_id": self.trace_id,
-            "origin_pubkey_hex": self.origin_pubkey_hex,
-            "best_symbol": self.best_symbol,
-            "best_price": self.best_price,
-            "market_mode": self.market_mode,
-        }
+        """Convert heartbeat to serializable dictionary."""
+        data = asdict(self)
+        data["type"] = "trade_heartbeat"
+        return data
 
 
 class HeartbeatPublisher:
@@ -58,21 +44,22 @@ class HeartbeatPublisher:
         self._ctx = ctx
 
     async def publish(self, snapshot: Optional[MarketSnapshot] = None) -> None:
+        """Construct and push heartbeat data to the CRDT."""
         heartbeat = TradeHeartbeat(
             schema_version=1,
-            node_id=self._ctx.config.node_id,
+            node_id=str(getattr(self._ctx.config, "node_id", "unknown")),
             timestamp=time.time(),
             capital=float(getattr(self._ctx, "capital", 0.0)),
             dq=float(getattr(self._ctx.survival, "dq", 0.0)),
-            fitness=float(self._current_fitness()),
-            diversity=float(self._population_diversity()),
+            fitness=self._get_current_fitness(),
+            diversity=self._get_population_diversity(),
             crdt_size=len(getattr(self._ctx.crdt, "state", {})),
-            llm_mutations=int(self._llm_mutations()),
-            niche_counts=self._niche_counts(),
+            llm_mutations=self._get_llm_mutations(),
+            niche_counts=self._get_niche_counts(),
             trace_id=str(getattr(self._ctx, "trace_id", "")),
-            origin_pubkey_hex=getattr(self._ctx.crypto, "public_bytes_hex", ""),
-            best_symbol=self._best_symbol(snapshot),
-            best_price=self._best_price(snapshot),
+            origin_pubkey_hex=str(getattr(self._ctx.crypto, "public_bytes_hex", "")),
+            best_symbol=self._get_best_symbol(snapshot),
+            best_price=self._get_best_price(snapshot),
             market_mode=str(getattr(self._ctx.config, "market_mode", "")),
         )
         await self._ctx.crdt.add_genome(heartbeat.to_dict())
@@ -90,62 +77,59 @@ class HeartbeatPublisher:
             timestamp=time.time(),
         )
 
-    def _best_symbol(self, snapshot: Optional[MarketSnapshot]) -> str:
+    def _get_best_symbol(self, snapshot: Optional[MarketSnapshot]) -> str:
         snap = snapshot or self._fallback_snapshot()
-        return str(getattr(snap, "best_symbol", "BTC/USDT"))
+        return getattr(snap, "best_symbol", "BTC/USDT")
 
-    def _best_price(self, snapshot: Optional[MarketSnapshot]) -> float:
+    def _get_best_price(self, snapshot: Optional[MarketSnapshot]) -> float:
         snap = snapshot or self._fallback_snapshot()
         try:
             return float(snap.price_for(snap.best_symbol))
-        except Exception:
+        except (AttributeError, ValueError, TypeError):
             return 0.0
 
-    def _current_fitness(self) -> float:
+    def _get_current_fitness(self) -> float:
         try:
-            engine = self._ctx.engine
+            engine = getattr(self._ctx, "engine", None)
             champ = getattr(engine, "champion", None)
-            if not champ:
+            if champ is None:
                 return 0.0
             if isinstance(champ, (list, tuple)) and len(champ) > 1:
                 return float(champ[1])
-            if hasattr(champ, "fitness"):
-                return float(champ.fitness)
-            return 0.0
+            return float(getattr(champ, "fitness", 0.0))
         except Exception:
             return 0.0
 
-    def _population_diversity(self) -> float:
+    def _get_population_diversity(self) -> float:
         try:
-            engine = self._ctx.engine
-            if engine and hasattr(engine, "diversity"):
+            engine = getattr(self._ctx, "engine", None)
+            if hasattr(engine, "diversity"):
                 return float(engine.diversity())
             return 0.0
         except Exception:
             return 0.0
 
-    def _llm_mutations(self) -> int:
+    def _get_llm_mutations(self) -> int:
         try:
-            engine = self._ctx.engine
-            if engine and hasattr(engine, "llm_mutations"):
-                return int(engine.llm_mutations)
-            return 0
+            engine = getattr(self._ctx, "engine", None)
+            return int(getattr(engine, "llm_mutations", 0))
         except Exception:
             return 0
 
-    def _niche_counts(self) -> Dict[str, int]:
+    def _get_niche_counts(self) -> Dict[str, int]:
+        default = {"survival": 0, "capital": 0, "exploration": 0}
         try:
-            engine = self._ctx.engine
+            engine = getattr(self._ctx, "engine", None)
             if not engine or not hasattr(engine, "population"):
-                return {"survival": 0, "capital": 0, "exploration": 0}
+                return default
 
-            counts = {"survival": 0, "capital": 0, "exploration": 0}
+            counts = default.copy()
             for item in engine.population:
                 niche = getattr(item, "niche", None)
                 if niche is None and isinstance(item, dict):
-                    niche = item.get("niche", "exploration")
+                    niche = cast(dict, item).get("niche", "exploration")
                 if niche in counts:
-                    counts[niche] += 1
+                    counts[str(niche)] += 1
             return counts
         except Exception:
-            return {"survival": 0, "capital": 0, "exploration": 0}
+            return default

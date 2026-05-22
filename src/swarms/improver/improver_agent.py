@@ -10,12 +10,12 @@ import re
 import textwrap
 import time
 import uuid
+import requests
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import google.generativeai as genai
-import requests
 
 from src.swarms.improver.memory import MemoryStore
 from src.swarms.improver.models import (
@@ -67,21 +67,19 @@ EXCLUDE_DIRS = {
     "assets", "config", "docs", "formal", "grafana", "llama_cpp",
     "logs", "scripts", "site", "tests", "tools",
     "data", ".git", "node_modules", "prometheus_data", "grafana_data",
-    "improver_workspace", "improver_output", "improver_failed", "improver_proposals", "improver_staging",
-    "improver_staging", "improver_memory", "ledgers", "meta_agent", "nonce",
+    "improver_workspace", "improver_output", "improver_failed",
+    "improver_proposals", "improver_staging", "improver_memory",
+    "ledgers", "meta_agent", "nonce",
 }
 EXCLUDE_FILES = {"Dockerfile", ".env", ".DS_Store"}
 MAX_FILE_SIZE_KB = 200
-MAX_FILES_PER_BATCH = 3
+MAX_FILES_PER_BATCH = 1
 SLEEP_BETWEEN_CYCLES = 3600
-MAX_PROMPT_CHARS = 24_000
 MAX_CHANGED_LINES_RATIO = 0.35
-DEFAULT_MODEL_NAME = "gemini-2.5-flash"
-CRITIC_MODEL_NAME = "gemini-2.5-flash"
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
-DEFAULT_GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MISTRAL_MODEL = "mistral-large-latest"
-DEFAULT_MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
+DEFAULT_MODEL_NAME = "gemini-3.1-flash-lite"
+CRITIC_MODEL_NAME = "gemini-3.1-flash-lite"
+DEFAULT_OPENROUTER_MODEL = "microsoft/phi-3-medium-128k-instruct"
+DEFAULT_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
 def _line_col_to_index(code: str, line: int, col: int) -> int:
@@ -213,15 +211,18 @@ class ImproverAgent:
         self.files_failed = 0
         self.batch_pytest_ok: Optional[bool] = None
 
-        self.use_mistral = False
-        self.use_groq = False
         self.use_gemini = False
+
+        self.use_deepseek = False
+        self.deepseek_api_key = ""
+        self.deepseek_model = "deepseek-chat"
+        self.deepseek_api_url = "https://api.deepseek.com/v1/chat/completions"
 
         self.memory = MemoryStore(memory_db)
         self._setup_provider()
 
     def _setup_provider(self) -> None:
-        # 1) Gemini – приоритет
+        # 1) Gemini – основной провайдер
         gemini_keys_str = os.environ.get("GEMINI_API_KEYS", os.environ.get("GEMINI_API_KEY", ""))
         gemini_api_keys = [k.strip() for k in gemini_keys_str.split(",") if k.strip()]
         if gemini_api_keys:
@@ -234,39 +235,17 @@ class ImproverAgent:
             logger.info("🔑 Gemini API keys found: %d keys. Using model %s.", len(self.gemini_api_keys), self.model_name)
             return
 
-        # 2) Mistral – второй приоритет
-        mistral_keys_str = os.environ.get("MISTRAL_API_KEYS", os.environ.get("MISTRAL_API_KEY", ""))
-        mistral_api_keys = [k.strip() for k in mistral_keys_str.split(",") if k.strip()]
-        if mistral_api_keys:
-            self.use_mistral = True
-            self.mistral_api_keys = mistral_api_keys
-            self.mistral_key_index = 0
-            self.mistral_api_key = self.mistral_api_keys[0]
-            self.mistral_api_url = os.environ.get("MISTRAL_API_URL", DEFAULT_MISTRAL_API_URL)
-            self.mistral_model = os.environ.get("MISTRAL_MODEL", DEFAULT_MISTRAL_MODEL)
-            self.mistral_critic_model = os.environ.get("MISTRAL_CRITIC_MODEL", self.mistral_model)
-            logger.info("🔑 Mistral API keys found: %d keys. Using model %s.", len(self.mistral_api_keys), self.mistral_model)
+        # 2) DeepSeek (запасной, если Gemini недоступен)
+        ds_key = os.environ.get("DEEPSEEK_API_KEY", "")
+        if ds_key:
+            self.use_deepseek = True
+            self.deepseek_api_key = ds_key
+            self.deepseek_model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+            self.deepseek_api_url = os.environ.get("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
+            logger.info("🔑 DeepSeek API key found. Will use DeepSeek (model=%s).", self.deepseek_model)
             return
 
-        # 3) Groq – третий
-        groq_api_key = os.environ.get("GROQ_API_KEY2") or os.environ.get("GROQ_API_KEY", "")
-        if groq_api_key:
-            self.use_groq = True
-            self.groq_api_key = groq_api_key
-            self.groq_api_url = os.environ.get("GROQ_API_URL", DEFAULT_GROQ_API_URL)
-            self.groq_model = os.environ.get("GROQ_MODEL", DEFAULT_GROQ_MODEL)
-            self.groq_critic_model = os.environ.get("GROQ_CRITIC_MODEL", self.groq_model)
-            logger.info("🔑 Groq API key found. Will use Groq (model=%s).", self.groq_model)
-            return
-
-        raise ValueError("No API keys found. Set GEMINI_API_KEYS, MISTRAL_API_KEYS, or GROQ_API_KEY.")
-
-    def _rotate_mistral_key(self) -> None:
-        if not self.mistral_api_keys:
-            return
-        self.mistral_key_index = (self.mistral_key_index + 1) % len(self.mistral_api_keys)
-        self.mistral_api_key = self.mistral_api_keys[self.mistral_key_index]
-        logger.info("🔄 Switched to Mistral key index %s", self.mistral_key_index)
+        raise ValueError("No Gemini or DeepSeek API keys found.")
 
     def _configure_next_gemini_key(self) -> None:
         key = self.gemini_api_keys[self.key_index % len(self.gemini_api_keys)]
@@ -274,6 +253,18 @@ class ImproverAgent:
         self.api_model = genai.GenerativeModel(self.model_name)
         self.critic_model = genai.GenerativeModel(self.critic_model_name)
         logger.info("🔑 Switched to Gemini API key index %s", self.key_index % len(self.gemini_api_keys))
+
+    def _rotate_openrouter_key(self) -> None:
+        if not self.openrouter_api_keys:
+            return
+        self.openrouter_key_index = (self.openrouter_key_index + 1) % len(self.openrouter_api_keys)
+        logger.info("🔄 Switched to OpenRouter key index %s", self.openrouter_key_index)
+
+    def _configure_next_openrouter_key(self) -> None:
+        if not self.openrouter_api_keys:
+            return
+        key = self.openrouter_api_keys[self.openrouter_key_index % len(self.openrouter_api_keys)]
+        # Ключ передаётся в заголовке при каждом запросе, отдельная конфигурация не нужна
 
     def _classify_error(self, err: str) -> str:
         e = err.lower()
@@ -295,95 +286,21 @@ class ImproverAgent:
         return None
 
     async def _generate_with_retry(self, prompt: str, critic: bool = False, max_retries: int = 6) -> Optional[str]:
-        if self.use_mistral:
-            return await self._generate_mistral(prompt, critic, max_retries=max_retries)
-        if self.use_groq:
-            return await self._generate_groq(prompt, critic, max_retries=max_retries)
+        if self.use_deepseek:
+            return await self._generate_deepseek(prompt, critic, max_retries=max_retries)
         return await self._generate_gemini(prompt, critic, max_retries=max_retries)
-
-    async def _generate_groq(self, prompt: str, critic: bool = False, max_retries: int = 5) -> Optional[str]:
-        model = self.groq_critic_model if critic else self.groq_model
-        for attempt in range(max_retries):
-            try:
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.groq_api_key}",
-                }
-                payload = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": "You are a precise code improver. Return ONLY valid JSON."},
-                        {"role": "user", "content": prompt},
-                    ],
-                    "max_tokens": 4096,
-                    "temperature": 0.2,
-                }
-                response = await asyncio.to_thread(requests.post, self.groq_api_url, json=payload, headers=headers, timeout=90)
-                response.raise_for_status()
-                data = response.json()
-                return data["choices"][0]["message"]["content"].strip()
-            except Exception as e:
-                delay = 60 if ("429" in str(e) or "rate" in str(e).lower()) else min(10 * (attempt + 1), 30)
-                logger.warning("Groq API error: %s (retry in %ss)", e, delay)
-                await asyncio.sleep(delay)
-        return None
-
-    async def _generate_mistral(self, prompt: str, critic: bool = False, max_retries: int = 6) -> Optional[str]:
-        model = self.mistral_critic_model if critic else self.mistral_model
-        for attempt in range(max_retries):
-            try:
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.mistral_api_key}",
-                }
-                payload = {
-                    "model": model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a code improvement tool. Your task is to DEEPLY refactor the provided file: "
-                                "add type hints, docstrings, error handling, logging, and modern Python idioms. "
-                                "Return ONLY valid JSON with the FULL improved source code in the 'code' field. "
-                                "Do not use patches, do not preserve the original structure if it can be improved.",
-                            ),
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    "max_tokens": 65536,
-                    "temperature": 0.1,
-                }
-                response = await asyncio.to_thread(requests.post, self.mistral_api_url, json=payload, headers=headers, timeout=120)
-                if response.status_code == 429:
-                    self._rotate_mistral_key()
-                    delay = 20 + 10 * attempt
-                    logger.warning("Mistral rate limited, switched key, retrying in %ss", delay)
-                    await asyncio.sleep(delay)
-                    continue
-                if response.status_code >= 500:
-                    self._rotate_mistral_key()
-                    delay = 10 + 5 * attempt
-                    logger.warning("Mistral server error (%s), switched key, retrying in %ss", response.status_code, delay)
-                    await asyncio.sleep(delay)
-                    continue
-                response.raise_for_status()
-                data = response.json()
-                return data["choices"][0]["message"]["content"].strip()
-            except requests.exceptions.Timeout:
-                logger.warning("Mistral timeout, retrying (%s/%s)", attempt + 1, max_retries)
-                await asyncio.sleep(10)
-            except Exception as e:
-                logger.warning("Mistral API error: %s", e)
-                await asyncio.sleep(min(15, 5 * (attempt + 1)))
-        return None
-
+    
     async def _generate_gemini(self, prompt: str, critic: bool = False, max_retries: int = 6) -> Optional[str]:
         model = self.critic_model if critic else self.api_model
         total_keys = max(1, len(self.gemini_api_keys))
+
         for attempt in range(max_retries * total_keys):
             try:
                 response = await asyncio.to_thread(model.generate_content, prompt)
-                return getattr(response, "text", None)
+                text = getattr(response, "text", None)
+                if text:
+                    return text.strip()
+                return None
             except Exception as e:
                 kind = self._classify_error(str(e))
                 if kind == "auth":
@@ -406,6 +323,37 @@ class ImproverAgent:
                     continue
                 logger.error("Gemini API error: %s", e)
                 await asyncio.sleep(min(30, 5 * (attempt + 1)))
+        return None
+    
+    async def _generate_deepseek(self, prompt: str, critic: bool = False, max_retries: int = 6) -> Optional[str]:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.deepseek_api_key}",
+        }
+        payload = {
+            "model": self.deepseek_model,
+            "messages": [
+                {"role": "system", "content": "You are a precise code improver. Return ONLY valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 16384,
+            "temperature": 0.2,
+            "response_format": {"type": "json_object"},  # DeepSeek поддерживает
+        }
+        for attempt in range(max_retries):
+            try:
+                resp = await asyncio.to_thread(requests.post, self.deepseek_api_url, json=payload, headers=headers, timeout=120)
+                if resp.status_code == 429:
+                    delay = 30 * (attempt + 1)
+                    logger.warning("DeepSeek rate limited, retrying in %ss", delay)
+                    await asyncio.sleep(delay)
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                return data["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                logger.warning("DeepSeek API error: %s", e)
+                await asyncio.sleep(10)
         return None
 
     def _prepare_workspace(self, workspace_dir: Path) -> None:
@@ -471,7 +419,6 @@ class ImproverAgent:
         return 0.6
 
     async def _process_all_files(self) -> None:
-        # swarm_config.py всегда обрабатывается, если не исключён
         config_path = "swarm_config.py"
         if os.path.exists(config_path) and not self._should_skip(config_path):
             await self._improve_batch([config_path])
@@ -644,12 +591,6 @@ class ImproverAgent:
 
         payload = self._parse_prompt_payload(text)
         if payload is None:
-            # Повторная попытка с упрощённым промптом и t=0.2
-            if self.use_mistral:
-                retry_prompt = build_python_prompt(item, context_hits, strategy)
-                retry_text = await self._generate_with_retry(retry_prompt, max_retries=3)
-                if retry_text:
-                    payload = self._parse_prompt_payload(retry_text)
             repair_schema = {
                 "files": [
                     {
@@ -761,20 +702,8 @@ class ImproverAgent:
         if original.language == "python":
             full = file_plan.full_code.strip()
             if full:
-                # Для swarm_config.py требуем не менее 70% исходной длины
-                if "swarm_config" in original.path.lower():
-                    min_len = int(len(original.content) * 0.7)
-                else:
-                    # Для остальных файлов разрешаем значительные изменения (40% исходной длины)
-                    min_len = max(int(len(original.content) * 0.4), 50)
-                if len(full) >= min_len:
-                    current_code = full
-                    applied_any = True
-                else:
-                    logger.warning(
-                        "Full code too short for %s (%d < %d), discarding.",
-                        original.path, len(full), min_len,
-                    )
+                current_code = full
+                applied_any = True
         else:
             if self.prefer_patch and file_plan.patches:
                 for patch in file_plan.patches:
@@ -908,13 +837,10 @@ class ImproverAgent:
             atomic_write_text(stage_path, json.dumps(meta, ensure_ascii=False, indent=2))
             atomic_write_text(output_path, result.code)
 
-            # Обновляем файл в workspace, если он активен
             if self._using_workspace and success:
                 try:
-                    # Ищем соответствующий файл в рабочей папке
                     ws_file = Path(self.workspace_dir) / result.original_path
                     if not ws_file.exists():
-                        # fallback: ищем по имени файла
                         ws_file = next(Path(self.workspace_dir).rglob(Path(result.original_path).name), None)
                     if ws_file:
                         ws_file.write_text(result.code, encoding="utf-8")

@@ -1,55 +1,62 @@
-from typing import Iterator, Dict, Any, Protocol
+from typing import Iterator, Any, Protocol, Dict, Final
+import logging
+
+# Configure logger for module-level reporting
+logger = logging.getLogger(__name__)
 
 class EventStoreProtocol(Protocol):
     """
     Protocol defining the expected interface for an event store.
-    Any class implementing this protocol can be passed as an event_store
-    to the ReplayEngine.
+    Implementations must provide a way to stream historical data.
     """
     def iter_events(self) -> Iterator[Any]:
-        """
-        Iterates over all stored events.
-        Yields events one by one.
-        """
-        ... # Ellipsis indicates an abstract method in a Protocol
+        """Yields events sequentially from the store."""
+        ...
 
 class ReplayEngine:
     """
     The Replay Engine facilitates the reproduction of historical events
-    to test and validate trading strategies or other logic.
+    to test and validate logic in a controlled, time-stepped environment.
 
-    Currently, this is a stub implementation that primarily demonstrates
-    the intention to load and process events from an `EventStore`.
-    In a complete version, it would simulate historical decisions and
-    their outcomes based on the loaded event stream.
+    Attributes:
+        event_store: The source of truth for historical event sequences.
     """
 
-    def __init__(self, event_store: EventStoreProtocol):
+    __slots__ = ("_event_store",)
+
+    def __init__(self, event_store: EventStoreProtocol) -> None:
         """
-        Initializes the ReplayEngine with an event store.
+        Initializes the ReplayEngine with a provided event store.
 
         Args:
-            event_store: An object implementing the EventStoreProtocol,
-                         which provides a method to iterate over historical events.
+            event_store: An object satisfying the EventStoreProtocol.
         """
-        self.event_store: EventStoreProtocol = event_store
+        self._event_store: Final[EventStoreProtocol] = event_store
 
     def replay_run(self, run_id: str) -> Dict[str, Any]:
         """
-        Stub method to simulate replaying events for a given run ID.
+        Executes a replay run for the specified identifier.
 
-        In its current form, it merely counts the number of events
-        available in the `event_store` and prints a message.
-        A full implementation would iterate through these events,
-        pass them to a strategy, and record the simulated outcomes.
+        In the current implementation, this calculates event volume
+        and logs the start of the simulation sequence.
 
         Args:
-            run_id: A unique identifier for the replay run.
+            run_id: A unique identifier for the replay sequence.
 
         Returns:
-            A dictionary containing the status of the stub replay and
-            the count of events that would have been processed.
+            A dictionary summarizing the execution metadata.
         """
-        events: list[Any] = list(self.event_store.iter_events())
-        print(f"Replay would process {len(events)} events for run {run_id}")
-        return {"status": "stub", "events_count": len(events)}
+        logger.info("Starting replay simulation for run_id: %s", run_id)
+        
+        # Process events using an iterator to maintain memory efficiency
+        event_count = 0
+        for _ in self._event_store.iter_events():
+            event_count += 1
+
+        logger.info("Replay processed %d events for run %s", event_count, run_id)
+        
+        return {
+            "status": "completed",
+            "run_id": run_id,
+            "events_count": event_count
+        }

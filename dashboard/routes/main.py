@@ -10,7 +10,6 @@ from dashboard.docker_service import get_container_statuses
 
 router = APIRouter()
 
-# Main dashboard content, including forms for swarm actions and buttons for container management.
 MAIN_CONTENT: str = """
     <section>
         <h2>Swarm Actions</h2>
@@ -47,23 +46,23 @@ MAIN_CONTENT: str = """
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     """
-    Renders the main dashboard page.
-    
-    Args:
-        request: The incoming request object.
-    
-    Returns:
-        HTMLResponse: The rendered HTML page.
-    """
-    return HTMLResponse(render_page(request, MAIN_CONTENT))
+    Renders the main dashboard page using the base template.
 
-@router.get("/api/container_status_json")
+    Args:
+        request: The FastAPI Request object.
+
+    Returns:
+        HTMLResponse: The rendered page content.
+    """
+    html_content = render_page(request, MAIN_CONTENT)
+    return HTMLResponse(content=html_content)
+
+@router.get("/api/container_status_json", response_model=List[Dict[str, Any]])
 async def container_status_json() -> List[Dict[str, Any]]:
     """
-    Retrieves the current status of Docker containers in JSON format.
-    
+    Retrieves the current status of all Docker containers as a JSON list.
+
     Returns:
-        List[Dict[str, Any]]: A list of dictionaries, where each dictionary
-        represents a container's status.
+        List[Dict[str, Any]]: A list containing the current status for each container.
     """
     return get_container_statuses()

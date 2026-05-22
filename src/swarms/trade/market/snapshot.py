@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 import aiohttp
 
@@ -17,14 +18,15 @@ class MarketSnapshot:
     best_symbol: str
     best_market: Dict[str, Any]
     markets: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    timestamp: float = 0.0
+    timestamp: float = field(default_factory=time.time)
 
     def price_for(self, symbol: Optional[str] = None) -> float:
+        """Retrieve the price for a specific symbol or the best available symbol."""
         key = symbol or self.best_symbol
         market = self.markets.get(key, self.best_market if key == self.best_symbol else {})
         try:
             return float(market.get("price", 0.0))
-        except Exception:
+        except (ValueError, TypeError):
             return 0.0
 
 
@@ -35,7 +37,8 @@ class MarketCollector:
         self._ctx = ctx
 
     async def collect(self, session: aiohttp.ClientSession) -> MarketSnapshot:
-        raw_snapshot: Dict[str, Any] = await self._ctx.market_service.get_snapshot(session)
+        """Fetch and normalize market data from the service."""
+        raw_snapshot = cast(Dict[str, Any], await self._ctx.market_service.get_snapshot(session))
         best_symbol, best_market = self._select_best_market(raw_snapshot)
 
         normalized = self._normalize_snapshot(raw_snapshot)
@@ -46,18 +49,16 @@ class MarketCollector:
             best_symbol=best_symbol,
             best_market=best_market,
             markets=normalized,
-            timestamp=__import__("time").time(),
         )
 
     @staticmethod
     def _select_best_market(snapshot: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
-        """Select the best market using the same logic as the current trading stack when possible."""
+        """Select the best market with a robust fallback mechanism."""
         try:
-            from src.trading.market import select_best_market  # Local import to avoid circular dependencies
+            from src.trading.market import select_best_market
 
-            best_symbol, best_market = select_best_market(snapshot)
-            return best_symbol, best_market
-        except Exception:
+            return select_best_market(snapshot)
+        except (ImportError, Exception):
             # Deterministic fallback: choose the first non-empty market entry.
             for symbol, market in snapshot.items():
                 if isinstance(market, dict) and market:
@@ -66,9 +67,9 @@ class MarketCollector:
 
     @staticmethod
     def _normalize_snapshot(snapshot: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-        normalized: Dict[str, Dict[str, Any]] = {}
-        for symbol, market in snapshot.items():
-            if not isinstance(market, dict):
-                continue
-            normalized[str(symbol)] = dict(market)
-        return normalized
+        """Sanitize raw input to ensure a dict of dict structure."""
+        return {
+            str(symbol): dict(market)
+            for symbol, market in snapshot.items()
+            if isinstance(market, dict)
+        }

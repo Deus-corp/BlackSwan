@@ -1,5 +1,5 @@
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, Request, Form
+from typing import Dict, Any
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from dashboard.docker_service import (
@@ -16,169 +16,99 @@ from dashboard.routes.main import MAIN_CONTENT
 
 router = APIRouter()
 
+DEFAULT_CONTAINER: str = "lab_swarm_demo-node-1"
+
 async def _render_api_result_page(request: Request, message: str) -> HTMLResponse:
     """
-    Helper function to render a consistent API result page with a message
-    and the main content.
+    Render a consistent HTML page displaying an operation result.
 
     Args:
-        request (Request): The incoming request object.
-        message (str): The message to display on the result page.
+        request: The FastAPI request object.
+        message: The status or error message to display.
 
     Returns:
-        HTMLResponse: The rendered HTML response.
+        An HTMLResponse containing the formatted result.
     """
-    content: str = f'<section><h3>Result</h3><pre>{message}</pre></section>' + MAIN_CONTENT
+    content: str = f'<section><h3>Result</h3><pre>{message}</pre></section>{MAIN_CONTENT}'
     return HTMLResponse(render_page(request, content))
+
+async def _get_form_value(request: Request, key: str, default: str) -> str:
+    """
+    Extract a specific value from the request form data.
+    """
+    form: Dict[str, Any] = await request.form()
+    return str(form.get(key, default))
 
 @router.post("/api/start")
 async def api_start(request: Request) -> HTMLResponse:
     """
-    API endpoint to start the Docker swarm.
-
-    Retrieves the desired scale from the request form (defaulting to 1)
-    and initiates the swarm.
-
-    Args:
-        request (Request): The incoming request object.
-
-    Returns:
-        HTMLResponse: The rendered HTML response with the result of the operation.
+    API endpoint to start the Docker swarm with an optional scale parameter.
     """
-    form: Dict[str, Any] = await request.form()
-    scale_str: str = form.get("scale", "1")
+    scale_str = await _get_form_value(request, "scale", "1")
     try:
-        scale: int = int(scale_str)
+        scale = int(scale_str)
+        msg = start_swarm(scale)
     except ValueError:
-        return await _render_api_result_page(request, f"Error: Invalid scale value '{scale_str}'. Please provide an integer.")
-
-    msg: str = start_swarm(scale)
+        msg = f"Error: Invalid scale value '{scale_str}'. Please provide an integer."
     return await _render_api_result_page(request, msg)
 
 @router.post("/api/stop")
 async def api_stop(request: Request) -> HTMLResponse:
     """
     API endpoint to stop the Docker swarm.
-
-    Args:
-        request (Request): The incoming request object.
-
-    Returns:
-        HTMLResponse: The rendered HTML response with the result of the operation.
     """
-    msg: str = stop_swarm()
-    return await _render_api_result_page(request, msg)
+    return await _render_api_result_page(request, stop_swarm())
 
 @router.post("/api/restart")
 async def api_restart(request: Request) -> HTMLResponse:
     """
     API endpoint to restart the Docker swarm.
-
-    Stops the existing swarm and then starts a new one.
-
-    Args:
-        request (Request): The incoming request object.
-
-    Returns:
-        HTMLResponse: The rendered HTML response with the result of the operation.
     """
-    stop_swarm_msg: str = stop_swarm()
-    start_swarm_msg: str = start_swarm() # Assumes default scale if not provided.
-    msg: str = f"Stop swarm: {stop_swarm_msg}\nStart swarm: {start_swarm_msg}"
-    return await _render_api_result_page(request, msg)
+    stop_msg = stop_swarm()
+    start_msg = start_swarm()
+    return await _render_api_result_page(request, f"Stop swarm: {stop_msg}\nStart swarm: {start_msg}")
 
 @router.post("/api/rebuild")
 async def api_rebuild(request: Request) -> HTMLResponse:
     """
-    API endpoint to rebuild the Docker swarm.
-
-    Retrieves the desired scale from the request form (defaulting to 1)
-    and rebuilds the swarm.
-
-    Args:
-        request (Request): The incoming request object.
-
-    Returns:
-        HTMLResponse: The rendered HTML response with the result of the operation.
+    API endpoint to rebuild the Docker swarm with a specific scale.
     """
-    form: Dict[str, Any] = await request.form()
-    scale_str: str = form.get("scale", "1")
+    scale_str = await _get_form_value(request, "scale", "1")
     try:
-        scale: int = int(scale_str)
+        scale = int(scale_str)
+        msg = rebuild_swarm(scale)
     except ValueError:
-        return await _render_api_result_page(request, f"Error: Invalid scale value '{scale_str}'. Please provide an integer.")
-
-    msg: str = rebuild_swarm(scale)
+        msg = f"Error: Invalid scale value '{scale_str}'. Please provide an integer."
     return await _render_api_result_page(request, msg)
 
 @router.post("/api/container_stats")
 async def api_container_stats(request: Request) -> PlainTextResponse:
     """
-    API endpoint to get statistics for a specific container.
-
-    Defaults to 'lab_swarm_demo-node-1' if no container name is provided.
-
-    Args:
-        request (Request): The incoming request object.
-
-    Returns:
-        PlainTextResponse: The plain text response with the container statistics.
+    Retrieve resource statistics for a container.
     """
-    form: Dict[str, Any] = await request.form()
-    name: str = form.get("container", "lab_swarm_demo-node-1")
-    msg: str = get_container_stats(name)
-    return PlainTextResponse(msg)
+    name = await _get_form_value(request, "container", DEFAULT_CONTAINER)
+    return PlainTextResponse(get_container_stats(name))
 
 @router.post("/api/container_inspect")
 async def api_container_inspect(request: Request) -> PlainTextResponse:
     """
-    API endpoint to inspect a specific container for detailed information.
-
-    Defaults to 'lab_swarm_demo-node-1' if no container name is provided.
-
-    Args:
-        request (Request): The incoming request object.
-
-    Returns:
-        PlainTextResponse: The plain text response with the container inspection details.
+    Retrieve detailed inspection data for a container.
     """
-    form: Dict[str, Any] = await request.form()
-    name: str = form.get("container", "lab_swarm_demo-node-1")
-    msg: str = inspect_container(name)
-    return PlainTextResponse(msg)
+    name = await _get_form_value(request, "container", DEFAULT_CONTAINER)
+    return PlainTextResponse(inspect_container(name))
 
 @router.post("/api/container_pause")
 async def api_container_pause(request: Request) -> PlainTextResponse:
     """
-    API endpoint to pause a specific container.
-
-    Defaults to 'lab_swarm_demo-node-1' if no container name is provided.
-
-    Args:
-        request (Request): The incoming request object.
-
-    Returns:
-        PlainTextResponse: The plain text response with the result of the operation.
+    Pause a running container.
     """
-    form: Dict[str, Any] = await request.form()
-    name: str = form.get("container", "lab_swarm_demo-node-1")
-    msg: str = pause_container(name)
-    return PlainTextResponse(msg)
+    name = await _get_form_value(request, "container", DEFAULT_CONTAINER)
+    return PlainTextResponse(pause_container(name))
 
 @router.post("/api/container_unpause")
 async def api_container_unpause(request: Request) -> PlainTextResponse:
     """
-    API endpoint to unpause a specific container.
-
-    Defaults to 'lab_swarm_demo-node-1' if no container name is provided.
-
-    Args:
-        request (Request): The incoming request object.
-
-    Returns:
-        PlainTextResponse: The plain text response with the result of the operation.
+    Unpause a container.
     """
-    form: Dict[str, Any] = await request.form()
-    name: str = form.get("container", "lab_swarm_demo-node-1")
-    msg: str = unpause_container(name)
-    return PlainTextResponse(msg)
+    name = await _get_form_value(request, "container", DEFAULT_CONTAINER)
+    return PlainTextResponse(unpause_container(name))

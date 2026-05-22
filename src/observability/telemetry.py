@@ -1,65 +1,59 @@
 """
-Telemetry – a unified observability layer (logs, events, metrics, Telegram).
+Telemetry – A unified observability layer for tracking node operations, events, and metrics.
+
+This module provides an abstraction over event logging, metrics aggregation, 
+and alert notifications for the node ecosystem.
 """
 import logging
-from typing import Dict, Any, Callable, Optional, Protocol
-from src.core.events import Event # Assuming 'src' is importable.
+from typing import Dict, Any, Callable, Protocol, Final
+from src.core.events import Event
 
-logger = logging.getLogger(__name__)
+logger: Final = logging.getLogger(__name__)
 
-# Define protocols for external dependencies to make type hints more specific
 class EventStoreLike(Protocol):
-    """Protocol for an object that can store events."""
+    """Protocol for a repository that persists system events."""
     def append(self, event: Event) -> None:
         ...
 
 class TelegramNotifierLike(Protocol):
-    """Protocol for an object that can send Telegram notifications."""
+    """Protocol for a service capable of sending Telegram alerts."""
     async def send(self, message: str) -> None:
         ...
 
 class Telemetry:
     """
-    Unified observability layer for logging, events, metrics, and Telegram notifications.
-    Manages recording various events and sending alerts related to node activities.
+    Centralized observability manager for node activity tracking, LLM health checks,
+    and incident alerting.
     """
-    def __init__(self, node_id: str, event_store: EventStoreLike, telegram_notifier: TelegramNotifierLike,
-                 get_llm_stats_func: Callable[[], Dict[str, Any]],
-                 update_llm_impact_func: Callable[[float], None]) -> None:
-        """
-        Initializes the Telemetry instance.
 
-        Args:
-            node_id: The unique identifier for the node.
-            event_store: An object with an `append(event: Event)` method to store events.
-            telegram_notifier: An object with an `async send(message: str)` method for Telegram notifications.
-            get_llm_stats_func: A callable function to retrieve LLM statistics. Expected to return a dict.
-            update_llm_impact_func: A callable function to update LLM impact based on current capital.
-        """
-        self.node_id: str = node_id
-        self.event_store: EventStoreLike = event_store
-        self.telegram: TelegramNotifierLike = telegram_notifier
-        self._get_llm_stats: Callable[[], Dict[str, Any]] = get_llm_stats_func
-        self._update_llm_impact: Callable[[float], None] = update_llm_impact_func
+    def __init__(
+        self, 
+        node_id: str, 
+        event_store: EventStoreLike, 
+        telegram_notifier: TelegramNotifierLike,
+        get_llm_stats_func: Callable[[], Dict[str, Any]],
+        update_llm_impact_func: Callable[[float], None]
+    ) -> None:
+        self.node_id = node_id
+        self.event_store = event_store
+        self.telegram = telegram_notifier
+        self._get_llm_stats = get_llm_stats_func
+        self._update_llm_impact = update_llm_impact_func
 
-    async def trade(self, step: int, symbol: str, side: str, amount: float,
-                    tx_hash: str, status: str, capital_before: float,
-                    capital_after: float, trace_id: str) -> None:
-        """
-        Records a trade event and sends a Telegram notification.
-
-        Args:
-            step: The current simulation step.
-            symbol: The trading symbol (e.g., "BTC/USDT").
-            side: The trade side ("buy" or "sell").
-            amount: The amount traded.
-            tx_hash: The transaction hash.
-            status: The status of the trade (e.g., "filled", "pending").
-            capital_before: The node's capital before the trade.
-            capital_after: The node's capital after the trade.
-            trace_id: A unique identifier for the transaction/action chain.
-        """
-        event: Event = Event.create(
+    async def trade(
+        self, 
+        step: int, 
+        symbol: str, 
+        side: str, 
+        amount: float,
+        tx_hash: str, 
+        status: str, 
+        capital_before: float,
+        capital_after: float, 
+        trace_id: str
+    ) -> None:
+        """Logs a trade execution event and pushes a notification to Telegram."""
+        event = Event.create(
             node_id=self.node_id,
             event_type="trade_executed",
             payload={
@@ -76,7 +70,8 @@ class Telemetry:
             parent_id=trace_id,
         )
         self.event_store.append(event)
-        await self.telegram.send(
+        
+        msg = (
             f"🦢 <b>Trade</b>\n"
             f"Node: {self.node_id}\n"
             f"Step: {step}\n"
@@ -86,25 +81,22 @@ class Telemetry:
             f"Status: {status}\n"
             f"Capital: {capital_after:.2f}"
         )
+        await self.telegram.send(msg)
 
-    def heartbeat(self, step: int, capital: float, dq: float,
-                  fitness: float, diversity: float, crdt_size: int,
-                  llm_mutations: int, niche_counts: Dict[str, int], trace_id: str) -> None:
-        """
-        Records a periodic heartbeat event containing key node statistics.
-
-        Args:
-            step: The current simulation step.
-            capital: The current capital of the node.
-            dq: The Detection Quotient (survival metric).
-            fitness: The fitness of the node's best genome.
-            diversity: The diversity of the node's genome population.
-            crdt_size: The current size of the CRDT state.
-            llm_mutations: The total number of LLM-driven mutations.
-            niche_counts: A dictionary showing the count of genomes per niche.
-            trace_id: A unique identifier for the action chain.
-        """
-        stats: Dict[str, Any] = {
+    def heartbeat(
+        self, 
+        step: int, 
+        capital: float, 
+        dq: float,
+        fitness: float, 
+        diversity: float, 
+        crdt_size: int,
+        llm_mutations: int, 
+        niche_counts: Dict[str, int], 
+        trace_id: str
+    ) -> None:
+        """Records system health statistics and emits a heartbeat event."""
+        stats = {
             "step": step,
             "capital": round(capital, 4),
             "dq": round(dq, 4),
@@ -114,24 +106,19 @@ class Telemetry:
             "llm_mutations": llm_mutations,
             "niche_counts": niche_counts,
         }
-        logger.info(f"STATS | {stats}")
-        self.event_store.append(Event.create(
+        logger.info(f"Heartbeat | Node: {self.node_id} | Stats: {stats}")
+        
+        event = Event.create(
             node_id=self.node_id,
             event_type="heartbeat",
             payload=stats,
             parent_id=trace_id,
-        ))
+        )
+        self.event_store.append(event)
 
     def mutation_event(self, old_params: Dict[str, float], new_params: Dict[str, float], context: str) -> None:
-        """
-        Records an LLM mutation event.
-
-        Args:
-            old_params: The parameters before the mutation.
-            new_params: The parameters after the mutation.
-            context: The context or reason for the mutation.
-        """
-        event: Event = Event.create(
+        """Logs changes to model parameters caused by LLM-driven evolution."""
+        event = Event.create(
             node_id=self.node_id,
             event_type="llm_mutation",
             payload={
@@ -144,65 +131,46 @@ class Telemetry:
         self.event_store.append(event)
 
     def update_impact(self, current_capital: float) -> None:
-        """
-        Updates the LLM impact metric based on the node's current capital.
-
-        Args:
-            current_capital: The current capital of the node.
-        """
+        """Updates internal LLM impact metrics based on performance."""
         self._update_llm_impact(current_capital)
 
     def get_llm_stats(self) -> Dict[str, Any]:
-        """
-        Retrieves current LLM statistics.
-
-        Returns:
-            A dictionary containing LLM-related statistics.
-        """
+        """Retrieves current statistics for the LLM component."""
         return self._get_llm_stats()
 
     async def low_capital_alert(self, capital: float, threshold: float) -> None:
-        """
-        Sends a Telegram alert if the node's capital falls below a specified threshold.
-
-        Args:
-            capital: The current capital of the node.
-            threshold: The capital threshold below which an alert is triggered.
-        """
+        """Sends an urgent Telegram notification if capital drops below the defined threshold."""
         await self.telegram.send(
             f"⚠️ <b>Low capital alert</b>\n"
             f"Node: {self.node_id}\n"
             f"Capital: {capital:.2f} (threshold: {threshold})"
         )
 
-    async def spore_failure(self, step: int, capital: float, dq: float,
-                            fitness: float, diversity: float, crdt_size: int,
-                            trace_id: str) -> None:
-        """
-        Records an event indicating the impending failure (death) of a node.
-
-        Args:
-            step: The current simulation step.
-            capital: The capital of the node at the time of failure.
-            dq: The Detection Quotient at the time of failure.
-            fitness: The fitness of the node's best genome at the time of failure.
-            diversity: The diversity of the node's genome population at the time of failure.
-            crdt_size: The current size of the CRDT state.
-            trace_id: A unique identifier for the action chain.
-        """
-        event: Event = Event.create(
+    async def spore_failure(
+        self, 
+        step: int, 
+        capital: float, 
+        dq: float,
+        fitness: float, 
+        diversity: float, 
+        crdt_size: int,
+        trace_id: str
+    ) -> None:
+        """Logs the termination of a node and emits a spore failure event."""
+        payload = {
+            "step": step,
+            "capital": capital,
+            "dq": dq,
+            "fitness": fitness,
+            "diversity": diversity,
+            "crdt_size": crdt_size,
+            "trace_id": trace_id,
+        }
+        event = Event.create(
             node_id=self.node_id,
             event_type="spore_failure",
-            payload={
-                "step": step,
-                "capital": capital,
-                "dq": dq,
-                "fitness": fitness,
-                "diversity": diversity,
-                "crdt_size": crdt_size,
-                "trace_id": trace_id,
-            },
+            payload=payload,
             parent_id=trace_id,
         )
         self.event_store.append(event)
-        logger.info(f"[{self.node_id}] spore failure recorded")
+        logger.warning(f"[{self.node_id}] Spore failure at step {step}")

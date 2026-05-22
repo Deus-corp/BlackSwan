@@ -1,4 +1,4 @@
-"""Command executor for overseer decisions."""
+"""Command executor for orchestrating swarm overseer decisions."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Set, Final
+from typing import Any, Dict, Final, Optional, Set
 
 from src.swarms.overseer.interfaces import GenomeSink
 from src.swarms.overseer.models import OverseerDecision, SwarmSnapshot
@@ -22,45 +22,28 @@ _VOLATILE_KEYS: Final[Set[str]] = {"timestamp", "expires_at", "gid"}
 
 
 class ActionExecutor:
-    """Emits commands into CRDT with deduplication and cooldown.
-
-    Attributes:
-        _sink: GenomeSink instance for persisting commands.
-        _last_emitted_at: Dictionary tracking the last emission time for each command key.
-        _last_fingerprint: Dictionary tracking the last fingerprint for each command key.
-    """
+    """Emits commands into the CRDT sink with deduplication and rate-limiting."""
 
     def __init__(self, sink: GenomeSink) -> None:
-        """Initialize the ActionExecutor with a GenomeSink.
-
-        Args:
-            sink: GenomeSink instance for persisting commands.
-        """
         self._sink: GenomeSink = sink
         self._last_emitted_at: Dict[str, float] = {}
         self._last_fingerprint: Dict[str, str] = {}
 
     async def apply(self, snapshot: SwarmSnapshot, decision: OverseerDecision, now: float) -> None:
-        """Apply overseer decisions to the swarm based on the current snapshot.
-
-        Args:
-            snapshot: Current state of the swarm.
-            decision: Decision made by the overseer.
-            now: Current timestamp.
-        """
-        for stale_node_id in snapshot.stale_trade_nodes:
-            await self._emit_restart_command("trade", stale_node_id, now)
-        for stale_node_id in snapshot.stale_security_nodes:
-            await self._emit_restart_command("security", stale_node_id, now)
-        for stale_node_id in snapshot.stale_explorer_nodes:
-            await self._emit_restart_command("explorer", stale_node_id, now)
+        """Apply overseer decisions to the swarm based on current health snapshot."""
+        for node_id in snapshot.stale_trade_nodes:
+            await self._emit_restart_command("trade", node_id, now)
+        for node_id in snapshot.stale_security_nodes:
+            await self._emit_restart_command("security", node_id, now)
+        for node_id in snapshot.stale_explorer_nodes:
+            await self._emit_restart_command("explorer", node_id, now)
 
         if decision.reduce_risk:
             await self._emit_command(
                 "reduce_risk",
-                self._meta_command(
+                self._create_meta_command(
                     gid_prefix="overseer_reduce_risk",
-                    reason="Overseer policy: reduce risk due to DQ/capital/vulnerability conditions.",
+                    reason="Risk mitigation policy triggered.",
                     params={
                         "exploration_multiplier": 1.0,
                         "risk_scale": 0.7,
@@ -77,9 +60,9 @@ class ActionExecutor:
         if decision.increase_exploration:
             await self._emit_command(
                 "increase_exploration",
-                self._meta_command(
+                self._create_meta_command(
                     gid_prefix="overseer_increase_exploration",
-                    reason="Overseer suggestion: increase exploration.",
+                    reason="Exploration boost requested.",
                     params={
                         "exploration_multiplier": 1.5,
                         "risk_scale": 1.0,
@@ -96,161 +79,81 @@ class ActionExecutor:
         if decision.unblock_ips:
             await self._emit_command(
                 "unblock_ips",
-                {
-                    "type": "sec_command",
-                    "data": {"action": "UNBLOCK_ALL"},
-                    "timestamp": time.time(),
-                    "expires_at": time.time() + EXPLORER_COMMAND_EXPIRATION_SECONDS,
-                    "gid": f"overseer_sec_unblock_{uuid.uuid4().hex}",
-                },
+                self._wrap_command("sec_command", "UNBLOCK_ALL", "sec_unblock"),
                 now,
-            )
-
-        if decision.spawn_nodes:
-            logger.info(
-                "Spawn nodes recommended, but external orchestrator integration is not wired yet."
             )
 
         if not decision.continue_explorer:
             await self._emit_command(
                 "pause_explorer",
-                {
-                    "type": "explorer_command",
-                    "data": {"action": "PAUSE"},
-                    "timestamp": time.time(),
-                    "expires_at": time.time() + EXPLORER_COMMAND_EXPIRATION_SECONDS,
-                    "gid": f"overseer_exp_pause_{uuid.uuid4().hex}",
-                },
+                self._wrap_command("explorer_command", "PAUSE", "exp_pause"),
                 now,
             )
 
     async def _emit_restart_command(self, swarm: str, node_id: str, now: float) -> None:
-        """Emit a restart command for a stale node.
-
-        Args:
-            swarm: Type of the swarm (e.g., "trade", "security", "explorer").
-            node_id: ID of the node to restart.
-            now: Current timestamp.
-        """
         command_key = f"restart:{swarm}:{node_id}"
         command = {
             "type": "sec_command",
             "data": {"action": "RESTART_NODE", "node_id": node_id, "swarm": swarm},
-            "timestamp": time.time(),
-            "expires_at": time.time() + COMMAND_EXPIRATION_DEFAULT_SECONDS,
+            "timestamp": now,
+            "expires_at": now + COMMAND_EXPIRATION_DEFAULT_SECONDS,
             "gid": f"overseer_restart_{swarm}_{node_id}_{uuid.uuid4().hex}",
         }
         await self._emit_command(command_key, command, now)
-        logger.warning("Detected stale %s node %s. Requesting restart.", swarm, node_id)
+        logger.warning("Requesting restart for stale %s node %s.", swarm, node_id)
 
-    async def _emit_command(self, command_key: str, command: Dict[str, Any], now: float) -> None:
-        """Emit a command if it should be emitted based on cooldown and fingerprint checks.
+    async def _emit_command(self, key: str, command: Dict[str, Any], now: float) -> None:
+        if not self._is_rate_limited(key, command, now):
+            try:
+                await self._sink.add_genome(command)
+                self._last_emitted_at[key] = now
+                self._last_fingerprint[key] = self._generate_fingerprint(command)
+            except Exception as e:
+                logger.error("Failed to emit command '%s': %s", key, e, exc_info=True)
 
-        Args:
-            command_key: Key identifying the command.
-            command: Command to emit.
-            now: Current timestamp.
-        """
-        if not self._should_emit(command_key, command, now):
-            logger.debug("Skipping command '%s' due to cooldown or identical payload.", command_key)
-            return
-
-        try:
-            await self._sink.add_genome(command)
-        except Exception as exc:
-            logger.error("Failed to emit command '%s': %s", command_key, exc, exc_info=True)
-            return
-
-        self._last_emitted_at[command_key] = now
-        self._last_fingerprint[command_key] = self._fingerprint(command)
-
-    def _should_emit(self, command_key: str, command: Dict[str, Any], now: float) -> bool:
-        """Check if a command should be emitted based on cooldown and fingerprint.
-
-        Args:
-            command_key: Key identifying the command.
-            command: Command to check.
-            now: Current timestamp.
-
-        Returns:
-            bool: True if the command should be emitted, False otherwise.
-        """
-        last_at: Optional[float] = self._last_emitted_at.get(command_key)
-        fingerprint: str = self._fingerprint(command)
-        last_fp: Optional[str] = self._last_fingerprint.get(command_key)
-
+    def _is_rate_limited(self, key: str, command: Dict[str, Any], now: float) -> bool:
+        last_at = self._last_emitted_at.get(key)
         if last_at is not None and (now - last_at) < COMMAND_COOLDOWN_SECONDS:
-            return False
-        if last_fp is not None and last_fp == fingerprint:
-            return False
-        return True
+            return True
+        
+        last_fp = self._last_fingerprint.get(key)
+        current_fp = self._generate_fingerprint(command)
+        return last_fp == current_fp
 
     @staticmethod
-    def _meta_command(
-        *,
-        gid_prefix: str,
-        reason: str,
-        params: Dict[str, Any],
-        expiration_seconds: int,
-        action_type: str,
+    def _wrap_command(cmd_type: str, action: str, gid_slug: str) -> Dict[str, Any]:
+        now = time.time()
+        return {
+            "type": cmd_type,
+            "data": {"action": action},
+            "timestamp": now,
+            "expires_at": now + EXPLORER_COMMAND_EXPIRATION_SECONDS,
+            "gid": f"overseer_{gid_slug}_{uuid.uuid4().hex}",
+        }
+
+    @staticmethod
+    def _create_meta_command(
+        gid_prefix: str, reason: str, params: Dict[str, Any], expiration_seconds: int, action_type: str
     ) -> Dict[str, Any]:
-        """Create a meta command dictionary.
-
-        Args:
-            gid_prefix: Prefix for the global ID.
-            reason: Reason for the command.
-            params: Parameters for the command.
-            expiration_seconds: Expiration time in seconds.
-            action_type: Type of the action.
-
-        Returns:
-            Dict[str, Any]: Constructed meta command.
-        """
-        now: float = time.time()
+        now = time.time()
         return {
             "type": action_type,
-            "data": {
-                "action": "ADJUST_SWARM",
-                "params": params,
-                "reason": reason,
-            },
+            "data": {"action": "ADJUST_SWARM", "params": params, "reason": reason},
             "timestamp": now,
             "expires_at": now + expiration_seconds,
             "gid": f"{gid_prefix}_{uuid.uuid4().hex}",
         }
 
     @classmethod
-    def _fingerprint(cls, command: Dict[str, Any]) -> str:
-        """Generate a fingerprint for a command by hashing its stable content.
-
-        Args:
-            command: Command to fingerprint.
-
-        Returns:
-            str: SHA-256 fingerprint of the command's stable content.
-        """
-        stable: Any = cls._strip_volatile(command)
-        payload: str = json.dumps(stable, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    def _generate_fingerprint(cls, command: Dict[str, Any]) -> str:
+        stable = cls._strip_volatile(command)
+        payload = json.dumps(stable, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @classmethod
     def _strip_volatile(cls, value: Any) -> Any:
-        """Strip volatile keys from a dictionary or list.
-
-        Args:
-            value: Dictionary or list to process.
-
-        Returns:
-            Any: Processed dictionary or list with volatile keys removed.
-        """
         if isinstance(value, dict):
-            return {
-                key: cls._strip_volatile(inner)
-                for key, inner in value.items()
-                if key not in _VOLATILE_KEYS
-            }
-        if isinstance(value, list):
-            return [cls._strip_volatile(item) for item in value]
-        if isinstance(value, tuple):
-            return tuple(cls._strip_volatile(item) for item in value)
+            return {k: cls._strip_volatile(v) for k, v in value.items() if k not in _VOLATILE_KEYS}
+        if isinstance(value, (list, tuple)):
+            return [cls._strip_volatile(i) for i in value]
         return value

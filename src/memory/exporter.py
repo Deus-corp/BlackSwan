@@ -1,47 +1,49 @@
-# src/memory/exporter.py
-"""
-Экспорт отобранных сэмплов в JSONL.
-Exports selected experience samples to JSONL format.
-"""
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any, Iterable
 
 from .gold_filter import ExperienceSample
 
+logger = logging.getLogger(__name__)
 
 def save_jsonl(samples: Iterable[ExperienceSample], output_file: str | Path) -> Path:
     """
-    Saves a collection of ExperienceSample objects to a JSONL file.
-
-    Each ExperienceSample is serialized into a JSON object and written as a new line
-    in the specified output file. Parent directories for the output file will be
-    created if they don't already exist.
+    Serializes a collection of ExperienceSample objects into a newline-delimited JSON (JSONL) file.
 
     Args:
-        samples: An iterable collection of experience samples to save.
-        output_file: The path to the output JSONL file. Can be a string or a Path object.
+        samples: An iterable of ExperienceSample instances to export.
+        output_file: The destination path (str or Path) for the resulting file.
 
     Returns:
-        The pathlib.Path object representing the saved file.
-    """
-    output_path: Path = Path(output_file)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+        The pathlib.Path object of the written file.
 
-    with output_path.open("w", encoding="utf-8") as f:
-        for sample in samples:
-            # Create a dictionary representing the sample's data for JSON serialization.
-            row: Dict[str, Any] = {
-                "instruction": sample.instruction,
-                "input": sample.input_text,
-                "output": sample.output_text,
-                "score": sample.score,
-                "meta": sample.meta,
-            }
-            # Serialize the dictionary to a JSON string and write it followed by a newline.
-            # ensure_ascii=False allows direct writing of UTF-8 characters without escaping.
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    Raises:
+        IOError: If an error occurs during file writing or directory creation.
+    """
+    output_path = Path(output_file)
+    
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        logger.error(f"Failed to create directory {output_path.parent}: {e}")
+        raise
+
+    try:
+        with output_path.open("w", encoding="utf-8") as f:
+            for sample in samples:
+                row: dict[str, Any] = {
+                    "instruction": sample.instruction,
+                    "input": sample.input_text,
+                    "output": sample.output_text,
+                    "score": sample.score,
+                    "meta": sample.meta,
+                }
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError as e:
+        logger.error(f"Failed to write data to {output_path}: {e}")
+        raise
 
     return output_path

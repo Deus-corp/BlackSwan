@@ -1,119 +1,94 @@
 """
-Сервис получения рыночных данных для роя.
-This service is responsible for fetching current market data (snapshots)
-for all configured trading symbols using a provided market adapter.
-It includes a fallback mechanism to simulate market prices if real data
-cannot be obtained.
+Service responsible for providing market data snapshots to the swarm.
+
+This module provides a mechanism to fetch live ticker data via an adapter
+or fallback to a simulated price feed if the source is unavailable or the
+system is not in a live execution mode.
 """
 import logging
 import random
-from typing import Dict, Optional, Any, Union, Protocol, List, Final, cast
+from typing import Dict, Optional, Any, Protocol, Final, List
+
 import aiohttp
 from swarm_config import config
 
 logger: Final = logging.getLogger(__name__)
 
 DEFAULT_SYMBOL: Final[str] = "WETH/USDC"
+LIVE_MODES: Final = {"live", "web3", "futures"}
 
 
 class MarketAdapterProtocol(Protocol):
     """
-    Protocol defining the expected interface for a market data adapter.
-    Adapters should implement an async method to fetch ticker data.
+    Defines the contract for market data providers.
     """
     async def fetch_all_tickers(self) -> Optional[Dict[str, Dict[str, Any]]]:
         """
-        Asynchronously fetches ticker data for all configured symbols.
-
-        Returns:
-            An optional dictionary where keys are trading symbols (str) and values
-            are dictionaries containing ticker information. Each ticker dictionary
-            is expected to have at least 'price' (float) and 'symbol' (str).
-            Returns None if no data can be fetched or an error occurs.
+        Fetches mapping of symbols to ticker data. 
+        Expected dict keys: 'price' (float), 'symbol' (str).
         """
         ...
 
 
 class MarketSnapshotService:
     """
-    Service responsible for fetching current market data (snapshots) for
-    all configured trading symbols using a provided market adapter.
-
-    It includes a fallback mechanism to simulate market prices if real data
-    cannot be obtained or if the service operates in a non-live mode.
+    Coordinates between real-time data adapters and simulation fallback.
     """
-    __slots__ = ('adapter', 'mode', 'primary_symbol')
-
-    adapter: MarketAdapterProtocol
-    mode: str
-    primary_symbol: str
+    __slots__ = ('_adapter', '_mode', '_primary_symbol')
 
     def __init__(self, market_adapter: MarketAdapterProtocol, market_mode: str) -> None:
-        """
-        Initializes the MarketSnapshotService.
-
-        Args:
-            market_adapter: An object adhering to the MarketAdapterProtocol,
-                            responsible for fetching market data. It is expected
-                            to have an async `fetch_all_tickers` method.
-            market_mode: The operating mode for the market (e.g., "live", "web3", "futures", "simulate").
-
-        Raises:
-            ValueError: If `market_mode` is not a string or if `market_adapter` does not adhere to `MarketAdapterProtocol`.
-        """
         if not isinstance(market_mode, str):
             raise ValueError("market_mode must be a string.")
         if not hasattr(market_adapter, 'fetch_all_tickers'):
-            raise ValueError("market_adapter must adhere to MarketAdapterProtocol.")
+            raise ValueError("market_adapter must implement 'fetch_all_tickers'.")
 
-        self.adapter = market_adapter
-        self.mode = market_mode
-        symbols_list: List[str] = [s.strip() for s in config.trading_symbols.split(",") if s.strip()] \
-            if config.trading_symbols else []
-        self.primary_symbol = symbols_list[0] if symbols_list else DEFAULT_SYMBOL
-        logger.debug(f"MarketSnapshotService initialized with mode: {self.mode}, primary_symbol: {self.primary_symbol}")
+        self._adapter: MarketAdapterProtocol = market_adapter
+        self._mode: str = market_mode
+        
+        symbols: List[str] = [
+            s.strip() for s in str(getattr(config, 'trading_symbols', '')).split(",") 
+            if s.strip()
+        ]
+        self._primary_symbol: str = symbols[0] if symbols else DEFAULT_SYMBOL
+        
+        logger.debug("Initialized with mode: %s, primary_symbol: %s", self._mode, self._primary_symbol)
 
     async def get_snapshot(self, session: Optional[aiohttp.ClientSession] = None) -> Dict[str, Dict[str, Any]]:
         """
-        Retrieves a market snapshot, attempting to fetch real-time data first,
-        then falling back to simulation if necessary.
+        Retrieves the current market snapshot.
 
-        The returned dictionary maps trading symbols to their ticker information.
-        Each ticker dictionary is guaranteed to contain at least "price" (float)
-        and "symbol" (str) keys.
-
-        Args:
-            session: An optional aiohttp client session to use for HTTP requests.
-                     This parameter is passed for compatibility; its direct usage
-                     depends on the `market_adapter` implementation.
-
-        Returns:
-            A dictionary where keys are trading symbols (str) and values are
-            dictionaries containing ticker information (e.g., {'price': X.XX, 'symbol': 'SYM'}).
+        Attempts to use the adapter if in a live mode. Falls back to 
+        simulated market data on failure or non-live settings.
         """
-        if self.mode in ("live", "web3", "futures") and self.adapter:
+        if self._mode in LIVE_MODES:
             try:
-                all_tickers: Optional[Dict[str, Dict[str, Any]]] = await self.adapter.fetch_all_tickers()
-                if all_tickers is not None:
-                    for symbol, tick_data in all_tickers.items():
-                        if not isinstance(tick_data, dict):
-                            continue
-                        if "symbol" not in tick_data:
-                            tick_data["symbol"] = symbol
-                    logger.debug(f"Fetched {len(all_tickers)} tickers from adapter in mode '{self.mode}'.")
-                    return all_tickers
+                data = await self._adapter.fetch_all_tickers()
+                if data:
+                    self._sanitize_tickers(data)
+                    logger.debug("Fetched %d tickers from adapter.", len(data))
+                    return data
             except Exception as e:
-                logger.warning(
-                    f"Failed to fetch all tickers from adapter in mode '{self.mode}': {type(e).__name__}: {e}",
-                    exc_info=False
-                )
+                logger.warning("Adapter fetch failed in mode %s: %s", self._mode, e)
 
-        logger.debug(f"Falling back to simulation for mode '{self.mode}'.")
-        symbol: str = self.primary_symbol
-        simulated_price: float = random.uniform(90.0, 110.0)
-        simulated_tick: Dict[str, Any] = {
-            "price": simulated_price,
-            "symbol": symbol
+        return self._get_simulated_snapshot()
+
+    def _sanitize_tickers(self, tickers: Dict[str, Dict[str, Any]]) -> None:
+        """
+        Ensures each ticker dict has a 'symbol' key mapping to its dict key.
+        """
+        for symbol, data in tickers.items():
+            if isinstance(data, dict) and "symbol" not in data:
+                data["symbol"] = symbol
+
+    def _get_simulated_snapshot(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Generates a fallback market snapshot with randomized pricing.
+        """
+        simulated_price = random.uniform(90.0, 110.0)
+        logger.info("Simulating market snapshot for %s: price=%.2f", self._primary_symbol, simulated_price)
+        return {
+            self._primary_symbol: {
+                "price": simulated_price,
+                "symbol": self._primary_symbol
+            }
         }
-        logger.info(f"Simulating market snapshot for {symbol}: price={simulated_price:.2f}")
-        return {symbol: simulated_tick}
