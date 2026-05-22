@@ -11,6 +11,7 @@ import os
 import sys
 from typing import Dict, Union, TypedDict, Final
 
+import numpy as np
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse

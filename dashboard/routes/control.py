@@ -1,3 +1,4 @@
+from typing import Optional, Dict, Any
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
@@ -19,24 +20,38 @@ async def _render_api_result_page(request: Request, message: str) -> HTMLRespons
     """
     Helper function to render a consistent API result page with a message
     and the main content.
+
+    Args:
+        request (Request): The incoming request object.
+        message (str): The message to display on the result page.
+
+    Returns:
+        HTMLResponse: The rendered HTML response.
     """
-    content = f'<section><h3>Result</h3><pre>{message}</pre></section>' + MAIN_CONTENT
+    content: str = f'<section><h3>Result</h3><pre>{message}</pre></section>' + MAIN_CONTENT
     return HTMLResponse(render_page(request, content))
 
 @router.post("/api/start")
 async def api_start(request: Request) -> HTMLResponse:
     """
     API endpoint to start the Docker swarm.
+
     Retrieves the desired scale from the request form (defaulting to 1)
     and initiates the swarm.
+
+    Args:
+        request (Request): The incoming request object.
+
+    Returns:
+        HTMLResponse: The rendered HTML response with the result of the operation.
     """
-    form = await request.form()
+    form: Dict[str, Any] = await request.form()
     scale_str: str = form.get("scale", "1")
     try:
         scale: int = int(scale_str)
     except ValueError:
         return await _render_api_result_page(request, f"Error: Invalid scale value '{scale_str}'. Please provide an integer.")
-    
+
     msg: str = start_swarm(scale)
     return await _render_api_result_page(request, msg)
 
@@ -44,6 +59,12 @@ async def api_start(request: Request) -> HTMLResponse:
 async def api_stop(request: Request) -> HTMLResponse:
     """
     API endpoint to stop the Docker swarm.
+
+    Args:
+        request (Request): The incoming request object.
+
+    Returns:
+        HTMLResponse: The rendered HTML response with the result of the operation.
     """
     msg: str = stop_swarm()
     return await _render_api_result_page(request, msg)
@@ -52,7 +73,14 @@ async def api_stop(request: Request) -> HTMLResponse:
 async def api_restart(request: Request) -> HTMLResponse:
     """
     API endpoint to restart the Docker swarm.
+
     Stops the existing swarm and then starts a new one.
+
+    Args:
+        request (Request): The incoming request object.
+
+    Returns:
+        HTMLResponse: The rendered HTML response with the result of the operation.
     """
     stop_swarm_msg: str = stop_swarm()
     start_swarm_msg: str = start_swarm() # Assumes default scale if not provided.
@@ -63,10 +91,17 @@ async def api_restart(request: Request) -> HTMLResponse:
 async def api_rebuild(request: Request) -> HTMLResponse:
     """
     API endpoint to rebuild the Docker swarm.
+
     Retrieves the desired scale from the request form (defaulting to 1)
     and rebuilds the swarm.
+
+    Args:
+        request (Request): The incoming request object.
+
+    Returns:
+        HTMLResponse: The rendered HTML response with the result of the operation.
     """
-    form = await request.form()
+    form: Dict[str, Any] = await request.form()
     scale_str: str = form.get("scale", "1")
     try:
         scale: int = int(scale_str)
@@ -80,9 +115,16 @@ async def api_rebuild(request: Request) -> HTMLResponse:
 async def api_container_stats(request: Request) -> PlainTextResponse:
     """
     API endpoint to get statistics for a specific container.
+
     Defaults to 'lab_swarm_demo-node-1' if no container name is provided.
+
+    Args:
+        request (Request): The incoming request object.
+
+    Returns:
+        PlainTextResponse: The plain text response with the container statistics.
     """
-    form = await request.form()
+    form: Dict[str, Any] = await request.form()
     name: str = form.get("container", "lab_swarm_demo-node-1")
     msg: str = get_container_stats(name)
     return PlainTextResponse(msg)
@@ -91,9 +133,16 @@ async def api_container_stats(request: Request) -> PlainTextResponse:
 async def api_container_inspect(request: Request) -> PlainTextResponse:
     """
     API endpoint to inspect a specific container for detailed information.
+
     Defaults to 'lab_swarm_demo-node-1' if no container name is provided.
+
+    Args:
+        request (Request): The incoming request object.
+
+    Returns:
+        PlainTextResponse: The plain text response with the container inspection details.
     """
-    form = await request.form()
+    form: Dict[str, Any] = await request.form()
     name: str = form.get("container", "lab_swarm_demo-node-1")
     msg: str = inspect_container(name)
     return PlainTextResponse(msg)
@@ -102,9 +151,16 @@ async def api_container_inspect(request: Request) -> PlainTextResponse:
 async def api_container_pause(request: Request) -> PlainTextResponse:
     """
     API endpoint to pause a specific container.
+
     Defaults to 'lab_swarm_demo-node-1' if no container name is provided.
+
+    Args:
+        request (Request): The incoming request object.
+
+    Returns:
+        PlainTextResponse: The plain text response with the result of the operation.
     """
-    form = await request.form()
+    form: Dict[str, Any] = await request.form()
     name: str = form.get("container", "lab_swarm_demo-node-1")
     msg: str = pause_container(name)
     return PlainTextResponse(msg)
@@ -113,9 +169,16 @@ async def api_container_pause(request: Request) -> PlainTextResponse:
 async def api_container_unpause(request: Request) -> PlainTextResponse:
     """
     API endpoint to unpause a specific container.
+
     Defaults to 'lab_swarm_demo-node-1' if no container name is provided.
+
+    Args:
+        request (Request): The incoming request object.
+
+    Returns:
+        PlainTextResponse: The plain text response with the result of the operation.
     """
-    form = await request.form()
+    form: Dict[str, Any] = await request.form()
     name: str = form.get("container", "lab_swarm_demo-node-1")
     msg: str = unpause_container(name)
     return PlainTextResponse(msg)

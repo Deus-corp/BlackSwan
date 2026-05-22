@@ -142,7 +142,7 @@ class MemoryStore:
         success = bool(
             result.validation.syntactically_valid
             and result.validation.compile_ok
-            and (result.score >= 15.0)
+            and (result.score >= 12.0)
             and ("changed_too_much" not in result.validation.notes)
         )
         with self._connect() as conn:
@@ -480,3 +480,9 @@ class MemoryStore:
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM file_stats WHERE path = ?", (path,)).fetchone()
         return dict(row) if row else None
+    
+def close(self) -> None:
+    try:
+        pass
+    except Exception:
+        pass

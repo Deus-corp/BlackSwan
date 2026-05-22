@@ -13,6 +13,12 @@ import numpy as np
 
 
 class MarketState(TypedDict):
+    """
+    A dictionary representing the current state of the market.
+
+    Attributes:
+        volatility_estimate (float): The estimated volatility of the market.
+    """
     volatility_estimate: float
 
 
@@ -30,9 +36,9 @@ class BaseAgent(ABC):
         Initializes the BaseAgent.
 
         Args:
-            capital: The initial capital of the agent. Must be positive.
-            max_risk: The maximum proportion of capital the agent is
-                      willing to risk on a single trade. Must be in [0, 1].
+            capital (float): The initial capital of the agent. Must be positive.
+            max_risk (float, optional): The maximum proportion of capital the agent is
+                willing to risk on a single trade. Must be in [0, 1]. Defaults to 0.02.
 
         Raises:
             ValueError: If `capital` is not positive or `max_risk` is not in [0, 1].
@@ -48,7 +54,7 @@ class BaseAgent(ABC):
         self.history: List[float] = [capital]
 
     @abstractmethod
-    def decide(self, market_state: Dict[str, Any]) -> float:
+    def decide(self, market_state: MarketState) -> float:
         """
         Decides the proportion of capital to invest.
 
@@ -57,12 +63,12 @@ class BaseAgent(ABC):
         The magnitude of the value must be within [-self.max_risk, self.max_risk].
 
         Args:
-            market_state: A dictionary containing current market information,
-                          e.g., {"volatility_estimate": 0.02}.
+            market_state (MarketState): A dictionary containing current market information,
+                e.g., {"volatility_estimate": 0.02}.
 
         Returns:
-            The proportion of capital to invest (e.g., 0.01 for 1% long,
-            -0.01 for 1% short).
+            float: The proportion of capital to invest (e.g., 0.01 for 1% long,
+                -0.01 for 1% short).
 
         Raises:
             ValueError: If `market_state` is invalid or missing required keys.
@@ -74,8 +80,8 @@ class BaseAgent(ABC):
         Updates the agent's capital based on market returns.
 
         Args:
-            returns: The market return for the current period (e.g., 0.01 for 1% gain).
-                     Must be finite.
+            returns (float): The market return for the current period (e.g., 0.01 for 1% gain).
+                Must be finite.
 
         Raises:
             ValueError: If `returns` is not finite.
@@ -101,12 +107,12 @@ class KellyAgent(BaseAgent):
         Initializes the KellyAgent.
 
         Args:
-            capital: The initial capital of the agent. Must be positive.
-            max_risk: The maximum proportion of capital the agent is
-                      willing to risk on a single trade. Must be in [0, 1].
-            phi: The 'caution' coefficient for the Kelly criterion (fractional Kelly).
-                 Must be non-negative. A value of 1.0 is full Kelly, less than 1.0 is fractional.
-                 In this implementation, phi scales the 'loss' component of the formula.
+            capital (float): The initial capital of the agent. Must be positive.
+            max_risk (float, optional): The maximum proportion of capital the agent is
+                willing to risk on a single trade. Must be in [0, 1]. Defaults to 0.02.
+            phi (float, optional): The 'caution' coefficient for the Kelly criterion (fractional Kelly).
+                Must be non-negative. A value of 1.0 is full Kelly, less than 1.0 is fractional.
+                In this implementation, phi scales the 'loss' component of the formula. Defaults to 0.25.
 
         Raises:
             ValueError: If `capital` is not positive, `max_risk` is not in [0, 1], or `phi` is negative.
@@ -117,7 +123,7 @@ class KellyAgent(BaseAgent):
         self.phi: Final[float] = phi
         self.p_success: Final[float] = 0.5
 
-    def decide(self, market_state: Dict[str, Any]) -> float:
+    def decide(self, market_state: MarketState) -> float:
         """
         Decides the proportion of capital to invest using a modified Kelly criterion.
 
@@ -125,11 +131,11 @@ class KellyAgent(BaseAgent):
         The agent can take both long and short positions, limited by `max_risk`.
 
         Args:
-            market_state: A dictionary containing market information, expected to
-                          include "volatility_estimate".
+            market_state (MarketState): A dictionary containing market information, expected to
+                include "volatility_estimate".
 
         Returns:
-            The proportion of capital to invest, clipped between -max_risk and +max_risk.
+            float: The proportion of capital to invest, clipped between -max_risk and +max_risk.
 
         Raises:
             ValueError: If `market_state` is invalid or "volatility_estimate" is non-positive.
@@ -156,16 +162,16 @@ class RandomAgent(BaseAgent):
     """
     __slots__ = ()
 
-    def decide(self, market_state: Dict[str, Any]) -> float:
+    def decide(self, market_state: MarketState) -> float:
         """
         Decides a random proportion of capital to invest.
 
         The decision is uniformly random between -self.max_risk and +self.max_risk.
 
         Args:
-            market_state: A dictionary containing current market information (not used by this agent).
+            market_state (MarketState): A dictionary containing current market information (not used by this agent).
 
         Returns:
-            A random proportion of capital to invest.
+            float: A random proportion of capital to invest.
         """
         return np.random.uniform(-self.max_risk, self.max_risk)

@@ -24,6 +24,6 @@ def dashboard_page(request: Request) -> HTMLResponse:
         request: The FastAPI request object.
 
     Returns:
-        The rendered HTML response.
+        HTMLResponse: The rendered HTML response.
     """
     return HTMLResponse(render_page(request, DASHBOARD_CONTENT, "BlackSwan Dashboard"))

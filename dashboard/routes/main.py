@@ -2,7 +2,7 @@
 This module defines the main routes for the dashboard, including the home page
 and an API endpoint for container status.
 """
-from typing import Any # Keep Any as it's used in the dict type hint
+from typing import Any, List, Dict
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from dashboard.routes.base_template import render_page
@@ -48,14 +48,22 @@ MAIN_CONTENT: str = """
 async def index(request: Request) -> HTMLResponse:
     """
     Renders the main dashboard page.
+    
+    Args:
+        request: The incoming request object.
+    
+    Returns:
+        HTMLResponse: The rendered HTML page.
     """
     return HTMLResponse(render_page(request, MAIN_CONTENT))
 
 @router.get("/api/container_status_json")
-async def container_status_json() -> list[dict[str, Any]]:
+async def container_status_json() -> List[Dict[str, Any]]:
     """
     Retrieves the current status of Docker containers in JSON format.
-    The return type is expected to be a list of dictionaries, where each
-    dictionary represents a container's status.
+    
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries, where each dictionary
+        represents a container's status.
     """
     return get_container_statuses()

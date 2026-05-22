@@ -40,7 +40,6 @@ class BinanceTestnetAdapter:
             self.market_open_time = time(0, 0)
             self.market_close_time = time(23, 59)
 
-
         self.exchange: ccxt.binance = ccxt.binance({
             'apiKey': self.api_key,
             'secret': self.api_secret,
@@ -53,8 +52,8 @@ class BinanceTestnetAdapter:
     
     async def ainit(self) -> None:
         """
-        Асинхронная инициализация адаптера. Должна быть вызвана после __init__.
-        Загружает рынки для верификации соединения.
+        Asynchronous initialization of the adapter. Should be called after __init__.
+        Loads markets to verify connection.
         """
         # Verify connection by loading markets
         try:
@@ -65,7 +64,7 @@ class BinanceTestnetAdapter:
 
     async def close(self) -> None:
         """
-        Закрывает соединение с биржей. Рекомендуется вызывать при завершении работы.
+        Closes the connection to the exchange. Recommended to call upon termination.
         """
         if self.exchange:
             await self.exchange.close()

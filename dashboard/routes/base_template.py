@@ -17,7 +17,6 @@ TABS_CONFIG: Final[list[tuple[str, str, str]]] = [
     ("/settings", "⚙️ Settings", "settings"),
 ]
 
-
 def render_page(request: Request, content: str, title: str = DEFAULT_PAGE_TITLE) -> str:
     """
     Returns a complete HTML page with a common header/footer and dynamically highlighted active tab.
@@ -38,9 +37,9 @@ def render_page(request: Request, content: str, title: str = DEFAULT_PAGE_TITLE)
     Raises:
         ValueError: If `request` or `content` is `None`.
     """
-    if request is None:
+    if not request:
         raise ValueError("Request object cannot be None.")
-    if content is None:
+    if not content:
         raise ValueError("Content cannot be None.")
 
     # Create a mapping from URL path to tab key for efficient lookup

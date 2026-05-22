@@ -1,6 +1,6 @@
 # adapters/orderbook_analyzer.py
 """
-Анализатор Order Book – вычисляет имбаланс ликвидности (давление покупок/продаж).
+Order Book Analyzer – calculates liquidity imbalance (pressure of buys/sells).
 """
 import logging
 from typing import Dict, Optional, Any, List, Tuple, Protocol
@@ -41,19 +41,19 @@ class ExchangeAdapter(Protocol):
 
 class OrderBookAnalyzer:
     """
-    Анализатор Order Book – вычисляет имбаланс ликвидности (давление покупок/продаж).
-    Этот класс запрашивает данные стакана через предоставленный адаптер
-    и рассчитывает метрики ликвидности, такие как имбаланс и дельта объема.
+    Order Book Analyzer – calculates liquidity imbalance (pressure of buys/sells).
+    This class fetches order book data through the provided adapter
+    and calculates liquidity metrics such as imbalance and delta volume.
     """
     def __init__(self, adapter: ExchangeAdapter) -> None:
         """
-        Инициализирует анализатор стакана с заданным адаптером.
+        Initializes the order book analyzer with the given adapter.
         
         Args:
-            adapter (ExchangeAdapter): Объект, который должен соответствовать протоколу ExchangeAdapter,
-                                       т.е. иметь атрибут 'exchange' с асинхронным методом
-                                       'fetch_order_book(symbol, limit=depth)'.
-                                       Например, FuturesAdapter или BinanceTestnetAdapter.
+            adapter (ExchangeAdapter): Object that must conform to the ExchangeAdapter protocol,
+                                       i.e., have an 'exchange' attribute with an asynchronous
+                                       'fetch_order_book(symbol, limit=depth)' method.
+                                       For example, FuturesAdapter or BinanceTestnetAdapter.
         """
         self.adapter: ExchangeAdapter = adapter
         self.last_imbalance: Optional[float] = None
@@ -61,19 +61,19 @@ class OrderBookAnalyzer:
 
     async def update(self, symbol: Optional[str] = None, depth: int = 20) -> Optional[Dict[str, float]]:
         """
-        Запрашивает стакан (order book) для указанного символа и глубины,
-        затем вычисляет и возвращает словарь с метриками ликвидности.
-        Обновляет внутренние состояния `last_imbalance` и `last_delta_volume`.
+        Fetches the order book for the specified symbol and depth,
+        then calculates and returns a dictionary with liquidity metrics.
+        Updates internal states `last_imbalance` and `last_delta_volume`.
 
         Args:
-            symbol (Optional[str]): Торговый символ (например, 'BTC/USDT'). Если None, используется
-                                    символ из адаптера (`self.adapter.symbol`).
-            depth (int): Глубина стакана для запроса (количество бидов и асков).
+            symbol (Optional[str]): Trading symbol (e.g., 'BTC/USDT'). If None, uses
+                                    the symbol from the adapter (`self.adapter.symbol`).
+            depth (int): Depth of the order book to fetch (number of bids and asks).
         
         Returns:
-            Optional[Dict[str, float]]: Словарь с метриками ("imbalance", "delta_volume",
+            Optional[Dict[str, float]]: Dictionary with metrics ("imbalance", "delta_volume",
                                         "total_bid_volume", "total_ask_volume")
-                                        или None в случае ошибки, отсутствия символа или пустых данных.
+                                        or None in case of error, missing symbol, or empty data.
         """
         # Determine the actual symbol to use. Prioritize provided symbol, then adapter's default.
         actual_symbol: Optional[str] = symbol or getattr(self.adapter, 'symbol', None)
@@ -119,12 +119,12 @@ class OrderBookAnalyzer:
 
     def get_context_string(self) -> str:
         """
-        Возвращает форматированную строку, описывающую последний рассчитанный имбаланс стакана.
-        Эта строка может быть использована для подстановки в промпт LLM или для логирования.
+        Returns a formatted string describing the last calculated order book imbalance.
+        This string can be used for LLM prompt substitution or logging.
 
         Returns:
-            str: Строка с информацией об имбалансе и дельте объема, или пустая строка,
-                 если данные об имбалансе еще не были получены или `last_delta_volume` отсутствует.
+            str: String with information about the imbalance and delta volume, or an empty string,
+                 if the imbalance data has not been calculated yet or `last_delta_volume` is missing.
         """
         if self.last_imbalance is None or self.last_delta_volume is None:
             return ""

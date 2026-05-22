@@ -154,8 +154,6 @@ async def update_config_form(
     Returns:
         An HTMLResponse containing a message about the update status.
     """
-    # Explicitly collecting form parameters into a dictionary is more robust
-    # than relying on locals() and ensures only expected parameters are passed.
     config_data: Dict[str, str] = {
         "BURN_RATE": burn_rate,
         "FAILURE_PROB": failure_prob,
@@ -197,111 +195,76 @@ async def update_secrets(
     web3_rpc_url: str = Form("", alias="WEB3_RPC_URL"),
 ) -> HTMLResponse:
     """
-    Handles the submission of the secrets form, updating the .env file.
-    It reads the existing .env file, updates or adds the provided secret keys,
-    and writes the changes back while preserving comments and original line order
-    as much as possible.
+    Handles the submission of the secrets form, updating the .env file with the provided values.
 
     Args:
         web3_private_key (str): The private key for Web3 operations.
-        binance_testnet_api_key (str): Binance Testnet API key.
-        binance_testnet_api_secret (str): Binance Testnet API secret.
-        telegram_bot_token (str): Telegram bot token.
-        telegram_chat_id (str): Telegram chat ID.
-        etherscan_api_key (str): Etherscan API key.
-        web3_rpc_url (str): Web3 RPC URL.
+        binance_testnet_api_key (str): The API key for Binance Testnet.
+        binance_testnet_api_secret (str): The API secret for Binance Testnet.
+        telegram_bot_token (str): The token for the Telegram bot.
+        telegram_chat_id (str): The chat ID for Telegram notifications.
+        etherscan_api_key (str): The API key for Etherscan.
+        web3_rpc_url (str): The RPC URL for Web3 operations.
 
     Returns:
-        An HTMLResponse indicating that secrets have been updated and a restart is needed.
+        An HTMLResponse containing a message about the update status.
     """
-    project_root: Path = Path(__file__).resolve().parent.parent.parent
-    env_path: Path = project_root / "mvp" / "lab_swarm_demo" / ".env"
+    env_path = Path(".env")
+    if not env_path.exists():
+        env_path.touch()
 
-    current_lines: List[str] = []
-    if env_path.exists():
-        current_lines = env_path.read_text().splitlines()
+    with env_path.open("r+") as f:
+        lines = f.readlines()
+        f.seek(0)
+        f.truncate()
+        for line in lines:
+            if line.startswith("WEB3_PRIVATE_KEY=") and web3_private_key:
+                line = f"WEB3_PRIVATE_KEY={web3_private_key}\n"
+            elif line.startswith("BINANCE_TESTNET_API_KEY=") and binance_testnet_api_key:
+                line = f"BINANCE_TESTNET_API_KEY={binance_testnet_api_key}\n"
+            elif line.startswith("BINANCE_TESTNET_API_SECRET=") and binance_testnet_api_secret:
+                line = f"BINANCE_TESTNET_API_SECRET={binance_testnet_api_secret}\n"
+            elif line.startswith("TELEGRAM_BOT_TOKEN=") and telegram_bot_token:
+                line = f"TELEGRAM_BOT_TOKEN={telegram_bot_token}\n"
+            elif line.startswith("TELEGRAM_CHAT_ID=") and telegram_chat_id:
+                line = f"TELEGRAM_CHAT_ID={telegram_chat_id}\n"
+            elif line.startswith("ETHERSCAN_API_KEY=") and etherscan_api_key:
+                line = f"ETHERSCAN_API_KEY={etherscan_api_key}\n"
+            elif line.startswith("WEB3_RPC_URL=") and web3_rpc_url:
+                line = f"WEB3_RPC_URL={web3_rpc_url}\n"
+            f.write(line)
 
-    # Map form input names (aliased to original env var names) to their values.
-    # Only include non-empty values from the form.
-    secret_map_from_form: Dict[str, str] = {
-        "WEB3_PRIVATE_KEY": web3_private_key,
-        "BINANCE_TESTNET_API_KEY": binance_testnet_api_key,
-        "BINANCE_TESTNET_API_SECRET": binance_testnet_api_secret,
-        "TELEGRAM_BOT_TOKEN": telegram_bot_token,
-        "TELEGRAM_CHAT_ID": telegram_chat_id,
-        "ETHERSCAN_API_KEY": etherscan_api_key,
-        "WEB3_RPC_URL": web3_rpc_url,
-    }
+        # Add new variables if they don't exist
+        if not any(line.startswith("WEB3_PRIVATE_KEY=") for line in lines) and web3_private_key:
+            f.write(f"WEB3_PRIVATE_KEY={web3_private_key}\n")
+        if not any(line.startswith("BINANCE_TESTNET_API_KEY=") for line in lines) and binance_testnet_api_key:
+            f.write(f"BINANCE_TESTNET_API_KEY={binance_testnet_api_key}\n")
+        if not any(line.startswith("BINANCE_TESTNET_API_SECRET=") for line in lines) and binance_testnet_api_secret:
+            f.write(f"BINANCE_TESTNET_API_SECRET={binance_testnet_api_secret}\n")
+        if not any(line.startswith("TELEGRAM_BOT_TOKEN=") for line in lines) and telegram_bot_token:
+            f.write(f"TELEGRAM_BOT_TOKEN={telegram_bot_token}\n")
+        if not any(line.startswith("TELEGRAM_CHAT_ID=") for line in lines) and telegram_chat_id:
+            f.write(f"TELEGRAM_CHAT_ID={telegram_chat_id}\n")
+        if not any(line.startswith("ETHERSCAN_API_KEY=") for line in lines) and etherscan_api_key:
+            f.write(f"ETHERSCAN_API_KEY={etherscan_api_key}\n")
+        if not any(line.startswith("WEB3_RPC_URL=") for line in lines) and web3_rpc_url:
+            f.write(f"WEB3_RPC_URL={web3_rpc_url}\n")
 
-    new_lines_output: List[str] = []
-    keys_processed_from_form: Set[str] = set()
-
-    for line in current_lines:
-        stripped_line: str = line.strip()
-        updated_this_line: bool = False
-
-        if not stripped_line or stripped_line.startswith("#"):
-            # Preserve empty lines and comments
-            new_lines_output.append(line)
-            continue
-
-        for key, value in secret_map_from_form.items():
-            if stripped_line.startswith(f"{key}="):
-                # Update existing key with new value (even if new value is empty)
-                new_lines_output.append(f"{key}={value}")
-                keys_processed_from_form.add(key)
-                updated_this_line = True
-                break
-        
-        if not updated_this_line:
-            # If the line was not an updated secret, keep it as is
-            new_lines_output.append(line)
-
-    # Append any keys from the form that were not found in the original .env file
-    for key, value in secret_map_from_form.items():
-        if key not in keys_processed_from_form:
-            # Only append if value is not empty, to avoid adding `KEY=` lines unnecessarily
-            # if the user just submitted an empty field for a non-existent key.
-            # However, if the intent is to allow explicit empty settings, remove this check.
-            if value: # Keep original behavior, append even if empty, per `Form("")` default
-                new_lines_output.append(f"{key}={value}")
-
-    # Write the updated content back to the .env file, ensuring a trailing newline
-    env_path.write_text("\n".join(new_lines_output) + "\n")
-    return HTMLResponse("<pre>Secrets updated. Restart swarm to apply.</pre>")
+    return HTMLResponse("<pre>Secrets updated successfully.</pre>")
 
 @router.post("/api/approve/{token}")
 async def approve_token(token: str) -> HTMLResponse:
     """
-    Initiates a token approval script for WETH or USDC.
-    The script is executed in a subprocess.
+    Handles the token approval process for the specified token.
 
     Args:
-        token: The token symbol (e.g., 'WETH', 'USDC') to approve. Case-insensitive.
+        token (str): The token to approve (e.g., 'WETH', 'USDC').
 
     Returns:
-        An HTMLResponse containing the standard output or error from the approval script.
+        An HTMLResponse containing a message about the approval status.
     """
-    project_root: Path = Path(__file__).resolve().parent.parent.parent
-    command: List[str]
-    token_upper: str = token.upper()
-
-    if token_upper == "WETH":
-        command = ["python", "tools/approve_weth.py"]
-    elif token_upper == "USDC":
-        command = ["python", "tools/approve_usdc.py"]
-    else:
-        return HTMLResponse(f"<pre>Error: Unknown token '{token}'</pre>", status_code=400)
-
-    # Execute the approval script. Using a list for `cmd` and `shell=False` is safer.
-    result: subprocess.CompletedProcess = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        cwd=project_root,
-        check=False  # Do not raise an exception for non-zero exit codes; capture output instead
-    )
-    # Return the stdout or stderr from the script execution
-    # If there's stdout, return it. Otherwise, return stderr.
-    output_message: str = result.stdout.strip() if result.stdout else (result.stderr.strip() if result.stderr else "No output from script.")
-    return HTMLResponse(f"<pre>{output_message}</pre>")
+    try:
+        subprocess.run(["python", "scripts/approve.py", token], check=True)
+        return HTMLResponse(f"<pre>Successfully approved {token}.</pre>")
+    except subprocess.CalledProcessError as e:
+        return HTMLResponse(f"<pre>Failed to approve {token}: {e}</pre>")

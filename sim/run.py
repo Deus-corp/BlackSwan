@@ -1,6 +1,6 @@
 import argparse
 import yaml
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Tuple
 
 # Assuming these imports define the necessary classes for this specific runner.
 # It's important to note that the `MarketEnvironment` and `Agent` interfaces
@@ -13,6 +13,46 @@ from engine.agents import KellyAgent, RandomAgent
 
 # Define a type alias for readability, assuming these agents exist and match the inferred interface
 AgentType = Union[KellyAgent, RandomAgent]
+
+
+def compute_metrics(history: List[float]) -> Dict[str, float]:
+    """
+    Compute metrics from the agent's capital history.
+
+    Args:
+        history: List of capital values over time.
+
+    Returns:
+        Dictionary containing computed metrics.
+    """
+    metrics: Dict[str, float] = {
+        "final_capital": history[-1],
+        "total_return": (history[-1] - history[0]) / history[0] * 100,
+        "max_drawdown": min((history[i] - max(history[:i+1])) / max(history[:i+1]) * 100 for i in range(1, len(history)))
+    }
+    return metrics
+
+
+def plot_results(agents_data: Dict[str, Tuple[List[float], AgentType]]) -> None:
+    """
+    Plot the results of the simulation.
+
+    Args:
+        agents_data: Dictionary containing agent histories and agent objects.
+    """
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(10, 6))
+    for name, (history, agent) in agents_data.items():
+        plt.plot(history, label=name)
+
+    plt.title("Agent Capital Over Time")
+    plt.xlabel("Time Step")
+    plt.ylabel("Capital")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
 
 def main() -> None:
     """

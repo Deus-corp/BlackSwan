@@ -5,20 +5,114 @@ import re
 from typing import Any, Dict, List, Sequence
 
 from src.swarms.improver.models import FileItem, MemoryHit, ImprovementResult
-from src.swarms.improver.validation import safe_json_extract as _safe_json_extract
 
 
 def trim_text(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
-    return text[: max(0, limit - 40)] + "\n# [TRUNCATED]\n"
+    keep = max(0, limit - 40)
+    return text[:keep] + "\n# [TRUNCATED]\n"
+
+
+def _strip_code_fences(text: str) -> str:
+    cleaned = text.strip()
+    cleaned = re.sub(r"^```(?:json|python|py)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    return cleaned.strip()
+
+
+def _extract_balanced_json(text: str) -> str | None:
+    start_obj = text.find("{")
+    start_arr = text.find("[")
+    if start_obj == -1 and start_arr == -1:
+        return None
+
+    if start_arr != -1 and (start_obj == -1 or start_arr < start_obj):
+        start = start_arr
+        open_ch, close_ch = "[", "]"
+    else:
+        start = start_obj
+        open_ch, close_ch = "{", "}"
+
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch == open_ch:
+            depth += 1
+        elif ch == close_ch:
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return None
+
+
+def repair_json_text(text: str) -> str:
+    """Best-effort cleanup for model output before json.loads."""
+    if not text:
+        return ""
+
+    cleaned = text.strip().lstrip("\ufeff")
+    cleaned = _strip_code_fences(cleaned)
+    cleaned = cleaned.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'")
+    cleaned = re.sub(r",(\s*[}\]])", r"\1", cleaned)
+
+    try:
+        json.loads(cleaned)
+        return cleaned
+    except Exception:
+        pass
+
+    balanced = _extract_balanced_json(cleaned)
+    if balanced:
+        balanced = re.sub(r",(\s*[}\]])", r"\1", balanced)
+        try:
+            json.loads(balanced)
+            return balanced
+        except Exception:
+            pass
+
+    start = min([i for i in [cleaned.find("{"), cleaned.find("[")] if i != -1], default=-1)
+    end = max(cleaned.rfind("}"), cleaned.rfind("]"))
+    if start != -1 and end != -1 and end > start:
+        snippet = cleaned[start : end + 1]
+        snippet = re.sub(r"\s+", " ", snippet)
+        snippet = re.sub(r",(\s*[}\]])", r"\1", snippet)
+        try:
+            json.loads(snippet)
+            return snippet
+        except Exception:
+            pass
+
+    return cleaned
 
 
 def safe_json_extract(text: str) -> Any | None:
-    """
-    Backwards-compatible wrapper. Real repair logic lives in validation.py.
-    """
-    return _safe_json_extract(text)
+    if not text:
+        return None
+
+    repaired = repair_json_text(text)
+    if not repaired:
+        return None
+
+    for candidate in (repaired, _strip_code_fences(text)):
+        try:
+            return json.loads(candidate)
+        except Exception:
+            pass
+    return None
 
 
 def _compact_hit(hit: MemoryHit) -> Dict[str, Any]:
@@ -29,40 +123,54 @@ def _compact_hit(hit: MemoryHit) -> Dict[str, Any]:
     return {"kind": hit.kind, "score": hit.score, "payload": payload}
 
 
-def _serialize_files(file_items: Sequence[FileItem], content_limit: int = 10_000) -> List[Dict[str, Any]]:
-    files: List[Dict[str, Any]] = []
-    for item in file_items:
-        files.append(
-            {
-                "path": item.path,
-                "language": item.language,
-                "size_kb": round(item.size_kb, 2),
-                "imports": item.imports,
-                "fingerprint": item.fingerprint,
-                "content": trim_text(item.content, content_limit),
-            }
-        )
-    return files
+def _serialize_file(item: FileItem, *, content_limit: int = 12_000) -> Dict[str, Any]:
+    return {
+        "path": item.path,
+        "language": item.language,
+        "size_kb": round(item.size_kb, 2),
+        "imports": item.imports,
+        "fingerprint": item.fingerprint,
+        "content": trim_text(item.content, content_limit),
+    }
 
 
-def _patch_only_schema() -> Dict[str, Any]:
+def _python_full_file_schema() -> Dict[str, Any]:
     return {
         "files": [
             {
                 "path": "path/to/file.py",
-                "action": "patch",
-                "summary": "what changed",
+                "code": "full improved file content",
+                "summary": "short summary",
                 "risk": 0.0,
                 "tags": ["typing", "refactor"],
+            }
+        ],
+        "overall_summary": "short summary",
+        "overall_risk": 0.0,
+        "should_repair": False,
+        "critique_notes": "",
+    }
+
+
+def _non_python_optional_patch_schema() -> Dict[str, Any]:
+    return {
+        "files": [
+            {
+                "path": "path/to/file.txt",
+                "action": "replace_file",
+                "code": "full improved file content",
+                "summary": "short summary",
+                "risk": 0.0,
+                "tags": ["cleanup"],
                 "patches": [
                     {
-                        "type": "replace_function",
-                        "target": "function_name",
-                        "new_code": "replacement code for that function",
+                        "type": "replace_block",
+                        "target": "target-name",
+                        "new_code": "replacement text",
                         "summary": "why this patch exists",
                         "reason": "why this is safe",
                         "confidence": 0.0,
-                        "scope": "function",
+                        "scope": "file",
                     }
                 ],
                 "notes": "",
@@ -75,67 +183,53 @@ def _patch_only_schema() -> Dict[str, Any]:
     }
 
 
-def _full_schema() -> Dict[str, Any]:
-    return {
-        "files": [
-            {
-                "path": "path/to/file.py",
-                "action": "replace_file",
-                "summary": "what changed",
-                "risk": 0.0,
-                "tags": ["typing", "refactor"],
-                "patches": [],
-                "full_code": "complete file contents",
-                "notes": "",
-            }
-        ],
-        "overall_summary": "short summary",
-        "overall_risk": 0.0,
-        "should_repair": False,
-        "critique_notes": "",
-    }
-
-
-def build_patch_prompt(
+def build_python_prompt(
     file_item: FileItem,
     context_hits: Sequence[MemoryHit],
     strategy: str,
-    issue_summary: str,
-    patch_only: bool = True,
 ) -> str:
-    """
-    Single-file prompt. In patch_only mode, the model must return only patch operations.
-    This is the most stable mode for Mistral.
-    """
-    schema = _patch_only_schema() if patch_only else _full_schema()
-    constraints = [
-        "Return only JSON.",
-        "Do not use markdown or code fences.",
-        "Keep the change minimal.",
-        "Prefer replace_function / replace_class / replace_import / delete.",
-    ]
-    if patch_only:
-        constraints.append("Do not return full_code for this Python file.")
-        constraints.append("Return only patches; do not rewrite the whole file.")
-    else:
-        constraints.append("If necessary, full_code is allowed.")
-
+    """Strict Python prompt: full-file JSON only. No patch schema exposed."""
     prompt_obj = {
-        "task": "Patch a single Python file with minimal local edits.",
+        "task": "Improve the Python file and return ONLY valid JSON.",
         "strategy": strategy,
-        "file": {
-            "path": file_item.path,
-            "language": file_item.language,
-            "size_kb": round(file_item.size_kb, 2),
-            "imports": file_item.imports,
-            "fingerprint": file_item.fingerprint,
-            "content": trim_text(file_item.content, 12_000),
-        },
-        "issue_summary": issue_summary,
-        "context": [_compact_hit(hit) for hit in context_hits[:6]],
-        "constraints": constraints,
-        "output_mode": "patch_only" if patch_only else "full_or_patch",
-        "output_schema": schema,
+        "constraints": [
+            "Return exactly one JSON object.",
+            "The JSON must contain a 'files' array.",
+            "Each file object must include 'path', 'code', 'summary', 'risk', and 'tags'.",
+            "For Python files, 'code' must contain the full improved source code.",
+            "Do not return patches or partial edits for Python files.",
+            "Do not add markdown, explanations, or extra keys outside the schema.",
+            "Preserve runtime behavior unless fixing a clear bug.",
+        ],
+        "file": _serialize_file(file_item),
+        "context": [_compact_hit(hit) for hit in context_hits[:8]],
+        "output_schema": _python_full_file_schema(),
+    }
+    return json.dumps(prompt_obj, ensure_ascii=False, separators=(",", ":"))
+
+
+def build_non_python_prompt(
+    file_item: FileItem,
+    context_hits: Sequence[MemoryHit],
+    strategy: str,
+    prefer_patch: bool = True,
+) -> str:
+    """Non-Python prompt can still allow patches, but full-file output remains supported."""
+    prompt_obj = {
+        "task": "Improve the file and return ONLY valid JSON.",
+        "strategy": strategy,
+        "constraints": [
+            "Return exactly one JSON object.",
+            "The JSON must contain a 'files' array.",
+            "For non-Python files, patches are allowed if helpful.",
+            "If using patches, include target and new_code.",
+            "If a full replacement is safer, provide 'code'.",
+            "Do not add markdown, explanations, or extra commentary.",
+        ],
+        "file": _serialize_file(file_item),
+        "context": [_compact_hit(hit) for hit in context_hits[:8]],
+        "preferred_output_mode": "patch" if prefer_patch else "replace_file",
+        "output_schema": _non_python_optional_patch_schema(),
     }
     return json.dumps(prompt_obj, ensure_ascii=False, separators=(",", ":"))
 
@@ -158,17 +252,6 @@ def build_critic_prompt(
                 "tags": result.memory_tags,
                 "changed_lines_ratio": round(result.changed_lines_ratio, 4),
                 "code_preview": trim_text(result.code, 2500),
-                "patches": [
-                    {
-                        "type": patch.type,
-                        "target": patch.target,
-                        "summary": patch.summary,
-                        "reason": patch.reason,
-                        "confidence": patch.confidence,
-                        "scope": patch.scope,
-                    }
-                    for patch in result.patches
-                ],
             }
         )
 
@@ -177,8 +260,8 @@ def build_critic_prompt(
         "strategy": strategy,
         "rules": [
             "Focus on correctness, risk, scope creep, and whether changes are too broad.",
-            "Point out any patch that looks unsafe or under-specified.",
-            "Prefer a concise but actionable critique.",
+            "Point out any output that looks unsafe or under-specified.",
+            "Prefer concise but actionable critique.",
         ],
         "context": [_compact_hit(hit) for hit in context_hits[:6]],
         "proposals": proposals,
@@ -238,39 +321,3 @@ def build_json_repair_prompt(raw_text: str, expected_schema: Dict[str, Any]) -> 
         ],
     }
     return json.dumps(prompt_obj, ensure_ascii=False, separators=(",", ":"))
-
-def build_prompt(
-    file_items: Sequence[FileItem],
-    context_hits: Sequence[MemoryHit],
-    strategy: str,
-    critic_feedback: str = "",
-    issue_summary: str = "",
-) -> str:
-    """
-    Compatibility wrapper: builds a batch prompt by aggregating single-file patch prompts.
-    """
-    files_payload = []
-    for item in file_items:
-        single = build_patch_prompt(
-            file_item=item,
-            context_hits=context_hits,
-            strategy=strategy,
-            issue_summary=issue_summary or "Improve code quality, add types, fix obvious issues.",
-            patch_only=True,
-        )
-        try:
-            obj = json.loads(single)
-        except Exception:
-            obj = {"file": {"path": item.path, "content": item.content[:5000]}}
-        files_payload.append(obj)
-
-    return json.dumps(
-        {
-            "task": "Improve multiple files",
-            "strategy": strategy,
-            "critic_feedback": critic_feedback,
-            "files": files_payload,
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )

@@ -64,15 +64,18 @@ llama_cpp/
 docker-compose.improver.yml
 
 # Environment files (local, may contain secrets)
+.env
 .env.local
 .env.production
+.env.example
 
-# Improver Agent outputs
+# Improver Agent outputs and workspace
 data/improver_output/
 data/improver_failed/
 data/improver_proposals/
+data/improver_staging/
+data/improver_memory/
+data/improver_workspace/
 
-# Excluded paths (already covered by broader patterns)
-# src/swarms/improver/agent.py
-# src/swarms/improver
-# data/.env
+# Other data directories
+data/

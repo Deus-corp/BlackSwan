@@ -1,6 +1,7 @@
 """
-This module defines FastAPI routes for displaying trade history
-by parsing Docker container logs.
+This module defines FastAPI routes for displaying trade history by parsing Docker container logs.
+
+It provides endpoints to render the trades dashboard page and fetch the latest trade data.
 """
 
 import re

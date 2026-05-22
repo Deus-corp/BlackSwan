@@ -5,6 +5,7 @@ This module serves as the primary entry point for launching the dashboard server
 
 import os
 import sys
+from typing import Final
 
 import uvicorn
 
@@ -23,9 +24,9 @@ def main() -> None:
     Configures and starts the Uvicorn server to host the dashboard.
     """
     # Constants for Uvicorn server configuration
-    HOST: str = "0.0.0.0"
-    PORT: int = 8080
-    LOG_LEVEL: str = "info"
+    HOST: Final[str] = "0.0.0.0"
+    PORT: Final[int] = 8080
+    LOG_LEVEL: Final[str] = "info"
 
     print(f"🌐 Панель управления запущена на http://localhost:{PORT}")
     uvicorn.run(app, host=HOST, port=PORT, log_level=LOG_LEVEL)

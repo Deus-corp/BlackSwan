@@ -40,7 +40,7 @@ class ValidationResult:
     ruff_ok: Optional[bool] = None
     mypy_ok: Optional[bool] = None
     pytest_ok: Optional[bool] = None
-    patch_applied_ok: Optional[bool] = None
+    patch_applied_ok: bool = False
     notes: List[str] = field(default_factory=list)
 
 
@@ -65,11 +65,8 @@ class PatchOperation:
 
 @dataclass
 class FilePatchPlan:
-    """
-    One file-level plan returned by the model.
-    """
     path: str
-    action: Literal["patch", "replace_file", "skip"] = "patch"
+    action: Literal["patch", "replace_file", "skip"] = "replace_file"
     summary: str = ""
     risk: float = 0.0
     tags: List[str] = field(default_factory=list)

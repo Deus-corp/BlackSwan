@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import ast
-import dataclasses
 import json
 import logging
 import os
 import random
 import re
-import subprocess
 import textwrap
 import time
 import uuid
@@ -32,21 +30,19 @@ from src.swarms.improver.models import (
 from src.swarms.improver.prompting import (
     build_critic_prompt,
     build_json_repair_prompt,
-    build_patch_prompt,
+    build_non_python_prompt,
     build_proposals_prompt,
-    build_prompt,
+    build_python_prompt,
     safe_json_extract,
 )
 from src.swarms.improver.validation import (
     atomic_write_text,
     changed_line_ratio,
-    command_exists,
     extract_python_imports,
     fingerprint_text,
     guess_language,
     run_pytest_smoke,
     safe_output_path,
-    validate_patch_manifest,
     validate_result,
 )
 
@@ -54,7 +50,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | 
 logger = logging.getLogger("ImproverAgent")
 
 
-SCAN_DIRS = ["src", "adapters", "sim", "dashboard", "."]
+SCAN_DIRS = ["src", "adapters", "sim", "dashboard"]
 OUTPUT_DIR = Path("./data/improver_output")
 FAILED_DIR = Path("./data/improver_failed")
 PROPOSALS_DIR = Path("./data/improver_proposals")
@@ -71,8 +67,10 @@ EXCLUDE_DIRS = {
     "assets", "config", "docs", "formal", "grafana", "llama_cpp",
     "logs", "scripts", "site", "tests", "tools",
     "data", ".git", "node_modules", "prometheus_data", "grafana_data",
+    "improver_workspace", "improver_output", "improver_failed", "improver_proposals", "improver_staging",
+    "improver_staging", "improver_memory", "ledgers", "meta_agent", "nonce",
 }
-EXCLUDE_FILES = {"Dockerfile", ".env"}
+EXCLUDE_FILES = {"Dockerfile", ".env", ".DS_Store"}
 MAX_FILE_SIZE_KB = 200
 MAX_FILES_PER_BATCH = 3
 SLEEP_BETWEEN_CYCLES = 3600
@@ -80,6 +78,10 @@ MAX_PROMPT_CHARS = 24_000
 MAX_CHANGED_LINES_RATIO = 0.35
 DEFAULT_MODEL_NAME = "gemini-2.5-flash"
 CRITIC_MODEL_NAME = "gemini-2.5-flash"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+DEFAULT_MISTRAL_MODEL = "mistral-large-latest"
+DEFAULT_MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
 
 def _line_col_to_index(code: str, line: int, col: int) -> int:
@@ -103,7 +105,6 @@ def _replace_source_span(
     end = _line_col_to_index(code, end_line, end_col)
     if end < start:
         return code
-
     replacement = textwrap.dedent(replacement or "").strip("\n")
     if start_col > 0 and replacement:
         replacement = textwrap.indent(replacement, " " * start_col)
@@ -114,12 +115,7 @@ def _replace_source_span(
 
 
 def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]:
-    """
-    AST-first patcher for Python files.
-
-    Supports precise replacement of functions, classes, imports, and fallback
-    block replacements when the AST target can be inferred.
-    """
+    """AST-first patching for Python. Used only as a fallback path for non-default/manual cases."""
     try:
         tree = ast.parse(code)
     except SyntaxError as e:
@@ -127,11 +123,10 @@ def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]
 
     target = patch.target.strip()
     replacement = patch.new_code or patch.after or ""
-    if not replacement.strip() and patch.type != "delete":
+    if patch.type != "delete" and not replacement.strip():
         return code, False, "empty_replacement"
 
     candidates: List[ast.AST] = []
-
     for node in ast.walk(tree):
         try:
             if patch.type in {"replace_function", "replace_block"} and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -142,20 +137,20 @@ def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]
                     candidates.append(node)
             elif patch.type == "replace_import" and isinstance(node, (ast.Import, ast.ImportFrom)):
                 segment = ast.get_source_segment(code, node) or ""
-                if patch.before.strip() and patch.before.strip() in segment:
+                aliases = getattr(node, "names", [])
+                if (patch.before.strip() and patch.before.strip() in segment) or any(
+                    target and (
+                        target == getattr(alias, "name", "")
+                        or target == getattr(alias, "asname", "")
+                        or target in segment
+                    )
+                    for alias in aliases
+                ):
                     candidates.append(node)
-                else:
-                    aliases = getattr(node, "names", [])
-                    if target and (
-                        target in segment
-                        or any(getattr(alias, "name", "") == target or getattr(alias, "asname", "") == target for alias in aliases)
-                    ):
-                        candidates.append(node)
         except Exception:
             continue
 
     if not candidates and patch.type == "replace_block" and patch.before.strip():
-        # block fallback: replace exact text if the AST target is not inferable
         idx = code.find(patch.before)
         if idx != -1:
             return code[:idx] + replacement + code[idx + len(patch.before):], True, "text_block_fallback"
@@ -163,7 +158,6 @@ def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]
     if not candidates:
         return code, False, f"target_not_found:{target or patch.type}"
 
-    # Prefer earliest occurrence in source order.
     candidates.sort(key=lambda n: (getattr(n, "lineno", 10**9), getattr(n, "col_offset", 0)))
     node = candidates[0]
     start_line = int(getattr(node, "lineno"))
@@ -180,12 +174,6 @@ def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]
     return new_code, True, f"ast_replaced:{target or patch.type}"
 
 
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
-DEFAULT_GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MISTRAL_MODEL = "mistral-large-latest"
-DEFAULT_MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
-
-
 class ImproverAgent:
     def __init__(
         self,
@@ -200,9 +188,8 @@ class ImproverAgent:
         failed_dir: Optional[Path] = FAILED_DIR,
         proposals_dir: Optional[Path] = PROPOSALS_DIR,
         staging_dir: Optional[Path] = STAGING_DIR,
-        prefer_patch: bool = True,
-        patch_only_python: bool = True,
-        allow_full_rewrite_python: bool = False,
+        prefer_patch: bool = False,
+        workspace_dir: Optional[Path] = None,
     ) -> None:
         self.node_id = f"improver-{uuid.uuid4().hex[:8]}"
         self.single_pass = single_pass
@@ -211,14 +198,14 @@ class ImproverAgent:
         self.enable_critique = enable_critique
         self.max_files_per_batch = max_files_per_batch
         self.prefer_patch = prefer_patch
-        self.patch_only_python = patch_only_python
-        self.allow_full_rewrite_python = allow_full_rewrite_python
 
         self.scan_dirs = list(scan_dirs or SCAN_DIRS)
         self.output_dir = output_dir or OUTPUT_DIR
         self.failed_dir = failed_dir or FAILED_DIR
         self.proposals_dir = proposals_dir or PROPOSALS_DIR
         self.staging_dir = staging_dir or STAGING_DIR
+        self.workspace_dir = workspace_dir
+        self._using_workspace = False
 
         self.files_processed = 0
         self.files_improved = 0
@@ -230,24 +217,39 @@ class ImproverAgent:
         self.use_groq = False
         self.use_gemini = False
 
-        self.provider_name = "auto"
         self.memory = MemoryStore(memory_db)
-
         self._setup_provider()
 
     def _setup_provider(self) -> None:
-        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "")
-        groq_api_key = os.environ.get("GROQ_API_KEY2") or os.environ.get("GROQ_API_KEY", "")
+        # 1) Gemini – приоритет
+        gemini_keys_str = os.environ.get("GEMINI_API_KEYS", os.environ.get("GEMINI_API_KEY", ""))
+        gemini_api_keys = [k.strip() for k in gemini_keys_str.split(",") if k.strip()]
+        if gemini_api_keys:
+            self.use_gemini = True
+            self.gemini_api_keys = gemini_api_keys
+            self.key_index = 0
+            self.model_name = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL_NAME)
+            self.critic_model_name = os.environ.get("GEMINI_CRITIC_MODEL", CRITIC_MODEL_NAME)
+            self._configure_next_gemini_key()
+            logger.info("🔑 Gemini API keys found: %d keys. Using model %s.", len(self.gemini_api_keys), self.model_name)
+            return
 
-        if mistral_api_key:
+        # 2) Mistral – второй приоритет
+        mistral_keys_str = os.environ.get("MISTRAL_API_KEYS", os.environ.get("MISTRAL_API_KEY", ""))
+        mistral_api_keys = [k.strip() for k in mistral_keys_str.split(",") if k.strip()]
+        if mistral_api_keys:
             self.use_mistral = True
-            self.mistral_api_key = mistral_api_key
+            self.mistral_api_keys = mistral_api_keys
+            self.mistral_key_index = 0
+            self.mistral_api_key = self.mistral_api_keys[0]
             self.mistral_api_url = os.environ.get("MISTRAL_API_URL", DEFAULT_MISTRAL_API_URL)
             self.mistral_model = os.environ.get("MISTRAL_MODEL", DEFAULT_MISTRAL_MODEL)
             self.mistral_critic_model = os.environ.get("MISTRAL_CRITIC_MODEL", self.mistral_model)
-            logger.info("🔑 Mistral API key found. Will use Mistral (model=%s).", self.mistral_model)
+            logger.info("🔑 Mistral API keys found: %d keys. Using model %s.", len(self.mistral_api_keys), self.mistral_model)
             return
 
+        # 3) Groq – третий
+        groq_api_key = os.environ.get("GROQ_API_KEY2") or os.environ.get("GROQ_API_KEY", "")
         if groq_api_key:
             self.use_groq = True
             self.groq_api_key = groq_api_key
@@ -257,16 +259,14 @@ class ImproverAgent:
             logger.info("🔑 Groq API key found. Will use Groq (model=%s).", self.groq_model)
             return
 
-        keys_str = os.environ.get("GEMINI_API_KEYS", os.environ.get("GEMINI_API_KEY", ""))
-        self.gemini_api_keys = [k.strip() for k in keys_str.split(",") if k.strip()]
-        if not self.gemini_api_keys:
-            raise ValueError("No Mistral/Groq/Gemini keys found. Set MISTRAL_API_KEY, GROQ_API_KEY, or GEMINI_API_KEYS.")
-        self.use_gemini = True
-        self.key_index = 0
-        self.model_name = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL_NAME)
-        self.critic_model_name = os.environ.get("GEMINI_CRITIC_MODEL", CRITIC_MODEL_NAME)
-        self._configure_next_gemini_key()
-        logger.info("🔑 Falling back to Gemini (model=%s).", self.model_name)
+        raise ValueError("No API keys found. Set GEMINI_API_KEYS, MISTRAL_API_KEYS, or GROQ_API_KEY.")
+
+    def _rotate_mistral_key(self) -> None:
+        if not self.mistral_api_keys:
+            return
+        self.mistral_key_index = (self.mistral_key_index + 1) % len(self.mistral_api_keys)
+        self.mistral_api_key = self.mistral_api_keys[self.mistral_key_index]
+        logger.info("🔄 Switched to Mistral key index %s", self.mistral_key_index)
 
     def _configure_next_gemini_key(self) -> None:
         key = self.gemini_api_keys[self.key_index % len(self.gemini_api_keys)]
@@ -323,8 +323,7 @@ class ImproverAgent:
                 data = response.json()
                 return data["choices"][0]["message"]["content"].strip()
             except Exception as e:
-                err = str(e)
-                delay = 60 if ("429" in err or "rate" in err.lower()) else min(10 * (attempt + 1), 30)
+                delay = 60 if ("429" in str(e) or "rate" in str(e).lower()) else min(10 * (attempt + 1), 30)
                 logger.warning("Groq API error: %s (retry in %ss)", e, delay)
                 await asyncio.sleep(delay)
         return None
@@ -343,24 +342,28 @@ class ImproverAgent:
                         {
                             "role": "system",
                             "content": (
-                                "You are a precise code improver. Return ONLY valid JSON matching the schema. "
-                                "No markdown, no commentary, no code fences."
+                                "You are a code improvement tool. Your task is to DEEPLY refactor the provided file: "
+                                "add type hints, docstrings, error handling, logging, and modern Python idioms. "
+                                "Return ONLY valid JSON with the FULL improved source code in the 'code' field. "
+                                "Do not use patches, do not preserve the original structure if it can be improved.",
                             ),
                         },
                         {"role": "user", "content": prompt},
                     ],
-                    "max_tokens": 16384,
-                    "temperature": 0.15,
+                    "max_tokens": 65536,
+                    "temperature": 0.1,
                 }
                 response = await asyncio.to_thread(requests.post, self.mistral_api_url, json=payload, headers=headers, timeout=120)
                 if response.status_code == 429:
+                    self._rotate_mistral_key()
                     delay = 20 + 10 * attempt
-                    logger.warning("Mistral rate limited, retrying in %ss", delay)
+                    logger.warning("Mistral rate limited, switched key, retrying in %ss", delay)
                     await asyncio.sleep(delay)
                     continue
                 if response.status_code >= 500:
+                    self._rotate_mistral_key()
                     delay = 10 + 5 * attempt
-                    logger.warning("Mistral server error (%s), retrying in %ss", response.status_code, delay)
+                    logger.warning("Mistral server error (%s), switched key, retrying in %ss", response.status_code, delay)
                     await asyncio.sleep(delay)
                     continue
                 response.raise_for_status()
@@ -382,8 +385,7 @@ class ImproverAgent:
                 response = await asyncio.to_thread(model.generate_content, prompt)
                 return getattr(response, "text", None)
             except Exception as e:
-                err = str(e)
-                kind = self._classify_error(err)
+                kind = self._classify_error(str(e))
                 if kind == "auth":
                     logger.error("Invalid Gemini API key (index %s), switching.", self.key_index % total_keys)
                     self.key_index += 1
@@ -391,7 +393,7 @@ class ImproverAgent:
                     await asyncio.sleep(1)
                     continue
                 if kind == "rate_limit":
-                    delay = self._extract_retry_delay(err) or min(60 * (attempt + 1), 300)
+                    delay = self._extract_retry_delay(str(e)) or min(60 * (attempt + 1), 300)
                     logger.warning(
                         "Gemini rate limited. Switching key and retrying in %ss (attempt %s/%s)",
                         delay,
@@ -406,20 +408,44 @@ class ImproverAgent:
                 await asyncio.sleep(min(30, 5 * (attempt + 1)))
         return None
 
+    def _prepare_workspace(self, workspace_dir: Path) -> None:
+        import shutil
+
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+        copied = 0
+        for scan_dir in self.scan_dirs:
+            if not os.path.isdir(scan_dir):
+                continue
+            for root, dirs, files in os.walk(scan_dir):
+                dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+                for file in files:
+                    src = os.path.join(root, file)
+                    if self._should_skip(src):
+                        continue
+                    rel = os.path.relpath(src, scan_dir)
+                    dst = workspace_dir / scan_dir / rel
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+                    copied += 1
+        logger.info("Prepared workspace: copied %s files to %s", copied, workspace_dir)
+        self.scan_dirs = [str(workspace_dir)]
+        self._using_workspace = True
+
     async def run(self) -> None:
         logger.info(
-            "🔧 Agent %s started (single_pass=%s, proposals=%s, validation=%s, critique=%s, patch_first=%s)",
+            "🔧 Agent %s started (single_pass=%s, proposals=%s, validation=%s, critique=%s)",
             self.node_id,
             self.single_pass,
             self.proposals,
             self.enable_validation,
             self.enable_critique,
-            self.prefer_patch,
         )
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.failed_dir.mkdir(parents=True, exist_ok=True)
         self.proposals_dir.mkdir(parents=True, exist_ok=True)
         self.staging_dir.mkdir(parents=True, exist_ok=True)
+        if self.workspace_dir:
+            self._prepare_workspace(self.workspace_dir)
 
         while True:
             await self._process_all_files()
@@ -430,17 +456,26 @@ class ImproverAgent:
                 self.files_quarantined,
                 self.files_failed,
             )
-
             if self.proposals:
                 await self._generate_proposals()
-
             if self.single_pass:
                 break
-
             logger.info("💤 Sleeping %ss before next cycle …", SLEEP_BETWEEN_CYCLES)
             await asyncio.sleep(SLEEP_BETWEEN_CYCLES)
 
+    def _allowed_changed_lines_ratio(self, result: ImprovementResult) -> float:
+        if result.language == "python":
+            return 1.0
+        if any(p.type == "replace_file" for p in result.patches):
+            return 1.0
+        return 0.6
+
     async def _process_all_files(self) -> None:
+        # swarm_config.py всегда обрабатывается, если не исключён
+        config_path = "swarm_config.py"
+        if os.path.exists(config_path) and not self._should_skip(config_path):
+            await self._improve_batch([config_path])
+
         batch: List[str] = []
         for scan_dir in self.scan_dirs:
             if not os.path.exists(scan_dir):
@@ -460,7 +495,7 @@ class ImproverAgent:
 
     def _should_skip(self, filepath: str) -> bool:
         basename = os.path.basename(filepath)
-        if basename in EXCLUDE_FILES:
+        if basename in EXCLUDE_FILES or basename.startswith("swarm_config"):
             return True
         ext = os.path.splitext(filepath)[1].lower()
         if ext in SKIP_EXTENSIONS:
@@ -501,10 +536,7 @@ class ImproverAgent:
             query_parts.extend(Path(item.path).parts[-3:])
             query_parts.extend(item.imports[:5])
             query_parts.append(item.language)
-
-        query = " ".join(query_parts)
-        hits = self.memory.search_episodes(query, limit=8)
-
+        hits = self.memory.search_episodes(" ".join(query_parts), limit=8)
         for pattern in self.memory.get_recent_success_patterns(limit=5):
             hits.append(
                 MemoryHit(
@@ -526,7 +558,6 @@ class ImproverAgent:
     def _choose_strategy(self, file_items: Sequence[FileItem]) -> str:
         stats = self.memory.get_strategy_stats()
         strategies = ["default", "typing", "refactor", "bugfix", "optimize", "docstring"]
-
         weights: List[float] = []
         for strategy in strategies:
             st = stats.get(strategy, {})
@@ -534,8 +565,13 @@ class ImproverAgent:
             total = float(st.get("total", 0.0))
             exploration = 1.0 / (1.0 + total)
             weights.append(max(0.1, avg_score + 1.0 + exploration + random.random() * 0.1))
-
         return random.choices(strategies, weights=weights, k=1)[0]
+
+    def _python_plan_prompt(self, file_item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> str:
+        return build_python_prompt(file_item, context_hits, strategy)
+
+    def _non_python_plan_prompt(self, file_item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> str:
+        return build_non_python_prompt(file_item, context_hits, strategy, prefer_patch=self.prefer_patch)
 
     def _normalize_plan(self, raw_payload: Dict[str, Any]) -> DraftResponse:
         files: List[FilePatchPlan] = []
@@ -546,33 +582,43 @@ class ImproverAgent:
         for item in raw_files:
             if not isinstance(item, dict):
                 continue
-            patches, patch_notes = validate_patch_manifest(item)
-            patch_plans = patches if patches else []
-
             path = str(item.get("path", "") or "")
-            action = str(item.get("action", "patch") or "patch")
-            summary = str(item.get("summary", "") or "")
-            notes = str(item.get("notes", "") or "")
-
-            full_code = str(item.get("full_code", "") or "")
-            if path.endswith(".py") and self.patch_only_python and not self.allow_full_rewrite_python:
-                full_code = ""
-            risk = float(item.get("risk", 0.0) or 0.0)
-            tags = item.get("tags", []) if isinstance(item.get("tags", []), list) else []
-
             if not path:
                 continue
+
+            patches: List[PatchOperation] = []
+            raw_patches = item.get("patches", [])
+            if isinstance(raw_patches, list):
+                for p in raw_patches:
+                    if not isinstance(p, dict):
+                        continue
+                    try:
+                        patches.append(
+                            PatchOperation(
+                                type=str(p.get("type", "") or ""),
+                                target=str(p.get("target", "") or ""),
+                                new_code=str(p.get("new_code", "") or ""),
+                                summary=str(p.get("summary", "") or ""),
+                                reason=str(p.get("reason", "") or ""),
+                                confidence=float(p.get("confidence", 0.0) or 0.0),
+                                scope=str(p.get("scope", "") or ""),
+                                before=str(p.get("before", "") or ""),
+                                after=str(p.get("after", "") or ""),
+                            )
+                        )
+                    except Exception:
+                        continue
 
             files.append(
                 FilePatchPlan(
                     path=path,
-                    action=action if action in {"patch", "replace_file", "skip"} else "patch",
-                    summary=summary,
-                    risk=max(0.0, min(1.0, risk)),
-                    tags=[str(t) for t in tags[:12]],
-                    patches=patch_plans,
-                    full_code=full_code,
-                    notes="; ".join([notes] + patch_notes).strip("; "),
+                    action=str(item.get("action", "replace_file") or "replace_file"),
+                    summary=str(item.get("summary", "") or ""),
+                    risk=float(item.get("risk", 0.0) or 0.0),
+                    tags=[str(t) for t in (item.get("tags", []) if isinstance(item.get("tags", []), list) else [])],
+                    patches=patches,
+                    full_code=str(item.get("code", "") or ""),
+                    notes=str(item.get("notes", "") or ""),
                 )
             )
 
@@ -583,6 +629,56 @@ class ImproverAgent:
             should_repair=bool(raw_payload.get("should_repair", False)),
             critique_notes=str(raw_payload.get("critique_notes", "") or ""),
         )
+
+    def _parse_prompt_payload(self, text: str) -> Optional[Dict[str, Any]]:
+        parsed = safe_json_extract(text)
+        if isinstance(parsed, dict):
+            return parsed
+        return None
+
+    async def _draft_for_file(self, item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> Optional[DraftResponse]:
+        prompt = self._python_plan_prompt(item, context_hits, strategy) if item.language == "python" else self._non_python_plan_prompt(item, context_hits, strategy)
+        text = await self._generate_with_retry(prompt)
+        if not text:
+            return None
+
+        payload = self._parse_prompt_payload(text)
+        if payload is None:
+            # Повторная попытка с упрощённым промптом и t=0.2
+            if self.use_mistral:
+                retry_prompt = build_python_prompt(item, context_hits, strategy)
+                retry_text = await self._generate_with_retry(retry_prompt, max_retries=3)
+                if retry_text:
+                    payload = self._parse_prompt_payload(retry_text)
+            repair_schema = {
+                "files": [
+                    {
+                        "path": item.path,
+                        "code": "",
+                        "summary": "",
+                        "risk": 0.0,
+                        "tags": [],
+                    }
+                ],
+                "overall_summary": "",
+                "overall_risk": 0.0,
+                "should_repair": False,
+                "critique_notes": "",
+            }
+            repair_prompt = build_json_repair_prompt(text, repair_schema)
+            repaired = await self._generate_with_retry(repair_prompt)
+            if repaired:
+                payload = self._parse_prompt_payload(repaired)
+
+        if payload is None:
+            return None
+
+        plan = self._normalize_plan(payload)
+        if item.language == "python":
+            has_code = any(fp.path == item.path and fp.full_code.strip() for fp in plan.files)
+            if not has_code:
+                return None
+        return plan
 
     def _normalize_critique(self, raw_payload: Dict[str, Any]) -> CritiqueResponse:
         blocking = raw_payload.get("blocking_issues", [])
@@ -599,44 +695,6 @@ class ImproverAgent:
             preferred_action=str(raw_payload.get("preferred_action", "") or ""),
             critique=str(raw_payload.get("critique", "") or ""),
         )
-
-    def _parse_prompt_payload(self, text: str) -> Optional[Dict[str, Any]]:
-        parsed = safe_json_extract(text)
-        if isinstance(parsed, dict):
-            return parsed
-        return None
-
-    def _build_issue_summary(self, item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> str:
-        bits = [f"path={item.path}", f"language={item.language}", f"strategy={strategy}"]
-        if item.imports:
-            bits.append("imports=" + ",".join(item.imports[:10]))
-        if context_hits:
-            top = context_hits[:3]
-            bits.append("memory=" + "; ".join(f"{h.kind}:{h.score:.2f}" for h in top))
-        return " | ".join(bits)
-
-    async def _draft_for_file(self, item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> Optional[DraftResponse]:
-        issue_summary = self._build_issue_summary(item, context_hits, strategy)
-        prompt = build_patch_prompt(
-            item,
-            context_hits,
-            strategy,
-            issue_summary,
-            patch_only=item.language == "python" and self.patch_only_python,
-        )
-        text = await self._generate_with_retry(prompt)
-        if not text:
-            return None
-
-        payload = self._parse_prompt_payload(text)
-        if payload is None:
-            repair_prompt = build_json_repair_prompt(text, {"files": [{"path": "path/to/file.py", "action": "patch", "patches": []}]})
-            repaired = await self._generate_with_retry(repair_prompt)
-            if repaired:
-                payload = self._parse_prompt_payload(repaired)
-        if payload is None:
-            return None
-        return self._normalize_plan(payload)
 
     async def _criticize_results(
         self,
@@ -660,124 +718,83 @@ class ImproverAgent:
             return CritiqueResponse(approved=False, critique=critique_text[:1000])
         return self._normalize_critique(payload)
 
-    def _apply_patch_operation(self, original: FileItem, code: str, patch: PatchOperation) -> Tuple[str, bool, str]:
+    def _apply_non_python_patch_operation(self, code: str, patch: PatchOperation) -> Tuple[str, bool, str]:
         if patch.type == "replace_file":
             return patch.new_code or code, True, "replace_file"
-
-        # AST-first for Python files and node-shaped patch types.
-        if original.language == "python" and patch.type in {"replace_function", "replace_class", "replace_block", "replace_import", "delete"}:
-            patched_code, ok, note = _python_ast_patch(code, patch)
-            if ok:
-                return patched_code, True, note
-            # If AST targeting failed, continue to conservative text fallback.
-            if patch.type in {"replace_function", "replace_class", "replace_block"} and patch.before.strip():
-                idx = code.find(patch.before)
-                if idx != -1 and patch.new_code.strip():
-                    return code[:idx] + patch.new_code + code[idx + len(patch.before):], True, "text_before_fallback"
-
-        if patch.type == "replace_import":
-            lines = code.splitlines()
-            new_lines: List[str] = []
-            replaced = False
-            for line in lines:
-                if patch.before and patch.before.strip() in line:
-                    if patch.after.strip():
-                        new_lines.append(patch.after)
-                    replaced = True
-                else:
-                    new_lines.append(line)
-            if not replaced and patch.new_code.strip():
-                new_lines.insert(0, patch.new_code.strip())
-                replaced = True
-            return "\n".join(new_lines) + ("\n" if code.endswith("\n") else ""), replaced, "replace_import"
-
-        if patch.type in {"replace_function", "replace_class", "replace_block"}:
-            target = patch.target.strip()
-            if not target:
-                return code, False, "empty_target"
-
-            pattern = re.compile(
-                rf"(^[ \t]*(?:async\s+def|def|class)\s+{re.escape(target)}\b[\s\S]*?)(?=^[ \t]*(?:async\s+def|def|class)\s+\w+\b|\Z)",
-                re.MULTILINE,
-            )
-            if patch.before.strip():
-                pattern = re.compile(re.escape(patch.before), re.MULTILINE | re.DOTALL)
-
-            match = pattern.search(code)
-            if not match:
-                return code, False, f"target_not_found:{target}"
+        if patch.type in {"replace_block", "replace_function", "replace_class"} and patch.before.strip():
+            idx = code.find(patch.before)
+            if idx == -1:
+                return code, False, "target_not_found"
             replacement = patch.new_code.strip()
             if not replacement:
                 return code, False, "empty_replacement"
-            new_code = code[: match.start()] + replacement + code[match.end() :]
-            return new_code, True, f"replaced:{target}"
-
-        if patch.type == "insert_before" and patch.before.strip():
-            idx = code.find(patch.before)
-            if idx == -1:
-                return code, False, "before_not_found"
-            return code[:idx] + patch.new_code + "\n" + code[idx:], True, "insert_before"
-
-        if patch.type == "insert_after" and patch.after.strip():
-            idx = code.find(patch.after)
-            if idx == -1:
-                return code, False, "after_not_found"
-            end = idx + len(patch.after)
-            return code[:end] + "\n" + patch.new_code + code[end:], True, "insert_after"
-
+            return code.replace(patch.before, replacement, 1), True, "text_replace"
         if patch.type == "delete" and patch.before.strip():
-            idx = code.find(patch.before)
-            if idx == -1:
+            if patch.before not in code:
                 return code, False, "delete_target_not_found"
-            return code.replace(patch.before, "", 1), True, "delete"
-
+            return code.replace(patch.before, "", 1), True, "deleted"
+        if patch.type == "replace_import" and patch.before.strip():
+            if patch.before not in code:
+                return code, False, "import_target_not_found"
+            return code.replace(patch.before, patch.after or patch.new_code, 1), True, "import_replaced"
         return code, False, f"unsupported_patch_type:{patch.type}"
 
     def _apply_plan(self, original: FileItem, plan: DraftResponse) -> ImprovementResult:
+        file_plan = next((fp for fp in plan.files if fp.path == original.path), None)
+        if file_plan is None:
+            file_plan = plan.files[0] if plan.files else None
+        if file_plan is None:
+            return ImprovementResult(
+                original_path=original.path,
+                proposed_path=original.path,
+                code=original.content,
+                language=original.language,
+                risk=0.0,
+                summary="",
+                strategy="default",
+            )
+
         current_code = original.content
         applied_any = False
         used_patches: List[PatchOperation] = []
 
-        for file_plan in plan.files:
-            if file_plan.path != original.path:
-                continue
-            if file_plan.action == "skip":
-                break
-
-            if file_plan.action == "replace_file" and file_plan.full_code.strip():
-                current_code = file_plan.full_code
-                applied_any = True
-                used_patches.extend(file_plan.patches)
-                break
-
-            for patch in file_plan.patches:
-                next_code, ok, _note = self._apply_patch_operation(original, current_code, patch)
-                if ok:
-                    current_code = next_code
+        if original.language == "python":
+            full = file_plan.full_code.strip()
+            if full:
+                # Для swarm_config.py требуем не менее 70% исходной длины
+                if "swarm_config" in original.path.lower():
+                    min_len = int(len(original.content) * 0.7)
+                else:
+                    # Для остальных файлов разрешаем значительные изменения (40% исходной длины)
+                    min_len = max(int(len(original.content) * 0.4), 50)
+                if len(full) >= min_len:
+                    current_code = full
                     applied_any = True
-                    used_patches.append(patch)
-
-            if (
-                not applied_any
-                and file_plan.full_code.strip()
-                and (original.language != "python" or self.allow_full_rewrite_python)
-            ):
+                else:
+                    logger.warning(
+                        "Full code too short for %s (%d < %d), discarding.",
+                        original.path, len(full), min_len,
+                    )
+        else:
+            if self.prefer_patch and file_plan.patches:
+                for patch in file_plan.patches:
+                    next_code, ok, _note = self._apply_non_python_patch_operation(current_code, patch)
+                    if ok:
+                        current_code = next_code
+                        applied_any = True
+                        used_patches.append(patch)
+            if not applied_any and file_plan.full_code.strip():
                 current_code = file_plan.full_code
                 applied_any = True
-                break
 
-        summary = plan.overall_summary or (plan.files[0].summary if plan.files else "")
-        tags: List[str] = []
-        for file_plan in plan.files:
-            tags.extend(file_plan.tags)
-        tags = list(dict.fromkeys([t for t in tags if t]))
-
+        summary = plan.overall_summary or file_plan.summary
+        tags = list(dict.fromkeys([str(t) for t in file_plan.tags if t]))
         return ImprovementResult(
             original_path=original.path,
             proposed_path=original.path,
             code=current_code,
             language=original.language,
-            risk=max((p.risk for p in plan.files), default=plan.overall_risk),
+            risk=max(0.0, min(1.0, file_plan.risk or plan.overall_risk)),
             summary=summary,
             memory_tags=tags,
             critique=plan.critique_notes,
@@ -798,7 +815,6 @@ class ImproverAgent:
             score += 10
         if result.validation.pytest_ok is True:
             score += 25
-
         score -= result.risk * 25.0
         score -= max(0.0, result.changed_lines_ratio - 0.25) * 30.0
         if result.summary:
@@ -822,7 +838,7 @@ class ImproverAgent:
             result.code,
             enable_validation=self.enable_validation,
             staging_dir=self.staging_dir,
-            max_changed_lines_ratio=MAX_CHANGED_LINES_RATIO,
+            max_changed_lines_ratio=self._allowed_changed_lines_ratio(result),
         )
         result.validation.pytest_ok = self.batch_pytest_ok
         if self.batch_pytest_ok is False:
@@ -834,11 +850,21 @@ class ImproverAgent:
         result.score = self._score_result(result)
 
     def _persist_result(self, original: FileItem, result: ImprovementResult) -> None:
+        original_fp = original.fingerprint
+        new_fp = fingerprint_text(result.code)
+
+        if new_fp == original_fp:
+            result.validation.notes.append("no_change")
+            result.validation.syntactically_valid = False
+            result.validation.compile_ok = False
+            logger.warning("No-op result detected for %s; quarantining as no_change.", original.path)
+
         success = (
             result.validation.syntactically_valid
             and result.validation.compile_ok
-            and result.score >= 15.0
-            and ("changed_too_much" not in result.validation.notes)
+            and result.score >= 12.0
+            and "changed_too_much" not in result.validation.notes
+            and "no_change" not in result.validation.notes
         )
 
         target_dir = self.output_dir if success else self.failed_dir
@@ -868,32 +894,38 @@ class ImproverAgent:
                 }
                 for patch in result.patches
             ],
-            "original_fingerprint": original.fingerprint,
-            "new_fingerprint": fingerprint_text(result.code),
+            "original_fingerprint": original_fp,
+            "new_fingerprint": new_fp,
             "timestamp": int(time.time()),
             "fallback_used": result.fallback_used,
-            "patch_only_python": self.patch_only_python,
-            "allow_full_rewrite_python": self.allow_full_rewrite_python,
+            "prefer_patch": self.prefer_patch,
         }
 
         try:
             output_path = safe_output_path(target_dir, result.proposed_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-
             stage_path = self.staging_dir / f"{Path(result.proposed_path).name}.{int(time.time())}.json"
             atomic_write_text(stage_path, json.dumps(meta, ensure_ascii=False, indent=2))
             atomic_write_text(output_path, result.code)
 
-            logger.info(
-                "%s %s (score=%s)",
-                "✅ Saved improved file:" if success else "☣️ Quarantined file:",
-                result.proposed_path,
-                result.score,
-            )
+            # Обновляем файл в workspace, если он активен
+            if self._using_workspace and success:
+                try:
+                    # Ищем соответствующий файл в рабочей папке
+                    ws_file = Path(self.workspace_dir) / result.original_path
+                    if not ws_file.exists():
+                        # fallback: ищем по имени файла
+                        ws_file = next(Path(self.workspace_dir).rglob(Path(result.original_path).name), None)
+                    if ws_file:
+                        ws_file.write_text(result.code, encoding="utf-8")
+                        logger.debug("Updated workspace file: %s", ws_file)
+                except Exception as ws_err:
+                    logger.warning("Failed to update workspace file %s: %s", result.original_path, ws_err)
+
+            logger.info("%s %s (score=%s)", "✅ Saved improved file:" if success else "☣️ Quarantined file:", result.proposed_path, result.score)
         except Exception as e:
             logger.error("Persist error for %s: %s", original.path, e)
             self.files_failed += 1
-            meta = {"error": str(e), "original_path": original.path}
 
         self.memory.record_episode(result)
         self.memory.record_file_outcome(original.path, result.score, success, meta=meta)
@@ -941,8 +973,7 @@ class ImproverAgent:
 
             result = self._apply_plan(item, plan)
             result.strategy = strategy
-            result.memory_tags = list(dict.fromkeys((result.memory_tags or []) + [strategy, item.language, "patch_first"]))
-
+            result.memory_tags = list(dict.fromkeys((result.memory_tags or []) + [strategy, item.language]))
             if self.enable_critique:
                 critique = await self._criticize_results([item], [result], context_hits, strategy)
                 if critique.critique:
@@ -996,3 +1027,17 @@ class ImproverAgent:
             logger.info("Saved proposals payload to %s", out)
         except Exception as e:
             logger.warning("Could not save proposals payload: %s", e)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--single-pass", action="store_true")
+    parser.add_argument("--proposals", action="store_true")
+    args = parser.parse_args()
+    node = ImproverAgent(single_pass=args.single_pass, proposals=args.proposals)
+    try:
+        asyncio.run(node.run())
+    except KeyboardInterrupt:
+        logger.info("ImproverAgent stopped.")
