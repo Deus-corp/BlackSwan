@@ -12,10 +12,10 @@ from typing import Any, Dict
 
 import pytest
 
-from src.swarms.overseer.collector import StateCollector
-from src.swarms.overseer.executor import ActionExecutor
-from src.swarms.overseer.models import OverseerDecision, SwarmSnapshot
-from src.swarms.overseer.policy import PolicyEngine
+from src.swarms.overseer.overseer_core.collector import StateCollector
+from src.swarms.overseer.overseer_core.executor import ActionExecutor
+from src.swarms.overseer.overseer_core.models import OverseerDecision, SwarmSnapshot
+from src.swarms.overseer.overseer_core.policy import PolicyEngine
 
 
 class FakeStateSource:

@@ -10,15 +10,17 @@ import re
 import textwrap
 import time
 import uuid
-import requests
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except Exception:  # pragma: no cover - optional dependency
+    genai = None  # type: ignore[assignment]
 
-from src.swarms.improver.memory import MemoryStore
-from src.swarms.improver.models import (
+from .improver_agent_core.memory import MemoryStore
+from .improver_agent_core.models import (
     CritiqueResponse,
     DraftResponse,
     FileItem,
@@ -27,7 +29,7 @@ from src.swarms.improver.models import (
     MemoryHit,
     PatchOperation,
 )
-from src.swarms.improver.prompting import (
+from .improver_agent_core.prompting import (
     build_critic_prompt,
     build_json_repair_prompt,
     build_non_python_prompt,
@@ -35,7 +37,7 @@ from src.swarms.improver.prompting import (
     build_python_prompt,
     safe_json_extract,
 )
-from src.swarms.improver.validation import (
+from .improver_agent_core.validation import (
     atomic_write_text,
     changed_line_ratio,
     extract_python_imports,
@@ -48,7 +50,6 @@ from src.swarms.improver.validation import (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s")
 logger = logging.getLogger("ImproverAgent")
-
 
 SCAN_DIRS = ["src", "adapters", "sim", "dashboard"]
 OUTPUT_DIR = Path("./data/improver_output")
@@ -78,8 +79,8 @@ SLEEP_BETWEEN_CYCLES = 3600
 MAX_CHANGED_LINES_RATIO = 0.35
 DEFAULT_MODEL_NAME = "gemini-3.1-flash-lite"
 CRITIC_MODEL_NAME = "gemini-3.1-flash-lite"
-DEFAULT_OPENROUTER_MODEL = "microsoft/phi-3-medium-128k-instruct"
-DEFAULT_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
+DEFAULT_DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 
 def _line_col_to_index(code: str, line: int, col: int) -> int:
@@ -113,7 +114,7 @@ def _replace_source_span(
 
 
 def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]:
-    """AST-first patching for Python. Used only as a fallback path for non-default/manual cases."""
+    """AST-first patching for Python. Used only as a fallback path."""
     try:
         tree = ast.parse(code)
     except SyntaxError as e:
@@ -127,7 +128,9 @@ def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]
     candidates: List[ast.AST] = []
     for node in ast.walk(tree):
         try:
-            if patch.type in {"replace_function", "replace_block"} and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if patch.type in {"replace_function", "replace_block"} and isinstance(
+                node, (ast.FunctionDef, ast.AsyncFunctionDef)
+            ):
                 if node.name == target and hasattr(node, "lineno") and hasattr(node, "end_lineno"):
                     candidates.append(node)
             elif patch.type in {"replace_class", "replace_block"} and isinstance(node, ast.ClassDef):
@@ -137,7 +140,8 @@ def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]
                 segment = ast.get_source_segment(code, node) or ""
                 aliases = getattr(node, "names", [])
                 if (patch.before.strip() and patch.before.strip() in segment) or any(
-                    target and (
+                    target
+                    and (
                         target == getattr(alias, "name", "")
                         or target == getattr(alias, "asname", "")
                         or target in segment
@@ -151,7 +155,7 @@ def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]
     if not candidates and patch.type == "replace_block" and patch.before.strip():
         idx = code.find(patch.before)
         if idx != -1:
-            return code[:idx] + replacement + code[idx + len(patch.before):], True, "text_block_fallback"
+            return code[:idx] + replacement + code[idx + len(patch.before) :], True, "text_block_fallback"
 
     if not candidates:
         return code, False, f"target_not_found:{target or patch.type}"
@@ -164,7 +168,14 @@ def _python_ast_patch(code: str, patch: PatchOperation) -> Tuple[str, bool, str]
     end_col = int(getattr(node, "end_col_offset", 0))
 
     if patch.type == "delete":
-        return _replace_source_span(code, start_line, start_col, end_line, end_col, ""), True, f"ast_deleted:{target or patch.type}"
+        return _replace_source_span(
+            code,
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+            "",
+        ), True, f"ast_deleted:{target or patch.type}"
 
     new_code = _replace_source_span(code, start_line, start_col, end_line, end_col, replacement)
     if new_code == code:
@@ -211,60 +222,64 @@ class ImproverAgent:
         self.files_failed = 0
         self.batch_pytest_ok: Optional[bool] = None
 
+        self.provider: str = "unknown"
         self.use_gemini = False
-
         self.use_deepseek = False
+
+        self.gemini_api_keys: List[str] = []
+        self.key_index = 0
+        self.model_name = DEFAULT_MODEL_NAME
+        self.critic_model_name = CRITIC_MODEL_NAME
+        self.api_model: Any = None
+        self.critic_model: Any = None
+
         self.deepseek_api_key = ""
-        self.deepseek_model = "deepseek-chat"
-        self.deepseek_api_url = "https://api.deepseek.com/v1/chat/completions"
+        self.deepseek_model = DEFAULT_DEEPSEEK_MODEL
+        self.deepseek_api_url = DEFAULT_DEEPSEEK_API_URL
 
         self.memory = MemoryStore(memory_db)
         self._setup_provider()
 
     def _setup_provider(self) -> None:
-        # 1) Gemini – основной провайдер
         gemini_keys_str = os.environ.get("GEMINI_API_KEYS", os.environ.get("GEMINI_API_KEY", ""))
         gemini_api_keys = [k.strip() for k in gemini_keys_str.split(",") if k.strip()]
         if gemini_api_keys:
+            self.provider = "gemini"
             self.use_gemini = True
             self.gemini_api_keys = gemini_api_keys
             self.key_index = 0
             self.model_name = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL_NAME)
             self.critic_model_name = os.environ.get("GEMINI_CRITIC_MODEL", CRITIC_MODEL_NAME)
             self._configure_next_gemini_key()
-            logger.info("🔑 Gemini API keys found: %d keys. Using model %s.", len(self.gemini_api_keys), self.model_name)
+            logger.info(
+                "🔑 Gemini API keys found: %d keys. Using model %s.",
+                len(self.gemini_api_keys),
+                self.model_name,
+            )
             return
 
-        # 2) DeepSeek (запасной, если Gemini недоступен)
-        ds_key = os.environ.get("DEEPSEEK_API_KEY", "")
+        ds_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
         if ds_key:
+            self.provider = "deepseek"
             self.use_deepseek = True
             self.deepseek_api_key = ds_key
-            self.deepseek_model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
-            self.deepseek_api_url = os.environ.get("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
+            self.deepseek_model = os.environ.get("DEEPSEEK_MODEL", DEFAULT_DEEPSEEK_MODEL)
+            self.deepseek_api_url = os.environ.get("DEEPSEEK_API_URL", DEFAULT_DEEPSEEK_API_URL)
             logger.info("🔑 DeepSeek API key found. Will use DeepSeek (model=%s).", self.deepseek_model)
             return
 
         raise ValueError("No Gemini or DeepSeek API keys found.")
 
     def _configure_next_gemini_key(self) -> None:
+        if genai is None:
+            raise RuntimeError("google-generativeai is not installed, but Gemini provider was selected.")
+        if not self.gemini_api_keys:
+            raise RuntimeError("No Gemini API keys configured.")
         key = self.gemini_api_keys[self.key_index % len(self.gemini_api_keys)]
         genai.configure(api_key=key)
         self.api_model = genai.GenerativeModel(self.model_name)
         self.critic_model = genai.GenerativeModel(self.critic_model_name)
         logger.info("🔑 Switched to Gemini API key index %s", self.key_index % len(self.gemini_api_keys))
-
-    def _rotate_openrouter_key(self) -> None:
-        if not self.openrouter_api_keys:
-            return
-        self.openrouter_key_index = (self.openrouter_key_index + 1) % len(self.openrouter_api_keys)
-        logger.info("🔄 Switched to OpenRouter key index %s", self.openrouter_key_index)
-
-    def _configure_next_openrouter_key(self) -> None:
-        if not self.openrouter_api_keys:
-            return
-        key = self.openrouter_api_keys[self.openrouter_key_index % len(self.openrouter_api_keys)]
-        # Ключ передаётся в заголовке при каждом запросе, отдельная конфигурация не нужна
 
     def _classify_error(self, err: str) -> str:
         e = err.lower()
@@ -289,8 +304,10 @@ class ImproverAgent:
         if self.use_deepseek:
             return await self._generate_deepseek(prompt, critic, max_retries=max_retries)
         return await self._generate_gemini(prompt, critic, max_retries=max_retries)
-    
+
     async def _generate_gemini(self, prompt: str, critic: bool = False, max_retries: int = 6) -> Optional[str]:
+        if self.api_model is None:
+            raise RuntimeError("Gemini model is not initialized.")
         model = self.critic_model if critic else self.api_model
         total_keys = max(1, len(self.gemini_api_keys))
 
@@ -300,6 +317,21 @@ class ImproverAgent:
                 text = getattr(response, "text", None)
                 if text:
                     return text.strip()
+
+                candidates = getattr(response, "candidates", None)
+                if candidates:
+                    parts: List[str] = []
+                    for candidate in candidates:
+                        content = getattr(candidate, "content", None)
+                        cand_parts = getattr(content, "parts", None) if content else None
+                        if cand_parts:
+                            for part in cand_parts:
+                                part_text = getattr(part, "text", None)
+                                if part_text:
+                                    parts.append(part_text)
+                    if parts:
+                        return "\n".join(parts).strip()
+
                 return None
             except Exception as e:
                 kind = self._classify_error(str(e))
@@ -324,25 +356,38 @@ class ImproverAgent:
                 logger.error("Gemini API error: %s", e)
                 await asyncio.sleep(min(30, 5 * (attempt + 1)))
         return None
-    
+
     async def _generate_deepseek(self, prompt: str, critic: bool = False, max_retries: int = 6) -> Optional[str]:
+        import requests
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.deepseek_api_key}",
         }
+        system_prompt = (
+            "You are a strict code reviewer. Return ONLY valid JSON."
+            if critic
+            else "You are a precise code improver. Return ONLY valid JSON."
+        )
         payload = {
             "model": self.deepseek_model,
             "messages": [
-                {"role": "system", "content": "You are a precise code improver. Return ONLY valid JSON."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
             "max_tokens": 16384,
             "temperature": 0.2,
-            "response_format": {"type": "json_object"},  # DeepSeek поддерживает
+            "response_format": {"type": "json_object"},
         }
         for attempt in range(max_retries):
             try:
-                resp = await asyncio.to_thread(requests.post, self.deepseek_api_url, json=payload, headers=headers, timeout=120)
+                resp = await asyncio.to_thread(
+                    requests.post,
+                    self.deepseek_api_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=120,
+                )
                 if resp.status_code == 429:
                     delay = 30 * (attempt + 1)
                     logger.warning("DeepSeek rate limited, retrying in %ss", delay)
@@ -361,28 +406,34 @@ class ImproverAgent:
 
         workspace_dir.mkdir(parents=True, exist_ok=True)
         copied = 0
+
         for scan_dir in self.scan_dirs:
-            if not os.path.isdir(scan_dir):
+            scan_path = Path(scan_dir)
+            if not scan_path.exists() or not scan_path.is_dir():
                 continue
-            for root, dirs, files in os.walk(scan_dir):
+
+            scan_label = str(scan_path) if not scan_path.is_absolute() else (scan_path.name or "root")
+            for root, dirs, files in os.walk(scan_path):
                 dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
                 for file in files:
                     src = os.path.join(root, file)
                     if self._should_skip(src):
                         continue
-                    rel = os.path.relpath(src, scan_dir)
-                    dst = workspace_dir / scan_dir / rel
+                    rel = os.path.relpath(src, scan_path)
+                    dst = workspace_dir / scan_label / rel
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(src, dst)
                     copied += 1
+
         logger.info("Prepared workspace: copied %s files to %s", copied, workspace_dir)
         self.scan_dirs = [str(workspace_dir)]
         self._using_workspace = True
 
     async def run(self) -> None:
         logger.info(
-            "🔧 Agent %s started (single_pass=%s, proposals=%s, validation=%s, critique=%s)",
+            "🔧 Agent %s started (provider=%s, single_pass=%s, proposals=%s, validation=%s, critique=%s)",
             self.node_id,
+            self.provider,
             self.single_pass,
             self.proposals,
             self.enable_validation,
@@ -392,6 +443,7 @@ class ImproverAgent:
         self.failed_dir.mkdir(parents=True, exist_ok=True)
         self.proposals_dir.mkdir(parents=True, exist_ok=True)
         self.staging_dir.mkdir(parents=True, exist_ok=True)
+
         if self.workspace_dir:
             self._prepare_workspace(self.workspace_dir)
 
@@ -425,9 +477,10 @@ class ImproverAgent:
 
         batch: List[str] = []
         for scan_dir in self.scan_dirs:
-            if not os.path.exists(scan_dir):
+            scan_path = Path(scan_dir)
+            if not scan_path.exists():
                 continue
-            for root, dirs, files in os.walk(scan_dir):
+            for root, dirs, files in os.walk(scan_path):
                 dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
                 for filename in sorted(files):
                     filepath = os.path.join(root, filename)
@@ -488,7 +541,9 @@ class ImproverAgent:
             hits.append(
                 MemoryHit(
                     kind="pattern",
-                    score=float(pattern.get("success_count", 0)) - float(pattern.get("failure_count", 0)) + float(pattern.get("last_score", 0.0)),
+                    score=float(pattern.get("success_count", 0))
+                    - float(pattern.get("failure_count", 0))
+                    + float(pattern.get("last_score", 0.0)),
                     payload=pattern,
                 )
             )
@@ -520,6 +575,18 @@ class ImproverAgent:
     def _non_python_plan_prompt(self, file_item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> str:
         return build_non_python_prompt(file_item, context_hits, strategy, prefer_patch=self.prefer_patch)
 
+    def _coerce_str_list(self, value: Any, limit: int = 50) -> List[str]:
+        if not isinstance(value, list):
+            return []
+        out: List[str] = []
+        for item in value[:limit]:
+            if item is None:
+                continue
+            text = str(item).strip()
+            if text:
+                out.append(text)
+        return out
+
     def _normalize_plan(self, raw_payload: Dict[str, Any]) -> DraftResponse:
         files: List[FilePatchPlan] = []
         raw_files = raw_payload.get("files", [])
@@ -529,12 +596,12 @@ class ImproverAgent:
         for item in raw_files:
             if not isinstance(item, dict):
                 continue
-            path = str(item.get("path", "") or "")
+            path = str(item.get("path", "") or "").strip()
             if not path:
                 continue
 
-            patches: List[PatchOperation] = []
             raw_patches = item.get("patches", [])
+            patches: List[PatchOperation] = []
             if isinstance(raw_patches, list):
                 for p in raw_patches:
                     if not isinstance(p, dict):
@@ -556,23 +623,38 @@ class ImproverAgent:
                     except Exception:
                         continue
 
+            full_code = str(item.get("code", item.get("full_code", "")) or "")
+            raw_action = str(item.get("action", "") or "").strip().lower()
+            if raw_action not in {"patch", "replace_file", "skip"}:
+                raw_action = "patch" if patches and not full_code.strip() else "replace_file"
+
+            try:
+                risk = float(item.get("risk", 0.0) or 0.0)
+            except Exception:
+                risk = 0.0
+
             files.append(
                 FilePatchPlan(
                     path=path,
-                    action=str(item.get("action", "replace_file") or "replace_file"),
+                    action=raw_action,  # type: ignore[arg-type]
                     summary=str(item.get("summary", "") or ""),
-                    risk=float(item.get("risk", 0.0) or 0.0),
-                    tags=[str(t) for t in (item.get("tags", []) if isinstance(item.get("tags", []), list) else [])],
+                    risk=risk,
+                    tags=self._coerce_str_list(item.get("tags", []), limit=25),
                     patches=patches,
-                    full_code=str(item.get("code", "") or ""),
+                    full_code=full_code,
                     notes=str(item.get("notes", "") or ""),
                 )
             )
 
+        try:
+            overall_risk = float(raw_payload.get("overall_risk", 0.0) or 0.0)
+        except Exception:
+            overall_risk = 0.0
+
         return DraftResponse(
             files=files,
             overall_summary=str(raw_payload.get("overall_summary", "") or ""),
-            overall_risk=float(raw_payload.get("overall_risk", 0.0) or 0.0),
+            overall_risk=overall_risk,
             should_repair=bool(raw_payload.get("should_repair", False)),
             critique_notes=str(raw_payload.get("critique_notes", "") or ""),
         )
@@ -583,8 +665,17 @@ class ImproverAgent:
             return parsed
         return None
 
-    async def _draft_for_file(self, item: FileItem, context_hits: Sequence[MemoryHit], strategy: str) -> Optional[DraftResponse]:
-        prompt = self._python_plan_prompt(item, context_hits, strategy) if item.language == "python" else self._non_python_plan_prompt(item, context_hits, strategy)
+    async def _draft_for_file(
+        self,
+        item: FileItem,
+        context_hits: Sequence[MemoryHit],
+        strategy: str,
+    ) -> Optional[DraftResponse]:
+        prompt = (
+            self._python_plan_prompt(item, context_hits, strategy)
+            if item.language == "python"
+            else self._non_python_plan_prompt(item, context_hits, strategy)
+        )
         text = await self._generate_with_retry(prompt)
         if not text:
             return None
@@ -628,9 +719,13 @@ class ImproverAgent:
             blocking = []
         if not isinstance(non_blocking, list):
             non_blocking = []
+        try:
+            overall_risk = float(raw_payload.get("overall_risk", 0.0) or 0.0)
+        except Exception:
+            overall_risk = 0.0
         return CritiqueResponse(
             approved=bool(raw_payload.get("approved", False)),
-            overall_risk=float(raw_payload.get("overall_risk", 0.0) or 0.0),
+            overall_risk=overall_risk,
             blocking_issues=[str(x) for x in blocking[:20]],
             non_blocking_suggestions=[str(x) for x in non_blocking[:20]],
             preferred_action=str(raw_payload.get("preferred_action", "") or ""),
@@ -678,6 +773,17 @@ class ImproverAgent:
             if patch.before not in code:
                 return code, False, "import_target_not_found"
             return code.replace(patch.before, patch.after or patch.new_code, 1), True, "import_replaced"
+        if patch.type == "insert_before" and patch.before.strip():
+            idx = code.find(patch.before)
+            if idx == -1:
+                return code, False, "insert_before_target_not_found"
+            return code[:idx] + (patch.new_code or "") + code[idx:], True, "insert_before"
+        if patch.type == "insert_after" and patch.after.strip():
+            idx = code.find(patch.after)
+            if idx == -1:
+                return code, False, "insert_after_target_not_found"
+            insert_at = idx + len(patch.after)
+            return code[:insert_at] + (patch.new_code or "") + code[insert_at:], True, "insert_after"
         return code, False, f"unsupported_patch_type:{patch.type}"
 
     def _apply_plan(self, original: FileItem, plan: DraftResponse) -> ImprovementResult:
@@ -704,6 +810,20 @@ class ImproverAgent:
             if full:
                 current_code = full
                 applied_any = True
+            else:
+                return ImprovementResult(
+                    original_path=original.path,
+                    proposed_path=original.path,
+                    code=original.content,
+                    language=original.language,
+                    risk=max(0.0, min(1.0, file_plan.risk or plan.overall_risk)),
+                    summary=file_plan.summary or plan.overall_summary,
+                    memory_tags=self._coerce_str_list(file_plan.tags, limit=25),
+                    critique=plan.critique_notes,
+                    strategy="default",
+                    patches=[],
+                    fallback_used=True,
+                )
         else:
             if self.prefer_patch and file_plan.patches:
                 for patch in file_plan.patches:
@@ -772,7 +892,11 @@ class ImproverAgent:
         result.validation.pytest_ok = self.batch_pytest_ok
         if self.batch_pytest_ok is False:
             result.validation.notes.append("pytest_failed")
-        result.validation.patch_applied_ok = bool(result.patches) or result.fallback_used
+        result.validation.patch_applied_ok = (
+            bool(result.patches)
+            or result.fallback_used
+            or result.code != original.content
+        )
         if result.fallback_used:
             result.validation.notes.append("fallback_used")
         result.changed_lines_ratio = changed_line_ratio(original.content, result.code)
@@ -839,16 +963,24 @@ class ImproverAgent:
 
             if self._using_workspace and success:
                 try:
-                    ws_file = Path(self.workspace_dir) / result.original_path
-                    if not ws_file.exists():
-                        ws_file = next(Path(self.workspace_dir).rglob(Path(result.original_path).name), None)
-                    if ws_file:
-                        ws_file.write_text(result.code, encoding="utf-8")
-                        logger.debug("Updated workspace file: %s", ws_file)
+                    ws_root = Path(self.workspace_dir) if self.workspace_dir else None
+                    if ws_root is not None:
+                        original_path = Path(result.original_path)
+                        ws_file = ws_root / original_path if not original_path.is_absolute() else ws_root / original_path.name
+                        if not ws_file.exists():
+                            ws_file = next(ws_root.rglob(original_path.name), None)
+                        if ws_file:
+                            ws_file.write_text(result.code, encoding="utf-8")
+                            logger.debug("Updated workspace file: %s", ws_file)
                 except Exception as ws_err:
                     logger.warning("Failed to update workspace file %s: %s", result.original_path, ws_err)
 
-            logger.info("%s %s (score=%s)", "✅ Saved improved file:" if success else "☣️ Quarantined file:", result.proposed_path, result.score)
+            logger.info(
+                "%s %s (score=%s)",
+                "✅ Saved improved file:" if success else "☣️ Quarantined file:",
+                result.proposed_path,
+                result.score,
+            )
         except Exception as e:
             logger.error("Persist error for %s: %s", original.path, e)
             self.files_failed += 1

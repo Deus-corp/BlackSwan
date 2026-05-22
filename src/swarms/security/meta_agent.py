@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Security MetaAgent – policy-aware coordinator using shared security runtime."""
+"""Production-ready Security MetaAgent.
+
+Responsibilities:
+- Aggregate swarm-wide security signals
+- Evaluate policy state
+- Coordinate security nodes
+- Emit CRDT-compatible commands
+- Maintain event lineage
+- Operate safely under partial failures
+"""
 
 from __future__ import annotations
 
@@ -10,186 +19,305 @@ import time
 import uuid
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.intelligence.llm_client import LLMClient
 from swarm_config import config
 
-from src.swarms.security.shared_runtime import (
-    SecurityMemory,
-    SecurityPolicy,
-    SecurityCommand,
-    new_gid,
-    now_ts,
-    parse_json_loose,
-    prompt_hash,
+from src.swarms.security.meta_agent_core import (
+    SecurityDecision,
+    SecurityMetaPolicy,
+    SecurityStrategist,
 )
 
-# Configure logging
+from src.swarms.security.node_core import (
+    SecurityCommand,
+    SecurityMemory,
+    make_security_command,
+    new_gid,
+    now_ts,
+)
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
 )
+
 logger = logging.getLogger("SecurityMetaAgent")
 
-# Constants
-LLM_MAX_TOKENS = 120
-LLM_TEMPERATURE = 0.1
+
+MAIN_LOOP_SLEEP = 1.0
+MAX_BACKOFF_SECONDS = 30.0
+
 
 class SecurityMetaAgent:
-    """Aggregates security signals and emits policy commands."""
+    """Top-level coordinator for the security swarm."""
 
-    def __init__(self, node_id: Optional[str] = None, memory_db: Path = Path("./data/security_meta_memory.sqlite3")) -> None:
+    def __init__(
+        self,
+        node_id: Optional[str] = None,
+        memory_db: Path = Path("./data/security_meta_memory.sqlite3"),
+    ) -> None:
         self.node_id = node_id or f"sec-meta-{uuid.uuid4().hex[:8]}"
-        self.llm = LLMClient(n_ctx=4096)
-        self.crdt = CRDTAdapter(node_id=self.node_id, db_path=config.crdt_db_path)
+
+        self.crdt = CRDTAdapter(
+            node_id=self.node_id,
+            db_path=config.crdt_db_path,
+        )
+
         self.memory = SecurityMemory(memory_db)
-        self.policy = SecurityPolicy.from_env()
+
+        self.llm = LLMClient(n_ctx=4096)
+
+        self.policy = SecurityMetaPolicy.from_env()
+
+        self.strategist = SecurityStrategist(
+            node_id=self.node_id,
+            memory=self.memory,
+            policy=self.policy,
+            llm=self.llm,
+        )
+
         self.step = 0
-        self.idle_backoff_s = 1.0
+        self.idle_backoff_s = MAIN_LOOP_SLEEP
+
         logger.info("🔐 SecurityMetaAgent initialized: %s", self.node_id)
 
     async def run(self) -> None:
-        """Main orchestration loop for security analysis."""
-        logger.info("🔐 SecurityMetaAgent %s started", self.node_id)
+        """Main orchestration loop."""
+
+        logger.info("🔐 SecurityMetaAgent started: %s", self.node_id)
+
         while True:
             self.step += 1
+
             try:
                 did_work = await self.reflect()
-                self.idle_backoff_s = 1.0 if did_work else min(self.idle_backoff_s * 1.5, 30.0)
+
+                if did_work:
+                    self.idle_backoff_s = MAIN_LOOP_SLEEP
+                else:
+                    self.idle_backoff_s = min(
+                        self.idle_backoff_s * 1.5,
+                        MAX_BACKOFF_SECONDS,
+                    )
+
+            except asyncio.CancelledError:
+                raise
+
             except Exception as e:
-                logger.error("SecurityMetaAgent loop error: %s", e, exc_info=True)
-                self.idle_backoff_s = min(self.idle_backoff_s * 2.0, 60.0)
+                logger.error(
+                    "SecurityMetaAgent loop failure: %s",
+                    e,
+                    exc_info=True,
+                )
+
+                self.idle_backoff_s = min(
+                    self.idle_backoff_s * 2.0,
+                    MAX_BACKOFF_SECONDS,
+                )
+
             await asyncio.sleep(self.idle_backoff_s)
 
     async def reflect(self) -> bool:
-        """Collects signals and evaluates security policy."""
-        heartbeats = self._collect_heartbeats_from_crdt()
-        incidents = self._collect_incidents_from_crdt()
-        if not heartbeats and not incidents:
+        """Collect swarm state and evaluate policy."""
+
+        heartbeats = self._collect_heartbeats()
+        incidents = self._collect_incidents()
+        commands = self._collect_commands()
+
+        if not heartbeats and not incidents and not commands:
             return False
 
-        decision = self._evaluate_policy(heartbeats, incidents)
-        self.memory.record_policy_decision(**decision)
-        self.memory.record_event_chain(
-            event_gid=decision["event_gid"],
-            parent_gid=decision.get("parent_gid"),
-            source_gid=decision["event_gid"],
-            event_type="policy_evaluated",
-            action=decision["decision"],
-            status="evaluated",
-            details={"confidence": decision["confidence"], "rationale": decision["rationale"]},
-            provenance=decision["provenance"],
+        decision = await self.strategist.evaluate(
+            heartbeats=heartbeats,
+            incidents=incidents,
+            commands=commands,
         )
 
-        if decision["decision"] in {"UNBLOCK_ALL", "PARTIAL_UNBLOCK", "EMERGENCY_FLUSH_INPUT"}:
+        self._persist_decision(decision)
+
+        if decision.command_required:
             await self._issue_command(decision)
+
         return True
 
-    def _collect_heartbeats_from_crdt(self) -> List[Dict[str, Any]]:
-        """Processes security heartbeats from the shared CRDT state."""
-        heartbeats = []
-        for v in self.crdt.state.values():
-            if isinstance(v, dict) and v.get("type") == "security_heartbeat":
-                node_id = str(v.get("node_id") or v.get("gid") or "").strip()
-                if node_id:
-                    hb = {
-                        "node_id": node_id,
-                        "source_gid": str(v.get("gid") or node_id),
-                        "blocked_ips": int(v.get("blocked_ips", 0) or 0),
-                        "status": str(v.get("status", "") or ""),
-                        "timestamp": float(v.get("timestamp", 0.0) or 0.0),
-                        "provenance": v.get("provenance") if isinstance(v.get("provenance"), dict) else {},
-                    }
-                    heartbeats.append(hb)
-        return heartbeats
+    def _collect_heartbeats(self) -> List[Dict[str, Any]]:
+        """Collect active node heartbeats from CRDT."""
 
-    def _collect_incidents_from_crdt(self) -> List[Dict[str, Any]]:
-        """Processes security incidents from the shared CRDT state."""
-        incidents = []
-        for v in self.crdt.state.values():
-            if isinstance(v, dict) and v.get("type") in {"file_integrity_alert", "vulnerability_alert", "open_ports_detected", "ip_blocked", "all_ips_unblocked"}:
-                gid = str(v.get("gid") or new_gid("sec_inc"))
-                incident = {
-                    "event_gid": gid,
-                    "source_gid": str(v.get("source_gid") or gid),
-                    "parent_gid": str(v.get("parent_gid") or "") or None,
-                    "incident_type": str(v.get("type")),
-                    "severity": self._severity_for_incident(v),
-                    "details": {k: v[k] for k in v.keys() if k not in {"type", "gid", "timestamp"}},
-                    "timestamp": float(v.get("timestamp", 0.0) or 0.0),
-                    "provenance": v.get("provenance") if isinstance(v.get("provenance"), dict) else {},
-                }
-                incidents.append(incident)
-        return incidents
+        result: List[Dict[str, Any]] = []
 
-    def _severity_for_incident(self, v: Dict[str, Any]) -> float:
-        t = str(v.get("type", ""))
-        if t == "file_integrity_alert": return 0.95
-        if t == "vulnerability_alert": return min(1.0, 0.6 + 0.05 * len(v.get("vulnerabilities", [])))
-        if t == "open_ports_detected": return min(1.0, 0.4 + 0.05 * len(v.get("ports", [])))
-        if t == "ip_blocked": return 0.2
-        if t == "all_ips_unblocked": return 0.85
-        return 0.5
+        for value in self.crdt.state.values():
+            if not isinstance(value, dict):
+                continue
 
-    def _evaluate_policy(self, heartbeats: List[Dict[str, Any]], incidents: List[Dict[str, Any]]) -> Dict[str, Any]:
-        blocked_ips = sum(int(h.get("blocked_ips", 0)) for h in heartbeats)
-        max_severity = max((float(i.get("severity", 0.0)) for i in incidents), default=0.0)
-        stale_nodes = sum(1 for h in heartbeats if time.time() - float(h.get("timestamp", 0.0) or 0.0) > self.policy.heartbeat_staleness_seconds)
+            if value.get("type") != "security_heartbeat":
+                continue
 
-        if incidents and max_severity >= 0.9 and self.policy.allow_emergency_flush_input and blocked_ips < self.policy.max_blocked_ips_soft:
-            decision, confidence, rationale = "EMERGENCY_FLUSH_INPUT", 0.9, "High severity incident detected with manual override capabilities."
-        elif len(heartbeats) >= self.policy.unblock_threshold_heartbeats and blocked_ips <= self.policy.max_blocked_ips_soft and stale_nodes == 0:
-            decision, confidence, rationale = ("UNBLOCK_ALL" if self.policy.allow_global_unblock else "MAINTAIN"), 0.8, "System stable."
-        else:
-            decision, confidence, rationale = "MAINTAIN", 0.84, "Standard operating state."
+            result.append(value)
 
-        prompt = self._build_llm_prompt(len(heartbeats), blocked_ips, stale_nodes, max_severity, decision, rationale)
-        if self.policy.require_llm_confirmation:
-            response = self.llm.generate(prompt, max_tokens=LLM_MAX_TOKENS, temperature=LLM_TEMPERATURE)
-            parsed = parse_json_loose(response or "")
-            if isinstance(parsed, dict):
-                decision = str(parsed.get("decision", decision)).upper()
-                confidence = float(parsed.get("confidence", confidence))
-                rationale = str(parsed.get("rationale", rationale))
+            try:
+                self.memory.upsert_heartbeat(
+                    node_id=str(value.get("node_id", "unknown")),
+                    source_gid=str(value.get("gid", "")),
+                    blocked_ips=int(value.get("blocked_ips", 0)),
+                    status=str(value.get("status", "unknown")),
+                    provenance=value.get("provenance", {}),
+                )
+            except Exception as e:
+                logger.warning("Failed heartbeat persistence: %s", e)
 
-        return {
-            "event_gid": new_gid("sec_policy"),
-            "parent_gid": None,
-            "decision": decision,
-            "confidence": confidence,
-            "rationale": rationale,
-            "model_name": getattr(self.llm, "model_name", "llm"),
-            "prompt_hash": prompt_hash(prompt),
-            "provenance": {"agent": self.node_id, "policy": asdict(self.policy)}
+        return result
+
+    def _collect_incidents(self) -> List[Dict[str, Any]]:
+        """Collect incident signals from CRDT."""
+
+        incident_types = {
+            "file_integrity_alert",
+            "vulnerability_alert",
+            "open_ports_detected",
+            "ip_blocked",
+            "integrity_alert",
+            "threat_detected",
         }
 
-    def _build_llm_prompt(self, hc: int, bi: int, sn: int, sev: float, d: str, r: str) -> str:
-        return json.dumps({
-            "task": "Verify security posture.",
-            "status": {"hc": hc, "blocked_ips": bi, "stale": sn, "severity": sev, "proposed": d, "rationale": r},
-            "output_schema": {"decision": "str", "confidence": "float", "rationale": "str"}
-        })
+        result: List[Dict[str, Any]] = []
 
-    async def _issue_command(self, decision: Dict[str, Any]) -> None:
-        command_gid = new_gid("sec_cmd")
-        cmd: SecurityCommand = {
-            "type": "sec_command",
-            "event_type": "command_issued",
-            "gid": command_gid,
-            "source_gid": decision["event_gid"],
-            "parent_gid": decision.get("parent_gid"),
-            "timestamp": time.time(),
-            "expires_at": now_ts() + 600,
-            "provenance": {"agent": self.node_id},
-            "data": {"action": decision["decision"], "rationale": decision["rationale"]}
-        }
+        for value in self.crdt.state.values():
+            if not isinstance(value, dict):
+                continue
+
+            event_type = str(value.get("type", ""))
+
+            if event_type not in incident_types:
+                continue
+
+            result.append(value)
+
+            try:
+                self.memory.record_incident(
+                    event_gid=str(value.get("gid") or new_gid("sec_evt")),
+                    source_gid=str(value.get("source_gid") or self.node_id),
+                    parent_gid=value.get("parent_gid"),
+                    incident_type=event_type,
+                    severity=float(value.get("severity", 0.5)),
+                    details=value,
+                    provenance=value.get("provenance", {}),
+                )
+            except Exception as e:
+                logger.warning("Incident persistence failed: %s", e)
+
+        return result
+
+    def _collect_commands(self) -> List[Dict[str, Any]]:
+        """Collect issued commands for coordination awareness."""
+
+        result: List[Dict[str, Any]] = []
+
+        for value in self.crdt.state.values():
+            if not isinstance(value, dict):
+                continue
+
+            if value.get("type") != "sec_command":
+                continue
+
+            result.append(value)
+
+        return result
+
+    def _persist_decision(self, decision: SecurityDecision) -> None:
+        """Persist evaluated decision into memory."""
+
+        self.memory.record_policy_decision(
+            event_gid=decision.event_gid,
+            parent_gid=decision.parent_gid,
+            decision=decision.decision,
+            confidence=decision.confidence,
+            rationale=decision.rationale,
+            model_name=decision.model_name,
+            prompt_hash=decision.prompt_hash,
+            provenance=decision.provenance,
+        )
+
+        self.memory.record_event_chain(
+            event_gid=decision.event_gid,
+            parent_gid=decision.parent_gid,
+            source_gid=self.node_id,
+            event_type="policy_evaluated",
+            action=decision.decision,
+            status="evaluated",
+            details={
+                "confidence": decision.confidence,
+                "rationale": decision.rationale,
+            },
+            provenance=decision.provenance,
+        )
+
+    async def _issue_command(self, decision: SecurityDecision) -> None:
+        """Issue distributed command to the swarm."""
+
+        cmd: SecurityCommand = make_security_command(
+            action=decision.decision,
+            source_gid=self.node_id,
+            parent_gid=decision.event_gid,
+            expires_at=now_ts() + self.policy.command_ttl_seconds,
+            provenance={
+                "agent": self.node_id,
+                "confidence": decision.confidence,
+                "strategy": decision.rationale,
+            },
+            data={
+                "decision": decision.decision,
+                "confidence": decision.confidence,
+                "rationale": decision.rationale,
+            },
+        )
+
         await self.crdt.add_genome(cmd)
-        logger.info("🔐 Issued security command: %s", decision["decision"])
+
+        self.memory.record_command(
+            event_gid=cmd["gid"],
+            parent_gid=decision.event_gid,
+            command_type="security_command",
+            target_node_id=None,
+            action=decision.decision,
+            expires_at=int(cmd["expires_at"]),
+            provenance=cmd["provenance"],
+        )
+
+        self.memory.record_event_chain(
+            event_gid=cmd["gid"],
+            parent_gid=decision.event_gid,
+            source_gid=self.node_id,
+            event_type="command_issued",
+            action=decision.decision,
+            status="issued",
+            details=cmd["data"],
+            provenance=cmd["provenance"],
+        )
+
+        logger.info(
+            "🔐 Issued command: %s | confidence=%.2f",
+            decision.decision,
+            decision.confidence,
+        )
+
+
+async def main() -> None:
+    agent = SecurityMetaAgent()
+    await agent.run()
+
 
 if __name__ == "__main__":
     try:
-        asyncio.run(SecurityMetaAgent().run())
+        asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("SecurityMetaAgent stopped.")
+        logger.info("SecurityMetaAgent interrupted by user.")
+    except Exception as e:
+        logger.critical(
+            "Fatal SecurityMetaAgent error: %s",
+            e,
+            exc_info=True,
+        )

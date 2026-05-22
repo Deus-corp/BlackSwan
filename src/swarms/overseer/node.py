@@ -7,17 +7,24 @@ import logging
 import os
 import time
 import uuid
-from typing import Final, Dict, Any, Optional
+from typing import Any, Final, Optional
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.intelligence.llm_client import LLMClient
 from swarm_config import config
 
-from src.swarms.overseer.collector import StateCollector
-from src.swarms.overseer.models import OverseerDecision, SwarmSnapshot
-from src.swarms.overseer.executor import ActionExecutor
-from src.swarms.overseer.policy import PolicyEngine
-from src.swarms.overseer.strategist import LLMStrategist
+try:
+    from .overseer_core.collector import StateCollector
+    from .overseer_core.executor import ActionExecutor
+    from .overseer_core.models import OverseerDecision, SwarmSnapshot
+    from .overseer_core.policy import PolicyEngine
+    from .overseer_core.strategist import LLMStrategist
+except ImportError:  # pragma: no cover - fallback for direct execution
+    from src.swarms.overseer.overseer_core.collector import StateCollector
+    from src.swarms.overseer.overseer_core.executor import ActionExecutor
+    from src.swarms.overseer.overseer_core.models import OverseerDecision, SwarmSnapshot
+    from src.swarms.overseer.overseer_core.policy import PolicyEngine
+    from src.swarms.overseer.overseer_core.strategist import LLMStrategist
 
 logger: Final = logging.getLogger(__name__)
 
@@ -30,9 +37,17 @@ class OverseerNode:
     """Orchestrates collection, policy, LLM strategy, and execution for the swarm."""
 
     __slots__ = (
-        "node_id", "coordination_interval_seconds", "llm", "crdt", 
-        "collector", "policy", "strategist", "executor", 
-        "_next_coordination_at", "_coordinate_lock", "_failure_backoff_seconds"
+        "node_id",
+        "coordination_interval_seconds",
+        "llm",
+        "crdt",
+        "collector",
+        "policy",
+        "strategist",
+        "executor",
+        "_next_coordination_at",
+        "_coordinate_lock",
+        "_failure_backoff_seconds",
     )
 
     def __init__(
@@ -41,13 +56,13 @@ class OverseerNode:
         coordination_interval_seconds: Optional[int] = None,
     ) -> None:
         self.node_id = node_id or f"overseer-{uuid.uuid4().hex[:8]}"
-        
+
         interval = coordination_interval_seconds or int(
             os.environ.get("OVERSEER_COORDINATION_INTERVAL_SECONDS", DEFAULT_COORDINATION_INTERVAL_SECONDS)
         )
         if interval <= 0:
             raise ValueError("coordination_interval_seconds must be positive")
-        
+
         self.coordination_interval_seconds = interval
 
         self.llm = LLMClient(n_ctx=8192)
@@ -79,7 +94,9 @@ class OverseerNode:
                             self._failure_backoff_seconds * 2,
                             MAX_FAILURE_BACKOFF_SECONDS,
                         )
+
                 await asyncio.sleep(1.0)
+
         except asyncio.CancelledError:
             logger.info("Overseer %s shutting down.", self.node_id)
             raise
@@ -98,28 +115,50 @@ class OverseerNode:
                 snapshot = self.collector.collect()
                 hard_rules = self.policy.evaluate_hard_rules(snapshot)
                 llm_suggestions = await self.strategist.suggest(snapshot)
-                
+
                 if not isinstance(llm_suggestions, dict):
                     raise TypeError("Expected dict from LLMStrategist")
 
                 decision = self.policy.merge(hard_rules, llm_suggestions)
                 self._log_cycle(snapshot, hard_rules, decision, llm_suggestions)
-                
+
                 await self.executor.apply(snapshot, decision, started_at)
                 return True
-            except Exception as e:
-                logger.error("Coordination cycle failed: %s", e)
+
+            except Exception as exc:
+                logger.error("Coordination cycle failed: %s", exc, exc_info=True)
                 return False
 
     def _log_cycle(
-        self, snapshot: SwarmSnapshot, hard_rules: OverseerDecision, 
-        decision: OverseerDecision, llm_suggestions: Dict[str, Any]
+        self,
+        snapshot: SwarmSnapshot,
+        hard_rules: OverseerDecision,
+        decision: OverseerDecision,
+        llm_suggestions: dict[str, Any],
     ) -> None:
         """Observability helper for logging state transitions."""
-        logger.info("Snapshot: nodes_t=%d, cap=%.2f, fitness=%.4f", 
-                    len(snapshot.trade_nodes), snapshot.trade_capital, snapshot.trade_fitness)
-        logger.info("Decision: source=%s, confidence=%.2f, reason=%s", 
-                    decision.source, decision.confidence, decision.reason)
+        logger.info(
+            "Snapshot: trade_nodes=%d, capital=%.2f, dq=%.4f, fitness=%.4f, security_nodes=%d, explorer_nodes=%d",
+            snapshot.trade_nodes,
+            snapshot.trade_capital,
+            snapshot.trade_dq,
+            snapshot.trade_fitness,
+            snapshot.security_nodes,
+            snapshot.explorer_nodes,
+        )
+        logger.info(
+            "Hard rules: source=%s, confidence=%.2f, reason=%s",
+            hard_rules.source,
+            hard_rules.confidence,
+            hard_rules.reason,
+        )
+        logger.info(
+            "Decision: source=%s, confidence=%.2f, reason=%s, llm_suggestions=%s",
+            decision.source,
+            decision.confidence,
+            decision.reason,
+            llm_suggestions,
+        )
 
 
 def main() -> None:
@@ -133,5 +172,5 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         pass
-    except Exception as e:
-        logging.critical("Fatal startup error: %s", e, exc_info=True)
+    except Exception as exc:
+        logging.critical("Fatal startup error: %s", exc, exc_info=True)

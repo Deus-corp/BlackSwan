@@ -1,24 +1,9 @@
-"""Initialization for the improver package.
-
-This module exposes core components for the swarms improver subsystem,
-providing standardized interfaces for file-based improvements, memory
-management, and agentic workflows.
-"""
-
-from src.swarms.improver.improver_agent import ImproverAgent
-from src.swarms.improver.memory import MemoryStore
-from src.swarms.improver.models import (
+# /src/swarms/improver/__init__.py
+from .improver_agent import ImproverAgent
+from .improver_agent_core.memory import MemoryStore
+from .improver_agent_core.models import (
     FileItem,
     ImprovementResult,
     MemoryHit,
     ValidationResult,
 )
-
-__all__ = [
-    "FileItem",
-    "ImprovementResult",
-    "MemoryHit",
-    "ValidationResult",
-    "MemoryStore",
-    "ImproverAgent",
-]
