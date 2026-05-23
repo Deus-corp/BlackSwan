@@ -1,9 +1,16 @@
-# /src/swarms/improver/__init__.py
+#!/usr/bin/env python3
+"""Improver swarm package.
+
+The Improver is a maintenance/code-improvement swarm.
+
+Public entrypoint:
+- ImproverAgent
+"""
+
+from __future__ import annotations
+
 from .improver_agent import ImproverAgent
-from .improver_agent_core.memory import MemoryStore
-from .improver_agent_core.models import (
-    FileItem,
-    ImprovementResult,
-    MemoryHit,
-    ValidationResult,
-)
+
+__all__ = [
+    "ImproverAgent",
+]

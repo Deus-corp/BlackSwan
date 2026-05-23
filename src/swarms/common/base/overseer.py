@@ -43,13 +43,26 @@ import logging
 import os
 import signal
 import socket
-import time
-import uuid
+
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Mapping, Optional, Sequence
 
 from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
+
+from src.swarms.common.utils import (
+    expires_in,
+    new_gid,
+    new_overseer_id,
+    summarize_value,
+    utc_ts,
+)
+
+from src.swarms.common.protocols import (
+    make_swarm_command,
+    make_swarm_event,
+    make_swarm_heartbeat,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +113,7 @@ class OverseerHealth:
     """Mutable health state for a running overseer."""
 
     status: str = "initializing"
-    started_at: float = field(default_factory=time.time)
+    started_at: float = field(default_factory=utc_ts)
 
     last_coordinate_at: float = 0.0
     last_collect_at: float = 0.0
@@ -129,7 +142,7 @@ class OverseerHealth:
 
     @property
     def uptime_seconds(self) -> float:
-        return max(0.0, time.time() - self.started_at)
+        return max(0.0, utc_ts() - self.started_at)
 
 
 @dataclass(slots=True)
@@ -185,10 +198,10 @@ class BaseSwarmOverseer:
 
     @staticmethod
     def _build_overseer_id() -> str:
-        return f"overseer-{uuid.uuid4().hex[:8]}"
+        return new_overseer_id()
 
     def new_gid(self, prefix: str = "evt") -> str:
-        return f"overseer_{prefix}_{uuid.uuid4().hex}"
+        return new_gid(prefix, namespace="overseer")
 
     # ------------------------------------------------------------------
     # Public lifecycle
@@ -279,11 +292,11 @@ class BaseSwarmOverseer:
     async def coordination_loop(self) -> None:
         """Main global orchestration loop."""
         while not self.shutdown_event.is_set():
-            started_at = time.time()
+            started_at = utc_ts()
 
             try:
                 await self.coordinate()
-                self.health.last_coordinate_at = time.time()
+                self.health.last_coordinate_at = utc_ts()
                 self.health.consecutive_coordinate_failures = 0
             except asyncio.CancelledError:
                 raise
@@ -293,7 +306,7 @@ class BaseSwarmOverseer:
                 self.logger.error("coordinate failed: %s", exc, exc_info=True)
                 await self.on_coordinate_error(exc)
 
-            elapsed = time.time() - started_at
+            elapsed = utc_ts() - started_at
             sleep_for = max(0.0, self.config.coordination_interval_seconds - elapsed)
 
             try:
@@ -320,7 +333,7 @@ class BaseSwarmOverseer:
     async def _safe_collect_all_swarms(self) -> Any:
         try:
             snapshot = await self.collect_all_swarms()
-            self.health.last_collect_at = time.time()
+            self.health.last_collect_at = utc_ts()
             self.health.consecutive_collect_failures = 0
             self.health.swarms_seen_last_cycle = self._count_swarms(snapshot)
             return snapshot
@@ -331,7 +344,7 @@ class BaseSwarmOverseer:
     async def _safe_global_decide(self, ecosystem_snapshot: Any) -> Any:
         try:
             decision = await self.global_decide(ecosystem_snapshot)
-            self.health.last_decide_at = time.time()
+            self.health.last_decide_at = utc_ts()
             self.health.consecutive_decide_failures = 0
             return decision
         except Exception:
@@ -345,7 +358,7 @@ class BaseSwarmOverseer:
     ) -> Sequence[Mapping[str, Any]]:
         try:
             directives = await self.route_directives(decision, ecosystem_snapshot)
-            self.health.last_route_at = time.time()
+            self.health.last_route_at = utc_ts()
             self.health.consecutive_route_failures = 0
             return directives
         except Exception:
@@ -360,7 +373,7 @@ class BaseSwarmOverseer:
     ) -> None:
         try:
             await self.persist_global_decision(decision, ecosystem_snapshot, directives)
-            self.health.last_persist_at = time.time()
+            self.health.last_persist_at = utc_ts()
             self.health.consecutive_persist_failures = 0
         except Exception:
             self.health.consecutive_persist_failures += 1
@@ -473,7 +486,7 @@ class BaseSwarmOverseer:
         callback: Callable[[], Awaitable[None]],
     ) -> None:
         while not self.shutdown_event.is_set():
-            started_at = time.time()
+            started_at = utc_ts()
 
             try:
                 await callback()
@@ -483,7 +496,7 @@ class BaseSwarmOverseer:
                 self.health.last_error = str(exc)
                 self.logger.error("%s loop failed: %s", name, exc, exc_info=True)
 
-            elapsed = time.time() - started_at
+            elapsed = utc_ts() - started_at
             sleep_for = max(0.0, interval_seconds - elapsed)
 
             try:
@@ -494,7 +507,7 @@ class BaseSwarmOverseer:
     async def _safe_publish_heartbeat(self) -> None:
         try:
             await self.publish_heartbeat()
-            self.health.last_heartbeat_at = time.time()
+            self.health.last_heartbeat_at = utc_ts()
             self.health.consecutive_heartbeat_failures = 0
         except Exception:
             self.health.consecutive_heartbeat_failures += 1
@@ -502,12 +515,12 @@ class BaseSwarmOverseer:
 
     async def _safe_gc_expired_directives(self) -> None:
         await self.gc_expired_directives()
-        self.health.last_directive_gc_at = time.time()
+        self.health.last_directive_gc_at = utc_ts()
 
     async def _safe_reconcile(self) -> None:
         try:
             await self.reconcile()
-            self.health.last_reconcile_at = time.time()
+            self.health.last_reconcile_at = utc_ts()
             self.health.consecutive_reconcile_failures = 0
         except Exception:
             self.health.consecutive_reconcile_failures += 1
@@ -515,11 +528,11 @@ class BaseSwarmOverseer:
 
     async def _safe_healthcheck(self) -> None:
         await self.healthcheck()
-        self.health.last_healthcheck_at = time.time()
+        self.health.last_healthcheck_at = utc_ts()
 
     async def _safe_maintenance(self) -> None:
         await self.maintenance()
-        self.health.last_maintenance_at = time.time()
+        self.health.last_maintenance_at = utc_ts()
 
     # ------------------------------------------------------------------
     # Default overridable hooks
@@ -706,7 +719,7 @@ class BaseSwarmOverseer:
         return {
             "swarms": serializable_swarms,
             "records": len(state),
-            "timestamp": time.time(),
+            "timestamp": utc_ts(),
         }
 
     # ------------------------------------------------------------------
@@ -714,6 +727,7 @@ class BaseSwarmOverseer:
     # ------------------------------------------------------------------
 
     def build_directive_from_decision(self, decision: Any) -> Dict[str, Any]:
+        """Build canonical overseer directive command from global decision."""
         action = self._extract_decision_action(decision)
         confidence = self._extract_float(decision, "confidence", 0.0)
         rationale = self._extract_string(decision, "rationale", "")
@@ -725,39 +739,30 @@ class BaseSwarmOverseer:
         target_role = payload.get("target_role") or "meta_agent"
         target_node = payload.get("target_node")
 
-        now = time.time()
-
-        return {
-            "type": "swarm_command",
-            "gid": self.new_gid("directive"),
-            "command_type": action,
-            "source_agent": self.overseer_id,
-            "source_swarm": "overseer",
-            "target_swarm": target_swarm,
-            "target_role": target_role,
-            "target_node": target_node,
-            "timestamp": now,
-            "expires_at": now + 600,
-            "parent_gid": event_gid,
-            "payload": {
+        return make_swarm_command(
+            command_type=action,
+            source_agent=self.overseer_id,
+            source_swarm="overseer",
+            parent_gid=event_gid,
+            target_swarm=str(target_swarm),
+            target_node=str(target_node) if target_node else None,
+            target_role=str(target_role) if target_role else None,
+            ttl_seconds=float(payload.get("ttl_seconds", 600.0)),
+            priority=int(payload.get("priority", 0)),
+            trace_id=payload.get("trace_id"),
+            payload={
                 "action": action,
                 "confidence": confidence,
                 "rationale": rationale,
                 **payload,
             },
-            "data": {
-                "action": action,
-                "confidence": confidence,
-                "rationale": rationale,
-                **payload,
-            },
-            "provenance": {
+            provenance={
                 "agent": self.overseer_id,
                 "hostname": self.hostname,
                 "pid": os.getpid(),
                 **provenance,
             },
-        }
+        )
 
     def build_global_decision_event(
         self,
@@ -765,56 +770,54 @@ class BaseSwarmOverseer:
         ecosystem_snapshot: Any,
         directives: Sequence[Mapping[str, Any]],
     ) -> Dict[str, Any]:
+        """Build canonical global_policy_evaluated event."""
         action = self._extract_decision_action(decision)
         confidence = self._extract_float(decision, "confidence", 0.0)
         rationale = self._extract_string(decision, "rationale", "")
-        event_gid = self._extract_string(decision, "event_gid", self.new_gid("decision"))
         parent_gid = self._extract_optional_string(decision, "parent_gid")
         provenance = self._extract_mapping(decision, "provenance")
+        trace_id = self._extract_optional_string(decision, "trace_id")
 
-        return {
-            "type": "swarm_event",
-            "gid": event_gid,
-            "event_type": "global_policy_evaluated",
-            "source_agent": self.overseer_id,
-            "source_swarm": "overseer",
-            "source_node": self.overseer_id,
-            "parent_gid": parent_gid,
-            "timestamp": time.time(),
-            "severity": 0.0,
-            "payload": {
+        return make_swarm_event(
+            event_type="global_policy_evaluated",
+            source_swarm="overseer",
+            source_agent=self.overseer_id,
+            source_node=self.overseer_id,
+            role=self.role,
+            parent_gid=parent_gid,
+            trace_id=trace_id,
+            severity=0.0,
+            payload={
                 "action": action,
                 "confidence": confidence,
                 "rationale": rationale,
                 "directives_routed": [dict(directive) for directive in directives],
                 "ecosystem_summary": self.summarize_ecosystem_snapshot(ecosystem_snapshot),
             },
-            "provenance": {
+            provenance={
                 "agent": self.overseer_id,
                 "hostname": self.hostname,
                 "pid": os.getpid(),
                 **provenance,
             },
-        }
+        )
 
     def build_heartbeat(self) -> Dict[str, Any]:
-        return {
-            "type": "swarm_heartbeat",
-            "gid": self.new_gid("hb"),
-            "node_id": self.overseer_id,
-            "agent_id": self.overseer_id,
-            "swarm": "overseer",
-            "role": self.role,
-            "version": self.version,
-            "status": self.health.status,
-            "timestamp": time.time(),
-            "metrics": self.health_snapshot(),
-            "provenance": {
+        """Build canonical overseer heartbeat."""
+        return make_swarm_heartbeat(
+            node_id=self.overseer_id,
+            agent_id=self.overseer_id,
+            swarm="overseer",
+            role=self.role,
+            version=self.version,
+            status=self.health.status,
+            metrics=self.health_snapshot(),
+            provenance={
                 "agent": self.overseer_id,
                 "hostname": self.hostname,
                 "pid": os.getpid(),
             },
-        }
+        )
 
     def health_snapshot(self) -> Dict[str, Any]:
         return {
@@ -844,6 +847,7 @@ class BaseSwarmOverseer:
         }
 
     def summarize_ecosystem_snapshot(self, snapshot: Any) -> Mapping[str, Any]:
+        """Return compact serializable ecosystem snapshot summary."""
         if isinstance(snapshot, Mapping):
             swarms = snapshot.get("swarms")
             if isinstance(swarms, Mapping):
@@ -863,71 +867,66 @@ class BaseSwarmOverseer:
                     },
                 }
 
-            return {
-                "type": "mapping",
-                "keys": list(snapshot.keys())[:50],
-                "size": len(snapshot),
-            }
-
-        if isinstance(snapshot, Sequence) and not isinstance(snapshot, (str, bytes, bytearray)):
-            return {
-                "type": "sequence",
-                "size": len(snapshot),
-            }
-
-        return {
-            "type": type(snapshot).__name__,
-            "repr": repr(snapshot)[:500],
-        }
+        return summarize_value(snapshot)
 
     # ------------------------------------------------------------------
     # Directive normalization
     # ------------------------------------------------------------------
 
     def _normalize_directive(self, directive: Mapping[str, Any], decision: Any) -> Dict[str, Any]:
+        """Normalize explicit overseer directive into canonical swarm_command."""
         if directive.get("type") == "swarm_command":
             normalized = dict(directive)
             normalized.setdefault("gid", self.new_gid("directive"))
             normalized.setdefault("source_agent", self.overseer_id)
             normalized.setdefault("source_swarm", "overseer")
-            normalized.setdefault("timestamp", time.time())
-            normalized.setdefault("expires_at", time.time() + 600)
             normalized.setdefault("parent_gid", self._extract_string(decision, "event_gid", self.new_gid("decision")))
             normalized.setdefault("provenance", {"agent": self.overseer_id})
             return normalized
 
-        action = str(directive.get("action") or directive.get("command_type") or self._extract_decision_action(decision)).upper()
-        now = time.time()
+        action = str(
+            directive.get("action")
+            or directive.get("command_type")
+            or self._extract_decision_action(decision)
+        ).upper()
 
         payload = dict(directive.get("payload", {})) if isinstance(directive.get("payload"), Mapping) else {}
         data = dict(directive.get("data", {})) if isinstance(directive.get("data"), Mapping) else {}
 
-        return {
-            "type": "swarm_command",
-            "gid": str(directive.get("gid") or self.new_gid("directive")),
-            "command_type": action,
-            "source_agent": self.overseer_id,
-            "source_swarm": "overseer",
-            "target_swarm": directive.get("target_swarm") or payload.get("target_swarm") or "*",
-            "target_role": directive.get("target_role") or payload.get("target_role") or "meta_agent",
-            "target_node": directive.get("target_node") or payload.get("target_node"),
-            "timestamp": float(directive.get("timestamp") or now),
-            "expires_at": float(directive.get("expires_at") or now + 600),
-            "parent_gid": directive.get("parent_gid") or self._extract_string(decision, "event_gid", self.new_gid("decision")),
-            "payload": {
-                "action": action,
-                **payload,
-            },
-            "data": {
-                "action": action,
-                **data,
-                **payload,
-            },
-            "provenance": {
-                "agent": self.overseer_id,
-                **(directive.get("provenance") if isinstance(directive.get("provenance"), Mapping) else {}),
-            },
+        merged_payload = {
+            **data,
+            **payload,
         }
+
+        target_swarm = directive.get("target_swarm") or merged_payload.get("target_swarm") or "*"
+        target_role = directive.get("target_role") or merged_payload.get("target_role") or "meta_agent"
+        target_node = directive.get("target_node") or merged_payload.get("target_node")
+
+        provenance = directive.get("provenance") if isinstance(directive.get("provenance"), Mapping) else {}
+
+        return make_swarm_command(
+            command_type=action,
+            source_agent=self.overseer_id,
+            source_swarm="overseer",
+            parent_gid=str(
+                directive.get("parent_gid")
+                or self._extract_string(decision, "event_gid", self.new_gid("decision"))
+            ),
+            target_swarm=str(target_swarm),
+            target_node=str(target_node) if target_node else None,
+            target_role=str(target_role) if target_role else None,
+            ttl_seconds=float(merged_payload.get("ttl_seconds", 600.0)),
+            priority=int(merged_payload.get("priority", directive.get("priority", 0) or 0)),
+            trace_id=merged_payload.get("trace_id") or directive.get("trace_id"),
+            payload={
+                "action": action,
+                **merged_payload,
+            },
+            provenance={
+                "agent": self.overseer_id,
+                **dict(provenance),
+            },
+        )
 
     # ------------------------------------------------------------------
     # Generic extraction helpers

@@ -32,13 +32,14 @@ def to_jsonable(value: Any) -> Any:
     return repr(value)
 
 
-def json_dumps(value: Any, *, sort_keys: bool = True) -> str:
-    """Serialize value to compact JSON."""
+def json_dumps(obj: Any) -> str:
+    """Serialize object to compact deterministic JSON."""
     return json.dumps(
-        to_jsonable(value),
+        obj,
         ensure_ascii=False,
-        sort_keys=sort_keys,
+        sort_keys=True,
         separators=(",", ":"),
+        default=str,
     )
 
 
@@ -82,3 +83,12 @@ def summarize_value(value: Any, *, max_keys: int = 50) -> Dict[str, Any]:
         "type": type(value).__name__,
         "repr": compact_repr(value),
     }
+
+def json_loads_safe(text: str) -> Dict[str, Any]:
+    """Parse JSON object safely, returning empty dict on failure."""
+    try:
+        parsed = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+    return parsed if isinstance(parsed, dict) else {}

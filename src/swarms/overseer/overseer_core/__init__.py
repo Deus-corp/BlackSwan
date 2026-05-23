@@ -1,4 +1,17 @@
-"""Core implementation for the overseer subsystem."""
+#!/usr/bin/env python3
+"""Overseer core package.
+
+Specialized implementation layer for the global Overseer.
+
+This package contains:
+- state collection
+- deterministic policy
+- LLM strategy
+- command execution
+- shared models/interfaces
+"""
+
+from __future__ import annotations
 
 from .collector import StateCollector
 from .executor import ActionExecutor
@@ -11,10 +24,10 @@ __all__ = [
     "ActionExecutor",
     "GenomeSink",
     "LLMGenerator",
-    "LLMStrategist",
     "OverseerDecision",
     "PolicyEngine",
     "StateCollector",
     "StateSource",
     "SwarmSnapshot",
+    "LLMStrategist",
 ]

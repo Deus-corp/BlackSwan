@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
-"""Security MetaAgent Core exports."""
+"""Security meta-agent core package.
 
-from .collector import SecurityCollector
-from .executor import SecurityExecutor
-from .models import (
-    SecurityDecision,
-    SecurityIncident,
-    SecurityHeartbeat,
-)
-from .policy import SecurityPolicyEngine
-from .strategist import SecurityStrategist
+This package contains optional security meta-agent building blocks:
+- collectors
+- policy helpers
+- strategy helpers
+- parsers
+- prompt builders
+- execution helpers
 
-__all__ = [
-    "SecurityCollector",
-    "SecurityExecutor",
-    "SecurityDecision",
-    "SecurityIncident",
-    "SecurityHeartbeat",
-    "SecurityPolicyEngine",
-    "SecurityStrategist",
+The main runtime entrypoint is currently:
+    src.swarms.security.meta_agent.SecurityMetaAgent
+"""
+
+from __future__ import annotations
+
+__all__: list[str] = []

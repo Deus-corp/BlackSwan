@@ -50,6 +50,12 @@ from src.swarms.common.utils import (
     utc_ts,
 )
 
+from src.swarms.common.protocols import (
+    command_is_expired,
+    command_targets,
+    make_swarm_heartbeat,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -484,8 +490,9 @@ class BaseSwarmNode:
     async def poll_commands(self) -> Iterable[Mapping[str, Any]]:
         """Return commands relevant to this node.
 
-        Default implementation scans CRDT for generic swarm commands and
-        commands targeting this exact node, swarm, or role.
+        Default implementation scans CRDT for commands targeting this exact node,
+        swarm, or role. Supports both canonical and legacy command formats through
+        common.protocols.commands.
         """
         state = getattr(self.crdt, "state", {})
         if not isinstance(state, Mapping):
@@ -497,15 +504,19 @@ class BaseSwarmNode:
             if not isinstance(value, Mapping):
                 continue
 
-            if value.get("type") not in {"swarm_command", "sec_command", "meta_command_json", "explorer_command"}:
-                continue
+            try:
+                if command_is_expired(value):
+                    continue
 
-            expires_at = value.get("expires_at")
-            if is_expired(expires_at):
+                if command_targets(
+                    value,
+                    swarm=self.swarm_type,
+                    node_id=self.node_id,
+                    role=self.role,
+                ):
+                    commands.append(value)
+            except ValueError:
                 continue
-
-            if self._command_targets_this_node(value):
-                commands.append(value)
 
         return commands
 
@@ -539,31 +550,31 @@ class BaseSwarmNode:
         return None
 
     async def publish_heartbeat(self) -> None:
-        """Publish a generic heartbeat to CRDT.
+        """Publish a generic canonical heartbeat to CRDT.
 
-        Specialized nodes may override this to add domain metrics.
+        Specialized nodes may override build_heartbeat() to add domain metrics,
+        or override publish_heartbeat() if they also need legacy compatibility
+        records.
         """
         heartbeat = self.build_heartbeat()
         await self.crdt.add_genome(heartbeat)
 
     def build_heartbeat(self) -> Dict[str, Any]:
-        """Build a generic CRDT-compatible heartbeat payload."""
-        return {
-            "type": "swarm_heartbeat",
-            "gid": self.new_gid("hb"),
-            "node_id": self.node_id,
-            "swarm": self.swarm_type,
-            "role": self.role,
-            "version": self.version,
-            "status": self.health.status,
-            "timestamp": utc_ts(),
-            "metrics": self.health_snapshot(),
-            "provenance": {
+        """Build a canonical CRDT-compatible heartbeat payload."""
+        return make_swarm_heartbeat(
+            node_id=self.node_id,
+            agent_id=self.node_id,
+            swarm=self.swarm_type,
+            role=self.role,
+            version=self.version,
+            status=self.health.status,
+            metrics=self.health_snapshot(),
+            provenance={
                 "agent": self.node_id,
                 "hostname": self.hostname,
                 "pid": os.getpid(),
             },
-        }
+        )
 
     def health_snapshot(self) -> Dict[str, Any]:
         """Return serializable health state."""

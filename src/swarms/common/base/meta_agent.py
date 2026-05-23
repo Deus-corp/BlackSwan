@@ -48,6 +48,12 @@ from src.swarms.common.utils import (
     utc_ts,
 )
 
+from src.swarms.common.protocols import (
+    make_swarm_command,
+    make_swarm_event,
+    make_swarm_heartbeat,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -623,6 +629,7 @@ class BaseSwarmMetaAgent:
     # ------------------------------------------------------------------
 
     def build_command_from_decision(self, decision: Any) -> Dict[str, Any]:
+        """Build canonical command from a meta-agent decision."""
         action = self._extract_decision_action(decision)
         confidence = self._extract_float(decision, "confidence", 0.0)
         rationale = self._extract_string(decision, "rationale", "")
@@ -632,39 +639,30 @@ class BaseSwarmMetaAgent:
         payload = self._extract_mapping(decision, "payload")
         provenance = self._extract_mapping(decision, "provenance")
 
-        now = utc_ts()
-        command = {
-            "type": "swarm_command",
-            "gid": self.new_gid("cmd"),
-            "command_type": action,
-            "source_agent": self.agent_id,
-            "source_swarm": self.swarm_type,
-            "target_swarm": target_swarm,
-            "target_node": target_node,
-            "target_role": payload.get("target_role"),
-            "timestamp": now,
-            "expires_at": expires_in(600),
-            "parent_gid": event_gid,
-            "payload": {
+        return make_swarm_command(
+            command_type=action,
+            source_agent=self.agent_id,
+            source_swarm=self.swarm_type,
+            parent_gid=event_gid,
+            target_swarm=target_swarm,
+            target_node=target_node,
+            target_role=payload.get("target_role"),
+            ttl_seconds=float(payload.get("ttl_seconds", 600.0)),
+            priority=int(payload.get("priority", 0)),
+            trace_id=payload.get("trace_id"),
+            payload={
                 "action": action,
                 "confidence": confidence,
                 "rationale": rationale,
                 **payload,
             },
-            "data": {
-                "action": action,
-                "confidence": confidence,
-                "rationale": rationale,
-                **payload,
-            },
-            "provenance": {
+            provenance={
                 "agent": self.agent_id,
                 "hostname": self.hostname,
                 "pid": os.getpid(),
                 **provenance,
             },
-        }
-        return command
+        )
 
     def build_decision_event(
         self,
@@ -672,56 +670,54 @@ class BaseSwarmMetaAgent:
         snapshot: Any,
         commands: Sequence[Mapping[str, Any]],
     ) -> Dict[str, Any]:
+        """Build canonical policy_evaluated event from a meta-agent decision."""
         action = self._extract_decision_action(decision)
         confidence = self._extract_float(decision, "confidence", 0.0)
         rationale = self._extract_string(decision, "rationale", "")
-        event_gid = self._extract_string(decision, "event_gid", self.new_gid("decision"))
         parent_gid = self._extract_optional_string(decision, "parent_gid")
         provenance = self._extract_mapping(decision, "provenance")
+        trace_id = self._extract_optional_string(decision, "trace_id")
 
-        return {
-            "type": "swarm_event",
-            "gid": event_gid,
-            "event_type": "policy_evaluated",
-            "source_agent": self.agent_id,
-            "source_swarm": self.swarm_type,
-            "source_node": self.agent_id,
-            "parent_gid": parent_gid,
-            "timestamp": utc_ts(),
-            "severity": 0.0,
-            "payload": {
+        return make_swarm_event(
+            event_type="policy_evaluated",
+            source_swarm=self.swarm_type,
+            source_agent=self.agent_id,
+            source_node=self.agent_id,
+            role=self.role,
+            parent_gid=parent_gid,
+            trace_id=trace_id,
+            severity=0.0,
+            payload={
                 "action": action,
                 "confidence": confidence,
                 "rationale": rationale,
                 "commands_issued": [dict(cmd) for cmd in commands],
                 "snapshot_summary": self.summarize_snapshot(snapshot),
             },
-            "provenance": {
+            provenance={
                 "agent": self.agent_id,
                 "hostname": self.hostname,
                 "pid": os.getpid(),
                 **provenance,
             },
-        }
+        )
 
     def build_heartbeat(self) -> Dict[str, Any]:
-        return {
-            "type": "swarm_heartbeat",
-            "gid": self.new_gid("hb"),
-            "node_id": self.agent_id,
-            "agent_id": self.agent_id,
-            "swarm": self.swarm_type,
-            "role": self.role,
-            "version": self.version,
-            "status": self.health.status,
-            "timestamp": utc_ts(),
-            "metrics": self.health_snapshot(),
-            "provenance": {
+        """Build canonical meta-agent heartbeat."""
+        return make_swarm_heartbeat(
+            node_id=self.agent_id,
+            agent_id=self.agent_id,
+            swarm=self.swarm_type,
+            role=self.role,
+            version=self.version,
+            status=self.health.status,
+            metrics=self.health_snapshot(),
+            provenance={
                 "agent": self.agent_id,
                 "hostname": self.hostname,
                 "pid": os.getpid(),
             },
-        }
+        )
 
     def summarize_snapshot(self, snapshot: Any) -> Mapping[str, Any]:
         """Return serializable snapshot summary for decision events."""
