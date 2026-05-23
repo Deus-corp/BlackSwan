@@ -1,14 +1,18 @@
 """
-base_template.py — A unified HTML template with header/footer and active tab highlighting.
+base_template.py — A unified HTML layout service for the BlackSwan dashboard.
+
+Provides standard page wrapping, navigation generation with path-based activation,
+and consistent header/footer injection.
 """
+
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, List, Tuple
 from fastapi import Request
 
-# Constants for default page title and navigation tabs configuration
+# Navigation configuration: (path, display_label, unique_key)
 DEFAULT_PAGE_TITLE: Final[str] = "BlackSwan Control Panel"
-TABS_CONFIG: Final[list[tuple[str, str, str]]] = [
+TABS_CONFIG: Final[List[Tuple[str, str, str]]] = [
     ("/", "🏠 Main", "main"),
     ("/trades", "📈 Trades", "trades"),
     ("/logs", "📜 Logs", "logs"),
@@ -20,42 +24,37 @@ TABS_CONFIG: Final[list[tuple[str, str, str]]] = [
 
 def render_page(request: Request, content: str, title: str = DEFAULT_PAGE_TITLE) -> str:
     """
-    Returns a complete HTML page with a common header/footer and dynamically highlighted active tab.
-
-    Determines the active tab based on the request's URL path.
-    Generates HTML for the navigation tabs, highlighting the active one.
-    Inserts the provided content into the main section of the page.
+    Wraps provided HTML content in the application's base template.
 
     Args:
-        request: The FastAPI request object, used to determine the current URL and active tab.
-        content: The HTML content to be inserted into the `<main>` section of the page.
-        title: The title for the HTML page, displayed in the `<title>` tag. Defaults to
-               `DEFAULT_PAGE_TITLE`.
+        request: FastAPI request object to resolve the current active navigation tab.
+        content: HTML string for the main content area.
+        title: Page title for the document metadata.
 
     Returns:
-        The complete HTML page as a string.
+        A complete HTML5 document string.
 
     Raises:
-        ValueError: If `request` or `content` is `None`.
+        ValueError: If `request` or `content` is missing.
     """
-    if request is None:
+    if not request:
         raise ValueError("Request object cannot be None.")
-    if content is None:
+    if not content:
         raise ValueError("Content cannot be None.")
 
-    # Create a mapping from URL path to tab key for efficient lookup
-    path_to_tab_key_map: dict[str, str] = {href: key for href, _, key in TABS_CONFIG}
-    active_tab: str = path_to_tab_key_map.get(request.url.path, "")
+    # Resolve active tab based on request path
+    active_tab: str = next(
+        (key for href, _, key in TABS_CONFIG if request.url.path == href), ""
+    )
 
-    # Generate HTML for the navigation tabs
-    tabs_html_parts: list[str] = []
-    for href, label, key in TABS_CONFIG:
-        cls: str = 'class="active"' if key == active_tab else ""
-        tabs_html_parts.append(f'<a href="{href}" {cls}>{label}</a>')
-    # Join with newline and indentation for better readability in the rendered HTML source
-    tabs_html: str = "\n        ".join(tabs_html_parts)
+    # Generate tab HTML components
+    tabs_list: List[str] = [
+        f'<a href="{href}" class="{"active" if key == active_tab else ""}">{label}</a>'
+        for href, label, key in TABS_CONFIG
+    ]
+    tabs_html: str = "\n        ".join(tabs_list)
 
-    html = f"""<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -70,13 +69,12 @@ def render_page(request: Request, content: str, title: str = DEFAULT_PAGE_TITLE)
         <span id="status-message"></span>
     </div>
     <h1>🦢 BlackSwan Control Panel</h1>
-    <div class="tabs">
+    <nav class="tabs">
         {tabs_html}
-    </div>
+    </nav>
     <main>
         {content}
     </main>
     <script src="/static/js/main.js"></script>
 </body>
 </html>"""
-    return html

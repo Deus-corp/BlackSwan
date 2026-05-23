@@ -3,16 +3,16 @@ import os
 import logging
 import time
 from typing import Dict, Optional, Any, List, Union
-import ccxt.async_support as ccxt # Import async_support for awaitable methods
+import ccxt.async_support as ccxt  # Import async_support for awaitable methods
 
 logger = logging.getLogger(__name__)
 
 class FuturesAdapter:
     """
-    Адаптер для взаимодействия с фьючерсной биржей через библиотеку CCXT.
+    Adapter for interacting with a futures exchange using the CCXT library.
 
-    Поддерживает получение тикеров, размещение ордеров, закрытие позиций,
-    получение баланса и динамическую регулировку кредитного плеча.
+    Supports fetching tickers, placing orders, closing positions, retrieving balances,
+    and dynamically adjusting leverage.
     """
 
     # Cooldown period for leverage adjustments (in seconds)
@@ -20,21 +20,21 @@ class FuturesAdapter:
 
     def __init__(self, symbol: str = "BTC/USDT") -> None:
         """
-        Инициализирует адаптер фьючерсов.
+        Initializes the futures adapter.
 
         Args:
-            symbol (str): Торговая пара по умолчанию (например, "BTC/USDT").
+            symbol (str): Default trading pair (e.g., "BTC/USDT").
         """
         self.symbol: str = symbol
         self.api_key: str = os.environ.get("BINANCE_TESTNET_API_KEY", "")
         self.api_secret: str = os.environ.get("BINANCE_TESTNET_API_SECRET", "")
-        
+
         # Ensure leverage parameters are integers/floats
         self.leverage: int = int(os.environ.get("FUTURES_LEVERAGE", "2"))
         self.stop_loss_percent: float = float(os.environ.get("STOP_LOSS_PERCENT", "2.0"))
         self.max_leverage: int = int(os.environ.get("MAX_LEVERAGE", "5"))
         self.min_leverage: int = int(os.environ.get("MIN_LEVERAGE", "1"))
-        self._last_leverage_adjust_timestamp: float = 0.0 # Renamed for clarity and usage
+        self._last_leverage_adjust_timestamp: float = 0.0  # Renamed for clarity and usage
 
         if not self.api_key or not self.api_secret:
             logger.error("API key or secret not found. Futures adapter might not function correctly.")
@@ -47,11 +47,11 @@ class FuturesAdapter:
             'options': {'defaultType': 'future'},
             'testnet': True,
         })
-    
+
     async def ainit(self) -> None:
         """
-        Асинхронная инициализация адаптера. Должна быть вызвана после __init__.
-        Выполняет операции, требующие await, такие как установка кредитного плеча.
+        Asynchronous initialization of the adapter. Should be called after __init__.
+        Performs operations requiring await, such as setting leverage.
         """
         try:
             # Set initial leverage for the symbol
@@ -67,7 +67,7 @@ class FuturesAdapter:
 
     async def close(self) -> None:
         """
-        Закрывает соединение с биржей. Рекомендуется вызывать при завершении работы.
+        Closes the connection to the exchange. Recommended to call upon termination.
         """
         if self.exchange:
             await self.exchange.close()
@@ -75,11 +75,11 @@ class FuturesAdapter:
 
     async def get_ticker(self) -> Optional[Dict[str, Union[float, str, int]]]:
         """
-        Возвращает тикер с последней ценой для установленного символа.
+        Returns the ticker with the last price for the set symbol.
 
         Returns:
-            Optional[Dict[str, Union[float, str, int]]]: Словарь с информацией о тикере
-            ('price', 'bid', 'ask', 'symbol', 'timestamp' (ms)) или None в случае ошибки.
+            Optional[Dict[str, Union[float, str, int]]]: Dictionary with ticker information
+            ('price', 'bid', 'ask', 'symbol', 'timestamp' (ms)) or None in case of error.
         """
         try:
             ticker: Dict[str, Any] = await self.exchange.fetch_ticker(self.symbol)
@@ -88,7 +88,7 @@ class FuturesAdapter:
                 "bid": float(ticker['bid']),
                 "ask": float(ticker['ask']),
                 "symbol": self.symbol,
-                "timestamp": int(ticker['timestamp']), # CCXT timestamps are usually milliseconds
+                "timestamp": int(ticker['timestamp']),  # CCXT timestamps are usually milliseconds
             }
         except (ccxt.NetworkError, ccxt.ExchangeError) as e:
             logger.error(f"Futures ticker fetch failed for {self.symbol}: {e}")
@@ -99,17 +99,17 @@ class FuturesAdapter:
 
     async def place_order(self, side: str, amount: float, price: Optional[float] = None) -> Dict[str, Any]:
         """
-        Выставляет лимитный или рыночный ордер.
+        Places a limit or market order.
 
         Args:
-            side (str): 'buy' (long) или 'sell' (short).
-            amount (float): Количество контрактов (в монетах).
-            price (Optional[float]): Цена для лимитного ордера. Если None,
-                                     выставляется рыночный ордер.
+            side (str): 'buy' (long) or 'sell' (short).
+            amount (float): Quantity of contracts (in coins).
+            price (Optional[float]): Price for limit order. If None,
+                                     a market order is placed.
 
         Returns:
-            Dict[str, Any]: Словарь с информацией о размещенном ордере или
-                            сообщение об ошибке.
+            Dict[str, Any]: Dictionary with information about the placed order or
+                            an error message.
         """
         if side not in ['buy', 'sell']:
             logger.error(f"Invalid order side: {side}. Must be 'buy' or 'sell'.")
@@ -132,28 +132,28 @@ class FuturesAdapter:
 
     async def close_position(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
-        Закрывает текущую позицию по рынку для заданного символа.
+        Closes the current position in the market for the given symbol.
 
         Args:
-            symbol (Optional[str]): Торговый символ, позицию по которому нужно закрыть.
-                                    Если None, используется self.symbol.
+            symbol (Optional[str]): Trading symbol for which to close the position.
+                                    If None, uses self.symbol.
 
         Returns:
-            Dict[str, Any]: Словарь с информацией о закрывающем ордере или
-                            сообщение об ошибке.
+            Dict[str, Any]: Dictionary with information about the closing order or
+                            an error message.
         """
         sym: str = symbol or self.symbol
         try:
             # fetch_positions takes an optional list of symbols or None for all
             positions: List[Dict[str, Any]] = await self.exchange.fetch_positions([sym])
-            
+
             # Filter for the relevant position (assuming one position per symbol in futures)
             open_positions = [p for p in positions if float(p.get('contracts', 0)) != 0]
 
             if open_positions:
-                pos: Dict[str, Any] = open_positions[0] # Assuming only one open position for the symbol
-                amount: float = abs(float(pos.get('contracts', 0))) # Use .get() for safety
-                
+                pos: Dict[str, Any] = open_positions[0]  # Assuming only one open position for the symbol
+                amount: float = abs(float(pos.get('contracts', 0)))  # Use .get() for safety
+
                 if amount > 0:
                     # Determine the side to close the position
                     side: str = 'sell' if pos.get('side') == 'long' else 'buy'
@@ -175,16 +175,16 @@ class FuturesAdapter:
 
     async def fetch_balance(self) -> Dict[str, float]:
         """
-        Возвращает баланс тестового аккаунта, фокусируясь на доступных средствах.
+        Returns the balance of the test account, focusing on available funds.
 
         Returns:
-            Dict[str, float]: Словарь, где ключ - это код валюты, а значение -
-                              количество свободных средств (available balance).
+            Dict[str, float]: Dictionary where the key is the currency code and the value is
+                              the amount of available funds (available balance).
         """
         try:
             balance: Dict[str, Any] = await self.exchange.fetch_balance()
             # The 'free' key usually contains a dictionary of available assets
-            return {k: float(v) for k, v in balance.get('free', {}).items()} # Ensure float values
+            return {k: float(v) for k, v in balance.get('free', {}).items()}  # Ensure float values
         except (ccxt.NetworkError, ccxt.ExchangeError) as e:
             logger.error(f"Balance fetch failed: {e}")
             return {}
@@ -194,16 +194,16 @@ class FuturesAdapter:
 
     def check_stop_loss(self, entry_price: float, current_price: float, side: str) -> bool:
         """
-        Проверяет, сработал ли стоп-лосс на основе заданного процента.
+        Checks if the stop-loss has been triggered based on the set percentage.
 
         Args:
-            entry_price (float): Цена входа в позицию.
-            current_price (float): Текущая рыночная цена.
-            side (str): Тип позиции ('long' или 'short').
+            entry_price (float): Price at which the position was entered.
+            current_price (float): Current market price.
+            side (str): Type of position ('long' or 'short').
 
         Returns:
-            bool: True, если процент потерь превысил `self.stop_loss_percent`,
-                  иначе False.
+            bool: True if the loss percentage exceeds `self.stop_loss_percent`,
+                  otherwise False.
         """
         if side not in ['long', 'short']:
             logger.error(f"Invalid position side for stop-loss check: {side}. Must be 'long' or 'short'.")
@@ -212,28 +212,28 @@ class FuturesAdapter:
         loss_percent: float
         if side == 'long':
             # For long position, loss occurs when current_price < entry_price
-            if entry_price <= 0: # Avoid division by zero
+            if entry_price <= 0:  # Avoid division by zero
                 logger.warning("Entry price for long position is zero or negative, cannot check stop loss.")
                 return False
             loss_percent = (entry_price - current_price) / entry_price * 100
         else:  # 'short'
             # For short position, loss occurs when current_price > entry_price
-            if entry_price <= 0: # Avoid division by zero
+            if entry_price <= 0:  # Avoid division by zero
                 logger.warning("Entry price for short position is zero or negative, cannot check stop loss.")
                 return False
             loss_percent = (current_price - entry_price) / entry_price * 100
-        
+
         return loss_percent >= self.stop_loss_percent
 
     async def adjust_leverage(self, volatility: float) -> None:
         """
-        Динамически регулирует кредитное плечо в зависимости от волатильности.
-        Увеличивает плечо при низкой волатильности, уменьшает при высокой.
-        Имеет встроенный таймаут для предотвращения слишком частых изменений.
+        Dynamically adjusts leverage based on volatility.
+        Increases leverage for low volatility, decreases for high volatility.
+        Includes a built-in timeout to prevent too frequent changes.
 
         Args:
-            volatility (float): Нормализованное значение волатильности
-                                (например, ATR / price).
+            volatility (float): Normalized volatility value
+                                (e.g., ATR / price).
         """
         current_time: float = time.monotonic()
         if current_time - self._last_leverage_adjust_timestamp < self.LEVERAGE_ADJUST_COOLDOWN:
@@ -241,22 +241,20 @@ class FuturesAdapter:
             return
 
         target_leverage: Optional[int] = None
-        
+
         # Adjust leverage based on volatility thresholds
         if volatility < 0.01:  # Low volatility -> increase leverage
             target_leverage = min(self.max_leverage, self.leverage + 1)
         elif volatility > 0.05:  # High volatility -> decrease leverage
             target_leverage = max(self.min_leverage, self.leverage - 1)
-        
+
         if target_leverage is not None and target_leverage != self.leverage:
             try:
                 await self.exchange.set_leverage(target_leverage, self.symbol)
                 self.leverage = target_leverage
-                self._last_leverage_adjust_timestamp = current_time # Update timestamp on successful adjustment
-                logger.info(f"Leverage adjusted to {self.leverage}x for {self.symbol} (volatility={volatility:.4f})")
+                self._last_leverage_adjust_timestamp = current_time
+                logger.info(f"Leverage adjusted to {target_leverage}x for {self.symbol}")
             except (ccxt.NetworkError, ccxt.ExchangeError) as e:
-                logger.warning(f"Leverage adjustment failed for {self.symbol} to {target_leverage}x: {e}")
+                logger.error(f"Failed to adjust leverage for {self.symbol}: {e}")
             except Exception as e:
-                logger.warning(f"An unexpected error occurred during leverage adjustment: {e}")
-        else:
-            logger.debug(f"No leverage adjustment needed for {self.symbol} (current={self.leverage}x, volatility={volatility:.4f})")
+                logger.error(f"An unexpected error occurred during leverage adjustment: {e}")

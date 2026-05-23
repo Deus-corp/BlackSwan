@@ -1,156 +1,113 @@
 """
-Exposure and position tracking system (stub).
+Exposure and position tracking system.
 
-This module provides foundational classes for managing trading positions and
-tracking overall market exposure. It is designed to be integrated with a
-full risk engine for enforcing sophisticated risk limits such as maximum notional
-per asset, daily loss limits, and correlation-based exposure constraints.
-Currently, it functions as a basic tracking system with stubbed risk checks.
+This module provides structured classes for managing trading positions and
+tracking market exposure, including PnL monitoring and risk limit checks.
 """
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
+from dataclasses import dataclass
+from typing import Dict, Final, Literal, Optional
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class Position:
     """
-    Represents an open trading position in a single asset.
+    Represents an open trading position in a specific asset.
     """
+    symbol: str
+    side: Literal["long", "short"]
+    amount: float
+    entry_price: float
 
-    def __init__(self, symbol: str, side: str, amount: float, entry_price: float) -> None:
-        """
-        Initializes a new Position.
-
-        Args:
-            symbol: The trading symbol of the asset (e.g., 'AAPL', 'BTC/USD').
-            side: The side of the position ('long' or 'short').
-            amount: The quantity or size of the position.
-            entry_price: The average price at which the position was opened.
-        """
-        self.symbol: str = symbol
-        self.side: str = side
-        self.amount: float = amount
-        self.entry_price: float = entry_price
+    def __post_init__(self) -> None:
         logger.debug(
-            f"Position opened: {self.symbol}, {self.side}, Amount: {self.amount}, Entry: {self.entry_price}"
+            "Position opened: %s, %s, Amount: %f, Entry: %f",
+            self.symbol, self.side, self.amount, self.entry_price
         )
 
     def unrealised_pnl(self, current_price: float) -> float:
         """
         Calculates the unrealised Profit & Loss for the position.
 
-        Stub: Always returns 0.0 for now. In a real implementation, this
-        would calculate PnL based on `current_price` and `entry_price`.
-
         Args:
             current_price: The current market price of the asset.
 
         Returns:
-            The unrealised PnL.
+            The calculated unrealised PnL value.
         """
-        # In a real system, this would be:
-        # if self.side == 'long':
-        #     return (current_price - self.entry_price) * self.amount
-        # else: # 'short'
-        #     return (self.entry_price - current_price) * self.amount
-        return 0.0
+        if self.side == "long":
+            return (current_price - self.entry_price) * self.amount
+        return (self.entry_price - current_price) * self.amount
 
 
 class ExposureManager:
     """
-    Tracks current open positions and manages overall exposure, including daily PnL.
-
-    This manager provides methods to add, close, and check positions against
-    pre-defined risk limits. Currently, most checks are stubs that always allow
-    trades, but it tracks daily PnL and alerts if maximum daily loss is breached.
+    Tracks active positions and enforces portfolio-level risk limits.
     """
 
     def __init__(self, max_notional: float = 100_000.0, max_daily_loss: float = 5_000.0) -> None:
-        """
-        Initializes the ExposureManager with global risk limits.
-
-        Args:
-            max_notional: The maximum notional value allowed for any single position.
-                          (Currently not actively enforced).
-            max_daily_loss: The maximum aggregate daily loss allowed across all positions.
-                            If `daily_pnl` drops below `-max_daily_loss`, an error is logged.
-        """
-        self.max_notional: float = max_notional
-        self.max_daily_loss: float = max_daily_loss
-        self.positions: Dict[str, Position] = {}
+        self.max_notional: Final[float] = max_notional
+        self.max_daily_loss: Final[float] = max_daily_loss
+        self._positions: Dict[str, Position] = {}
         self.daily_pnl: float = 0.0
         logger.info(
-            f"ExposureManager initialised (stub) with max_notional={max_notional}, "
-            f"max_daily_loss={max_daily_loss}"
+            "ExposureManager initialized with max_notional=%f, max_daily_loss=%f",
+            self.max_notional, self.max_daily_loss
         )
 
-    def add_position(self, position: Position) -> None:
-        """
-        Records a new or updates an existing open position.
+    @property
+    def positions(self) -> Dict[str, Position]:
+        return self._positions
 
-        Args:
-            position: The Position object to add.
-        """
-        self.positions[position.symbol] = position
-        logger.info(f"Position added/updated for {position.symbol}. Current positions: {len(self.positions)}")
+    def add_position(self, position: Position) -> None:
+        """Records or updates an active position."""
+        self._positions[position.symbol] = position
+        logger.info(
+            "Position updated for %s. Total active positions: %d",
+            position.symbol, len(self._positions)
+        )
 
     def close_position(self, symbol: str) -> Optional[Position]:
-        """
-        Closes and removes the position for the given symbol.
-
-        Args:
-            symbol: The trading symbol of the position to close.
-
-        Returns:
-            The closed Position object if found, otherwise None.
-        """
-        if symbol in self.positions:
-            position = self.positions.pop(symbol)
-            logger.info(f"Position closed for {symbol}. Remaining positions: {len(self.positions)}")
-            return position
-        logger.warning(f"Attempted to close position for {symbol}, but no such position was found.")
-        return None
+        """Closes an active position and returns it if it existed."""
+        position = self._positions.pop(symbol, None)
+        if position:
+            logger.info(
+                "Position closed for %s. Remaining: %d",
+                symbol, len(self._positions)
+            )
+        else:
+            logger.warning("Attempted to close non-existent position: %s", symbol)
+        return position
 
     def pre_trade_check(self, symbol: str, action: str, amount: float, current_price: float) -> bool:
         """
-        Checks whether a proposed trade is within overall risk limits.
+        Validates if a proposed trade complies with risk limits.
 
-        Stub: Always returns True. In a full implementation, this would involve
-        complex calculations based on `max_notional`, `max_daily_loss`,
-        portfolio correlation, etc.
-
-        Args:
-            symbol: The symbol of the asset for the proposed trade.
-            action: The intended action ('buy' or 'sell').
-            amount: The quantity for the proposed trade.
-            current_price: The current market price of the asset.
-
-        Returns:
-            True if the trade is allowed, False otherwise.
+        Currently evaluates per-asset notional limits and overall daily loss thresholds.
         """
-        logger.debug(f"Pre-trade check for {action} {amount} of {symbol} @ {current_price} (stub: always True)")
-        # Future implementations would check against:
-        # - Max notional exposure per asset
-        # - Max portfolio-level notional exposure
-        # - Correlation-based limits
-        # - Current PnL vs. max_daily_loss (if not managed by a separate circuit breaker)
+        notional = amount * current_price
+        if notional > self.max_notional:
+            logger.error("Notional limit exceeded for %s: %f > %f", symbol, notional, self.max_notional)
+            return False
+
+        if self.daily_pnl < -self.max_daily_loss:
+            logger.error("Daily loss threshold breached: %f < %f", self.daily_pnl, -self.max_daily_loss)
+            return False
+
+        logger.debug("Pre-trade check passed for %s", symbol)
         return True
 
     def update_pnl(self, pnl: float) -> None:
-        """
-        Updates the total daily PnL and checks if the daily loss limit is breached.
-
-        Args:
-            pnl: The PnL (profit or loss) incurred from a trade or position update.
-        """
+        """Updates daily PnL and triggers alerts if limits are violated."""
         self.daily_pnl += pnl
-        logger.info(f"Daily PnL updated: {pnl}. Current total daily PnL: {self.daily_pnl:.2f}")
+        logger.info("Daily PnL updated: %f. Cumulative: %f", pnl, self.daily_pnl)
 
         if self.daily_pnl < -self.max_daily_loss:
-            logger.error(
-                f"Daily loss limit reached! Further trading should be halted. Current daily PnL: "
-                f"{self.daily_pnl:.2f} (Limit: {-self.max_daily_loss:.2f})"
+            logger.critical(
+                "CRITICAL: Daily loss limit breached! Current: %f, Limit: %f",
+                self.daily_pnl, -self.max_daily_loss
             )

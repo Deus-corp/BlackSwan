@@ -1,110 +1,90 @@
-# src/observability/telegram_notifier.py
 """
-Асинхронный уведомитель о событиях роя через Telegram Bot API.
+Asynchronous Telegram Bot API notifier for system events.
 
-Этот модуль предоставляет класс `TelegramNotifier` для отправки
-уведомлений в Telegram асинхронно.
+Provides a robust `TelegramNotifier` class for sending asynchronous notifications
+with proper session management and error handling.
 """
-import os
 import logging
-from typing import Optional, Any, Dict
+import os
+from typing import Optional, Any, Dict, Final
 
 import aiohttp
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 class TelegramNotifier:
     """
-    Класс для отправки асинхронных уведомлений в Telegram.
+    Handles asynchronous message dispatching to a configured Telegram chat.
 
-    Использует `aiohttp` для взаимодействия с Telegram Bot API.
-    Настройки токена бота и ID чата могут быть заданы при инициализации
-    или получены из переменных окружения (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID).
-
-    Args:
-        token (Optional[str]): Токен Telegram бота. Если не указан,
-                                   используется переменная окружения TELEGRAM_BOT_TOKEN.
-        chat_id (Optional[str]): ID чата или канала Telegram. Если не указан,
-                                     используется переменная окружения TELEGRAM_CHAT_ID.
+    The notifier utilizes `aiohttp.ClientSession` for efficient connection pooling.
+    Configuration is prioritized from constructor arguments, falling back to
+    'TELEGRAM_BOT_TOKEN' and 'TELEGRAM_CHAT_ID' environment variables.
     """
-    def __init__(self, token: Optional[str] = None, chat_id: Optional[str] = None) -> None:
-        """
-        Инициализирует уведомитель Telegram.
-        """
-        self.token: str = token or os.environ.get("TELEGRAM_BOT_TOKEN", "")
-        self.chat_id: str = chat_id or os.environ.get("TELEGRAM_CHAT_ID", "")
-        self.enabled: bool = bool(self.token and self.chat_id)
-        
-        # Aiohttp ClientSession should be reused for performance.
-        # It's better to manage its lifecycle explicitly.
-        self._session: Optional[aiohttp.ClientSession] = None
 
-        if self.enabled:
-            logger.info("Telegram notifier enabled and ready.")
+    TIMEOUT_SECONDS: Final[int] = 10
+
+    def __init__(self, token: Optional[str] = None, chat_id: Optional[str] = None) -> None:
+        self._token: str = token or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        self._chat_id: str = chat_id or os.environ.get("TELEGRAM_CHAT_ID", "")
+        self._session: Optional[aiohttp.ClientSession] = None
+        self._enabled: bool = bool(self._token and self._chat_id)
+
+        if not self._enabled:
+            logger.warning(
+                "TelegramNotifier is disabled: missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID."
+            )
         else:
-            logger.warning("Telegram notifier disabled (missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID environment variables).")
+            logger.info("TelegramNotifier initialized successfully.")
 
     async def _get_session(self) -> aiohttp.ClientSession:
-        """
-        Возвращает или создает `aiohttp.ClientSession`.
-
-        Returns:
-            aiohttp.ClientSession: Активная HTTP-сессия.
-        """
+        """Provides an active persistent aiohttp.ClientSession."""
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession()
         return self._session
 
     async def close(self) -> None:
-        """
-        Закрывает `aiohttp.ClientSession`, если она была открыта.
-        Рекомендуется вызывать при завершении работы приложения для корректного
-        освобождения ресурсов.
-        """
+        """Gracefully closes the internal HTTP session."""
         if self._session and not self._session.closed:
             await self._session.close()
-            logger.info("Telegram notifier aiohttp session closed.")
-        self._session = None # Clear the session reference
+            logger.debug("TelegramNotifier session closed.")
+        self._session = None
 
     async def send(self, text: str) -> bool:
         """
-        Отправляет текстовое сообщение в Telegram.
-
-        Сообщение будет отправлено только если уведомитель включен (self.enabled).
-        Использует 'HTML' режим парсинга для форматирования текста.
+        Sends a text message using the Telegram Bot API.
 
         Args:
-            text (str): Текст сообщения для отправки.
+            text: The message content to send (HTML formatting supported).
 
         Returns:
-            bool: True, если сообщение было успешно отправлено (HTTP 200),
-                  иначе False.
+            bool: True if the request was successful, False otherwise.
         """
-        if not self.enabled:
-            logger.debug("Telegram notifier is disabled, skipping message send.")
+        if not self._enabled:
             return False
 
-        url: str = f"https://api.telegram.org/bot{self.token}/sendMessage"
+        url = f"https://api.telegram.org/bot{self._token}/sendMessage"
         payload: Dict[str, Any] = {
-            "chat_id": self.chat_id,
+            "chat_id": self._chat_id,
             "text": text,
             "parse_mode": "HTML",
         }
-        
+
         try:
             session = await self._get_session()
-            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                if resp.status == 200:
-                    logger.debug("Telegram message sent successfully.")
+            timeout = aiohttp.ClientTimeout(total=self.TIMEOUT_SECONDS)
+            
+            async with session.post(url, json=payload, timeout=timeout) as response:
+                if response.status == 200:
                     return True
-                else:
-                    response_text = await resp.text()
-                    logger.error(f"Telegram send failed with status {resp.status}. Response: {response_text}")
-                    return False
-        except aiohttp.ClientError as e:
-            logger.error(f"Telegram send client error: {e}")
+                
+                body = await response.text()
+                logger.error(
+                    "Telegram API error (status %d): %s", response.status, body
+                )
+                return False
+        except aiohttp.ClientError as exc:
+            logger.error("Telegram network/client error: %s", exc)
             return False
-        except Exception as e:
-            # Catch any other unexpected exceptions
-            logger.error(f"Telegram send unexpected error: {e}", exc_info=True)
+        except Exception as exc:
+            logger.exception("Unexpected error while sending Telegram message: %s", exc)
             return False

@@ -1,9 +1,13 @@
+from typing import Any, Dict, List
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
-from dashboard.docker_service import get_swarm_logs, save_logs_to_disk, list_containers
+from dashboard.docker_service import (
+    get_swarm_logs,
+    save_logs_to_disk,
+    list_containers,
+)
 from dashboard.routes.base_template import render_page
-from typing import Any # Needed for dict type hints
 
 router = APIRouter()
 
@@ -23,36 +27,47 @@ LOGS_CONTENT: str = """
 @router.get("/logs", response_class=HTMLResponse)
 def logs_page(request: Request) -> HTMLResponse:
     """
-    Renders the logs page, providing an interface to view and manage swarm logs.
+    Renders the logs dashboard page.
+
+    Args:
+        request: The incoming FastAPI request instance.
+
+    Returns:
+        HTMLResponse: The rendered page template with log controls.
     """
     return HTMLResponse(render_page(request, LOGS_CONTENT, "BlackSwan Logs"))
 
 @router.get("/api/logs/text", response_class=PlainTextResponse)
 def logs_text() -> PlainTextResponse:
     """
-    Retrieves the latest Docker swarm logs as plain text.
-    Fetches the last 200 lines of logs.
+    Retrieves the last 200 lines of swarm logs as plain text.
+
+    Returns:
+        PlainTextResponse: The log buffer content.
     """
     return PlainTextResponse(get_swarm_logs(200))
 
 @router.post("/api/save_logs", response_class=PlainTextResponse)
 def save_logs() -> PlainTextResponse:
     """
-    Saves the current Docker swarm logs to a file on disk.
-    Returns a message indicating the success or failure of the operation.
+    Triggers a persistence operation to write logs to disk.
+
+    Returns:
+        PlainTextResponse: Status message indicating success or error.
     """
-    msg: str = save_logs_to_disk()
-    return PlainTextResponse(msg)
+    return PlainTextResponse(save_logs_to_disk())
 
 @router.get("/api/container_status", response_class=PlainTextResponse)
 def container_status() -> PlainTextResponse:
     """
-    Retrieves the status of all Docker containers in the swarm.
-    Returns a plain text string with each container's name and status.
+    Fetches the operational status of all containers in the swarm.
+
+    Returns:
+        PlainTextResponse: A newline-separated string of "Name: Status" for each container.
     """
-    containers: list[dict[str, Any]] = list_containers()
+    containers: List[Dict[str, Any]] = list_containers()
     if not containers:
         return PlainTextResponse("No containers found.")
 
-    statuses: list[str] = [f"{c['name']}: {c['status']}" for c in containers]
+    statuses: List[str] = [f"{c.get('name', 'unknown')}: {c.get('status', 'unknown')}" for c in containers]
     return PlainTextResponse("\n".join(statuses))

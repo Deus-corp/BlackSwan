@@ -1,12 +1,16 @@
-from .models import FileItem, ImprovementResult, MemoryHit, ValidationResult
-from .memory import MemoryStore
+#!/usr/bin/env python3
+"""Improver swarm package.
+
+The Improver is a maintenance/code-improvement swarm.
+
+Public entrypoint:
+- ImproverAgent
+"""
+
+from __future__ import annotations
+
 from .improver_agent import ImproverAgent
 
 __all__ = [
-    "FileItem",
-    "ImprovementResult",
-    "MemoryHit",
-    "ValidationResult",
-    "MemoryStore",
     "ImproverAgent",
 ]

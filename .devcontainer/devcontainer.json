@@ -5,6 +5,9 @@
     "context": "..",
     "target": "final"
   },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
   "customizations": {
     "vscode": {
       "extensions": [

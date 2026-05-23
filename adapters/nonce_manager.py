@@ -7,7 +7,7 @@ import time
 import asyncio
 import json
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from loguru import logger
 
 
@@ -238,57 +238,30 @@ class NonceManager:
             onchain_pending: int = await w3.eth.get_transaction_count(checksum_address, "pending")
             
             with self._get_connection() as conn:
-                conn.execute("BEGIN IMMEDIATE") # Start a transaction with immediate lock
+                conn.execute("BEGIN IMMEDIATE") # Start an immediate transaction
                 try:
-                    # Fetch current nonce from DB. Ensure it exists first.
+                    # Ensure the address exists in the nonces table, initializing if not present.
+                    # If it exists, this does nothing due to IGNORE.
                     conn.execute("INSERT OR IGNORE INTO nonces (address, nonce, last_updated) VALUES (?, ?, ?)",
                                  (self.account_address, onchain_pending, time.time()))
+                    
+                    # Fetch current DB nonce (it's guaranteed to exist now due to INSERT OR IGNORE)
                     cur = conn.execute("SELECT nonce FROM nonces WHERE address = ?", (self.account_address,))
                     row = cur.fetchone()
-                    db_nonce: int = row[0] # Guaranteed to exist
+                    db_nonce: int = row[0] # Will always find a row
 
-                    # Determine the nonce to use: maximum of on-chain pending and DB-stored
-                    use_nonce: int = max(onchain_pending, db_nonce)
-                    next_nonce: int = use_nonce + 1
-
-                    # Optimistic update: only update if the nonce in DB is still what we read (db_nonce).
-                    # If conn.total_changes is 0, another process/thread updated it before us.
-                    conn.execute(
-                        "UPDATE nonces SET nonce = ?, last_updated = ? WHERE address = ? AND nonce = ?",
-                        (next_nonce, time.time(), self.account_address, db_nonce)
-                    )
-
-                    if conn.total_changes == 0:
-                        # Conflict detected: another process/thread updated the nonce; rollback and retry
-                        conn.rollback()
-                        logger.debug(f"Conflict reserving nonce for {self.account_address[:8]}..., retrying...")
-                        await asyncio.sleep(0.02) # Small delay before retrying to reduce contention
-                        continue # Loop to try again
+                    # The safe nonce is the maximum of what's on-chain and what's in DB
+                    safe_nonce: int = max(onchain_pending, db_nonce)
+                    
+                    # Update the DB to the *next* available nonce for this address
+                    conn.execute("UPDATE nonces SET nonce = ?, last_updated = ? WHERE address = ?",
+                                 (safe_nonce + 1, time.time(), self.account_address))
+                    conn.commit()
+                    return safe_nonce
+                except sqlite3.OperationalError as e:
+                    if "database is locked" in str(e):
+                        # If the database is locked, wait a bit and retry
+                        await asyncio.sleep(0.1)
+                        continue
                     else:
-                        conn.commit()
-                        logger.debug(f"Reserved nonce {use_nonce} for {self.account_address[:8]}... Next in DB: {next_nonce}")
-                        return use_nonce
-                except Exception as e:
-                    conn.rollback()
-                    logger.exception(f"Error during nonce reservation for {self.account_address[:8]}...: {e}")
-                    raise # Re-raise the exception after rollback
-            
-    def save_mutation(self, node_id: str, old_params: Dict[str, Any], new_params: Dict[str, Any], context: str) -> None:
-        """
-        Saves a record of a mutation (parameter change) to the mutation history table.
-        This provides an audit trail for important configuration or state changes.
-
-        Args:
-            node_id (str): Identifier for the node or component where the mutation occurred.
-            old_params (Dict[str, Any]): Dictionary of parameters before the mutation.
-                                         Will be stored as a JSON string.
-            new_params (Dict[str, Any]): Dictionary of parameters after the mutation.
-                                         Will be stored as a JSON string.
-            context (str): A descriptive string about the context of the mutation.
-        """
-        with self._get_connection() as conn:
-            conn.execute(
-                "INSERT INTO mutation_history (node_id, timestamp, old_params, new_params, context) VALUES (?, ?, ?, ?, ?)",
-                (node_id, time.time(), json.dumps(old_params), json.dumps(new_params), context)
-            )
-            conn.commit()
+                        raise
