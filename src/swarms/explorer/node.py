@@ -164,13 +164,14 @@ class ExplorerNode(BaseSwarmNode):
 
     async def process_command(self, command: Mapping[str, Any]) -> None:
         """Process explorer commands from canonical or legacy CRDT command formats."""
-        await super().process_command(command)
-
         action = command_action(command)
         data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
         payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
 
         if self._explorer_command_seen_recently(command):
+            return
+
+        if await self.handle_lifecycle_command(command):
             return
 
         command_id = str(command.get("gid") or "")
@@ -314,6 +315,11 @@ class ExplorerNode(BaseSwarmNode):
             or payload.get("node_id")
             or ""
         )
+
+        # Legacy explorer PAUSE/RESUME often has no target_node, while canonical
+        # PAUSE/RESUME is node-targeted. Treat them as equivalent locally.
+        if action in {"PAUSE", "RESUME"}:
+            target_node = ""
 
         urls = payload.get("urls") or data.get("urls") or []
         if isinstance(urls, list):

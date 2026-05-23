@@ -42,6 +42,23 @@ from .topology import (
     known_swarms,
 )
 
+from .lifecycle import (
+    LIFECYCLE_COMMANDS,
+    LIFECYCLE_PAUSE,
+    LIFECYCLE_RESTART_NODE,
+    LIFECYCLE_RESUME,
+    LIFECYCLE_RUN_ONCE,
+    command_payload,
+    is_lifecycle_command,
+    lifecycle_action,
+    lifecycle_applies_to,
+    lifecycle_reason,
+    lifecycle_summary,
+    lifecycle_target_node,
+    lifecycle_target_role,
+    lifecycle_target_swarm,
+)
+
 __all__ = [
     "EXPLORER_COMMANDS",
     "IMPROVER_COMMANDS",
@@ -74,4 +91,18 @@ __all__ = [
     "normalize_heartbeat",
     "normalize_heartbeats",
     "command_fingerprint",
+    "LIFECYCLE_COMMANDS",
+    "LIFECYCLE_PAUSE",
+    "LIFECYCLE_RESTART_NODE",
+    "LIFECYCLE_RESUME",
+    "LIFECYCLE_RUN_ONCE",
+    "command_payload",
+    "is_lifecycle_command",
+    "lifecycle_action",
+    "lifecycle_applies_to",
+    "lifecycle_reason",
+    "lifecycle_summary",
+    "lifecycle_target_node",
+    "lifecycle_target_role",
+    "lifecycle_target_swarm",
 ]

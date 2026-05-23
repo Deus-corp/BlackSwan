@@ -21,6 +21,8 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Any, Dict, List
+import uuid
+import os
 
 from src.swarms.common import (
     BaseSwarmMetaAgent,
@@ -36,6 +38,8 @@ from src.swarms.improver.improver_agent import ImproverAgent
 from src.swarms.overseer.overseer_core.executor import ActionExecutor
 from src.swarms.overseer.overseer_core.models import OverseerDecision, SwarmSnapshot
 from src.swarms.security.node import SecurityNode
+from src.swarms.overseer.node import OverseerNode
+from src.swarms.overseer.overseer_core.collector import StateCollector
 
 
 class MemorySink:
@@ -139,6 +143,8 @@ async def check_security_dedup() -> None:
 
 
 async def check_explorer_dedup() -> None:
+    reason = f"smoke-explorer-dedup-{uuid.uuid4().hex}"
+
     node = ExplorerNode(
         node_id="exp-smoke-dedup",
         memory_db=Path("./data/test_smoke_explorer_dedup.sqlite3"),
@@ -151,16 +157,16 @@ async def check_explorer_dedup() -> None:
         target_swarm="explorer",
         target_role="node",
         ttl_seconds=300,
-        payload={"reason": "smoke"},
+        payload={"reason": reason},
         provenance={"test": True},
     )
 
     legacy = {
         "type": "explorer_command",
-        "gid": "legacy-exp-smoke-pause",
+        "gid": f"legacy-exp-smoke-pause-{uuid.uuid4().hex}",
         "timestamp": 9999999999,
         "expires_at": 9999999999,
-        "data": {"action": "PAUSE", "reason": "smoke"},
+        "data": {"action": "PAUSE", "reason": reason},
         "provenance": {"test": True},
     }
 
@@ -172,16 +178,20 @@ async def check_explorer_dedup() -> None:
         for item in node.crdt.state.values()
         if isinstance(item, dict)
         and item.get("type") == "swarm_event"
-        and item.get("event_type") == "command_applied"
+        and item.get("event_type") in {"command_applied", "lifecycle_command_applied"}
         and item.get("source_swarm") == "explorer"
         and item.get("source_node") == node.node_id
+        and isinstance(item.get("payload"), dict)
+        and item["payload"].get("reason") == reason
     ]
 
-    assert_true(node.build_heartbeat()["metrics"]["paused"] is True, "explorer pause not applied")
+    assert_true(node.is_paused() is True, "explorer pause not applied")
     assert_true(len(events) == 1, f"explorer dedup failed, command events={len(events)}")
 
 
 async def check_improver_dry_cycle() -> None:
+    reason = f"smoke-improver-dry-{uuid.uuid4().hex}"
+    
     agent = ImproverAgent(
         node_id="improver-smoke-dry",
         single_pass=False,
@@ -206,7 +216,7 @@ async def check_improver_dry_cycle() -> None:
         target_role="maintenance_agent",
         target_node=agent.node_id,
         ttl_seconds=300,
-        payload={"reason": "smoke"},
+        payload={"reason": reason},
         provenance={"test": True},
     )
 
@@ -284,6 +294,514 @@ async def check_overseer_executor_gates() -> None:
     assert_true("swarm_command" in types, "security canonical command missing")
     assert_true("sec_command" in types, "security legacy command missing")
 
+async def check_overseer_topology_summary() -> None:
+    class Dummy:
+        state = {
+            "security-node": {
+                "type": "swarm_heartbeat",
+                "node_id": "sec-smoke-1",
+                "swarm": "security",
+                "role": "node",
+                "timestamp": 9999999999,
+                "metrics": {"blocked_ips": 3},
+            },
+            "explorer-node": {
+                "type": "swarm_heartbeat",
+                "node_id": "exp-smoke-1",
+                "swarm": "explorer",
+                "role": "node",
+                "timestamp": 9999999999,
+                "metrics": {},
+            },
+            "explorer-meta": {
+                "type": "swarm_heartbeat",
+                "node_id": "exp-meta-smoke-1",
+                "swarm": "explorer",
+                "role": "meta_agent",
+                "timestamp": 9999999999,
+                "metrics": {},
+            },
+            "improver": {
+                "type": "swarm_heartbeat",
+                "node_id": "improver-smoke-1",
+                "swarm": "improver",
+                "role": "maintenance_agent",
+                "timestamp": 9999999999,
+                "metrics": {},
+            },
+            "security-command": {
+                "type": "swarm_command",
+                "command_type": "UNBLOCK_ALL",
+                "target_swarm": "security",
+                "timestamp": 9999999999,
+            },
+        }
+
+    collector = StateCollector(Dummy())
+    health = collector.collect_topology_health()
+
+    node = OverseerNode(node_id="overseer-smoke-topology")
+    summary = node.summarize_topology_health(health)
+
+    assert_true(summary["type"] == "topology_health", "topology summary type mismatch")
+    assert_true(summary["swarms"]["security"]["status"] == "ok", "security topology status mismatch")
+    assert_true(summary["swarms"]["security"]["commands"] == 1, "security command count mismatch")
+    assert_true(summary["swarms"]["explorer"]["node_count"] == 2, "explorer node_count mismatch")
+    assert_true(
+        summary["swarms"]["explorer"]["role_counts"]["meta_agent"] == 1,
+        "explorer meta_agent role_count mismatch",
+    )
+    assert_true(
+        summary["swarms"]["improver"]["advisory_only"] is True,
+        "improver advisory_only mismatch",
+    )
+
+async def check_overseer_topology_healthcheck() -> None:
+    node = OverseerNode(node_id="overseer-smoke-healthcheck")
+
+    node._last_topology_health = {
+        "swarms": {
+            "security": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 1,
+                "status": "ok",
+            },
+            "explorer": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 0,
+                "status": "absent",
+            },
+            "improver": {
+                "managed_by_overseer": True,
+                "advisory_only": True,
+                "node_count": 1,
+                "status": "ok",
+            },
+        }
+    }
+
+    await node.healthcheck()
+
+    assert_true(node.health.status == "ok", f"expected ok health, got {node.health.status}")
+    assert_true(node.health.last_error == "", f"expected empty health error, got {node.health.last_error!r}")
+
+    node._last_topology_health = {
+        "swarms": {
+            "security": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 1,
+                "status": "stale",
+            },
+            "explorer": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 1,
+                "status": "ok",
+            },
+            "improver": {
+                "managed_by_overseer": True,
+                "advisory_only": True,
+                "node_count": 1,
+                "status": "ok",
+            },
+        }
+    }
+
+    await node.healthcheck()
+
+    assert_true(node.health.status == "degraded", f"expected degraded health, got {node.health.status}")
+    assert_true(
+        "security" in node.health.last_error,
+        f"expected security in health error, got {node.health.last_error!r}",
+    )
+
+async def check_overseer_topology_rules_payload() -> None:
+    class DummyStrategist:
+        async def suggest(self, snapshot):
+            return {}
+
+    node = OverseerNode(node_id="overseer-smoke-topology-rules")
+    node.strategist = DummyStrategist()
+
+    node._last_topology_health = {
+        "swarms": {
+            "security": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 1,
+                "status": "ok",
+            },
+            "explorer": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 1,
+                "status": "stale",
+            },
+            "trade": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 0,
+                "status": "absent",
+            },
+            "improver": {
+                "managed_by_overseer": True,
+                "advisory_only": True,
+                "node_count": 1,
+                "status": "ok",
+            },
+        }
+    }
+
+    snapshot = node.collector.collect()
+    decision = await node.global_decide(snapshot)
+    rules = decision.payload.get("topology_rules", {})
+
+    assert_true(
+        rules.get("has_degraded_managed_swarms") is True,
+        "expected degraded managed swarms in topology rules",
+    )
+    assert_true(
+        rules.get("degraded_managed_swarms", {}).get("explorer") == "stale",
+        "expected explorer stale in degraded topology rules",
+    )
+    assert_true(
+        "trade" in rules.get("absent_managed_swarms", []),
+        "expected trade in absent managed swarms",
+    )
+    assert_true(
+        "improver" in rules.get("advisory_swarms", []),
+        "expected improver in advisory swarms",
+    )
+
+async def check_overseer_topology_warnings() -> None:
+    class DummyStrategist:
+        async def suggest(self, snapshot):
+            return {}
+
+    node = OverseerNode(node_id="overseer-smoke-topology-warnings")
+    node.strategist = DummyStrategist()
+
+    node._last_topology_health = {
+        "swarms": {
+            "security": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 1,
+                "status": "ok",
+            },
+            "explorer": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 1,
+                "status": "stale",
+            },
+            "trade": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 0,
+                "status": "absent",
+            },
+            "improver": {
+                "managed_by_overseer": True,
+                "advisory_only": True,
+                "node_count": 1,
+                "status": "ok",
+            },
+        }
+    }
+
+    snapshot = node.collector.collect()
+    decision = await node.global_decide(snapshot)
+    warnings = decision.payload.get("topology_warnings", [])
+
+    assert_true(
+        any(w.get("swarm") == "explorer" and w.get("status") == "stale" for w in warnings),
+        "expected explorer stale topology warning",
+    )
+    assert_true(
+        any(w.get("swarm") == "trade" and w.get("status") == "absent" for w in warnings),
+        "expected trade absent topology warning",
+    )
+
+async def check_overseer_topology_restart_candidates() -> None:
+    class DummyStrategist:
+        async def suggest(self, snapshot):
+            return {}
+
+    node = OverseerNode(node_id="overseer-smoke-topology-restart-candidates")
+    node.strategist = DummyStrategist()
+
+    node._last_topology_health = {
+        "swarms": {
+            "security": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 2,
+                "status": "degraded",
+                "stale_nodes": ["sec-smoke-stale-1"],
+            },
+            "explorer": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 1,
+                "status": "stale",
+                "stale_nodes": ["exp-smoke-stale-1"],
+            },
+            "trade": {
+                "managed_by_overseer": True,
+                "advisory_only": False,
+                "node_count": 0,
+                "status": "absent",
+                "stale_nodes": [],
+            },
+            "improver": {
+                "managed_by_overseer": True,
+                "advisory_only": True,
+                "node_count": 1,
+                "status": "ok",
+                "stale_nodes": [],
+            },
+        }
+    }
+
+    snapshot = node.collector.collect()
+    decision = await node.global_decide(snapshot)
+    directives = await node.route_directives(decision, snapshot)
+
+    topology_directives = [
+        item for item in directives
+        if item.get("source") == "topology_rules"
+    ]
+
+    assert_true(
+        any(item.get("target_node") == "sec-smoke-stale-1" for item in topology_directives),
+        "expected topology restart candidate for stale security node",
+    )
+    assert_true(
+        any(item.get("target_node") == "exp-smoke-stale-1" for item in topology_directives),
+        "expected topology restart candidate for stale explorer node",
+    )
+    assert_true(
+        all(item.get("execution_enabled") is False for item in topology_directives),
+        "topology restart candidates must not execute in phase A",
+    )
+    assert_true(
+        all(item.get("advisory_only") is True for item in topology_directives),
+        "topology restart candidates must be advisory-only in phase A",
+    )
+
+async def check_overseer_topology_restarts_default_disabled() -> None:
+    class DummyStrategist:
+        async def suggest(self, snapshot):
+            return {}
+
+    previous = os.environ.pop("OVERSEER_ENABLE_TOPOLOGY_RESTARTS", None)
+
+    try:
+        node = OverseerNode(node_id="overseer-smoke-topology-restarts-default")
+        node.strategist = DummyStrategist()
+
+        node._last_topology_health = {
+            "swarms": {
+                "security": {
+                    "managed_by_overseer": True,
+                    "advisory_only": False,
+                    "node_count": 1,
+                    "status": "stale",
+                    "stale_nodes": ["sec-smoke-topology-default-1"],
+                }
+            }
+        }
+
+        snapshot = node.collector.collect()
+        decision = await node.global_decide(snapshot)
+        directives = await node.route_directives(decision, snapshot)
+
+        topology_directives = [
+            item for item in directives
+            if item.get("source") == "topology_rules"
+            and item.get("target_node") == "sec-smoke-topology-default-1"
+        ]
+
+        assert_true(node.enable_topology_restarts is False, "topology restarts should be default-disabled")
+        assert_true(topology_directives, "expected advisory topology restart directive")
+        assert_true(
+            all(item.get("execution_enabled") is False for item in topology_directives),
+            "default-disabled topology directives must not execute",
+        )
+
+        commands = [
+            item for item in node.crdt.state.values()
+            if isinstance(item, dict)
+            and item.get("type") == "swarm_command"
+            and item.get("source_node") == node.overseer_id
+            and item.get("target_node") == "sec-smoke-topology-default-1"
+            and item.get("command_type") == "RESTART_NODE"
+        ]
+
+        assert_true(not commands, "topology restart command should not emit when flag is false")
+
+    finally:
+        if previous is not None:
+            os.environ["OVERSEER_ENABLE_TOPOLOGY_RESTARTS"] = previous
+        else:
+            os.environ.pop("OVERSEER_ENABLE_TOPOLOGY_RESTARTS", None)
+
+async def check_overseer_topology_restarts_enabled_canonical_only() -> None:
+    class DummyStrategist:
+        async def suggest(self, snapshot):
+            return {}
+
+    previous = os.environ.get("OVERSEER_ENABLE_TOPOLOGY_RESTARTS")
+    os.environ["OVERSEER_ENABLE_TOPOLOGY_RESTARTS"] = "true"
+
+    try:
+        node = OverseerNode(node_id="overseer-smoke-topology-restarts-enabled")
+        node.strategist = DummyStrategist()
+
+        node._last_topology_health = {
+            "swarms": {
+                "security": {
+                    "managed_by_overseer": True,
+                    "advisory_only": False,
+                    "node_count": 1,
+                    "status": "stale",
+                    "stale_nodes": ["sec-smoke-topology-enabled-1"],
+                }
+            }
+        }
+
+        snapshot = node.collector.collect()
+        decision = await node.global_decide(snapshot)
+        directives = await node.route_directives(decision, snapshot)
+
+        assert_true(node.enable_topology_restarts is True, "topology restarts should be enabled by env flag")
+
+        commands = [
+            item for item in node.crdt.state.values()
+            if isinstance(item, dict)
+            and item.get("type") == "swarm_command"
+            and item.get("source_node") == node.overseer_id
+            and item.get("target_node") == "sec-smoke-topology-enabled-1"
+            and item.get("command_type") == "RESTART_NODE"
+        ]
+
+        legacy = [
+            item for item in node.crdt.state.values()
+            if isinstance(item, dict)
+            and item.get("source_node") == node.overseer_id
+            and item.get("target_node") == "sec-smoke-topology-enabled-1"
+            and item.get("type") in {"sec_command", "explorer_command", "meta_command_json"}
+        ]
+
+        assert_true(commands, "canonical topology restart command missing")
+        assert_true(not legacy, "topology restart path must not emit legacy commands")
+
+        topology_directives = [
+            item for item in directives
+            if item.get("source") == "topology_rules"
+            and item.get("target_node") == "sec-smoke-topology-enabled-1"
+        ]
+
+        assert_true(
+            any(item.get("execution_enabled") is True for item in topology_directives),
+            "enabled topology restart directive should be execution_enabled=True",
+        )
+        assert_true(
+            any(item.get("legacy_emitted") is False for item in topology_directives),
+            "enabled topology restart directive should report legacy_emitted=False",
+        )
+
+    finally:
+        if previous is not None:
+            os.environ["OVERSEER_ENABLE_TOPOLOGY_RESTARTS"] = previous
+        else:
+            os.environ.pop("OVERSEER_ENABLE_TOPOLOGY_RESTARTS", None)
+
+async def check_common_lifecycle_security_explorer() -> None:
+    reason = f"smoke-lifecycle-{uuid.uuid4().hex}"
+
+    security = SecurityNode(
+        node_id="sec-smoke-lifecycle",
+        memory_db=Path("./data/test_smoke_security_lifecycle.sqlite3"),
+    )
+
+    explorer = ExplorerNode(
+        node_id="exp-smoke-lifecycle",
+        memory_db=Path("./data/test_smoke_explorer_lifecycle.sqlite3"),
+    )
+
+    sec_pause = make_swarm_command(
+        command_type="PAUSE",
+        source_agent="smoke",
+        source_swarm="overseer",
+        target_swarm="security",
+        target_role="node",
+        target_node=security.node_id,
+        ttl_seconds=300,
+        payload={"reason": reason},
+    )
+
+    exp_pause = make_swarm_command(
+        command_type="PAUSE",
+        source_agent="smoke",
+        source_swarm="overseer",
+        target_swarm="explorer",
+        target_role="node",
+        target_node=explorer.node_id,
+        ttl_seconds=300,
+        payload={"reason": reason},
+    )
+
+    exp_resume = make_swarm_command(
+        command_type="RESUME",
+        source_agent="smoke",
+        source_swarm="overseer",
+        target_swarm="explorer",
+        target_role="node",
+        target_node=explorer.node_id,
+        ttl_seconds=300,
+        payload={"reason": reason},
+    )
+
+    await security.process_command(sec_pause)
+    await explorer.process_command(exp_pause)
+    await explorer.process_command(exp_resume)
+
+    assert_true(
+        getattr(security, "paused", False) is True,
+        "security PAUSE lifecycle command did not pause node",
+    )
+    assert_true(
+        getattr(explorer, "paused", False) is False,
+        "explorer RESUME lifecycle command did not resume node",
+    )
+
+    sec_events = [
+        item for item in security.crdt.state.values()
+        if isinstance(item, dict)
+        and item.get("type") == "swarm_event"
+        and item.get("event_type") == "lifecycle_command_applied"
+        and item.get("source_node") == security.node_id
+        and isinstance(item.get("payload"), dict)
+        and item["payload"].get("reason") == reason
+    ]
+
+    exp_events = [
+        item for item in explorer.crdt.state.values()
+        if isinstance(item, dict)
+        and item.get("type") == "swarm_event"
+        and item.get("event_type") == "lifecycle_command_applied"
+        and item.get("source_node") == explorer.node_id
+        and isinstance(item.get("payload"), dict)
+        and item["payload"].get("reason") == reason
+    ]
+
+    assert_true(len(sec_events) == 1, f"expected 1 security lifecycle event, got {len(sec_events)}")
+    assert_true(len(exp_events) == 2, f"expected 2 explorer lifecycle events, got {len(exp_events)}")
 
 async def main() -> None:
     checks = [
@@ -291,7 +809,15 @@ async def main() -> None:
         ("command normalization", check_command_normalization),
         ("security dedup", check_security_dedup),
         ("explorer dedup", check_explorer_dedup),
+        ("common lifecycle security/explorer", check_common_lifecycle_security_explorer),
         ("improver dry cycle", check_improver_dry_cycle),
+        ("overseer topology summary", check_overseer_topology_summary),
+        ("overseer topology healthcheck", check_overseer_topology_healthcheck),
+        ("overseer topology rules payload", check_overseer_topology_rules_payload),
+        ("overseer topology warnings", check_overseer_topology_warnings),
+        ("overseer topology restart candidates", check_overseer_topology_restart_candidates),
+        ("overseer topology restarts default disabled", check_overseer_topology_restarts_default_disabled),
+        ("overseer topology restarts enabled canonical only", check_overseer_topology_restarts_enabled_canonical_only),
         ("overseer executor gates", check_overseer_executor_gates),
     ]
 

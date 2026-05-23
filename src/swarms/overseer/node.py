@@ -30,7 +30,6 @@ from src.intelligence.llm_client import LLMClient
 from src.swarms.common import (
     BaseOverseerConfig,
     BaseSwarmOverseer,
-    GlobalDecision,
     make_swarm_event,
     utc_ts,
 )
@@ -45,6 +44,12 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_COORDINATION_INTERVAL_SECONDS = 150
 DEFAULT_OVERSEER_VERSION = "0.2.0"
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,8 +125,13 @@ class OverseerNode(BaseSwarmOverseer):
         self.policy = PolicyEngine()
         self.strategist = LLMStrategist(self.llm)
         self.executor = ActionExecutor(self.crdt)
+        self.enable_topology_restarts = _env_bool(
+            "OVERSEER_ENABLE_TOPOLOGY_RESTARTS",
+            False,
+        )
 
         self._last_snapshot: Optional[SwarmSnapshot] = None
+        self._last_topology_health: Dict[str, Any] = {}
         self._last_hard_rules: Optional[OverseerDecision] = None
         self._last_final_decision: Optional[OverseerDecision] = None
         self._last_llm_suggestions: Dict[str, Any] = {}
@@ -142,23 +152,36 @@ class OverseerNode(BaseSwarmOverseer):
             "🧭 Overseer %s startup complete.",
             self.overseer_id,
         )
+        self.logger.info(
+            "Topology restarts enabled: %s",
+            self.enable_topology_restarts,
+        )
 
     async def collect_all_swarms(self) -> SwarmSnapshot:
-        """Collect normalized ecosystem state using overseer_core collector."""
+        """Collect normalized and topology-aware ecosystem state."""
         snapshot = self.collector.collect()
+        topology_health = self.collector.collect_topology_health()
+
         self._last_snapshot = snapshot
+        self._last_topology_health = dict(topology_health)
 
         self.logger.info(
-            "Overseer snapshot: trade_nodes=%d security_nodes=%d explorer_nodes=%d "
+            "Overseer snapshot: trade_nodes=%d security_nodes=%d explorer_nodes=%d improver_nodes=%d "
             "trade_capital=%.2f trade_fitness=%.4f blocked_ips=%d findings=%d vulnerabilities=%d",
             snapshot.trade_nodes,
             snapshot.security_nodes,
             snapshot.explorer_nodes,
+            snapshot.improver_nodes,
             snapshot.trade_capital,
             snapshot.trade_fitness,
             snapshot.blocked_ips,
             snapshot.recent_findings,
             snapshot.recent_vulnerability_alerts,
+        )
+
+        self.logger.info(
+            "Overseer topology health: %s",
+            self.summarize_topology_health(topology_health),
         )
 
         return snapshot
@@ -169,6 +192,10 @@ class OverseerNode(BaseSwarmOverseer):
             raise TypeError("Overseer expected SwarmSnapshot from collect_all_swarms()")
 
         snapshot = ecosystem_snapshot
+        topology_summary = self.summarize_topology_health(self._last_topology_health)
+        topology_rules = self.policy.evaluate_topology_rules(self._last_topology_health)
+        topology_warnings = self.summarize_topology_warnings(topology_rules)
+        topology_restart_candidates = self.summarize_topology_restart_candidates(topology_rules)
 
         hard_rules = self.policy.evaluate_hard_rules(snapshot)
         llm_suggestions = await self.strategist.suggest(snapshot)
@@ -204,11 +231,20 @@ class OverseerNode(BaseSwarmOverseer):
                 "unblock_ips": final_decision.unblock_ips,
                 "spawn_nodes": final_decision.spawn_nodes,
                 "continue_explorer": final_decision.continue_explorer,
+                "run_improver_once": getattr(final_decision, "run_improver_once", False),
+                "pause_improver": getattr(final_decision, "pause_improver", False),
                 "snapshot": self.summarize_ecosystem_snapshot(snapshot),
+                "topology": topology_summary,
+                "topology_rules": topology_rules,
+                "topology_warnings": topology_warnings,
+                "topology_restart_candidates": topology_restart_candidates,
             },
             provenance={
                 "agent": self.overseer_id,
                 "hard_rules": hard_rules.reason,
+                "topology_rules": topology_rules,
+                "topology_warnings": topology_warnings,
+                "topology_restart_candidates": topology_restart_candidates,
                 "llm_suggestions": dict(llm_suggestions),
             },
             hard_rules=hard_rules,
@@ -247,8 +283,21 @@ class OverseerNode(BaseSwarmOverseer):
         if final_decision is None:
             return []
 
+        topology_rules = decision.payload.get("topology_rules", {}) if isinstance(decision.payload, Mapping) else {}
+        topology_candidates = decision.payload.get("topology_restart_candidates", [])
+        if not isinstance(topology_candidates, list):
+            topology_candidates = []
+
+        advisory_summaries = self._directive_summaries(
+            final_decision,
+            ecosystem_snapshot,
+            parent_gid=decision.event_gid,
+            advisory_only=True,
+            topology_rules=topology_rules,
+        )
+
         if not decision.directives_required:
-            return []
+            return advisory_summaries
 
         started_at = utc_ts()
 
@@ -258,7 +307,38 @@ class OverseerNode(BaseSwarmOverseer):
             started_at,
         )
 
-        routed = self._directive_summaries(final_decision, ecosystem_snapshot, parent_gid=decision.event_gid)
+        routed = self._directive_summaries(
+            final_decision,
+            ecosystem_snapshot,
+            parent_gid=decision.event_gid,
+            advisory_only=False,
+            topology_rules=topology_rules,
+        )
+
+        if self.enable_topology_restarts:
+            executable_candidates: list[Dict[str, Any]] = []
+            for item in topology_candidates:
+                if not isinstance(item, Mapping):
+                    continue
+                executable = dict(item)
+                executable["execution_enabled"] = True
+                executable["advisory_only"] = False
+                executable_candidates.append(executable)
+
+            emitted_topology = await self._emit_topology_restart_candidates(
+                candidates=executable_candidates,
+                parent_gid=decision.event_gid,
+            )
+
+            if emitted_topology:
+                routed = [
+                    item for item in routed
+                    if not (
+                        item.get("source") == "topology_rules"
+                        and item.get("execution_enabled") is False
+                    )
+                ]
+                routed.extend(emitted_topology)
 
         self.logger.info(
             "Overseer routed %d directive summaries for action=%s",
@@ -302,6 +382,11 @@ class OverseerNode(BaseSwarmOverseer):
                 "rationale": decision.rationale,
                 "directives": [dict(item) for item in directives],
                 "snapshot": self.summarize_ecosystem_snapshot(ecosystem_snapshot),
+                "topology": self.summarize_topology_health(self._last_topology_health),
+                "topology_rules": decision.payload.get("topology_rules", {}),
+                "topology_warnings": decision.payload.get("topology_warnings", []),
+                "topology_restart_candidates": decision.payload.get("topology_restart_candidates", []),
+                "decision_payload": dict(decision.payload),
             },
             provenance={
                 "agent": self.overseer_id,
@@ -333,15 +418,54 @@ class OverseerNode(BaseSwarmOverseer):
         await self.crdt.add_genome(legacy)
 
     async def healthcheck(self) -> None:
-        """Overseer-specific healthcheck."""
+        """Overseer-specific topology-aware healthcheck."""
         await super().healthcheck()
 
-        if self._last_snapshot is None:
+        topology = self._last_topology_health or {}
+        swarms = topology.get("swarms") if isinstance(topology, Mapping) else {}
+
+        if not isinstance(swarms, Mapping):
+            if self._last_snapshot is None:
+                return
+
+            if self._last_snapshot.trade_nodes == 0 and self._last_snapshot.security_nodes == 0:
+                self.health.status = "degraded"
+                self.health.last_error = "No trade/security nodes visible"
+
             return
 
-        if self._last_snapshot.trade_nodes == 0 and self._last_snapshot.security_nodes == 0:
+        managed = {
+            str(name): data
+            for name, data in swarms.items()
+            if isinstance(data, Mapping)
+            and data.get("managed_by_overseer") is True
+            and data.get("advisory_only") is not True
+        }
+
+        active_managed = {
+            name: data
+            for name, data in managed.items()
+            if int(data.get("node_count") or 0) > 0
+        }
+
+        degraded = {
+            name: data.get("status")
+            for name, data in managed.items()
+            if data.get("status") in {"stale", "degraded"}
+        }
+
+        if not active_managed:
             self.health.status = "degraded"
-            self.health.last_error = "No trade/security nodes visible"
+            self.health.last_error = "No active managed swarms visible"
+            return
+
+        if degraded:
+            self.health.status = "degraded"
+            self.health.last_error = f"Managed swarm health degraded: {degraded}"
+            return
+
+        self.health.status = "ok"
+        self.health.last_error = ""
 
     async def maintenance(self) -> None:
         """Periodic overseer maintenance hook."""
@@ -352,7 +476,7 @@ class OverseerNode(BaseSwarmOverseer):
         self.logger.info("Overseer %s shutting down.", self.overseer_id)
 
     # ------------------------------------------------------------------
-    # Snapshot summary
+    # Snapshot / topology summary
     # ------------------------------------------------------------------
 
     def summarize_ecosystem_snapshot(self, snapshot: Any) -> Mapping[str, Any]:
@@ -393,9 +517,205 @@ class OverseerNode(BaseSwarmOverseer):
 
         return super().summarize_ecosystem_snapshot(snapshot)
 
+    def summarize_topology_health(self, topology_health: Mapping[str, Any] | None) -> Dict[str, Any]:
+        """Return compact topology health summary for logs/events."""
+        if not topology_health:
+            return {
+                "type": "topology_health",
+                "status": "unavailable",
+                "swarms": {},
+            }
+
+        swarms = topology_health.get("swarms") if isinstance(topology_health, Mapping) else {}
+
+        if not isinstance(swarms, Mapping):
+            return {
+                "type": "topology_health",
+                "status": "unavailable",
+                "swarms": {},
+            }
+
+        return {
+            "type": "topology_health",
+            "topology_version": topology_health.get("topology_version", "unknown"),
+            "swarm_count": topology_health.get("swarm_count", 0),
+            "total_nodes": topology_health.get("total_nodes", 0),
+            "total_stale_nodes": topology_health.get("total_stale_nodes", 0),
+            "swarms": {
+                str(name): {
+                    "status": data.get("status"),
+                    "node_count": data.get("node_count"),
+                    "role_counts": data.get("role_counts"),
+                    "advisory_only": data.get("advisory_only"),
+                    "managed_by_overseer": data.get("managed_by_overseer"),
+                    "stale_nodes": data.get("stale_nodes"),
+                    "commands": data.get("commands"),
+                    "events": data.get("events"),
+                    "latest_ts": data.get("latest_ts"),
+                }
+                for name, data in swarms.items()
+                if isinstance(data, Mapping)
+            },
+        }
+
+    @staticmethod
+    def summarize_topology_warnings(topology_rules: Mapping[str, Any] | None) -> list[Dict[str, Any]]:
+        """Convert topology rules into compact warning records for events/UI."""
+        if not isinstance(topology_rules, Mapping):
+            return []
+
+        warnings: list[Dict[str, Any]] = []
+
+        degraded = topology_rules.get("degraded_managed_swarms")
+        if isinstance(degraded, Mapping):
+            for swarm, status in degraded.items():
+                warnings.append(
+                    {
+                        "type": "topology_warning",
+                        "severity": "medium" if status == "degraded" else "high",
+                        "swarm": str(swarm),
+                        "status": str(status),
+                        "reason": "managed_swarm_degraded",
+                    }
+                )
+
+        absent = topology_rules.get("absent_managed_swarms")
+        if isinstance(absent, list):
+            for swarm in absent:
+                warnings.append(
+                    {
+                        "type": "topology_warning",
+                        "severity": "medium",
+                        "swarm": str(swarm),
+                        "status": "absent",
+                        "reason": "managed_swarm_absent",
+                    }
+                )
+
+        active = topology_rules.get("active_managed_swarms")
+        if isinstance(active, list) and not active:
+            warnings.append(
+                {
+                    "type": "topology_warning",
+                    "severity": "high",
+                    "swarm": "*",
+                    "status": "no_active_managed_swarms",
+                    "reason": "no_active_managed_swarms",
+                }
+            )
+
+        return warnings
+
+    async def _emit_topology_restart_candidates(
+        self,
+        *,
+        candidates: Sequence[Mapping[str, Any]],
+        parent_gid: str,
+    ) -> list[Dict[str, Any]]:
+        """Emit canonical RESTART_NODE commands for topology restart candidates.
+
+        Disabled unless OVERSEER_ENABLE_TOPOLOGY_RESTARTS=true.
+        Legacy compatibility commands are intentionally not emitted here.
+        """
+        if not self.enable_topology_restarts:
+            return []
+
+        emitted: list[Dict[str, Any]] = []
+
+        for candidate in candidates:
+            if not isinstance(candidate, Mapping):
+                continue
+
+            if candidate.get("execution_enabled") is not True:
+                continue
+
+            target_swarm = str(candidate.get("target_swarm") or "")
+            target_node = candidate.get("target_node")
+            if not target_swarm or not target_node:
+                continue
+
+            command = {
+                "type": "swarm_command",
+                "command_type": "RESTART_NODE",
+                "gid": self.new_gid("topology_cmd"),
+                "source_swarm": "overseer",
+                "source_agent": self.overseer_id,
+                "source_node": self.overseer_id,
+                "target_swarm": target_swarm,
+                "target_role": "node",
+                "target_node": str(target_node),
+                "timestamp": utc_ts(),
+                "expires_at": utc_ts() + 300,
+                "parent_gid": parent_gid,
+                "payload": {
+                    "action": "RESTART_NODE",
+                    "node_id": str(target_node),
+                    "reason": candidate.get("reason") or "topology_restart_candidate",
+                    "topology_status": candidate.get("topology_status"),
+                },
+                "provenance": {
+                    "agent": self.overseer_id,
+                    "source": "topology_rules",
+                    "legacy_emitted": False,
+                },
+            }
+
+            await self.crdt.add_genome(command)
+
+            emitted.append(
+                {
+                    "type": "directive_summary",
+                    "action": "RESTART_NODE",
+                    "target_swarm": target_swarm,
+                    "target_node": str(target_node),
+                    "parent_gid": parent_gid,
+                    "source": "topology_rules",
+                    "topology_status": candidate.get("topology_status"),
+                    "reason": candidate.get("reason"),
+                    "advisory_only": False,
+                    "execution_enabled": True,
+                    "legacy_emitted": False,
+                }
+            )
+
+        return emitted
+
     # ------------------------------------------------------------------
     # Decision helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def summarize_topology_restart_candidates(
+        topology_rules: Mapping[str, Any] | None,
+    ) -> list[Dict[str, Any]]:
+        """Extract advisory topology restart candidates for events/UI."""
+        if not isinstance(topology_rules, Mapping):
+            return []
+
+        raw_candidates = topology_rules.get("restart_candidates")
+        if not isinstance(raw_candidates, list):
+            return []
+
+        candidates: list[Dict[str, Any]] = []
+
+        for item in raw_candidates:
+            if not isinstance(item, Mapping):
+                continue
+
+            candidates.append(
+                {
+                    "type": "topology_restart_candidate",
+                    "action": str(item.get("action") or "RESTART_NODE"),
+                    "target_swarm": item.get("target_swarm"),
+                    "target_node": item.get("target_node"),
+                    "topology_status": item.get("topology_status"),
+                    "reason": item.get("reason"),
+                    "advisory_only": True,
+                    "execution_enabled": False,
+                }
+            )
+
+        return candidates
 
     @staticmethod
     def _decision_action(decision: OverseerDecision) -> str:
@@ -415,7 +735,7 @@ class OverseerNode(BaseSwarmOverseer):
 
         if not decision.continue_explorer:
             actions.append("PAUSE_EXPLORER")
-            
+
         if getattr(decision, "run_improver_once", False):
             actions.append("RUN_IMPROVER_ONCE_ADVISORY")
 
@@ -450,86 +770,92 @@ class OverseerNode(BaseSwarmOverseer):
         snapshot: SwarmSnapshot,
         *,
         parent_gid: str,
+        advisory_only: bool = False,
+        topology_rules: Mapping[str, Any] | None = None,
     ) -> list[Dict[str, Any]]:
-        """Return compact summaries of directives emitted by ActionExecutor.
+        """Return compact summaries of directives emitted or advised by ActionExecutor.
 
         The actual commands are emitted by ActionExecutor. These summaries are
         only for canonical global decision event payloads.
+
+        advisory_only=True keeps only advisory directives that are intentionally
+        not executed yet, such as improver RUN_ONCE/PAUSE.
         """
         summaries: list[Dict[str, Any]] = []
 
-        for node_id in snapshot.stale_trade_nodes:
-            summaries.append(
-                {
-                    "type": "directive_summary",
-                    "action": "RESTART_NODE",
-                    "target_swarm": "trade",
-                    "target_node": node_id,
-                    "parent_gid": parent_gid,
-                }
-            )
+        if not advisory_only:
+            for node_id in snapshot.stale_trade_nodes:
+                summaries.append(
+                    {
+                        "type": "directive_summary",
+                        "action": "RESTART_NODE",
+                        "target_swarm": "trade",
+                        "target_node": node_id,
+                        "parent_gid": parent_gid,
+                    }
+                )
 
-        for node_id in snapshot.stale_security_nodes:
-            summaries.append(
-                {
-                    "type": "directive_summary",
-                    "action": "RESTART_NODE",
-                    "target_swarm": "security",
-                    "target_node": node_id,
-                    "parent_gid": parent_gid,
-                }
-            )
+            for node_id in snapshot.stale_security_nodes:
+                summaries.append(
+                    {
+                        "type": "directive_summary",
+                        "action": "RESTART_NODE",
+                        "target_swarm": "security",
+                        "target_node": node_id,
+                        "parent_gid": parent_gid,
+                    }
+                )
 
-        for node_id in snapshot.stale_explorer_nodes:
-            summaries.append(
-                {
-                    "type": "directive_summary",
-                    "action": "RESTART_NODE",
-                    "target_swarm": "explorer",
-                    "target_node": node_id,
-                    "parent_gid": parent_gid,
-                }
-            )
+            for node_id in snapshot.stale_explorer_nodes:
+                summaries.append(
+                    {
+                        "type": "directive_summary",
+                        "action": "RESTART_NODE",
+                        "target_swarm": "explorer",
+                        "target_node": node_id,
+                        "parent_gid": parent_gid,
+                    }
+                )
 
-        if decision.reduce_risk:
-            summaries.append(
-                {
-                    "type": "directive_summary",
-                    "action": "REDUCE_RISK",
-                    "target_swarm": "trade",
-                    "parent_gid": parent_gid,
-                }
-            )
+            if decision.reduce_risk:
+                summaries.append(
+                    {
+                        "type": "directive_summary",
+                        "action": "REDUCE_RISK",
+                        "target_swarm": "trade",
+                        "parent_gid": parent_gid,
+                    }
+                )
 
-        if decision.increase_exploration:
-            summaries.append(
-                {
-                    "type": "directive_summary",
-                    "action": "INCREASE_EXPLORATION",
-                    "target_swarm": "trade",
-                    "parent_gid": parent_gid,
-                }
-            )
+            if decision.increase_exploration:
+                summaries.append(
+                    {
+                        "type": "directive_summary",
+                        "action": "INCREASE_EXPLORATION",
+                        "target_swarm": "trade",
+                        "parent_gid": parent_gid,
+                    }
+                )
 
-        if decision.unblock_ips:
-            summaries.append(
-                {
-                    "type": "directive_summary",
-                    "action": "UNBLOCK_ALL",
-                    "target_swarm": "security",
-                    "parent_gid": parent_gid,
-                }
-            )
+            if decision.unblock_ips:
+                summaries.append(
+                    {
+                        "type": "directive_summary",
+                        "action": "UNBLOCK_ALL",
+                        "target_swarm": "security",
+                        "parent_gid": parent_gid,
+                    }
+                )
 
-        if not decision.continue_explorer:
-            summaries.append(
-                {
-                    "type": "directive_summary",
-                    "action": "PAUSE",
-                    "target_swarm": "explorer",
-                    "parent_gid": parent_gid,
-                }
-            )
+            if not decision.continue_explorer:
+                summaries.append(
+                    {
+                        "type": "directive_summary",
+                        "action": "PAUSE",
+                        "target_swarm": "explorer",
+                        "parent_gid": parent_gid,
+                    }
+                )
 
         if getattr(decision, "run_improver_once", False):
             summaries.append(
@@ -557,26 +883,31 @@ class OverseerNode(BaseSwarmOverseer):
                 }
             )
 
+        topology_candidates = []
+        if isinstance(topology_rules, Mapping):
+            raw_candidates = topology_rules.get("restart_candidates")
+            if isinstance(raw_candidates, list):
+                topology_candidates = [
+                    item for item in raw_candidates if isinstance(item, Mapping)
+                ]
+
+        for candidate in topology_candidates:
+            summaries.append(
+                {
+                    "type": "directive_summary",
+                    "action": str(candidate.get("action") or "RESTART_NODE"),
+                    "target_swarm": candidate.get("target_swarm"),
+                    "target_node": candidate.get("target_node"),
+                    "parent_gid": parent_gid,
+                    "source": "topology_rules",
+                    "topology_status": candidate.get("topology_status"),
+                    "reason": candidate.get("reason"),
+                    "advisory_only": True,
+                    "execution_enabled": False,
+                }
+            )
+
         return summaries
-
-    @staticmethod
-    def _decision_severity(decision: OverseerCycleDecision) -> float:
-        if decision.action == "MAINTAIN":
-            return 0.0
-
-        if "REDUCE_RISK" in decision.action:
-            return 0.7
-
-        if "UNBLOCK" in decision.action:
-            return 0.5
-
-        if "PAUSE" in decision.action:
-            return 0.45
-
-        if "PAUSE_IMPROVER" in decision.action:
-            return 0.35
-
-        return 0.3
 
 
 async def main() -> None:
@@ -599,3 +930,4 @@ if __name__ == "__main__":
         logger.info("Overseer stopped gracefully: %s", exc)
     except Exception as exc:
         logger.critical("Fatal overseer error: %s", exc, exc_info=True)
+       

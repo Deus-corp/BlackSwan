@@ -34,6 +34,7 @@ from src.swarms.common import (
 )
 from src.swarms.overseer.overseer_core.interfaces import StateSource
 from src.swarms.overseer.overseer_core.models import SwarmSnapshot
+from src.swarms.common import SWARM_TOPOLOGY
 
 logger = logging.getLogger(__name__)
 
@@ -321,28 +322,126 @@ class StateCollector:
 
     @staticmethod
     def _latest_by_node(
-        heartbeats: Iterable[Dict[str, Any]],
+        events: Iterable[Dict[str, Any]],
+        event_type: Optional[str] = None,
     ) -> Dict[str, Dict[str, Any]]:
-        """Keep only the latest heartbeat per node_id."""
+        """Filter events to keep only the latest per node_id/agent_id."""
         latest: Dict[str, Dict[str, Any]] = {}
 
-        for heartbeat in heartbeats:
-            node_id = str(
-                heartbeat.get("node_id")
-                or heartbeat.get("agent_id")
-                or ""
-            )
-
-            if not node_id:
+        for event in events:
+            if event_type is not None and event.get("type") != event_type:
                 continue
 
-            ts = StateCollector._record_timestamp(heartbeat)
+            node_id = (
+                event.get("node_id")
+                or event.get("agent_id")
+                or event.get("source_node")
+                or event.get("source_agent")
+            )
 
-            previous = latest.get(node_id)
-            if previous is None or ts >= StateCollector._record_timestamp(previous):
-                latest[node_id] = heartbeat
+            if not node_id or not isinstance(node_id, str):
+                continue
+
+            ts = float(event.get("timestamp", 0.0) or 0.0)
+
+            if node_id not in latest or ts >= float(latest[node_id].get("timestamp", 0.0) or 0.0):
+                latest[node_id] = event
 
         return latest
+
+    def collect_topology_health(self) -> Dict[str, Any]:
+        """Build topology-aware ecosystem health view from CRDT state.
+
+        This is a generic view driven by SWARM_TOPOLOGY.
+        It intentionally lives beside SwarmSnapshot while migration is ongoing.
+        """
+        state = self._state_source.state
+        now = time.time()
+        events = list(self._iter_event_dicts(state))
+
+        heartbeats = [
+            event
+            for event in events
+            if event.get("type") in {"swarm_heartbeat", "trade_heartbeat", "security_heartbeat", "explorer_heartbeat", "improver_heartbeat", "meta_heartbeat"}
+        ]
+
+        commands = [
+            event
+            for event in events
+            if event.get("type") in {"swarm_command", "sec_command", "explorer_command", "meta_command_json", "trade_command"}
+        ]
+
+        swarm_events = [
+            event
+            for event in events
+            if event.get("type") in {"swarm_event", "security_event", "explorer_finding", "vulnerability_alert"}
+        ]
+
+        swarms: Dict[str, Any] = {}
+
+        for swarm_name, spec in SWARM_TOPOLOGY.items():
+            swarm_hbs = [
+                hb
+                for hb in heartbeats
+                if self._record_swarm(hb) == swarm_name
+            ]
+
+            latest_by_node = self._latest_by_node(swarm_hbs, event_type=None)
+            role_counts = self._role_counts(latest_by_node.values())
+
+            swarm_commands = [
+                cmd
+                for cmd in commands
+                if self._record_target_swarm(cmd) == swarm_name
+            ]
+
+            swarm_related_events = [
+                event
+                for event in swarm_events
+                if self._record_swarm(event) == swarm_name
+                or self._record_target_swarm(event) == swarm_name
+            ]
+
+            latest_ts = max(
+                [float(item.get("timestamp", 0.0) or 0.0) for item in list(latest_by_node.values()) + swarm_related_events + swarm_commands],
+                default=0.0,
+            )
+
+            stale_nodes = self._stale_nodes(
+                latest_by_node,
+                now,
+                STALE_NODE_THRESHOLD_SECONDS,
+            )
+
+            swarms[swarm_name] = {
+                "description": spec.description,
+                "managed_by_overseer": spec.managed_by_overseer,
+                "advisory_only": spec.advisory_only,
+                "known_roles": list(spec.roles.keys()),
+                "node_count": len(latest_by_node),
+                "role_counts": role_counts,
+                "heartbeats": len(swarm_hbs),
+                "events": len(swarm_related_events),
+                "commands": len(swarm_commands),
+                "latest_ts": latest_ts,
+                "stale_nodes": stale_nodes,
+                "status": self._topology_swarm_status(
+                    node_count=len(latest_by_node),
+                    stale_nodes=stale_nodes,
+                    latest_ts=latest_ts,
+                    now=now,
+                ),
+            }
+
+        return {
+            "type": "ecosystem",
+            "topology_version": "v1",
+            "swarm_count": len(swarms),
+            "total_nodes": sum(int(data["node_count"]) for data in swarms.values()),
+            "total_stale_nodes": sum(len(data["stale_nodes"]) for data in swarms.values()),
+            "swarms": swarms,
+        }
+
 
     # ------------------------------------------------------------------
     # Metrics helpers
@@ -479,3 +578,149 @@ class StateCollector:
         except Exception as exc:
             logger.warning("Resource check failed: %s", exc)
             return f"Resource check failed: {exc}"
+
+    @staticmethod
+    def _record_swarm(record: Mapping[str, Any]) -> str:
+        """Infer source swarm from canonical/legacy records."""
+        if not isinstance(record, Mapping):
+            return ""
+
+        direct = record.get("swarm") or record.get("source_swarm")
+        if direct:
+            return str(direct)
+
+        record_type = str(record.get("type") or "")
+
+        if record_type in {"trade_heartbeat", "meta_command_json", "trade_command"}:
+            return "trade"
+
+        if record_type in {"security_heartbeat", "security_event", "sec_command", "vulnerability_alert"}:
+            return "security"
+
+        if record_type in {"explorer_heartbeat", "explorer_finding", "explorer_command", "explorer_targets"}:
+            return "explorer"
+
+        if record_type == "improver_heartbeat":
+            return "improver"
+
+        if record_type == "meta_heartbeat":
+            node_id = str(record.get("node_id") or record.get("agent_id") or "")
+            if node_id.startswith("exp-meta"):
+                return "explorer"
+            if node_id.startswith("sec-meta"):
+                return "security"
+
+        return ""
+
+    @staticmethod
+    def _record_target_swarm(record: Mapping[str, Any]) -> str:
+        """Infer target swarm from canonical/legacy command/event records."""
+        if not isinstance(record, Mapping):
+            return ""
+
+        direct = record.get("target_swarm")
+        if direct:
+            return str(direct)
+
+        data = record.get("data") if isinstance(record.get("data"), Mapping) else {}
+        payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
+
+        if data.get("swarm"):
+            return str(data.get("swarm"))
+
+        if payload.get("swarm"):
+            return str(payload.get("swarm"))
+
+        record_type = str(record.get("type") or "")
+
+        if record_type == "sec_command":
+            return "security"
+
+        if record_type in {"explorer_command", "explorer_targets"}:
+            return "explorer"
+
+        if record_type in {"meta_command_json", "trade_command"}:
+            return "trade"
+
+        return ""
+
+    @staticmethod
+    def _record_role(record: Mapping[str, Any]) -> str:
+        """Infer role from heartbeat/event record."""
+        if not isinstance(record, Mapping):
+            return ""
+
+        role = record.get("role")
+        if role:
+            return str(role)
+
+        record_type = str(record.get("type") or "")
+        node_id = str(record.get("node_id") or record.get("agent_id") or "")
+
+        if record_type == "meta_heartbeat" or "-meta-" in node_id:
+            return "meta_agent"
+
+        if record_type == "improver_heartbeat":
+            return "maintenance_agent"
+
+        if record_type.endswith("_heartbeat") or record_type == "swarm_heartbeat":
+            return "node"
+
+        return ""
+
+    @classmethod
+    def _role_counts(cls, records: Iterable[Mapping[str, Any]]) -> Dict[str, int]:
+        """Count latest records by inferred role."""
+        counts: Dict[str, int] = {}
+
+        for record in records:
+            role = cls._record_role(record) or "unknown"
+            counts[role] = counts.get(role, 0) + 1
+
+        return counts
+
+    @staticmethod
+    def _topology_swarm_status(
+        *,
+        node_count: int,
+        stale_nodes: List[str],
+        latest_ts: float,
+        now: float,
+    ) -> str:
+        """Compute lightweight swarm health status."""
+        if node_count <= 0:
+            return "absent"
+
+        if stale_nodes and len(stale_nodes) >= node_count:
+            return "stale"
+
+        if stale_nodes:
+            return "degraded"
+
+        if latest_ts > 0 and now - latest_ts > STALE_NODE_THRESHOLD_SECONDS:
+            return "stale"
+
+        return "ok"
+
+    @staticmethod
+    def _topology_swarm_status(
+        *,
+        node_count: int,
+        stale_nodes: List[str],
+        latest_ts: float,
+        now: float,
+    ) -> str:
+        """Compute lightweight swarm health status."""
+        if node_count <= 0:
+            return "absent"
+
+        if stale_nodes and len(stale_nodes) >= node_count:
+            return "stale"
+
+        if stale_nodes:
+            return "degraded"
+
+        if latest_ts > 0 and now - latest_ts > STALE_NODE_THRESHOLD_SECONDS:
+            return "stale"
+
+        return "ok"

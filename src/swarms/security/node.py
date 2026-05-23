@@ -141,8 +141,6 @@ class SecurityNode(BaseSwarmNode):
 
     async def process_command(self, command: Mapping[str, Any]) -> None:
         """Process security commands from common/legacy CRDT command formats."""
-        await super().process_command(command)
-
         action = command_action(command)
         data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
         payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
@@ -155,6 +153,9 @@ class SecurityNode(BaseSwarmNode):
             return
 
         if self._security_command_seen_recently(command):
+            return
+
+        if await self.handle_lifecycle_command(command):
             return
 
         provenance = command.get("provenance") if isinstance(command.get("provenance"), dict) else {}
@@ -306,6 +307,11 @@ class SecurityNode(BaseSwarmNode):
             or payload.get("node_id")
             or ""
         )
+
+        # Legacy security PAUSE/RESUME/RESTART_NODE may omit target_node.
+        # Treat lifecycle duplicates as equivalent locally.
+        if action in {"PAUSE", "RESUME", "RESTART_NODE"}:
+            target_node = ""
 
         ips = payload.get("ips") or data.get("ips") or []
         if isinstance(ips, list):

@@ -255,6 +255,124 @@ class PolicyEngine:
             confidence=confidence,
         )
 
+    def evaluate_topology_rules(
+        self,
+        topology_health: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Evaluate topology-aware ecosystem health.
+
+        This method is intentionally advisory in v1.
+        It does not emit commands and does not override hard policy rules.
+        """
+        if not topology_health:
+            return {
+                "has_degraded_managed_swarms": False,
+                "degraded_managed_swarms": {},
+                "absent_managed_swarms": [],
+                "active_managed_swarms": [],
+                "advisory_swarms": [],
+                "reason": "topology_health_unavailable",
+            }
+
+        swarms = topology_health.get("swarms") if isinstance(topology_health, Mapping) else {}
+        if not isinstance(swarms, Mapping):
+            return {
+                "has_degraded_managed_swarms": False,
+                "degraded_managed_swarms": {},
+                "absent_managed_swarms": [],
+                "active_managed_swarms": [],
+                "advisory_swarms": [],
+                "reason": "topology_swarms_unavailable",
+            }
+
+        degraded_managed: dict[str, str] = {}
+        absent_managed: list[str] = []
+        active_managed: list[str] = []
+        advisory_swarms: list[str] = []
+        restart_candidates: list[dict[str, Any]] = []
+
+        for name, raw in swarms.items():
+            if not isinstance(raw, Mapping):
+                continue
+
+            swarm_name = str(name)
+            managed = raw.get("managed_by_overseer") is True
+            advisory_only = raw.get("advisory_only") is True
+            status = str(raw.get("status") or "unknown")
+            node_count = int(raw.get("node_count") or 0)
+
+            if advisory_only:
+                advisory_swarms.append(swarm_name)
+
+            if not managed or advisory_only:
+                continue
+
+            if node_count > 0:
+                active_managed.append(swarm_name)
+
+            if status == "absent":
+                absent_managed.append(swarm_name)
+
+            elif status in {"stale", "degraded"}:
+                degraded_managed[swarm_name] = status
+
+                stale_nodes = raw.get("stale_nodes")
+                if isinstance(stale_nodes, list) and stale_nodes:
+                    for node_id in stale_nodes:
+                        restart_candidates.append(
+                            {
+                                "type": "topology_restart_candidate",
+                                "action": "RESTART_NODE",
+                                "target_swarm": swarm_name,
+                                "target_node": str(node_id),
+                                "topology_status": status,
+                                "reason": "managed_swarm_node_stale",
+                                "execution_enabled": False,
+                                "advisory_only": True,
+                            }
+                        )
+                else:
+                    restart_candidates.append(
+                        {
+                            "type": "topology_restart_candidate",
+                            "action": "RESTART_NODE",
+                            "target_swarm": swarm_name,
+                            "target_node": None,
+                            "topology_status": status,
+                            "reason": "managed_swarm_stale_without_node_list",
+                            "execution_enabled": False,
+                            "advisory_only": True,
+                        }
+                    )
+
+        reasons: list[str] = []
+
+        if degraded_managed:
+            reasons.append(f"degraded_managed={degraded_managed}")
+
+        if absent_managed:
+            reasons.append(f"absent_managed={absent_managed}")
+
+        if not active_managed:
+            reasons.append("no_active_managed_swarms")
+
+        if advisory_swarms:
+            reasons.append(f"advisory_swarms={advisory_swarms}")
+
+        if restart_candidates:
+            reasons.append(f"restart_candidates={len(restart_candidates)}")
+
+        return {
+            "has_degraded_managed_swarms": bool(degraded_managed),
+            "degraded_managed_swarms": degraded_managed,
+            "absent_managed_swarms": absent_managed,
+            "active_managed_swarms": active_managed,
+            "advisory_swarms": advisory_swarms,
+            "has_restart_candidates": bool(restart_candidates),
+            "restart_candidates": restart_candidates,
+            "reason": "; ".join(reasons) if reasons else "topology_nominal",
+        }
+
     @staticmethod
     def _normalize_suggestions(
         llm_suggestions: Mapping[str, Any] | None,

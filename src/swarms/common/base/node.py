@@ -34,6 +34,7 @@ import logging
 import os
 import signal
 import socket
+import sys
 
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Iterable, Mapping, Optional
@@ -54,6 +55,11 @@ from src.swarms.common.protocols import (
     command_is_expired,
     command_targets,
     make_swarm_heartbeat,
+    is_lifecycle_command,
+    lifecycle_action,
+    lifecycle_applies_to,
+    lifecycle_reason,
+    lifecycle_summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -182,6 +188,89 @@ class BaseSwarmNode:
 
     def new_gid(self, prefix: str = "evt") -> str:
         return new_gid(prefix, namespace=self.swarm_type)
+
+    async def handle_lifecycle_command(self, command: Mapping[str, Any]) -> bool:
+        """Handle common lifecycle commands.
+
+        Returns True if command was lifecycle command and was handled/skipped
+        by lifecycle layer.
+
+        Specialized swarm commands should continue after this only when this
+        method returns False.
+        """
+        if not is_lifecycle_command(command):
+            return False
+
+        node_id = str(getattr(self, "node_id", "") or getattr(self, "agent_id", ""))
+        swarm_type = str(getattr(self, "swarm_type", "") or getattr(self, "swarm", ""))
+        role = str(getattr(self, "role", ""))
+
+        if not lifecycle_applies_to(
+            command,
+            node_id=node_id,
+            swarm_type=swarm_type,
+            role=role,
+        ):
+            return True
+
+        action = lifecycle_action(command)
+        reason = lifecycle_reason(command)
+        command_gid = str(command.get("gid") or "")
+
+        if action == "PAUSE":
+            self._set_runtime_paused(True)
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.info("%s %s paused by lifecycle command.", type(self).__name__, node_id)
+            return True
+
+        if action == "RESUME":
+            self._set_runtime_paused(False)
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.info("%s %s resumed by lifecycle command.", type(self).__name__, node_id)
+            return True
+
+        if action == "RESTART_NODE":
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.critical("%s %s received lifecycle RESTART_NODE.", type(self).__name__, node_id)
+            sys.exit(0)
+
+        if action == "RUN_ONCE":
+            handled = await self._run_lifecycle_once(command)
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied" if handled else "unsupported",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            return True
+
+        await self._emit_lifecycle_event(
+            action=action,
+            status="unsupported",
+            reason=reason,
+            parent_gid=command_gid,
+            command=command,
+        )
+        return True
 
     # ---------------------------------------------------------------------
     # Public lifecycle
@@ -521,6 +610,8 @@ class BaseSwarmNode:
         return commands
 
     async def process_command(self, command: Mapping[str, Any]) -> None:
+        if await self.handle_lifecycle_command(command):
+            return
         """Process a command.
 
         Subclasses should override this. The default only handles shutdown.
@@ -658,3 +749,116 @@ class BaseSwarmNode:
     @property
     def is_running(self) -> bool:
         return self.health.status == "running" and not self.shutdown_event.is_set()
+
+    def _set_runtime_paused(self, paused: bool) -> None:
+        """Set paused flag across known runtime shapes.
+
+        Different swarms historically used different fields:
+        - self.paused
+        - self._paused
+        - self.health.paused
+        - self.metrics["paused"]
+        - self.runtime_metrics["paused"]
+
+        Keep all common shapes synchronized.
+        """
+        value = bool(paused)
+
+        for attr in ("paused", "_paused"):
+            try:
+                setattr(self, attr, value)
+            except Exception:
+                pass
+
+        health = getattr(self, "health", None)
+        if health is not None:
+            try:
+                setattr(health, "paused", value)
+            except Exception:
+                pass
+
+        for metrics_attr in ("metrics", "runtime_metrics"):
+            metrics = getattr(self, metrics_attr, None)
+            if isinstance(metrics, dict):
+                metrics["paused"] = value
+
+        ctx = getattr(self, "ctx", None)
+        if ctx is not None:
+            try:
+                setattr(ctx, "paused", value)
+            except Exception:
+                pass
+
+    def is_paused(self) -> bool:
+        """Return current paused state across known runtime shapes."""
+        for attr in ("paused", "_paused"):
+            value = getattr(self, attr, None)
+            if isinstance(value, bool):
+                return value
+
+        health = getattr(self, "health", None)
+        if health is not None:
+            value = getattr(health, "paused", None)
+            if isinstance(value, bool):
+                return value
+
+        for metrics_attr in ("metrics", "runtime_metrics"):
+            metrics = getattr(self, metrics_attr, None)
+            if isinstance(metrics, dict) and isinstance(metrics.get("paused"), bool):
+                return bool(metrics["paused"])
+
+        return False
+
+    async def _run_lifecycle_once(self, command: Mapping[str, Any]) -> bool:
+        """Run one lifecycle cycle if subclass exposes a compatible hook."""
+        for method_name in ("run_once", "_run_once", "run_single_cycle", "_run_single_cycle"):
+            method = getattr(self, method_name, None)
+            if callable(method):
+                result = method(command)
+                if hasattr(result, "__await__"):
+                    await result
+                return True
+
+        return False
+
+    async def _emit_lifecycle_event(
+        self,
+        *,
+        action: str,
+        status: str,
+        reason: str,
+        parent_gid: str,
+        command: Mapping[str, Any],
+    ) -> None:
+        """Emit canonical lifecycle event if CRDT/event helpers are available."""
+        crdt = getattr(self, "crdt", None)
+        if crdt is None or not hasattr(crdt, "add_genome"):
+            return
+
+        node_id = str(getattr(self, "node_id", "") or getattr(self, "agent_id", ""))
+        swarm_type = str(getattr(self, "swarm_type", "") or getattr(self, "swarm", ""))
+        role = str(getattr(self, "role", ""))
+
+        event = {
+            "type": "swarm_event",
+            "event_type": "lifecycle_command_applied",
+            "gid": self.new_gid("lifecycle_evt") if hasattr(self, "new_gid") else "",
+            "source_swarm": swarm_type,
+            "source_agent": node_id,
+            "source_node": node_id,
+            "role": role,
+            "parent_gid": parent_gid,
+            "timestamp": utc_ts(),
+            "payload": {
+                "action": action,
+                "status": status,
+                "reason": reason,
+                "command": lifecycle_summary(command),
+            },
+            "provenance": {
+                "agent": node_id,
+                "source": "common_lifecycle",
+            },
+        }
+
+        await crdt.add_genome(event)
