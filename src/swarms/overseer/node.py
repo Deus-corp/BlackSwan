@@ -194,8 +194,14 @@ class OverseerNode(BaseSwarmOverseer):
         snapshot = ecosystem_snapshot
         topology_summary = self.summarize_topology_health(self._last_topology_health)
         topology_rules = self.policy.evaluate_topology_rules(self._last_topology_health)
+        observability_config = self.summarize_observability_config(
+            self._last_topology_health,
+            topology_rules,
+        )
         topology_warnings = self.summarize_topology_warnings(topology_rules)
         topology_restart_candidates = self.summarize_topology_restart_candidates(topology_rules)
+        topology_command_warnings = self.summarize_topology_command_warnings(topology_rules)
+        topology_legacy_command_warnings = self.summarize_topology_legacy_command_warnings(topology_rules)
 
         hard_rules = self.policy.evaluate_hard_rules(snapshot)
         llm_suggestions = await self.strategist.suggest(snapshot)
@@ -238,6 +244,10 @@ class OverseerNode(BaseSwarmOverseer):
                 "topology_rules": topology_rules,
                 "topology_warnings": topology_warnings,
                 "topology_restart_candidates": topology_restart_candidates,
+                "topology_command_warnings": topology_command_warnings,
+                "topology_legacy_command_warnings": topology_legacy_command_warnings,
+                "command_event_thresholds": topology_rules.get("command_event_thresholds", {}),
+                "observability_config": observability_config,
             },
             provenance={
                 "agent": self.overseer_id,
@@ -245,6 +255,7 @@ class OverseerNode(BaseSwarmOverseer):
                 "topology_rules": topology_rules,
                 "topology_warnings": topology_warnings,
                 "topology_restart_candidates": topology_restart_candidates,
+                "topology_command_warnings": topology_command_warnings,
                 "llm_suggestions": dict(llm_suggestions),
             },
             hard_rules=hard_rules,
@@ -288,6 +299,17 @@ class OverseerNode(BaseSwarmOverseer):
         if not isinstance(topology_candidates, list):
             topology_candidates = []
 
+        topology_command_warnings = decision.payload.get("topology_command_warnings", [])
+        if not isinstance(topology_command_warnings, list):
+            topology_command_warnings = []
+        
+        topology_legacy_command_warnings = decision.payload.get(
+            "topology_legacy_command_warnings",
+            [],
+        )
+        if not isinstance(topology_legacy_command_warnings, list):
+            topology_legacy_command_warnings = []
+
         advisory_summaries = self._directive_summaries(
             final_decision,
             ecosystem_snapshot,
@@ -315,6 +337,13 @@ class OverseerNode(BaseSwarmOverseer):
             topology_rules=topology_rules,
         )
 
+        command_friction_directives = self.summarize_command_friction_directives(
+            topology_command_warnings,
+            parent_gid=decision.event_gid,
+        )
+        if command_friction_directives:
+            routed.extend(command_friction_directives)
+
         if self.enable_topology_restarts:
             executable_candidates: list[Dict[str, Any]] = []
             for item in topology_candidates:
@@ -339,6 +368,13 @@ class OverseerNode(BaseSwarmOverseer):
                     )
                 ]
                 routed.extend(emitted_topology)
+
+        legacy_migration_directives = self.summarize_legacy_command_migration_directives(
+            topology_legacy_command_warnings,
+            parent_gid=decision.event_gid,
+        )
+        if legacy_migration_directives:
+            routed.extend(legacy_migration_directives)
 
         self.logger.info(
             "Overseer routed %d directive summaries for action=%s",
@@ -386,6 +422,10 @@ class OverseerNode(BaseSwarmOverseer):
                 "topology_rules": decision.payload.get("topology_rules", {}),
                 "topology_warnings": decision.payload.get("topology_warnings", []),
                 "topology_restart_candidates": decision.payload.get("topology_restart_candidates", []),
+                "topology_command_warnings": decision.payload.get("topology_command_warnings", []),
+                "topology_legacy_command_warnings": decision.payload.get("topology_legacy_command_warnings", []),
+                "command_event_thresholds": decision.payload.get("command_event_thresholds", {}),
+                "observability_config": decision.payload.get("observability_config", {}),
                 "decision_payload": dict(decision.payload),
             },
             provenance={
@@ -517,45 +557,56 @@ class OverseerNode(BaseSwarmOverseer):
 
         return super().summarize_ecosystem_snapshot(snapshot)
 
-    def summarize_topology_health(self, topology_health: Mapping[str, Any] | None) -> Dict[str, Any]:
-        """Return compact topology health summary for logs/events."""
-        if not topology_health:
+    @staticmethod
+    def summarize_topology_health(topology_health: Mapping[str, Any] | None) -> Dict[str, Any]:
+        """Return compact topology health summary for events/logs."""
+        if not isinstance(topology_health, Mapping):
             return {
                 "type": "topology_health",
-                "status": "unavailable",
+                "topology_version": "unknown",
+                "swarm_count": 0,
+                "total_nodes": 0,
+                "total_stale_nodes": 0,
+                "command_events": {},
                 "swarms": {},
             }
 
-        swarms = topology_health.get("swarms") if isinstance(topology_health, Mapping) else {}
+        raw_swarms = topology_health.get("swarms")
+        swarms: Dict[str, Any] = {}
 
-        if not isinstance(swarms, Mapping):
-            return {
-                "type": "topology_health",
-                "status": "unavailable",
-                "swarms": {},
-            }
+        if isinstance(raw_swarms, Mapping):
+            for swarm_name, raw_data in raw_swarms.items():
+                if not isinstance(raw_data, Mapping):
+                    continue
+
+                swarms[str(swarm_name)] = {
+                    "status": raw_data.get("status"),
+                    "node_count": raw_data.get("node_count", 0),
+                    "role_counts": raw_data.get("role_counts", {}),
+                    "advisory_only": raw_data.get("advisory_only", False),
+                    "managed_by_overseer": raw_data.get("managed_by_overseer", False),
+                    "stale_nodes": raw_data.get("stale_nodes", []),
+                    "commands": raw_data.get("commands", 0),
+                    "events": raw_data.get("events", 0),
+                    "command_events": raw_data.get("command_events", {}),
+                    "command_event_window_seconds": raw_data.get("command_event_window_seconds", 0),
+                    "legacy_commands": raw_data.get("legacy_commands", {}),
+                    "legacy_command_window_seconds": raw_data.get("legacy_command_window_seconds", 0),
+                    "latest_ts": raw_data.get("latest_ts", 0.0),
+                }
 
         return {
             "type": "topology_health",
             "topology_version": topology_health.get("topology_version", "unknown"),
-            "swarm_count": topology_health.get("swarm_count", 0),
+            "swarm_count": topology_health.get("swarm_count", len(swarms)),
             "total_nodes": topology_health.get("total_nodes", 0),
             "total_stale_nodes": topology_health.get("total_stale_nodes", 0),
-            "swarms": {
-                str(name): {
-                    "status": data.get("status"),
-                    "node_count": data.get("node_count"),
-                    "role_counts": data.get("role_counts"),
-                    "advisory_only": data.get("advisory_only"),
-                    "managed_by_overseer": data.get("managed_by_overseer"),
-                    "stale_nodes": data.get("stale_nodes"),
-                    "commands": data.get("commands"),
-                    "events": data.get("events"),
-                    "latest_ts": data.get("latest_ts"),
-                }
-                for name, data in swarms.items()
-                if isinstance(data, Mapping)
-            },
+            "command_events": topology_health.get("command_events", {}),
+            "command_event_window_seconds": topology_health.get("command_event_window_seconds", 0),
+            "legacy_commands": topology_health.get("legacy_commands", {}),
+            "legacy_command_window_seconds": topology_health.get("legacy_command_window_seconds", 0),
+            "observability_config": OverseerNode.summarize_observability_config(topology_health),
+            "swarms": swarms,
         }
 
     @staticmethod
@@ -716,6 +767,84 @@ class OverseerNode(BaseSwarmOverseer):
             )
 
         return candidates
+    
+    @staticmethod
+    def summarize_topology_command_warnings(
+        topology_rules: Mapping[str, Any] | None,
+    ) -> list[Dict[str, Any]]:
+        """Extract command-event friction warnings from topology rules."""
+        if not isinstance(topology_rules, Mapping):
+            return []
+
+        raw_warnings = topology_rules.get("command_event_warnings")
+        if not isinstance(raw_warnings, list):
+            return []
+
+        warnings: list[Dict[str, Any]] = []
+
+        for item in raw_warnings:
+            if not isinstance(item, Mapping):
+                continue
+
+            warnings.append(
+                {
+                    "type": "command_event_warning",
+                    "swarm": str(item.get("swarm") or ""),
+                    "blocked": int(item.get("blocked", 0) or 0),
+                    "skipped": int(item.get("skipped", 0) or 0),
+                    "unsupported": int(item.get("unsupported", 0) or 0),
+                    "window_seconds": int(item.get("window_seconds", 0) or 0),
+                    "reason": str(item.get("reason") or "command_events_indicate_friction"),
+                    "advisory_only": True,
+                    "execution_enabled": False,
+                }
+            )
+
+        return warnings
+    
+    @staticmethod
+    def summarize_topology_legacy_command_warnings(
+        topology_rules: Mapping[str, Any] | None,
+    ) -> list[Dict[str, Any]]:
+        """Extract legacy-command usage warnings from topology rules."""
+        if not isinstance(topology_rules, Mapping):
+            return []
+
+        raw_warnings = topology_rules.get("legacy_command_warnings")
+        if not isinstance(raw_warnings, list):
+            return []
+
+        warnings: list[Dict[str, Any]] = []
+
+        for item in raw_warnings:
+            if not isinstance(item, Mapping):
+                continue
+
+            raw_legacy = item.get("legacy_commands")
+            legacy_commands = (
+                {str(k): int(v or 0) for k, v in raw_legacy.items()}
+                if isinstance(raw_legacy, Mapping)
+                else {}
+            )
+
+            total = int(item.get("total", 0) or sum(legacy_commands.values()))
+
+            if total <= 0:
+                continue
+
+            warnings.append(
+                {
+                    "type": "legacy_command_warning",
+                    "swarm": str(item.get("swarm") or ""),
+                    "legacy_commands": legacy_commands,
+                    "total": total,
+                    "reason": str(item.get("reason") or "legacy_command_usage_detected"),
+                    "advisory_only": True,
+                    "execution_enabled": False,
+                }
+            )
+
+        return warnings
 
     @staticmethod
     def _decision_action(decision: OverseerDecision) -> str:
@@ -908,7 +1037,158 @@ class OverseerNode(BaseSwarmOverseer):
             )
 
         return summaries
+    
+    @staticmethod
+    def _decision_severity(decision: Any) -> float:
+        """Map overseer decision/action into event severity."""
+        action = str(getattr(decision, "action", "") or "").upper()
+        payload = getattr(decision, "payload", {})
+        confidence = float(getattr(decision, "confidence", 0.0) or 0.0)
 
+        if isinstance(payload, Mapping):
+            topology_warnings = payload.get("topology_warnings")
+            topology_command_warnings = payload.get("topology_command_warnings")
+            topology_restart_candidates = payload.get("topology_restart_candidates")
+        else:
+            topology_warnings = []
+            topology_command_warnings = []
+            topology_restart_candidates = []
+
+        if action in {"REDUCE_RISK", "EMERGENCY", "HALT", "STOP"}:
+            return 0.9
+
+        if "REDUCE_RISK" in action:
+            return 0.8
+
+        if topology_warnings or topology_restart_candidates:
+            return 0.6
+
+        if topology_command_warnings:
+            return 0.4
+
+        if confidence < 0.5:
+            return 0.3
+
+        return 0.1
+    
+    @staticmethod
+    def summarize_command_friction_directives(
+        topology_command_warnings: Sequence[Mapping[str, Any]] | None,
+        *,
+        parent_gid: str,
+    ) -> list[Dict[str, Any]]:
+        """Convert command-event friction warnings into advisory directive summaries."""
+        if not isinstance(topology_command_warnings, Sequence) or isinstance(
+            topology_command_warnings,
+            (str, bytes, bytearray),
+        ):
+            return []
+
+        directives: list[Dict[str, Any]] = []
+
+        for item in topology_command_warnings:
+            if not isinstance(item, Mapping):
+                continue
+
+            swarm = str(item.get("swarm") or "")
+            if not swarm:
+                continue
+
+            blocked = int(item.get("blocked", 0) or 0)
+            skipped = int(item.get("skipped", 0) or 0)
+            unsupported = int(item.get("unsupported", 0) or 0)
+
+            if blocked <= 0 and skipped <= 0 and unsupported <= 0:
+                continue
+
+            directives.append(
+                {
+                    "type": "directive_summary",
+                    "action": "INVESTIGATE_COMMAND_FRICTION",
+                    "target_swarm": swarm,
+                    "parent_gid": parent_gid,
+                    "source": "topology_command_warnings",
+                    "blocked": blocked,
+                    "skipped": skipped,
+                    "unsupported": unsupported,
+                    "window_seconds": int(item.get("window_seconds", 0) or 0),
+                    "reason": str(item.get("reason") or "command_events_indicate_friction"),
+                    "advisory_only": True,
+                    "execution_enabled": False,
+                }
+            )
+
+        return directives
+    
+    @staticmethod
+    def summarize_legacy_command_migration_directives(
+        topology_legacy_command_warnings: Sequence[Mapping[str, Any]] | None,
+        *,
+        parent_gid: str,
+    ) -> list[Dict[str, Any]]:
+        """Convert legacy-command usage warnings into advisory migration summaries."""
+        if not isinstance(topology_legacy_command_warnings, Sequence) or isinstance(
+            topology_legacy_command_warnings,
+            (str, bytes, bytearray),
+        ):
+            return []
+
+        directives: list[Dict[str, Any]] = []
+
+        for item in topology_legacy_command_warnings:
+            if not isinstance(item, Mapping):
+                continue
+
+            swarm = str(item.get("swarm") or "")
+            if not swarm:
+                continue
+
+            raw_legacy = item.get("legacy_commands")
+            legacy_commands = (
+                {str(k): int(v or 0) for k, v in raw_legacy.items()}
+                if isinstance(raw_legacy, Mapping)
+                else {}
+            )
+
+            total = int(item.get("total", 0) or sum(legacy_commands.values()))
+            if total <= 0:
+                continue
+
+            directives.append(
+                {
+                    "type": "directive_summary",
+                    "action": "MIGRATE_LEGACY_COMMANDS",
+                    "target_swarm": swarm,
+                    "parent_gid": parent_gid,
+                    "source": "legacy_command_warnings",
+                    "legacy_commands": legacy_commands,
+                    "total": total,
+                    "reason": str(item.get("reason") or "legacy_command_usage_detected"),
+                    "advisory_only": True,
+                    "execution_enabled": False,
+                }
+            )
+
+        return directives
+    
+    @staticmethod
+    def summarize_observability_config(
+        topology_health: Mapping[str, Any] | None,
+        topology_rules: Mapping[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        """Return compact observability config used by topology/policy summaries."""
+        topology_health = topology_health if isinstance(topology_health, Mapping) else {}
+        topology_rules = topology_rules if isinstance(topology_rules, Mapping) else {}
+
+        return {
+            "command_event_window_seconds": int(
+                topology_health.get("command_event_window_seconds", 0) or 0
+            ),
+            "legacy_command_window_seconds": int(
+                topology_health.get("legacy_command_window_seconds", 0) or 0
+            ),
+            "command_event_thresholds": topology_rules.get("command_event_thresholds", {}),
+        }
 
 async def main() -> None:
     """CLI entry point."""

@@ -140,3 +140,58 @@ def lifecycle_summary(command: Mapping[str, Any]) -> Dict[str, Any]:
         "reason": lifecycle_reason(command),
         "command_gid": str(command.get("gid") or ""),
     }
+
+LIFECYCLE_EVENT_APPLIED = "lifecycle_command_applied"
+LIFECYCLE_EVENT_SKIPPED = "command_skipped"
+
+LIFECYCLE_STATUS_APPLIED = "applied"
+LIFECYCLE_STATUS_BLOCKED = "blocked"
+LIFECYCLE_STATUS_SKIPPED = "skipped"
+LIFECYCLE_STATUS_UNSUPPORTED = "unsupported"
+
+
+def lifecycle_event_payload(
+    command: Mapping[str, Any],
+    *,
+    status: str,
+    reason: str = "",
+    extra: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build standard lifecycle command event payload."""
+    payload: Dict[str, Any] = {
+        "action": lifecycle_action(command),
+        "status": status,
+        "reason": reason or lifecycle_reason(command),
+        "command": lifecycle_summary(command),
+    }
+
+    if extra:
+        payload.update({str(k): v for k, v in extra.items()})
+
+    return payload
+
+
+def is_lifecycle_event(record: Mapping[str, Any]) -> bool:
+    """Return True if record is a lifecycle observability event."""
+    return (
+        record.get("type") == "swarm_event"
+        and record.get("event_type") in {LIFECYCLE_EVENT_APPLIED, LIFECYCLE_EVENT_SKIPPED}
+    )
+
+
+def lifecycle_event_status(record: Mapping[str, Any]) -> str:
+    """Return lifecycle event status if present."""
+    payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
+    return str(payload.get("status") or "")
+
+
+def lifecycle_event_action(record: Mapping[str, Any]) -> str:
+    """Return lifecycle event action if present."""
+    payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
+    return str(payload.get("action") or "")
+
+
+def lifecycle_event_reason(record: Mapping[str, Any]) -> str:
+    """Return lifecycle event reason if present."""
+    payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
+    return str(payload.get("reason") or "")

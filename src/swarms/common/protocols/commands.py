@@ -88,17 +88,60 @@ def normalize_command(record: Mapping[str, Any]) -> Dict[str, Any]:
     record_type = str(record.get("type") or "")
 
     if record_type == "swarm_command":
-        command_type = str(record.get("command_type") or record.get("action") or "").upper()
-        if not command_type:
-            payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
-            command_type = str(payload.get("action") or "").upper()
+        payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
+        data = record.get("data") if isinstance(record.get("data"), Mapping) else {}
+
+        command_type = str(
+            record.get("command_type")
+            or record.get("action")
+            or payload.get("command_type")
+            or payload.get("action")
+            or data.get("command_type")
+            or data.get("action")
+            or ""
+        ).upper()
 
         if not command_type:
             return {}
 
+        target_swarm = str(
+            record.get("target_swarm")
+            or payload.get("target_swarm")
+            or data.get("target_swarm")
+            or payload.get("swarm")
+            or data.get("swarm")
+            or ""
+        )
+
+        target_role = str(
+            record.get("target_role")
+            or payload.get("target_role")
+            or data.get("target_role")
+            or payload.get("role")
+            or data.get("role")
+            or ""
+        )
+
+        target_node = str(
+            record.get("target_node")
+            or record.get("target_node_id")
+            or payload.get("target_node")
+            or payload.get("target_node_id")
+            or data.get("target_node")
+            or data.get("target_node_id")
+            or payload.get("node_id")
+            or data.get("node_id")
+            or ""
+        )
+
         out = dict(record)
-        out["command_type"] = command_type
         out["type"] = "swarm_command"
+        out["command_type"] = command_type
+        out["target_swarm"] = target_swarm
+        out["target_role"] = target_role
+        out["target_node"] = target_node
+        out["payload"] = dict(payload)
+        out["data"] = dict(data)
         return out
 
     if record_type in {"sec_command", "explorer_command", "meta_command_json", "trade_command"}:
@@ -108,7 +151,9 @@ def normalize_command(record: Mapping[str, Any]) -> Dict[str, Any]:
         action = str(
             record.get("command_type")
             or record.get("action")
+            or data.get("command_type")
             or data.get("action")
+            or payload.get("command_type")
             or payload.get("action")
             or ""
         ).upper()
@@ -116,24 +161,53 @@ def normalize_command(record: Mapping[str, Any]) -> Dict[str, Any]:
         if not action:
             return {}
 
-        target_swarm = str(
+        legacy_type_to_swarm = {
+            "sec_command": "security",
+            "explorer_command": "explorer",
+            "trade_command": "trade",
+        }
+
+        legacy_type_to_role = {
+            "sec_command": "node",
+            "explorer_command": "node",
+            "trade_command": "node",
+        }
+
+        explicit_target_swarm = (
             record.get("target_swarm")
+            or data.get("target_swarm")
+            or payload.get("target_swarm")
             or data.get("swarm")
             or payload.get("swarm")
-            or _legacy_target_swarm(record_type)
+        )
+
+        explicit_target_role = (
+            record.get("target_role")
+            or data.get("target_role")
+            or payload.get("target_role")
+            or data.get("role")
+            or payload.get("role")
+        )
+
+        target_swarm = str(
+            explicit_target_swarm
+            or legacy_type_to_swarm.get(record_type)
             or ""
         )
 
         target_role = str(
-            record.get("target_role")
-            or data.get("role")
-            or payload.get("role")
+            explicit_target_role
+            or legacy_type_to_role.get(record_type)
             or "node"
         )
 
         target_node = str(
             record.get("target_node")
             or record.get("target_node_id")
+            or data.get("target_node")
+            or data.get("target_node_id")
+            or payload.get("target_node")
+            or payload.get("target_node_id")
             or data.get("node_id")
             or payload.get("node_id")
             or ""
@@ -351,51 +425,159 @@ def _stable_command_value(value: Any) -> Any:
 
 
 def command_fingerprint(command: Mapping[str, Any]) -> str:
-    """Build stable semantic fingerprint for canonical/legacy commands."""
-    action = command_action(command)
+    """Build stable semantic fingerprint for canonical/legacy command dedup."""
+    if not isinstance(command, Mapping):
+        return ""
 
-    data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
-    payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
+    normalized = normalize_command(command)
+    if not normalized:
+        normalized = dict(command)
 
-    target_swarm = str(
-        command.get("target_swarm")
-        or command.get("swarm")
-        or data.get("swarm")
-        or payload.get("swarm")
-        or ""
-    )
-
-    target_role = str(
-        command.get("target_role")
-        or command.get("role")
-        or data.get("role")
-        or payload.get("role")
-        or ""
-    )
-
-    target_node = str(
-        command.get("target_node")
-        or command.get("target_node_id")
-        or data.get("node_id")
-        or payload.get("node_id")
-        or ""
-    )
-
-    normalized = {
-        "action": action,
-        "target_swarm": target_swarm,
-        "target_role": target_role,
-        "target_node": target_node,
-        "data": _stable_command_value(data),
-        "payload": _stable_command_value(payload),
+    material = {
+        "action": command_action(normalized),
+        "target_swarm": str(normalized.get("target_swarm") or ""),
+        "target_role": str(normalized.get("target_role") or ""),
+        "target_node": str(
+            normalized.get("target_node")
+            or normalized.get("target_node_id")
+            or ""
+        ),
+        "semantic_payload": _stable_command_value(
+            _semantic_command_payload(normalized)
+        ),
     }
 
-    raw = json.dumps(
-        normalized,
+    encoded = json.dumps(
+        material,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
         default=str,
     )
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+COMMAND_EVENT_APPLIED = "command_applied"
+COMMAND_EVENT_SKIPPED = "command_skipped"
+COMMAND_EVENT_BLOCKED = "command_blocked"
+COMMAND_EVENT_UNSUPPORTED = "command_unsupported"
+
+COMMAND_STATUS_APPLIED = "applied"
+COMMAND_STATUS_SKIPPED = "skipped"
+COMMAND_STATUS_BLOCKED = "blocked"
+COMMAND_STATUS_UNSUPPORTED = "unsupported"
+COMMAND_STATUS_RECEIVED = "received"
+
+_COMMAND_SEMANTIC_ALIAS_KEYS = {
+    "action",
+    "command_type",
+    "target_swarm",
+    "swarm",
+    "target_role",
+    "role",
+    "target_node",
+    "target_node_id",
+    "node_id",
+}
+
+
+def _semantic_command_payload(command: Mapping[str, Any]) -> Dict[str, Any]:
+    """Merge payload/data into semantic extras for fingerprinting.
+
+    Transport aliases such as action/target/node are represented by normalized
+    top-level fields and must not affect the fingerprint twice.
+    """
+    merged: Dict[str, Any] = {}
+
+    data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
+    payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
+
+    for source in (data, payload):
+        for key, value in source.items():
+            key_text = str(key)
+            if key_text in _COMMAND_SEMANTIC_ALIAS_KEYS:
+                continue
+            if key_text in _VOLATILE_COMMAND_KEYS:
+                continue
+            merged[key_text] = value
+
+    return merged
+
+def command_event_payload(
+    command: Mapping[str, Any],
+    *,
+    status: str,
+    reason: str = "",
+    extra: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build standard command observability payload for non-lifecycle commands."""
+    payload: Dict[str, Any] = {
+        "action": command_action(command),
+        "status": status,
+        "reason": reason,
+        "command_type": command_action(command),
+        "command_gid": str(command.get("gid") or ""),
+        "target_swarm": str(command.get("target_swarm") or ""),
+        "target_role": str(command.get("target_role") or ""),
+        "target_node": str(
+            command.get("target_node")
+            or command.get("target_node_id")
+            or ""
+        ),
+    }
+
+    data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
+    payload_data = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
+
+    if not payload["reason"]:
+        payload["reason"] = str(
+            payload_data.get("reason")
+            or data.get("reason")
+            or command.get("reason")
+            or ""
+        )
+
+    if not payload["target_node"]:
+        payload["target_node"] = str(
+            payload_data.get("node_id")
+            or data.get("node_id")
+            or payload_data.get("target_node")
+            or data.get("target_node")
+            or ""
+        )
+
+    if extra:
+        payload.update({str(k): v for k, v in extra.items()})
+
+    return payload
+
+
+def is_command_event(record: Mapping[str, Any]) -> bool:
+    """Return True if record is a command observability event."""
+    return (
+        record.get("type") == "swarm_event"
+        and record.get("event_type")
+        in {
+            COMMAND_EVENT_APPLIED,
+            COMMAND_EVENT_SKIPPED,
+            COMMAND_EVENT_BLOCKED,
+            COMMAND_EVENT_UNSUPPORTED,
+        }
+    )
+
+
+def command_event_status(record: Mapping[str, Any]) -> str:
+    """Return command event status if present."""
+    payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
+    return str(payload.get("status") or "")
+
+
+def command_event_action(record: Mapping[str, Any]) -> str:
+    """Return command event action if present."""
+    payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
+    return str(payload.get("action") or payload.get("command_type") or "")
+
+
+def command_event_reason(record: Mapping[str, Any]) -> str:
+    """Return command event reason if present."""
+    payload = record.get("payload") if isinstance(record.get("payload"), Mapping) else {}
+    return str(payload.get("reason") or "")

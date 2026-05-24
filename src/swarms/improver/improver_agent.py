@@ -14,6 +14,7 @@ import uuid
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+import sys
 
 try:
     import google.generativeai as genai
@@ -23,9 +24,16 @@ except Exception:  # pragma: no cover - optional dependency
 from src.swarms.common import (
     BaseNodeConfig,
     BaseSwarmNode,
+    is_lifecycle_command,
+    lifecycle_action,
+    lifecycle_applies_to,
+    lifecycle_reason,
+    lifecycle_summary,
     command_action,
     make_swarm_event,
     utc_ts,
+    LIFECYCLE_EVENT_APPLIED,
+    lifecycle_event_payload,
 )
 from swarm_config import config
 
@@ -319,8 +327,9 @@ class ImproverAgent(BaseSwarmNode):
             self._request_shutdown_compat()
 
     async def process_command(self, command: Mapping[str, Any]) -> None:
-        """Handle improver control commands."""
-        await super().process_command(command)
+        """Process improver commands from canonical/legacy CRDT command formats."""
+        if await self.handle_lifecycle_command(command):
+            return
 
         action = command_action(command)
         payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
@@ -484,6 +493,214 @@ class ImproverAgent(BaseSwarmNode):
     async def run(self) -> None:
         """Backward-compatible run entrypoint."""
         await self.start()
+
+    def _set_runtime_paused(self, paused: bool) -> None:
+        """Set paused flag for improver runtime."""
+        value = bool(paused)
+
+        for attr in ("paused", "_paused"):
+            try:
+                setattr(self, attr, value)
+            except Exception:
+                pass
+
+        health = getattr(self, "health", None)
+        if health is not None:
+            try:
+                setattr(health, "paused", value)
+            except Exception:
+                pass
+
+        for metrics_attr in ("metrics", "runtime_metrics"):
+            metrics = getattr(self, metrics_attr, None)
+            if isinstance(metrics, dict):
+                metrics["paused"] = value
+
+
+    def is_paused(self) -> bool:
+        """Return current paused state."""
+        for attr in ("paused", "_paused"):
+            value = getattr(self, attr, None)
+            if isinstance(value, bool):
+                return value
+
+        health = getattr(self, "health", None)
+        if health is not None:
+            value = getattr(health, "paused", None)
+            if isinstance(value, bool):
+                return value
+
+        for metrics_attr in ("metrics", "runtime_metrics"):
+            metrics = getattr(self, metrics_attr, None)
+            if isinstance(metrics, dict) and isinstance(metrics.get("paused"), bool):
+                return bool(metrics["paused"])
+
+        return False
+    
+    async def _emit_lifecycle_event(
+        self,
+        *,
+        action: str,
+        status: str,
+        reason: str,
+        parent_gid: str,
+        command: Mapping[str, Any],
+    ) -> None:
+        """Emit canonical lifecycle event for improver."""
+        event = make_swarm_event(
+            event_type=LIFECYCLE_EVENT_APPLIED,
+            source_swarm=self.swarm_type,
+            source_agent=self.node_id,
+            source_node=self.node_id,
+            role=self.role,
+            parent_gid=parent_gid,
+            severity=0.1 if status == "applied" else 0.3,
+            payload=lifecycle_event_payload(
+                command,
+                status=status,
+                reason=reason,
+            ),
+            provenance={
+                "agent": self.node_id,
+                "source": "common_lifecycle",
+            },
+        )
+
+        await self.crdt.add_genome(event)
+
+    async def handle_lifecycle_command(self, command: Mapping[str, Any]) -> bool:
+        """Handle common lifecycle commands for ImproverAgent.
+
+        RUN_ONCE is safety-gated and handled explicitly.
+        Returns True if command was lifecycle command and should not continue
+        into legacy/specialized command handling.
+        """
+        if not is_lifecycle_command(command):
+            return False
+
+        node_id = str(getattr(self, "node_id", ""))
+        swarm_type = str(getattr(self, "swarm_type", "improver"))
+        role = str(getattr(self, "role", "maintenance_agent"))
+
+        if not lifecycle_applies_to(
+            command,
+            node_id=node_id,
+            swarm_type=swarm_type,
+            role=role,
+        ):
+            return True
+
+        action = lifecycle_action(command)
+        reason = lifecycle_reason(command)
+        command_gid = str(command.get("gid") or "")
+
+        if action == "PAUSE":
+            self._set_runtime_paused(True)
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.info("ImproverAgent %s paused by lifecycle command.", self.node_id)
+            return True
+
+        if action == "RESUME":
+            self._set_runtime_paused(False)
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.info("ImproverAgent %s resumed by lifecycle command.", self.node_id)
+            return True
+
+        if action == "RESTART_NODE":
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.critical("ImproverAgent %s received lifecycle RESTART_NODE.", self.node_id)
+            sys.exit(0)
+
+        if action == "RUN_ONCE":
+            if not self._lifecycle_run_once_allowed(command):
+                await self._emit_lifecycle_event(
+                    action=action,
+                    status="blocked",
+                    reason=reason or "RUN_ONCE requires explicit improver safety gate",
+                    parent_gid=command_gid,
+                    command=command,
+                )
+                self.logger.warning(
+                    "ImproverAgent %s refused RUN_ONCE lifecycle command: explicit safety gate required.",
+                    self.node_id,
+                )
+                return True
+
+            if self.is_paused():
+                await self._emit_lifecycle_event(
+                    action=action,
+                    status="blocked",
+                    reason=reason or "improver is paused",
+                    parent_gid=command_gid,
+                    command=command,
+                )
+                self.logger.warning("ImproverAgent %s refused RUN_ONCE because it is paused.", self.node_id)
+                return True
+
+            await self._process_cycle(
+                trigger="lifecycle_run_once",
+                parent_gid=command_gid,
+            )
+
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            return True
+
+        await self._emit_lifecycle_event(
+            action=action,
+            status="unsupported",
+            reason=reason,
+            parent_gid=command_gid,
+            command=command,
+        )
+        return True
+    
+    def _lifecycle_run_once_allowed(self, command: Mapping[str, Any]) -> bool:
+        """Return True only when RUN_ONCE has explicit safety approval.
+
+        Accepted forms:
+        - payload.explicit_approval == True
+        - payload.safety_gate == "approved"
+        - payload.allow_api_calls == True only if you want API-enabled cycle
+        """
+        payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
+        data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
+
+        explicit_approval = bool(
+            payload.get("explicit_approval")
+            or data.get("explicit_approval")
+        )
+
+        safety_gate = str(
+            payload.get("safety_gate")
+            or data.get("safety_gate")
+            or ""
+        ).lower()
+
+        return explicit_approval or safety_gate in {"approved", "true", "1", "yes"}
 
     # ------------------------------------------------------------------
     # Provider setup and generation
@@ -662,7 +879,23 @@ class ImproverAgent(BaseSwarmNode):
     # Managed cycle
     # ------------------------------------------------------------------
 
-    async def _process_cycle(self, *, trigger: str, parent_gid: Optional[str] = None) -> None:
+    async def _process_cycle(
+        self,
+        *,
+        trigger: str,
+        parent_gid: str | None = None,
+    ) -> None:
+        if self.is_paused():
+            self.logger.info(
+                "ImproverAgent %s is paused; skipping improvement cycle trigger=%s.",
+                self.node_id,
+                trigger,
+            )
+            return
+        
+        if parent_gid is None:
+            parent_gid = self.new_gid("cycle_parent") if hasattr(self, "new_gid") else ""
+        
         if self._cycle_lock.locked():
             logger.info("Improver cycle already running; skipping trigger=%s", trigger)
             return

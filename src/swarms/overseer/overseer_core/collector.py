@@ -19,6 +19,7 @@ Canonical:
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections.abc import Iterable, Mapping
 from typing import Any, Dict, List, Optional, Set
@@ -31,12 +32,28 @@ except ImportError:
 from src.swarms.common import (
     normalize_event,
     normalize_heartbeat,
+    command_event_status,
+    is_command_event,
+    is_lifecycle_event,
+    lifecycle_event_status,
 )
 from src.swarms.overseer.overseer_core.interfaces import StateSource
 from src.swarms.overseer.overseer_core.models import SwarmSnapshot
 from src.swarms.common import SWARM_TOPOLOGY
 
 logger = logging.getLogger(__name__)
+
+def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+
+    return max(minimum, value)
 
 TRADE_HEARTBEAT_VALIDITY_SECONDS = 600
 SECURITY_HEARTBEAT_VALIDITY_SECONDS = 600
@@ -47,8 +64,20 @@ FINDINGS_VALIDITY_SECONDS = 1800
 VULNERABILITY_VALIDITY_SECONDS = 1800
 STALE_NODE_THRESHOLD_SECONDS = 180
 
-MAX_EVENT_SCAN_DEPTH = 6
+COMMAND_EVENT_WINDOW_SECONDS = _env_int(
+    "OVERSEER_COMMAND_EVENT_WINDOW_SECONDS",
+    15 * 60,
+    minimum=60,
+)
 
+LEGACY_COMMAND_TYPES = {
+    "sec_command",
+    "explorer_command",
+    "meta_command_json",
+    "trade_command",
+}
+
+MAX_EVENT_SCAN_DEPTH = 6
 
 class StateCollector:
     """Converts CRDT state into a compact, normalized swarm snapshot."""
@@ -231,6 +260,38 @@ class StateCollector:
     def _looks_like_record(payload: Mapping[str, Any]) -> bool:
         """Return True if a mapping resembles a CRDT record."""
         return isinstance(payload.get("type"), str) or payload.get("timestamp") is not None
+    
+    @staticmethod
+    def _command_event_counts(records: list[Mapping[str, Any]]) -> dict[str, int]:
+        """Count command/lifecycle observability events by status."""
+        counts = {
+            "applied": 0,
+            "skipped": 0,
+            "blocked": 0,
+            "unsupported": 0,
+            "received": 0,
+            "unknown": 0,
+        }
+
+        for record in records:
+            if not isinstance(record, Mapping):
+                continue
+
+            status = ""
+
+            if is_lifecycle_event(record):
+                status = lifecycle_event_status(record)
+            elif is_command_event(record):
+                status = command_event_status(record)
+            else:
+                continue
+
+            if status in counts:
+                counts[status] += 1
+            else:
+                counts["unknown"] += 1
+
+        return counts
 
     # ------------------------------------------------------------------
     # Normalization
@@ -362,20 +423,57 @@ class StateCollector:
         heartbeats = [
             event
             for event in events
-            if event.get("type") in {"swarm_heartbeat", "trade_heartbeat", "security_heartbeat", "explorer_heartbeat", "improver_heartbeat", "meta_heartbeat"}
+            if event.get("type")
+            in {
+                "swarm_heartbeat",
+                "trade_heartbeat",
+                "security_heartbeat",
+                "explorer_heartbeat",
+                "improver_heartbeat",
+                "meta_heartbeat",
+            }
         ]
 
         commands = [
             event
             for event in events
-            if event.get("type") in {"swarm_command", "sec_command", "explorer_command", "meta_command_json", "trade_command"}
+            if event.get("type")
+            in {
+                "swarm_command",
+                "sec_command",
+                "explorer_command",
+                "meta_command_json",
+                "trade_command",
+            }
         ]
+
+        recent_commands = self._recent_records(
+            commands,
+            now=now,
+            window_seconds=COMMAND_EVENT_WINDOW_SECONDS,
+        )
+
+        legacy_command_counts = self._legacy_command_counts(recent_commands)
 
         swarm_events = [
             event
             for event in events
-            if event.get("type") in {"swarm_event", "security_event", "explorer_finding", "vulnerability_alert"}
+            if event.get("type")
+            in {
+                "swarm_event",
+                "security_event",
+                "explorer_finding",
+                "vulnerability_alert",
+            }
         ]
+
+        recent_swarm_events = self._recent_records(
+            swarm_events,
+            now=now,
+            window_seconds=COMMAND_EVENT_WINDOW_SECONDS,
+        )
+
+        all_command_events = self._command_event_counts(recent_swarm_events)
 
         swarms: Dict[str, Any] = {}
 
@@ -395,6 +493,14 @@ class StateCollector:
                 if self._record_target_swarm(cmd) == swarm_name
             ]
 
+            swarm_recent_commands = self._recent_records(
+                swarm_commands,
+                now=now,
+                window_seconds=COMMAND_EVENT_WINDOW_SECONDS,
+            )
+
+            swarm_legacy_commands = self._legacy_command_counts(swarm_recent_commands)
+
             swarm_related_events = [
                 event
                 for event in swarm_events
@@ -402,8 +508,19 @@ class StateCollector:
                 or self._record_target_swarm(event) == swarm_name
             ]
 
+            swarm_recent_events = self._recent_records(
+                swarm_related_events,
+                now=now,
+                window_seconds=COMMAND_EVENT_WINDOW_SECONDS,
+            )
+
             latest_ts = max(
-                [float(item.get("timestamp", 0.0) or 0.0) for item in list(latest_by_node.values()) + swarm_related_events + swarm_commands],
+                [
+                    float(item.get("timestamp", 0.0) or 0.0)
+                    for item in list(latest_by_node.values())
+                    + swarm_related_events
+                    + swarm_commands
+                ],
                 default=0.0,
             )
 
@@ -423,6 +540,10 @@ class StateCollector:
                 "heartbeats": len(swarm_hbs),
                 "events": len(swarm_related_events),
                 "commands": len(swarm_commands),
+                "legacy_commands": swarm_legacy_commands,
+                "legacy_command_window_seconds": COMMAND_EVENT_WINDOW_SECONDS,
+                "command_events": self._command_event_counts(swarm_recent_events),
+                "command_event_window_seconds": COMMAND_EVENT_WINDOW_SECONDS,
                 "latest_ts": latest_ts,
                 "stale_nodes": stale_nodes,
                 "status": self._topology_swarm_status(
@@ -439,6 +560,10 @@ class StateCollector:
             "swarm_count": len(swarms),
             "total_nodes": sum(int(data["node_count"]) for data in swarms.values()),
             "total_stale_nodes": sum(len(data["stale_nodes"]) for data in swarms.values()),
+            "command_events": all_command_events,
+            "command_event_window_seconds": COMMAND_EVENT_WINDOW_SECONDS,
+            "legacy_commands": legacy_command_counts,
+            "legacy_command_window_seconds": COMMAND_EVENT_WINDOW_SECONDS,
             "swarms": swarms,
         }
 
@@ -492,22 +617,6 @@ class StateCollector:
             return int(value)
         except (TypeError, ValueError):
             return default
-
-    @staticmethod
-    def _recent_records(
-        records: Iterable[Dict[str, Any]],
-        now: float,
-        validity: int,
-    ) -> List[Dict[str, Any]]:
-        """Return records inside a validity window."""
-        recent: List[Dict[str, Any]] = []
-
-        for record in records:
-            ts = StateCollector._record_timestamp(record)
-            if now - ts <= validity:
-                recent.append(record)
-
-        return recent
 
     @staticmethod
     def _count_recent_events(
@@ -590,6 +699,16 @@ class StateCollector:
             return str(direct)
 
         record_type = str(record.get("type") or "")
+
+        legacy_type_to_swarm = {
+            "sec_command": "security",
+            "explorer_command": "explorer",
+            "meta_command_json": "explorer",
+            "trade_command": "trade",
+        }
+
+        if record_type in legacy_type_to_swarm:
+            return legacy_type_to_swarm[record_type]
 
         if record_type in {"trade_heartbeat", "meta_command_json", "trade_command"}:
             return "trade"
@@ -701,26 +820,59 @@ class StateCollector:
             return "stale"
 
         return "ok"
-
+    
     @staticmethod
-    def _topology_swarm_status(
-        *,
-        node_count: int,
-        stale_nodes: List[str],
-        latest_ts: float,
-        now: float,
-    ) -> str:
-        """Compute lightweight swarm health status."""
-        if node_count <= 0:
-            return "absent"
+    def _recent_records(
+        records: list[Mapping[str, Any]],
+        now: float | None = None,
+        window_seconds: float | None = None,
+    ) -> list[Mapping[str, Any]]:
+        """Return records whose timestamp falls within the recent window.
 
-        if stale_nodes and len(stale_nodes) >= node_count:
-            return "stale"
+        Backward-compatible call styles:
+        - _recent_records(records, now, window_seconds)
+        - _recent_records(records, now=now, window_seconds=window)
+        - _recent_records(records, now=now)  # uses STALE_NODE_THRESHOLD_SECONDS
+        """
+        if now is None:
+            now = time.time()
 
-        if stale_nodes:
-            return "degraded"
+        if window_seconds is None:
+            window_seconds = STALE_NODE_THRESHOLD_SECONDS
 
-        if latest_ts > 0 and now - latest_ts > STALE_NODE_THRESHOLD_SECONDS:
-            return "stale"
+        cutoff = float(now) - float(window_seconds)
+        recent: list[Mapping[str, Any]] = []
 
-        return "ok"
+        for record in records:
+            if not isinstance(record, Mapping):
+                continue
+
+            try:
+                ts = float(record.get("timestamp", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                continue
+
+            if ts >= cutoff:
+                recent.append(record)
+
+        return recent
+    
+    @staticmethod
+    def _legacy_command_counts(records: list[Mapping[str, Any]]) -> dict[str, int]:
+        """Count legacy command records by type."""
+        counts = {
+            "sec_command": 0,
+            "explorer_command": 0,
+            "meta_command_json": 0,
+            "trade_command": 0,
+        }
+
+        for record in records:
+            if not isinstance(record, Mapping):
+                continue
+
+            record_type = str(record.get("type") or "")
+            if record_type in counts:
+                counts[record_type] += 1
+
+        return counts

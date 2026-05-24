@@ -60,6 +60,8 @@ from src.swarms.common.protocols import (
     lifecycle_applies_to,
     lifecycle_reason,
     lifecycle_summary,
+    LIFECYCLE_EVENT_APPLIED,
+    lifecycle_event_payload,
 )
 
 logger = logging.getLogger(__name__)
@@ -841,7 +843,7 @@ class BaseSwarmNode:
 
         event = {
             "type": "swarm_event",
-            "event_type": "lifecycle_command_applied",
+            "event_type": LIFECYCLE_EVENT_APPLIED,
             "gid": self.new_gid("lifecycle_evt") if hasattr(self, "new_gid") else "",
             "source_swarm": swarm_type,
             "source_agent": node_id,
@@ -849,12 +851,11 @@ class BaseSwarmNode:
             "role": role,
             "parent_gid": parent_gid,
             "timestamp": utc_ts(),
-            "payload": {
-                "action": action,
-                "status": status,
-                "reason": reason,
-                "command": lifecycle_summary(command),
-            },
+            "payload": lifecycle_event_payload(
+                command,
+                status=status,
+                reason=reason,
+            ),
             "provenance": {
                 "agent": node_id,
                 "source": "common_lifecycle",

@@ -18,7 +18,7 @@ import hashlib
 import json
 import logging
 import time
-from typing import Any, Dict, Final, Mapping, Optional, Set
+from typing import Any, Dict, Final, Mapping, Optional
 
 from src.swarms.overseer.overseer_core.interfaces import GenomeSink
 from src.swarms.overseer.overseer_core.models import OverseerDecision, SwarmSnapshot
@@ -28,6 +28,9 @@ from src.swarms.common import (
     command_requires_explicit_gate,
     is_known_swarm,
     make_swarm_command,
+    command_action,
+    normalize_command,
+    command_fingerprint,
 )
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -35,14 +38,6 @@ logger: logging.Logger = logging.getLogger(__name__)
 COMMAND_EXPIRATION_DEFAULT_SECONDS: Final[int] = 300
 EXPLORER_COMMAND_EXPIRATION_SECONDS: Final[int] = 600
 COMMAND_COOLDOWN_SECONDS: Final[int] = 600
-
-_VOLATILE_KEYS: Final[Set[str]] = {
-    "timestamp",
-    "expires_at",
-    "gid",
-    "trace_id",
-}
-
 
 class ActionExecutor:
     """Emits commands into the CRDT sink with deduplication and rate-limiting.
@@ -586,13 +581,16 @@ class ActionExecutor:
             await self._sink.add_genome(command)
             self._last_emitted_at[key] = now
             self._last_fingerprint[key] = self._generate_fingerprint(command)
+
+            normalized = normalize_command(command)
+
             logger.info(
                 "Emitted command key=%s type=%s action=%s target_swarm=%s target_node=%s",
                 key,
-                command.get("type"),
-                self._extract_action(command),
-                command.get("target_swarm") or command.get("data", {}).get("swarm"),
-                command.get("target_node") or command.get("data", {}).get("node_id"),
+                normalized.get("type") or command.get("type"),
+                command_action(normalized) or self._extract_action(command),
+                normalized.get("target_swarm") or "",
+                normalized.get("target_node") or "",
             )
         except Exception as exc:
             logger.error("Failed to emit command '%s': %s", key, exc, exc_info=True)
@@ -612,40 +610,38 @@ class ActionExecutor:
 
         return last_fp == current_fp
 
-    @classmethod
-    def _generate_fingerprint(cls, command: Mapping[str, Any]) -> str:
-        stable = cls._strip_volatile(command)
+    @staticmethod
+    def _generate_fingerprint(command: Mapping[str, Any]) -> str:
+        """Generate stable semantic fingerprint for rate-limit/dedup."""
+        fingerprint = command_fingerprint(command)
+        if fingerprint:
+            return fingerprint
+
         payload = json.dumps(
-            stable,
+            command,
             sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
             default=str,
+            separators=(",", ":"),
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
-    @classmethod
-    def _strip_volatile(cls, value: Any) -> Any:
-        if isinstance(value, Mapping):
-            return {
-                str(k): cls._strip_volatile(v)
-                for k, v in value.items()
-                if str(k) not in _VOLATILE_KEYS
-            }
-
-        if isinstance(value, (list, tuple)):
-            return [cls._strip_volatile(item) for item in value]
-
-        return value
-
     @staticmethod
     def _extract_action(command: Mapping[str, Any]) -> str:
+        normalized = normalize_command(command)
+        action = command_action(normalized)
+
+        if action:
+            return action
+
         data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
         payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
 
         return str(
             command.get("command_type")
+            or command.get("action")
+            or payload.get("command_type")
             or payload.get("action")
+            or data.get("command_type")
             or data.get("action")
             or ""
-        )
+        ).upper()

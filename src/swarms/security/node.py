@@ -32,7 +32,11 @@ from src.swarms.common import (
     BaseNodeConfig,
     BaseSwarmNode,
     command_action,
+    normalize_command,
     make_swarm_event,
+    COMMAND_EVENT_SKIPPED,
+    COMMAND_STATUS_SKIPPED,
+    command_event_payload,
 )
 from src.swarms.security.node_core import (
     FirewallManager,
@@ -156,6 +160,15 @@ class SecurityNode(BaseSwarmNode):
             return
 
         if await self.handle_lifecycle_command(command):
+            return
+        
+        if self.is_paused():
+            self.logger.info(
+                "SecurityNode %s is paused; skipping security command action=%s.",
+                self.node_id,
+                action,
+            )
+            await self._emit_paused_command_skipped(command, action)
             return
 
         provenance = command.get("provenance") if isinstance(command.get("provenance"), dict) else {}
@@ -288,36 +301,32 @@ class SecurityNode(BaseSwarmNode):
         """Cleanup security node resources."""
         self.logger.info("SecurityNode %s shutting down.", self.node_id)
 
-    def _security_command_semantic_key(self, command: Mapping[str, Any]) -> str:
-        """Build local semantic key for deduplicating canonical + legacy security commands."""
-        data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
-        payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
+    @staticmethod
+    def _security_command_semantic_key(command: Mapping[str, Any]) -> str:
+        normalized = normalize_command(command)
+        data = normalized.get("data") if isinstance(normalized.get("data"), Mapping) else {}
+        payload = normalized.get("payload") if isinstance(normalized.get("payload"), Mapping) else {}
 
-        action = str(
-            command.get("command_type")
-            or data.get("action")
-            or payload.get("action")
-            or ""
-        ).upper()
+        action = command_action(normalized)
 
         target_node = str(
-            command.get("target_node")
-            or command.get("target_node_id")
-            or data.get("node_id")
-            or payload.get("node_id")
+            normalized.get("target_node")
+            or normalized.get("target_node_id")
             or ""
         )
 
-        # Legacy security PAUSE/RESUME/RESTART_NODE may omit target_node.
-        # Treat lifecycle duplicates as equivalent locally.
-        if action in {"PAUSE", "RESUME", "RESTART_NODE"}:
+        # Legacy security PAUSE/RESUME/UNBLOCK_ALL often omits target_node.
+        # Treat wildcard/empty equally for swarm-level commands.
+        if target_node in {"*", "None"}:
             target_node = ""
 
         ips = payload.get("ips") or data.get("ips") or []
-        if isinstance(ips, list):
-            ips_key = ",".join(sorted(str(ip) for ip in ips if isinstance(ip, str)))
-        else:
-            ips_key = ""
+        if isinstance(ips, str):
+            ips = [ips]
+        if not isinstance(ips, list):
+            ips = []
+
+        ips_key = ",".join(sorted(str(ip) for ip in ips))
 
         return f"{action}|node={target_node}|ips={ips_key}"
 
@@ -345,6 +354,36 @@ class SecurityNode(BaseSwarmNode):
 
         self._recent_command_semantic_keys[key] = now
         return False
+    
+    async def _emit_paused_command_skipped(
+        self,
+        command: Mapping[str, Any],
+        action: str,
+    ) -> None:
+        """Emit canonical event when security command is skipped due to pause."""
+        event = make_swarm_event(
+            event_type=COMMAND_EVENT_SKIPPED,
+            source_swarm=self.swarm_type,
+            source_agent=self.node_id,
+            source_node=self.node_id,
+            role=self.role,
+            parent_gid=str(command.get("gid") or ""),
+            severity=0.2,
+            payload=command_event_payload(
+                command,
+                status=COMMAND_STATUS_SKIPPED,
+                reason="node_paused",
+                extra={
+                    "guard": "pause_guard",
+                    "original_action": action,
+                },
+            ),
+    provenance={
+        "agent": self.node_id,
+        "source": "pause_guard",
+    },
+)
+        await self.crdt.add_genome(event)
 
     # ------------------------------------------------------------------
     # Security actions

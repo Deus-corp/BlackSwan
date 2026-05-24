@@ -33,6 +33,7 @@ import logging
 import os
 import signal
 import socket
+import sys
 
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Iterable, Mapping, Optional, Sequence
@@ -52,6 +53,11 @@ from src.swarms.common.protocols import (
     make_swarm_command,
     make_swarm_event,
     make_swarm_heartbeat,
+    is_lifecycle_command,
+    lifecycle_action,
+    lifecycle_applies_to,
+    lifecycle_reason,
+    lifecycle_summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -173,6 +179,8 @@ class BaseSwarmMetaAgent:
     ) -> None:
         self.config = meta_config
 
+        self._seen_lifecycle_command_gids: set[str] = set()
+
         self.swarm_type = meta_config.swarm_type
         self.role = meta_config.role
         self.version = meta_config.version
@@ -288,6 +296,219 @@ class BaseSwarmMetaAgent:
         self.logger.info("Shutdown requested for meta-agent %s.", self.agent_id)
         self.shutdown_event.set()
 
+    def _set_runtime_paused(self, paused: bool) -> None:
+        """Set paused flag across known meta-agent runtime shapes."""
+        value = bool(paused)
+
+        for attr in ("paused", "_paused"):
+            try:
+                setattr(self, attr, value)
+            except Exception:
+                pass
+
+        health = getattr(self, "health", None)
+        if health is not None:
+            try:
+                setattr(health, "paused", value)
+            except Exception:
+                pass
+
+        for metrics_attr in ("metrics", "runtime_metrics"):
+            metrics = getattr(self, metrics_attr, None)
+            if isinstance(metrics, dict):
+                metrics["paused"] = value
+
+    def is_paused(self) -> bool:
+        """Return current paused state across known meta-agent runtime shapes."""
+        for attr in ("paused", "_paused"):
+            value = getattr(self, attr, None)
+            if isinstance(value, bool):
+                return value
+
+        health = getattr(self, "health", None)
+        if health is not None:
+            value = getattr(health, "paused", None)
+            if isinstance(value, bool):
+                return value
+
+        for metrics_attr in ("metrics", "runtime_metrics"):
+            metrics = getattr(self, metrics_attr, None)
+            if isinstance(metrics, dict) and isinstance(metrics.get("paused"), bool):
+                return bool(metrics["paused"])
+
+        return False
+
+    async def handle_lifecycle_command(self, command: Mapping[str, Any]) -> bool:
+        """Handle common lifecycle commands for meta-agents."""
+        if not is_lifecycle_command(command):
+            return False
+
+        agent_id = str(getattr(self, "agent_id", "") or getattr(self, "node_id", ""))
+        swarm_type = str(getattr(self, "swarm_type", "") or getattr(self, "swarm", ""))
+        role = str(getattr(self, "role", "meta_agent"))
+
+        if not lifecycle_applies_to(
+            command,
+            node_id=agent_id,
+            swarm_type=swarm_type,
+            role=role,
+        ):
+            return True
+
+        action = lifecycle_action(command)
+        reason = lifecycle_reason(command)
+        command_gid = str(command.get("gid") or "")
+
+        if action == "PAUSE":
+            self._set_runtime_paused(True)
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.info("%s %s paused by lifecycle command.", type(self).__name__, agent_id)
+            return True
+
+        if action == "RESUME":
+            self._set_runtime_paused(False)
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.info("%s %s resumed by lifecycle command.", type(self).__name__, agent_id)
+            return True
+
+        if action == "RESTART_NODE":
+            await self._emit_lifecycle_event(
+                action=action,
+                status="applied",
+                reason=reason,
+                parent_gid=command_gid,
+                command=command,
+            )
+            self.logger.critical("%s %s received lifecycle RESTART_NODE.", type(self).__name__, agent_id)
+            sys.exit(0)
+
+        if action == "RUN_ONCE":
+            await self._emit_lifecycle_event(
+                action=action,
+                status="unsupported",
+                reason=reason or "RUN_ONCE unsupported for meta_agent",
+                parent_gid=command_gid,
+                command=command,
+            )
+            return True
+
+        await self._emit_lifecycle_event(
+            action=action,
+            status="unsupported",
+            reason=reason,
+            parent_gid=command_gid,
+            command=command,
+        )
+        return True
+
+    async def _emit_lifecycle_event(
+        self,
+        *,
+        action: str,
+        status: str,
+        reason: str,
+        parent_gid: str,
+        command: Mapping[str, Any],
+    ) -> None:
+        """Emit canonical lifecycle event for meta-agent."""
+        crdt = getattr(self, "crdt", None)
+        if crdt is None or not hasattr(crdt, "add_genome"):
+            return
+
+        agent_id = str(getattr(self, "agent_id", "") or getattr(self, "node_id", ""))
+        swarm_type = str(getattr(self, "swarm_type", "") or getattr(self, "swarm", ""))
+        role = str(getattr(self, "role", "meta_agent"))
+
+        event = {
+            "type": "swarm_event",
+            "event_type": "lifecycle_command_applied",
+            "gid": self.new_gid("lifecycle_evt") if hasattr(self, "new_gid") else "",
+            "source_swarm": swarm_type,
+            "source_agent": agent_id,
+            "source_node": agent_id,
+            "role": role,
+            "parent_gid": parent_gid,
+            "timestamp": utc_ts(),
+            "payload": {
+                "action": action,
+                "status": status,
+                "reason": reason,
+                "command": lifecycle_summary(command),
+            },
+            "provenance": {
+                "agent": agent_id,
+                "source": "common_lifecycle",
+            },
+        }
+
+        await crdt.add_genome(event)
+
+    async def poll_lifecycle_commands(self) -> int:
+        """Scan CRDT state for lifecycle commands targeting this meta-agent.
+
+        Returns number of lifecycle commands handled.
+        """
+        state = getattr(getattr(self, "crdt", None), "state", {})
+        if not isinstance(state, Mapping):
+            return 0
+
+        agent_id = str(getattr(self, "agent_id", "") or getattr(self, "node_id", ""))
+        swarm_type = str(getattr(self, "swarm_type", "") or getattr(self, "swarm", ""))
+        role = str(getattr(self, "role", "meta_agent"))
+
+        handled = 0
+
+        for record in list(state.values()):
+            if not isinstance(record, Mapping):
+                continue
+
+            if record.get("type") != "swarm_command":
+                continue
+
+            if not is_lifecycle_command(record):
+                continue
+
+            gid = str(record.get("gid") or "")
+            if gid and gid in self._seen_lifecycle_command_gids:
+                continue
+
+            expires_at = record.get("expires_at")
+            if expires_at is not None:
+                try:
+                    if float(expires_at) <= utc_ts():
+                        if gid:
+                            self._seen_lifecycle_command_gids.add(gid)
+                        continue
+                except (TypeError, ValueError):
+                    pass
+
+            if not lifecycle_applies_to(
+                record,
+                node_id=agent_id,
+                swarm_type=swarm_type,
+                role=role,
+            ):
+                continue
+
+            if await self.handle_lifecycle_command(record):
+                if gid:
+                    self._seen_lifecycle_command_gids.add(gid)
+                handled += 1
+
+        return handled
+
     # ------------------------------------------------------------------
     # Main reflection loop
     # ------------------------------------------------------------------
@@ -319,14 +540,21 @@ class BaseSwarmMetaAgent:
 
     async def reflect(self) -> Any:
         """Run one collect -> decide -> issue commands -> persist decision cycle."""
+        await self.poll_lifecycle_commands()
+
+        if self.is_paused():
+            self.logger.info("%s %s is paused; skipping reflect cycle.", type(self).__name__, self.agent_id)
+            self.health.status = "paused"
+            return None
+
         snapshot = await self._safe_collect()
         decision = await self._safe_decide(snapshot)
         commands = await self._safe_issue_commands(decision, snapshot)
         await self._safe_persist_decision(decision, snapshot, commands)
 
-        self.health.last_decision = self._extract_decision_action(decision)
+        self.health.collected_items_last_cycle = self._count_collected_items(snapshot)
         self.health.commands_issued_last_cycle = len(commands) if isinstance(commands, Sequence) else 0
-
+        self.health.last_decision = self._extract_decision_action(decision)
         return decision
 
     # ------------------------------------------------------------------

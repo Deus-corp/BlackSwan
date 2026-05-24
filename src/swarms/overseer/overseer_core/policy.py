@@ -19,6 +19,7 @@ Improver integration v2:
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Mapping
 from typing import Any, Final
 
@@ -30,6 +31,18 @@ except ImportError:
 from src.swarms.overseer.overseer_core.models import OverseerDecision, SwarmSnapshot
 
 logger = logging.getLogger(__name__)
+
+def _env_int(name: str, default: int, *, minimum: int = 0) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+
+    return max(minimum, value)
 
 # Hard safety thresholds
 TRADE_DQ_HIGH_THRESHOLD: Final[float] = 0.25
@@ -47,6 +60,30 @@ IMPROVER_QUARANTINED_HIGH_THRESHOLD: Final[int] = 20
 IMPROVER_ERROR_HIGH_THRESHOLD: Final[int] = 1
 IMPROVER_LONG_CYCLE_SECONDS: Final[float] = 1800.0
 
+COMMAND_SKIPPED_WARNING_THRESHOLD = _env_int(
+    "OVERSEER_COMMAND_SKIPPED_WARNING_THRESHOLD",
+    3,
+    minimum=1,
+)
+COMMAND_BLOCKED_WARNING_THRESHOLD = _env_int(
+    "OVERSEER_COMMAND_BLOCKED_WARNING_THRESHOLD",
+    1,
+    minimum=1,
+)
+COMMAND_UNSUPPORTED_WARNING_THRESHOLD = _env_int(
+    "OVERSEER_COMMAND_UNSUPPORTED_WARNING_THRESHOLD",
+    1,
+    minimum=1,
+)
+
+def command_event_thresholds() -> dict[str, int]:
+    """Return current command-event friction thresholds."""
+    return {
+        "skipped": COMMAND_SKIPPED_WARNING_THRESHOLD,
+        "blocked": COMMAND_BLOCKED_WARNING_THRESHOLD,
+        "unsupported": COMMAND_UNSUPPORTED_WARNING_THRESHOLD,
+    }
+
 LLM_ALLOWED_KEYS: Final[set[str]] = {
     "reduce_risk",
     "increase_exploration",
@@ -56,7 +93,6 @@ LLM_ALLOWED_KEYS: Final[set[str]] = {
     "run_improver_once",
     "pause_improver",
 }
-
 
 class PolicyEngine:
     """Applies hard rules and merges them with soft LLM suggestions."""
@@ -271,6 +307,13 @@ class PolicyEngine:
                 "absent_managed_swarms": [],
                 "active_managed_swarms": [],
                 "advisory_swarms": [],
+                "has_restart_candidates": False,
+                "restart_candidates": [],
+                "has_command_event_warnings": False,
+                "command_event_warnings": [],
+                "command_event_thresholds": command_event_thresholds(),
+                "has_legacy_command_warnings": False,
+                "legacy_command_warnings": [],
                 "reason": "topology_health_unavailable",
             }
 
@@ -282,6 +325,13 @@ class PolicyEngine:
                 "absent_managed_swarms": [],
                 "active_managed_swarms": [],
                 "advisory_swarms": [],
+                "has_restart_candidates": False,
+                "restart_candidates": [],
+                "has_command_event_warnings": False,
+                "command_event_warnings": [],
+                "command_event_thresholds": command_event_thresholds(),
+                "has_legacy_command_warnings": False,
+                "legacy_command_warnings": [],
                 "reason": "topology_swarms_unavailable",
             }
 
@@ -290,6 +340,8 @@ class PolicyEngine:
         active_managed: list[str] = []
         advisory_swarms: list[str] = []
         restart_candidates: list[dict[str, Any]] = []
+        command_event_warnings: list[dict[str, Any]] = []
+        legacy_command_warnings: list[dict[str, Any]] = []
 
         for name, raw in swarms.items():
             if not isinstance(raw, Mapping):
@@ -345,6 +397,59 @@ class PolicyEngine:
                         }
                     )
 
+            command_events = raw.get("command_events") if isinstance(raw.get("command_events"), Mapping) else {}
+
+            blocked_count = int(command_events.get("blocked", 0) or 0)
+            skipped_count = int(command_events.get("skipped", 0) or 0)
+            unsupported_count = int(command_events.get("unsupported", 0) or 0)
+
+            window_seconds = int(
+                raw.get("command_event_window_seconds")
+                or topology_health.get("command_event_window_seconds")
+                or 0
+            )
+
+            if (
+                blocked_count >= COMMAND_BLOCKED_WARNING_THRESHOLD
+                or skipped_count >= COMMAND_SKIPPED_WARNING_THRESHOLD
+                or unsupported_count >= COMMAND_UNSUPPORTED_WARNING_THRESHOLD
+            ):
+                command_event_warnings.append(
+                    {
+                        "type": "command_event_warning",
+                        "swarm": swarm_name,
+                        "blocked": blocked_count,
+                        "skipped": skipped_count,
+                        "unsupported": unsupported_count,
+                        "thresholds": command_event_thresholds(),
+                        "window_seconds": window_seconds,
+                        "reason": "command_events_indicate_friction",
+                        "advisory_only": True,
+                        "execution_enabled": False,
+                    }
+                )
+
+            legacy_commands = raw.get("legacy_commands") if isinstance(raw.get("legacy_commands"), Mapping) else {}
+
+            legacy_total = sum(
+                int(value or 0)
+                for value in legacy_commands.values()
+                if isinstance(value, (int, float))
+            )
+
+            if legacy_total > 0:
+                legacy_command_warnings.append(
+                    {
+                        "type": "legacy_command_warning",
+                        "swarm": swarm_name,
+                        "legacy_commands": dict(legacy_commands),
+                        "total": legacy_total,
+                        "reason": "legacy_command_usage_detected",
+                        "advisory_only": True,
+                        "execution_enabled": False,
+                    }
+                )
+
         reasons: list[str] = []
 
         if degraded_managed:
@@ -362,6 +467,12 @@ class PolicyEngine:
         if restart_candidates:
             reasons.append(f"restart_candidates={len(restart_candidates)}")
 
+        if command_event_warnings:
+            reasons.append(f"command_event_warnings={len(command_event_warnings)}")
+
+        if legacy_command_warnings:
+            reasons.append(f"legacy_command_warnings={len(legacy_command_warnings)}")
+
         return {
             "has_degraded_managed_swarms": bool(degraded_managed),
             "degraded_managed_swarms": degraded_managed,
@@ -370,6 +481,11 @@ class PolicyEngine:
             "advisory_swarms": advisory_swarms,
             "has_restart_candidates": bool(restart_candidates),
             "restart_candidates": restart_candidates,
+            "has_command_event_warnings": bool(command_event_warnings),
+            "command_event_warnings": command_event_warnings,
+            "command_event_thresholds": command_event_thresholds(),
+            "has_legacy_command_warnings": bool(legacy_command_warnings),
+            "legacy_command_warnings": legacy_command_warnings,
             "reason": "; ".join(reasons) if reasons else "topology_nominal",
         }
 

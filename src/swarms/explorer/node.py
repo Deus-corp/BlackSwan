@@ -32,6 +32,7 @@ from src.swarms.common import (
     BaseNodeConfig,
     BaseSwarmNode,
     command_action,
+    normalize_command,
     make_swarm_event,
     utc_ts,
 )
@@ -296,36 +297,32 @@ class ExplorerNode(BaseSwarmNode):
         """Optional reconciliation hook."""
         return None
 
-    def _explorer_command_semantic_key(self, command: Mapping[str, Any]) -> str:
-        """Build local semantic key for deduplicating canonical + legacy explorer commands."""
-        data = command.get("data") if isinstance(command.get("data"), Mapping) else {}
-        payload = command.get("payload") if isinstance(command.get("payload"), Mapping) else {}
+    @staticmethod
+    def _explorer_command_semantic_key(command: Mapping[str, Any]) -> str:
+        normalized = normalize_command(command)
+        data = normalized.get("data") if isinstance(normalized.get("data"), Mapping) else {}
+        payload = normalized.get("payload") if isinstance(normalized.get("payload"), Mapping) else {}
 
-        action = str(
-            command.get("command_type")
-            or data.get("action")
-            or payload.get("action")
-            or ""
-        ).upper()
+        action = command_action(normalized)
 
         target_node = str(
-            command.get("target_node")
-            or command.get("target_node_id")
-            or data.get("node_id")
-            or payload.get("node_id")
+            normalized.get("target_node")
+            or normalized.get("target_node_id")
             or ""
         )
 
         # Legacy explorer PAUSE/RESUME often has no target_node, while canonical
-        # PAUSE/RESUME is node-targeted. Treat them as equivalent locally.
-        if action in {"PAUSE", "RESUME"}:
+        # swarm-level commands may target all nodes. Treat wildcard/empty equally.
+        if target_node in {"*", "None"}:
             target_node = ""
 
         urls = payload.get("urls") or data.get("urls") or []
-        if isinstance(urls, list):
-            urls_key = ",".join(sorted(str(url) for url in urls if isinstance(url, str)))
-        else:
-            urls_key = ""
+        if isinstance(urls, str):
+            urls = [urls]
+        if not isinstance(urls, list):
+            urls = []
+
+        urls_key = ",".join(sorted(str(url) for url in urls))
 
         return f"{action}|node={target_node}|urls={urls_key}"
 
@@ -359,6 +356,10 @@ class ExplorerNode(BaseSwarmNode):
     # ------------------------------------------------------------------
 
     async def _consume_targets_and_explore(self, client: httpx.AsyncClient) -> bool:
+        if self.is_paused():
+            self.logger.info("ExplorerNode %s is paused; skipping target exploration.", self.node_id)
+            return False
+        
         targets = self._collect_targets()
         self._targets_seen_last_tick = len(targets)
 
@@ -476,6 +477,10 @@ class ExplorerNode(BaseSwarmNode):
         return self.policy.domain_allowed(domain) and self.policy.url_allowed(url)
 
     async def _fetch_and_emit(self, client: httpx.AsyncClient, url: str) -> None:
+        if self.is_paused():
+            self.logger.info("ExplorerNode %s is paused; skipping fetch for %s.", self.node_id, url)
+            return
+
         if not url:
             return
 
