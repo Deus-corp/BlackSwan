@@ -43,6 +43,8 @@ class TradeNodeConfig:
     market_mode: str
     market_url: Optional[str]
     trading_symbols: List[str]
+    execution_enabled: bool
+    dry_run: bool
 
     burn_rate: float
     failure_prob: float

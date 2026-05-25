@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from typing import Final
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from dashboard.routes.base_template import render_page
 
-router = APIRouter()
+router: Final[APIRouter] = APIRouter()
 
 # Configuration for the embedded Grafana dashboard
 DASHBOARD_URL: Final[str] = "http://localhost:3000/d/adxhpc6/blackswan-swarm?orgId=1&refresh=10s&kiosk"
@@ -29,7 +30,8 @@ def dashboard_page(request: Request) -> HTMLResponse:
         request: The incoming FastAPI request object.
 
     Returns:
-        HTMLResponse: A rendered HTML page containing the dashboard iframe.
+        HTMLResponse: A rendered HTML page containing the dashboard iframe embedded
+        within the application's base layout.
     """
-    content = render_page(request, DASHBOARD_CONTENT, "BlackSwan Dashboard")
+    content: str = render_page(request, DASHBOARD_CONTENT, "BlackSwan Dashboard")
     return HTMLResponse(content=content)

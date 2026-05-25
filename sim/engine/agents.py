@@ -57,10 +57,13 @@ class BaseAgent(ABC):
         """
         Decides the proportion of capital to invest.
 
+        Args:
+            market_state: The current market information.
+
         Returns:
             float: The proportion to invest (long > 0, short < 0).
         """
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement decide().")
 
     def update(self, returns: float) -> None:
         """
@@ -109,12 +112,12 @@ class KellyAgent(BaseAgent):
         vol: float = market_state.get('volatility_estimate', 0.0)
         if vol <= 0:
             raise ValueError("Volatility estimate must be a positive number.")
-            
+
         # Clamp volatility to prevent extreme positions
-        safe_vol = max(vol, 0.0001)
+        safe_vol: float = max(vol, 0.0001)
         odds: float = 0.01 / safe_vol
         kelly_fraction: float = self.p_success - (1.0 - self.p_success) / odds * self.phi
-        
+
         return float(np.clip(kelly_fraction, -self.max_risk, self.max_risk))
 
 
@@ -127,5 +130,8 @@ class RandomAgent(BaseAgent):
     def decide(self, market_state: MarketState) -> float:
         """
         Decides a random proportion of capital to invest.
+
+        Args:
+            market_state: The current market information (unused).
         """
         return float(np.random.uniform(-self.max_risk, self.max_risk))

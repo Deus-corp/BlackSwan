@@ -151,39 +151,72 @@ class LiveExecutionBackend(ExecutionBackend):
                 "error": error_message,
             }
 
-        # Perform leader check
-        block_number: Optional[int] = None
+        # Perform leader check. If leadership cannot be confirmed, do not execute.
         try:
-            # Assuming self.adapter.w3.eth.block_number is an awaitable property or method
-            # Type check ignored because `self.adapter` is `Any` or `Union` and mypy can't verify runtime attributes.
-            block_number = await self.adapter.w3.eth.block_number # type: ignore [attr-defined]
-            if not self.is_leader_func(block_number):
-                logger.info(f"[{self.node_id}] Skipping order execution: Not leader for block {block_number}.")
-                return {
-                    "success": False,
-                    "new_capital": capital,
-                    "tx_hash": None,
-                    "status": "skipped",
-                    "error": "Not leader for current block",
-                }
+            block_number = await self.adapter.w3.eth.block_number  # type: ignore[attr-defined]
         except AttributeError:
             logger.error(
-                f"[{self.node_id}] Adapter missing 'w3.eth.block_number' attribute required for leader check. "
-                "Please ensure the adapter provides a web3 instance."
+                "[%s] Adapter missing 'w3.eth.block_number'; refusing live execution.",
+                self.node_id,
             )
-            # If adapter structure is wrong, treat as an error preventing execution
             return {
                 "success": False,
                 "new_capital": capital,
                 "tx_hash": None,
-                "status": "error",
-                "error": "Adapter misconfigured for leader check (missing w3.eth.block_number)",
+                "status": "rejected",
+                "error": "leader_check_unavailable",
+                "reason": "adapter_missing_w3_eth_block_number",
             }
         except Exception as e:
             logger.warning(
-                f"[{self.node_id}] Leader check failed for block number: {e}. Attempting swap anyway.",
-                exc_info=False  # No stack trace by default for warnings
+                "[%s] Leader check failed; refusing live execution: %s",
+                self.node_id,
+                e,
+                exc_info=False,
             )
+            return {
+                "success": False,
+                "new_capital": capital,
+                "tx_hash": None,
+                "status": "rejected",
+                "error": "leader_check_failed",
+                "reason": str(e),
+            }
+
+        try:
+            is_leader = bool(self.is_leader_func(int(block_number)))
+        except Exception as e:
+            logger.warning(
+                "[%s] Leader predicate failed for block=%s; refusing live execution: %s",
+                self.node_id,
+                block_number,
+                e,
+                exc_info=False,
+            )
+            return {
+                "success": False,
+                "new_capital": capital,
+                "tx_hash": None,
+                "status": "rejected",
+                "error": "leader_predicate_failed",
+                "block_number": int(block_number),
+                "reason": str(e),
+            }
+
+        if not is_leader:
+            logger.info(
+                "[%s] Skipping live execution: not leader for block %s.",
+                self.node_id,
+                block_number,
+            )
+            return {
+                "success": False,
+                "new_capital": capital,
+                "tx_hash": None,
+                "status": "skipped",
+                "error": "not_leader",
+                "block_number": int(block_number),
+            }
             # As per original comment, if leader check fails, current logic proceeds to attempt swap.
 
         # Execute the swap via the adapter

@@ -4,7 +4,6 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Set, Final
 
-
 @dataclass(frozen=True, slots=True)
 class ExperienceSample:
     """
@@ -24,6 +23,14 @@ class ExperienceSample:
     meta: Dict[str, Any] = field(default_factory=dict)
 
 
+SCORING_WEIGHTS: Final[Dict[str, float]] = {
+    "pnl_delta": 0.50,
+    "efficiency": 0.25,
+    "peer_validation": 0.25,
+    "risk_penalty": -0.40
+}
+
+
 def _normalize_text(text: str) -> str:
     """
     Normalizes text by collapsing whitespace and standardizing casing.
@@ -33,25 +40,18 @@ def _normalize_text(text: str) -> str:
 
 def calculate_success_score(entry: Dict[str, Any]) -> float:
     """
-    Computes a clamped success score [0.0, 1.0] for an experience.
+    Computes a clamped success score [0.0, 1.0] for an experience entry.
     """
-    weights: Final[Dict[str, float]] = {
-        "pnl_delta": 0.50,
-        "efficiency": 0.25,
-        "peer_validation": 0.25,
-        "risk_penalty": -0.40
-    }
-    
     score: float = sum(
         float(entry.get(key, 0.0)) * weight 
-        for key, weight in weights.items()
+        for key, weight in SCORING_WEIGHTS.items()
     )
     return max(0.0, min(1.0, score))
 
 
 def deduplicate_samples(samples: Iterable[ExperienceSample]) -> List[ExperienceSample]:
     """
-    Filters unique samples using SHA256 fingerprints based on content.
+    Filters unique samples using SHA256 fingerprints based on normalized content.
     """
     seen_fingerprints: Set[str] = set()
     unique_samples: List[ExperienceSample] = []
@@ -77,6 +77,13 @@ def filter_gold_samples(
 ) -> List[ExperienceSample]:
     """
     Filters and deduplicates entries that meet the quality threshold.
+
+    Args:
+        entries: An iterable of raw interaction data dictionaries.
+        threshold: Minimum score required for inclusion (default 0.8).
+
+    Returns:
+        A list of filtered and unique ExperienceSample objects.
     """
     gold_samples: List[ExperienceSample] = []
 

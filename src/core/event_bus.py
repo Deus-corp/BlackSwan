@@ -18,7 +18,7 @@ EventCallback: TypeAlias = Callable[[Dict[str, Any]], Union[None, Awaitable[None
 
 # Define a Literal type for event visibility scopes.
 VisibilityScope: TypeAlias = Literal["local", "swarm", "global"]
-VALID_VISIBILITY_SCOPES = ("local", "swarm", "global")
+VALID_VISIBILITY_SCOPES: tuple[VisibilityScope, ...] = ("local", "swarm", "global")
 
 class EventBus:
     """
@@ -37,6 +37,10 @@ class EventBus:
     def subscribe(self, topic: str, callback: EventCallback) -> None:
         """
         Subscribes a callback function to events of a specific topic.
+
+        Args:
+            topic: The topic name to subscribe to.
+            callback: The function or coroutine to execute on event.
         """
         if not isinstance(topic, str) or not topic.strip():
             raise ValueError("topic must be a non-empty string.")
@@ -51,6 +55,10 @@ class EventBus:
     def unsubscribe(self, topic: str, callback: EventCallback) -> None:
         """
         Unsubscribes a callback function from events of a specific topic.
+
+        Args:
+            topic: The topic name to unsubscribe from.
+            callback: The previously subscribed callback.
         """
         topic_cleaned = topic.strip()
         if topic_cleaned not in self._subscribers or callback not in self._subscribers[topic_cleaned]:
@@ -64,6 +72,13 @@ class EventBus:
                       sensitivity: int = 1, visibility: VisibilityScope = "local") -> None:
         """
         Publishes a new event to the bus and triggers subscribers concurrently.
+
+        Args:
+            topic: The event topic.
+            payload: The event data content.
+            source_component: Identifier of the origin component.
+            sensitivity: Integer level from 1 to 5.
+            visibility: The dissemination scope of the event.
         """
         if not (1 <= sensitivity <= 5):
             raise ValueError("sensitivity must be an integer between 1 and 5.")
@@ -106,7 +121,8 @@ class EventBus:
         Retrieves a copy of the event log, optionally filtered by topic.
         """
         if topic:
-            return [e for e in self._event_log if e["topic"] == topic.strip()]
+            topic_cleaned = topic.strip()
+            return [e for e in self._event_log if e["topic"] == topic_cleaned]
         return list(self._event_log)
 
     def clear_log(self) -> None:

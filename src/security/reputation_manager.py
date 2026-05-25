@@ -13,13 +13,6 @@ class ReputationManager:
 
     Scores are updated based on the accuracy of fitness claims and include
     a decay mechanism to allow for dynamic adjustments over time.
-
-    Attributes:
-        scores (Dict[str, float]): Map of node IDs to reputation scores.
-        initial_score (float): Default score for unknown nodes.
-        tolerance (float): Allowed deviation between claim and reality.
-        verified_claims (int): Total count of accurate claims.
-        false_claims (int): Total count of inaccurate claims.
     """
 
     __slots__ = ("scores", "initial_score", "tolerance", "verified_claims", "false_claims")
@@ -34,6 +27,7 @@ class ReputationManager:
     TRUST_THRESHOLD: Final[float] = 0.3
 
     def __init__(self, initial_score: float = DEFAULT_INITIAL_SCORE, tolerance: float = DEFAULT_TOLERANCE) -> None:
+        """Initialize the manager with default constraints."""
         self.scores: Dict[str, float] = {}
         self.initial_score: float = initial_score
         self.tolerance: float = tolerance
@@ -41,11 +35,11 @@ class ReputationManager:
         self.false_claims: int = 0
 
     def get_score(self, node_id: str) -> float:
-        """Retrieves the current reputation score for a node."""
+        """Retrieve the current reputation score for a node."""
         return self.scores.get(node_id, self.initial_score)
 
     def update(self, node_id: str, claimed_fitness: float, actual_fitness: float) -> None:
-        """Updates reputation based on claim accuracy vs verification."""
+        """Update reputation based on claim accuracy vs verification."""
         current_score: float = self.get_score(node_id)
         gap: float = claimed_fitness - actual_fitness
 
@@ -64,17 +58,17 @@ class ReputationManager:
         self.scores[node_id] = max(self.MIN_SCORE, min(self.MAX_SCORE, new_score))
 
     def decay(self) -> None:
-        """Gradually pulls sub-initial scores back toward initial_score."""
+        """Gradually pull sub-initial scores back toward initial_score."""
         for node_id, score in self.scores.items():
             if score < self.initial_score:
                 self.scores[node_id] = min(self.initial_score, score + self.DECAY_RATE)
 
     def is_trusted(self, node_id: str) -> bool:
-        """Checks if a node meets the reputation threshold."""
+        """Check if a node meets the reputation threshold."""
         return self.get_score(node_id) >= self.TRUST_THRESHOLD
 
     def stats(self) -> Dict[str, Any]:
-        """Returns current system metrics."""
+        """Return current system metrics."""
         num_peers: int = len(self.scores)
         avg: float = sum(self.scores.values()) / num_peers if num_peers > 0 else 0.0
         return {

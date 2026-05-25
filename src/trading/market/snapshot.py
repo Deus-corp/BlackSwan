@@ -24,8 +24,11 @@ class MarketAdapterProtocol(Protocol):
     """
     async def fetch_all_tickers(self) -> Optional[Dict[str, Dict[str, Any]]]:
         """
-        Fetches mapping of symbols to ticker data. 
-        Expected dict keys: 'price' (float), 'symbol' (str).
+        Fetches a mapping of symbols to ticker data.
+
+        Returns:
+            Optional[Dict[str, Dict[str, Any]]]: Dictionary where keys are symbols 
+            and values contain market data (must include 'price').
         """
         ...
 
@@ -34,21 +37,29 @@ class MarketSnapshotService:
     """
     Coordinates between real-time data adapters and simulation fallback.
     """
-    __slots__ = ('_adapter', '_mode', '_primary_symbol')
+    __slots__ = ("_adapter", "_mode", "_primary_symbol")
 
     def __init__(self, market_adapter: MarketAdapterProtocol, market_mode: str) -> None:
+        """
+        Initializes the service with an adapter and current execution mode.
+
+        Args:
+            market_adapter: Provider instance implementing MarketAdapterProtocol.
+            market_mode: Current system operation mode (e.g., 'live', 'sim').
+
+        Raises:
+            ValueError: If inputs are invalid or missing required methods.
+        """
         if not isinstance(market_mode, str):
             raise ValueError("market_mode must be a string.")
-        if not hasattr(market_adapter, 'fetch_all_tickers'):
+        if not hasattr(market_adapter, "fetch_all_tickers"):
             raise ValueError("market_adapter must implement 'fetch_all_tickers'.")
 
         self._adapter: MarketAdapterProtocol = market_adapter
         self._mode: str = market_mode
         
-        symbols: List[str] = [
-            s.strip() for s in str(getattr(config, 'trading_symbols', '')).split(",") 
-            if s.strip()
-        ]
+        raw_symbols: str = getattr(config, "trading_symbols", "") or ""
+        symbols: List[str] = [s.strip() for s in str(raw_symbols).split(",") if s.strip()]
         self._primary_symbol: str = symbols[0] if symbols else DEFAULT_SYMBOL
         
         logger.debug("Initialized with mode: %s, primary_symbol: %s", self._mode, self._primary_symbol)
@@ -59,6 +70,12 @@ class MarketSnapshotService:
 
         Attempts to use the adapter if in a live mode. Falls back to 
         simulated market data on failure or non-live settings.
+
+        Args:
+            session: Optional aiohttp session for potential network requests.
+
+        Returns:
+            Dict[str, Dict[str, Any]]: The market data mapping.
         """
         if self._mode in LIVE_MODES:
             try:
@@ -84,7 +101,7 @@ class MarketSnapshotService:
         """
         Generates a fallback market snapshot with randomized pricing.
         """
-        simulated_price = random.uniform(90.0, 110.0)
+        simulated_price: float = random.uniform(90.0, 110.0)
         logger.info("Simulating market snapshot for %s: price=%.2f", self._primary_symbol, simulated_price)
         return {
             self._primary_symbol: {

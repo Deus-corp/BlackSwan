@@ -13,21 +13,21 @@ from typing import Dict, Final, Literal, Optional
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Position:
     """
-    Represents an open trading position in a specific asset.
+    Represents an immutable snapshot of an open trading position.
+
+    Attributes:
+        symbol: The unique ticker symbol of the asset.
+        side: The trade direction, either 'long' or 'short'.
+        amount: The total volume/quantity of the position.
+        entry_price: The price at which the position was initiated.
     """
     symbol: str
     side: Literal["long", "short"]
     amount: float
     entry_price: float
-
-    def __post_init__(self) -> None:
-        logger.debug(
-            "Position opened: %s, %s, Amount: %f, Entry: %f",
-            self.symbol, self.side, self.amount, self.entry_price
-        )
 
     def unrealised_pnl(self, current_price: float) -> float:
         """
@@ -47,6 +47,10 @@ class Position:
 class ExposureManager:
     """
     Tracks active positions and enforces portfolio-level risk limits.
+
+    Attributes:
+        max_notional: Maximum allowed notional value for a single trade.
+        max_daily_loss: Threshold for total daily loss before stopping trade activity.
     """
 
     def __init__(self, max_notional: float = 100_000.0, max_daily_loss: float = 5_000.0) -> None:
@@ -61,10 +65,11 @@ class ExposureManager:
 
     @property
     def positions(self) -> Dict[str, Position]:
+        """Returns the dictionary of currently tracked positions."""
         return self._positions
 
     def add_position(self, position: Position) -> None:
-        """Records or updates an active position."""
+        """Records or updates an active position in the registry."""
         self._positions[position.symbol] = position
         logger.info(
             "Position updated for %s. Total active positions: %d",
@@ -72,7 +77,7 @@ class ExposureManager:
         )
 
     def close_position(self, symbol: str) -> Optional[Position]:
-        """Closes an active position and returns it if it existed."""
+        """Removes an active position if it exists."""
         position = self._positions.pop(symbol, None)
         if position:
             logger.info(
@@ -87,7 +92,14 @@ class ExposureManager:
         """
         Validates if a proposed trade complies with risk limits.
 
-        Currently evaluates per-asset notional limits and overall daily loss thresholds.
+        Args:
+            symbol: Asset identifier.
+            action: Intended market action (e.g., 'buy', 'sell').
+            amount: Quantity to be traded.
+            current_price: Current market price.
+
+        Returns:
+            bool: True if the trade is within risk limits, False otherwise.
         """
         notional = amount * current_price
         if notional > self.max_notional:
@@ -102,7 +114,7 @@ class ExposureManager:
         return True
 
     def update_pnl(self, pnl: float) -> None:
-        """Updates daily PnL and triggers alerts if limits are violated."""
+        """Updates daily PnL and triggers critical logs if limits are violated."""
         self.daily_pnl += pnl
         logger.info("Daily PnL updated: %f. Cumulative: %f", pnl, self.daily_pnl)
 

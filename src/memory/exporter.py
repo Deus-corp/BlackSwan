@@ -3,32 +3,36 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Union
 
 from .gold_filter import ExperienceSample
 
 logger = logging.getLogger(__name__)
 
-def save_jsonl(samples: Iterable[ExperienceSample], output_file: str | Path) -> Path:
+def save_jsonl(
+    samples: Iterable[ExperienceSample], 
+    output_file: Union[str, Path]
+) -> Path:
     """
-    Serializes a collection of ExperienceSample objects into a newline-delimited JSON (JSONL) file.
+    Serializes an iterable of ExperienceSample objects into a newline-delimited JSON (JSONL) file.
 
     Args:
         samples: An iterable of ExperienceSample instances to export.
-        output_file: The destination path (str or Path) for the resulting file.
+        output_file: The destination path for the resulting file.
 
     Returns:
-        The pathlib.Path object of the written file.
+        The pathlib.Path object of the successfully written file.
 
     Raises:
-        IOError: If an error occurs during file writing or directory creation.
+        OSError: If an error occurs during directory creation or file writing.
     """
     output_path = Path(output_file)
-    
+
+    # Ensure the parent directory structure exists
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as e:
-        logger.error(f"Failed to create directory {output_path.parent}: {e}")
+        logger.error("Failed to create directory %s: %s", output_path.parent, e)
         raise
 
     try:
@@ -41,9 +45,10 @@ def save_jsonl(samples: Iterable[ExperienceSample], output_file: str | Path) -> 
                     "score": sample.score,
                     "meta": sample.meta,
                 }
+                # Write each sample as a single line JSON string
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
-    except OSError as e:
-        logger.error(f"Failed to write data to {output_path}: {e}")
+    except (OSError, TypeError, ValueError) as e:
+        logger.error("Failed to write data to %s: %s", output_path, e)
         raise
 
     return output_path

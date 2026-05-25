@@ -37,7 +37,7 @@ import socket
 import sys
 
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, Iterable, Mapping, Optional
+from typing import Any, Awaitable, Callable, Dict, Iterable, Mapping, Optional, Set
 
 from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
@@ -175,6 +175,12 @@ class BaseSwarmNode:
         self.health = NodeHealth()
         self.shutdown_event = asyncio.Event()
         self.started_event = asyncio.Event()
+
+        self._command_consumer_started_at = utc_ts()
+        self._command_history_grace_seconds = float(
+            os.getenv("SWARM_COMMAND_HISTORY_GRACE_SECONDS", "5")
+        )
+        self._processed_command_gids: set[str] = set()
 
         self._tasks: Dict[str, asyncio.Task[Any]] = {}
         self._stopping = False
@@ -533,10 +539,54 @@ class BaseSwarmNode:
             self.health.consecutive_command_failures = 0
 
             for command in commands:
+                if self._should_skip_command_record(command):
+                    continue
+
                 await self.process_command(command)
         except Exception:
             self.health.consecutive_command_failures += 1
             raise
+
+    def _should_skip_command_record(self, command: Mapping[str, Any]) -> bool:
+        """Return True when a command should not be consumed by this runtime.
+
+        This protects live nodes from replaying historical CRDT commands on
+        startup and from re-processing expired or already-seen commands.
+        """
+        if not isinstance(command, Mapping):
+            return True
+
+        gid = str(command.get("gid") or "")
+        if gid and gid in self._processed_command_gids:
+            return True
+
+        now = utc_ts()
+
+        expires_at = command.get("expires_at")
+        if expires_at is not None:
+            try:
+                if float(expires_at) < now:
+                    if gid:
+                        self._processed_command_gids.add(gid)
+                    return True
+            except Exception:
+                pass
+
+        timestamp = command.get("timestamp")
+        if timestamp is not None:
+            try:
+                command_ts = float(timestamp)
+                if command_ts < self._command_consumer_started_at - self._command_history_grace_seconds:
+                    if gid:
+                        self._processed_command_gids.add(gid)
+                    return True
+            except Exception:
+                pass
+
+        if gid:
+            self._processed_command_gids.add(gid)
+
+        return False
 
     async def _safe_reconcile(self) -> None:
         try:

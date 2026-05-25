@@ -3,10 +3,24 @@ Factory for creating ExecutionBackend instances based on the configured mode.
 """
 import os
 import sys
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar, cast
 
-def _load_config():
-    """Attempts to import swarm_config, modifying sys.path if necessary."""
+# Define a type for the leadership check function
+LeadershipFunc = Callable[[int], bool]
+
+def _load_config() -> Any:
+    """
+    Attempts to load the swarm_config module.
+
+    Dynamically adjusts sys.path if the module is not initially found relative to
+    the execution path or PYTHONPATH.
+
+    Returns:
+        The loaded configuration object.
+
+    Raises:
+        ImportError: If the configuration cannot be resolved after path adjustment.
+    """
     try:
         from swarm_config import config
         return config
@@ -26,6 +40,7 @@ def _load_config():
                 "Ensure swarm_config.py is in the PYTHONPATH or relative to project root."
             ) from e
 
+# Global config instance
 config = _load_config()
 
 from .backend import ExecutionBackend
@@ -35,7 +50,7 @@ from .live_backend import LiveExecutionBackend
 def build_backend(
     node_id: str, 
     adapter: Any, 
-    is_leader_func: Callable[[int], bool]
+    is_leader_func: LeadershipFunc
 ) -> ExecutionBackend:
     """
     Builds and returns an appropriate ExecutionBackend instance based on market_mode.
@@ -51,7 +66,7 @@ def build_backend(
     Raises:
         ValueError: If an unsupported market mode is configured.
     """
-    mode = config.market_mode
+    mode = getattr(config, "market_mode", "sim")
     
     if mode == "sim":
         return SimExecutionBackend()

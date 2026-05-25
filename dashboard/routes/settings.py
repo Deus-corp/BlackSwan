@@ -5,7 +5,7 @@ of Docker Compose parameters, management of .env secrets, and token approval orc
 
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
@@ -19,7 +19,6 @@ SETTINGS_HTML = """
     <section>
         <h2>Compose Configuration</h2>
         <form action="/api/update_config" method="post">
-            <!-- Add form fields dynamically or keep standard layout -->
             <div class="row"><label>BURN_RATE</label><input type="text" name="BURN_RATE" value="0.0"></div>
             <div class="row"><label>FAILURE_PROB</label><input type="text" name="FAILURE_PROB" value="0.0"></div>
             <div class="row"><label>GOSSIP_PORT</label><input type="text" name="GOSSIP_PORT" value="9777"></div>
@@ -110,7 +109,7 @@ async def update_config_form(
     capital_alert_threshold: str = Form(..., alias="CAPITAL_ALERT_THRESHOLD"),
 ) -> HTMLResponse:
     """Processes configuration submission and restarts services via the docker module."""
-    config_data = {
+    config_data: Dict[str, str] = {
         "BURN_RATE": burn_rate, "FAILURE_PROB": failure_prob, "GOSSIP_PORT": gossip_port,
         "TOTAL_NODES": total_nodes, "PYTHONUNBUFFERED": pythonunbuffered, "LLM_MODEL": llm_model,
         "GOSSIP_SIGNING_ENABLED": gossip_signing_enabled, "MEMORY_API_ENABLED": memory_api_enabled,
@@ -140,7 +139,7 @@ async def update_secrets(
 ) -> HTMLResponse:
     """Updates the local .env file by replacing existing keys or appending new ones."""
     env_path = Path(".env")
-    new_secrets = {
+    new_secrets: Dict[str, str] = {
         "WEB3_PRIVATE_KEY": web3_private_key,
         "BINANCE_TESTNET_API_KEY": binance_testnet_api_key,
         "BINANCE_TESTNET_API_SECRET": binance_testnet_api_secret,
@@ -150,15 +149,18 @@ async def update_secrets(
         "WEB3_RPC_URL": web3_rpc_url
     }
 
-    lines = env_path.read_text().splitlines() if env_path.exists() else []
-    updated_lines: Dict[str, str] = {}
-    final_output = []
+    lines: List[str] = env_path.read_text().splitlines() if env_path.exists() else []
+    final_output: List[str] = []
+    updated_keys: Dict[str, bool] = {}
 
     for line in lines:
-        key = line.split('=')[0]
-        if key in new_secrets and new_secrets[key]:
-            final_output.append(f"{key}={new_secrets.pop(key)}")
-            updated_lines[key] = "updated"
+        if "=" in line:
+            key, _ = line.split("=", 1)
+            if key in new_secrets and new_secrets[key]:
+                final_output.append(f"{key}={new_secrets.pop(key)}")
+                updated_keys[key] = True
+            else:
+                final_output.append(line)
         else:
             final_output.append(line)
 

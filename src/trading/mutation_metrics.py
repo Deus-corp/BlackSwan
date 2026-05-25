@@ -4,6 +4,7 @@ Global LLM mutation metrics tracking.
 This module provides a thread-safe registry for tracking LLM mutation events
 and their impact on capital, integrated with Prometheus for observability.
 """
+
 import threading
 from typing import Tuple, Optional
 from prometheus_client import Counter, Gauge
@@ -21,12 +22,12 @@ class MutationMetrics:
         self._llm_mutation_count: int = 0
         self._llm_mutation_total_impact: float = 0.0
         self._last_capital: Optional[float] = None
-        self._lock = threading.Lock()
+        self._lock: threading.Lock = threading.Lock()
 
-        self.mutation_counter = Counter(
+        self.mutation_counter: Counter = Counter(
             "swarm_mutations_total", "Total number of LLM mutations across all nodes"
         )
-        self.mutation_impact_gauge = Gauge(
+        self.mutation_impact_gauge: Gauge = Gauge(
             "swarm_mutation_impact", "Average impact of LLM mutations on capital"
         )
 
@@ -48,7 +49,7 @@ class MutationMetrics:
                 self._llm_mutation_total_impact += current_capital - self._last_capital
             self._last_capital = current_capital
 
-            avg = (
+            avg: float = (
                 self._llm_mutation_total_impact / self._llm_mutation_count
                 if self._llm_mutation_count > 0
                 else 0.0
@@ -60,10 +61,10 @@ class MutationMetrics:
         Return the current state of mutation metrics.
 
         Returns:
-            Tuple of (total_mutations, average_impact).
+            A tuple containing (total_mutations, average_impact).
         """
         with self._lock:
-            avg = (
+            avg: float = (
                 self._llm_mutation_total_impact / self._llm_mutation_count
                 if self._llm_mutation_count > 0
                 else 0.0
@@ -71,7 +72,7 @@ class MutationMetrics:
             return self._llm_mutation_count, avg
 
 # Global instance for cross-module access
-mutation_metrics = MutationMetrics()
+mutation_metrics: MutationMetrics = MutationMetrics()
 
 # Functional interface for legacy support
 note_llm_mutation = mutation_metrics.note_llm_mutation

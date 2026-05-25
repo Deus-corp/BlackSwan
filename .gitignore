@@ -81,4 +81,5 @@ data/improver_workspace/
 data/
 src/swarms/improver/improver_agent.py
 src/swarms/improver/improver_agent_core
-src/swarms/improver/__init__.pysrc/swarms/improver/
+src/swarms/improver/__init__.py
+src/swarms/improver/

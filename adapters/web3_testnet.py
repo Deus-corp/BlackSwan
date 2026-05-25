@@ -124,6 +124,89 @@ class Web3TestnetAdapter:
         self.usdc_contract: Optional[Contract] = None # Web3 contract instance for USDC
         self.multicall_contract: Optional[Contract] = None # Web3 contract instance for Multicall3
 
+    async def close(self) -> None:
+        """Close AsyncWeb3 provider resources when supported."""
+        provider = getattr(getattr(self, "w3", None), "provider", None)
+        if provider is None:
+            return
+
+        closed_any = False
+
+        # web3.py AsyncHTTPProvider public close path.
+        for method_name in ("disconnect", "close", "disconnect_all"):
+            method = getattr(provider, method_name, None)
+            if not callable(method):
+                continue
+
+            try:
+                result = method()
+                if hasattr(result, "__await__"):
+                    await result
+                logger.info("Web3TestnetAdapter provider closed via %s().", method_name)
+                closed_any = True
+            except Exception as exc:
+                logger.debug("Provider %s() failed during close: %s", method_name, exc)
+
+        # Some web3.py versions keep aiohttp sessions in a request-session manager.
+        session_manager = getattr(provider, "_request_session_manager", None)
+        if session_manager is not None:
+            for attr_name in ("session", "_session", "cached_session"):
+                session = getattr(session_manager, attr_name, None)
+                if session is not None and hasattr(session, "close"):
+                    try:
+                        result = session.close()
+                        if hasattr(result, "__await__"):
+                            await result
+                        logger.info("Web3TestnetAdapter session_manager.%s closed.", attr_name)
+                        closed_any = True
+                    except Exception as exc:
+                        logger.debug("session_manager.%s close failed: %s", attr_name, exc)
+
+            # Newer web3.py AsyncHTTPSessionManager may expose async cache methods.
+            for method_name in ("close", "disconnect", "clear"):
+                method = getattr(session_manager, method_name, None)
+                if not callable(method):
+                    continue
+                try:
+                    result = method()
+                    if hasattr(result, "__await__"):
+                        await result
+                    logger.info("Web3TestnetAdapter session_manager closed via %s().", method_name)
+                    closed_any = True
+                except Exception as exc:
+                    logger.debug("session_manager.%s failed: %s", method_name, exc)
+
+        # Last resort: inspect provider attributes for aiohttp-like sessions.
+        for attr_name in dir(provider):
+            if "session" not in attr_name.lower():
+                continue
+            try:
+                value = getattr(provider, attr_name)
+            except Exception:
+                continue
+
+            candidates = []
+            if isinstance(value, dict):
+                candidates.extend(value.values())
+            elif isinstance(value, (list, tuple, set)):
+                candidates.extend(value)
+            else:
+                candidates.append(value)
+
+            for candidate in candidates:
+                if candidate is not None and hasattr(candidate, "close"):
+                    try:
+                        result = candidate.close()
+                        if hasattr(result, "__await__"):
+                            await result
+                        logger.info("Web3TestnetAdapter provider.%s session closed.", attr_name)
+                        closed_any = True
+                    except Exception as exc:
+                        logger.debug("provider.%s session close failed: %s", attr_name, exc)
+
+        if not closed_any:
+            logger.debug("Web3TestnetAdapter close completed without finding closeable provider resources.")
+
     async def initialize(self) -> None:
         """
         Асинхронная инициализация адаптера.
@@ -309,6 +392,39 @@ class Web3TestnetAdapter:
         
         receipt: Optional[TxReceipt] = await self._send_transaction_and_wait(approve_tx, "Approve", timeout=180)
         return receipt is not None
+
+    async def close(self) -> None:
+        """Close underlying async Web3/provider resources when available."""
+        w3 = getattr(self, "w3", None)
+        provider = getattr(w3, "provider", None)
+
+        if provider is None:
+            return
+
+        # web3.py async providers may expose cache_async_session().
+        try:
+            cached_session = getattr(provider, "_request_session_manager", None)
+            if cached_session and hasattr(cached_session, "session"):
+                session = getattr(cached_session, "session", None)
+                if session and hasattr(session, "close"):
+                    result = session.close()
+                    if hasattr(result, "__await__"):
+                        await result
+        except Exception:
+            pass
+
+        # Some providers expose disconnect/close directly.
+        for method_name in ("disconnect", "close", "disconnect_all"):
+            method = getattr(provider, method_name, None)
+            if not callable(method):
+                continue
+            try:
+                result = method()
+                if hasattr(result, "__await__"):
+                    await result
+                return
+            except Exception:
+                continue
 
     # ---------- Получение данных ----------
     async def get_ticker(self) -> Optional[Dict[str, float]]:

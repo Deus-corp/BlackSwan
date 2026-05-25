@@ -17,8 +17,8 @@ class DecisionPipeline:
     and updating the global system state.
 
     Attributes:
-        state (GlobalState): Reference to the central system state.
-        event_bus (EventBus): Bus for broadcasting pipeline lifecycle events.
+        _state (GlobalState): Reference to the central system state.
+        _event_bus (EventBus): Bus for broadcasting pipeline lifecycle events.
     """
 
     __slots__ = ("_state", "_event_bus")
@@ -39,8 +39,8 @@ class DecisionPipeline:
         if not isinstance(event_bus, EventBus):
             raise TypeError("event_bus must be an instance of EventBus.")
 
-        self._state: Final = state
-        self._event_bus: Final = event_bus
+        self._state: Final[GlobalState] = state
+        self._event_bus: Final[EventBus] = event_bus
         logger.debug("DecisionPipeline initialized.")
 
     def __repr__(self) -> str:
@@ -65,26 +65,30 @@ class DecisionPipeline:
             await self._report_failure(proposal, "Invalid or missing 'id'", 3)
             return False
 
-        proposal["id"] = proposal_id.strip()
-        current_id: str = proposal["id"]
+        clean_id: str = proposal_id.strip()
+        proposal["id"] = clean_id
 
-        logger.info("Processing proposal '%s'...", current_id)
+        logger.info("Processing proposal '%s'...", clean_id)
 
         if not self._evaluate(proposal):
             await self._report_failure(proposal, "Evaluation failed", 2)
-            logger.info("Proposal '%s' rejected during evaluation.", current_id)
+            logger.info("Proposal '%s' rejected during evaluation.", clean_id)
             return False
 
-        self._state.update("execution_state", {"last_proposal_id": current_id})
+        self._state.update("execution_state", {"last_proposal_id": clean_id})
         
         await self._event_bus.publish(
             "execution",
-            {"proposal": proposal, "status": "executed", "details": f"Proposal {current_id} processed."},
+            {
+                "proposal": proposal, 
+                "status": "executed", 
+                "details": f"Proposal {clean_id} processed."
+            },
             "decision_pipeline",
             sensitivity=1
         )
         
-        logger.info("Proposal '%s' successfully executed.", current_id)
+        logger.info("Proposal '%s' successfully executed.", clean_id)
         return True
 
     async def _report_failure(self, proposal: Any, reason: str, sensitivity: int) -> None:
@@ -110,7 +114,10 @@ class DecisionPipeline:
         is_dangerous = proposal.get("dangerous", False)
 
         if not isinstance(is_dangerous, bool):
-            logger.warning("Non-boolean 'dangerous' flag for %s. Defaulting to safe.", proposal.get("id"))
-            is_dangerous = False
+            logger.warning(
+                "Non-boolean 'dangerous' flag for %s. Defaulting to safe.", 
+                proposal.get("id")
+            )
+            return True
 
         return not is_dangerous

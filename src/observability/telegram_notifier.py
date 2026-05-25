@@ -43,11 +43,11 @@ class TelegramNotifier:
         return self._session
 
     async def close(self) -> None:
-        """Gracefully closes the internal HTTP session."""
-        if self._session and not self._session.closed:
-            await self._session.close()
-            logger.debug("TelegramNotifier session closed.")
-        self._session = None
+        """Close Telegram aiohttp session if it was opened."""
+        session = getattr(self, "_session", None)
+        if session is not None and not session.closed:
+            await session.close()
+            self._session = None
 
     async def send(self, text: str) -> bool:
         """

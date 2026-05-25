@@ -25,6 +25,7 @@ class CapitalManager:
     This class tracks the node's capital, applies a defined burn rate,
     processes trade outcomes, and evaluates operational liveness.
     """
+
     __slots__ = ("capital", "burn_rate", "alert_threshold", "survival")
 
     def __init__(self, capital: float = 1000.0) -> None:
@@ -87,19 +88,25 @@ class CapitalManager:
 
     def is_alive(self) -> bool:
         """
-        Returns True if the capital is greater than zero.
+        Checks if the node is still operational based on capital.
+
+        Returns:
+            True if capital is greater than zero, otherwise False.
         """
         return self.capital > 0
 
     def health_snapshot(self) -> Dict[str, float]:
         """
         Returns a summary of current capital and survival metrics.
+
+        Returns:
+            Dictionary with capital, burn_rate, dq, and liveness.
         """
         return {
             "capital": self.capital,
             "burn_rate": self.burn_rate,
-            "dq": self.survival.dq if self.survival else 0.0,
-            "liveness": self.survival.liveness if self.survival else 1.0,
+            "dq": float(self.survival.dq) if self.survival else 0.0,
+            "liveness": float(self.survival.liveness) if self.survival else 1.0,
         }
 
     def apply_dq_delta(self, delta: float = 0.001) -> None:
@@ -108,10 +115,13 @@ class CapitalManager:
 
         Args:
             delta: Non-negative value to add to the current DQ.
+
+        Raises:
+            ValueError: If delta is negative.
         """
         if delta < 0:
             raise ValueError("Delta must be non-negative.")
-        
+
         if self.survival:
             self.survival.dq = min(1.0, self.survival.dq + delta)
             logger.debug("DQ updated to: %.4f", self.survival.dq)

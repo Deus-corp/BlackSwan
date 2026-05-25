@@ -304,6 +304,8 @@ class ExplorerNode(BaseSwarmNode):
         payload = normalized.get("payload") if isinstance(normalized.get("payload"), Mapping) else {}
 
         action = command_action(normalized)
+        if not action:
+            return ""
 
         target_node = str(
             normalized.get("target_node")

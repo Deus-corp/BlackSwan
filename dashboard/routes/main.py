@@ -2,13 +2,14 @@
 This module defines the main routes for the dashboard, including the home page
 and an API endpoint for container status.
 """
+
 from typing import Any, List, Dict
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from dashboard.routes.base_template import render_page
 from dashboard.docker_service import get_container_statuses
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 
 MAIN_CONTENT: str = """
     <section>
@@ -54,7 +55,7 @@ async def index(request: Request) -> HTMLResponse:
     Returns:
         HTMLResponse: The rendered page content.
     """
-    html_content = render_page(request, MAIN_CONTENT)
+    html_content: str = render_page(request, MAIN_CONTENT)
     return HTMLResponse(content=html_content)
 
 @router.get("/api/container_status_json", response_model=List[Dict[str, Any]])

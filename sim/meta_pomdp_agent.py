@@ -47,10 +47,10 @@ class MetaPOMDPAgent:
         Returns:
             A dictionary of adapted objective weights for the determined scenario.
         """
-        in_crisis: bool = (dq >= 0.8) or (liveness < 0.5) or (capital < 0.1)
-        
-        if in_crisis:
-            # Differentiate between full crisis (very low liveness) and cautious stealth
+        # Logic for determining the operational state based on input telemetry
+        is_in_critical_danger: bool = (dq >= 0.8) or (liveness < 0.5) or (capital < 0.1)
+
+        if is_in_critical_danger:
             self.current_scenario = "crisis" if liveness < 0.3 else "stealth_mode"
         elif (surprise > 0.7) and (capital > 0.2):
             self.current_scenario = "exploration"
@@ -75,6 +75,7 @@ if __name__ == "__main__":
     for dq_val, lv_val, cap_val, surp_val in test_states:
         weights = agent.update(dq_val, lv_val, cap_val, surp_val)
         print(
-            f"DQ={dq_val:.2f} Liveness={lv_val:.2f} Capital={cap_val:.2f} Surprise={surp_val:.2f} "
-            f"-> Scenario: {agent.current_scenario}, Weights: {weights}"
+            f"DQ={dq_val:.2f} Liveness={lv_val:.2f} Capital={cap_val:.2f} "
+            f"Surprise={surp_val:.2f} -> Scenario: {agent.current_scenario}, "
+            f"Weights: {weights}"
         )

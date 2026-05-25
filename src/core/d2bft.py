@@ -44,6 +44,12 @@ class D2BFTNode:
         Initiates a new consensus round by proposing a value.
 
         Resets internal state and casts a self-vote for the proposed value.
+
+        Args:
+            value: The value to propose.
+
+        Returns:
+            The value proposed.
         """
         self.votes = {self.node_id: value}
         self.decision = None
@@ -60,6 +66,9 @@ class D2BFTNode:
 
         Returns:
             True if a majority consensus is achieved, False otherwise.
+
+        Raises:
+            ValueError: If inputs are invalid.
         """
         if not isinstance(from_node, str) or not from_node.strip():
             raise ValueError("from_node must be a non-empty string.")
@@ -71,7 +80,7 @@ class D2BFTNode:
         
         # Consensus threshold: > N/2
         majority_threshold: int = (self.total_nodes // 2) + 1
-        vote_counts = Counter(self.votes.values())
+        vote_counts: Counter[Any] = Counter(self.votes.values())
         
         for val, count in vote_counts.items():
             if count >= majority_threshold:
@@ -83,6 +92,9 @@ class D2BFTNode:
     def get_decision(self) -> Optional[Any]:
         """
         Retrieves the finalized consensus value.
+
+        Returns:
+            The agreed value if reached, else None.
         """
         return self.decision
 

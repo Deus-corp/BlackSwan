@@ -121,3 +121,24 @@ class MultiPairAdapter:
             except Exception as e:
                 logger.exception(f"Failed to fetch ticker for adapter '{key}'. Error: {e}")
         return results
+    
+    async def close(self) -> None:
+        """Close all child adapters that expose close()."""
+        seen: set[int] = set()
+
+        for key, adapter in self.adapters.items():
+            if adapter is None or id(adapter) in seen:
+                continue
+            seen.add(id(adapter))
+
+            close = getattr(adapter, "close", None)
+            if not callable(close):
+                continue
+
+            try:
+                result = close()
+                if hasattr(result, "__await__"):
+                    await result
+                logger.info("Closed adapter '%s' (%s).", key, type(adapter).__name__)
+            except Exception as exc:
+                logger.warning("Failed to close adapter '%s': %s", key, exc)

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple, TypedDict
 
 # Ensure root path is discoverable
-ROOT = Path(__file__).resolve().parent.parent
+ROOT: Path = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from sim.multi_agent_sim import MultiAgentSimulation, SimulationConfig
@@ -23,7 +23,7 @@ from sim.multi_agent_sim import MultiAgentSimulation, SimulationConfig
 # --- Constants ---
 BURN_RATE_VALUES: List[float] = [0.0, 0.1, 0.2, 0.5, 1.0]
 FAILURE_PROB_VALUES: List[float] = [0.0, 0.01, 0.05, 0.1]
-SEEDS: List[int] = list(range(3))
+SEEDS: List[int] = [0, 1, 2]
 
 NUM_AGENTS: int = 6
 TOTAL_STEPS: int = 200
@@ -73,7 +73,9 @@ def run_sweep() -> None:
         try:
             metrics: Dict[str, Any] = sim.run()
             run_metrics: SimulationMetrics = {
-                **metrics,
+                "agents_alive": metrics.get("agents_alive", 0),
+                "kelly_avg_capital": metrics.get("kelly_avg_capital", 0.0),
+                "random_avg_capital": metrics.get("random_avg_capital", 0.0),
                 "burn_rate": burn_rate,
                 "failure_prob": failure_prob,
                 "seed": seed
@@ -90,7 +92,7 @@ def run_sweep() -> None:
 
     summary_list: List[SummaryEntry] = []
     for (br, fp), data in grouped.items():
-        avg_alive = get_safe_mean([r.get("agents_alive", 0.0) for r in data])
+        avg_alive = get_safe_mean([float(r.get("agents_alive", 0)) for r in data])
         avg_kelly = get_safe_mean([r.get("kelly_avg_capital", 0.0) for r in data])
         avg_rand = get_safe_mean([r.get("random_avg_capital", 0.0) for r in data])
         

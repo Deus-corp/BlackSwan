@@ -2,7 +2,7 @@
 Receives signals from TradingView via webhook and stores the latest signal.
 """
 import logging
-from typing import Any, Optional, Dict, Final
+from typing import Any, Optional, Dict
 
 from aiohttp import web
 from aiohttp.web import Request, Response, Application, AppRunner, TCPSite
@@ -22,8 +22,8 @@ class TradingViewWebhook:
         """
         Initializes the TradingViewWebhook server instance.
 
-        :param port: The network port to bind to.
-        :param host: The host interface to bind to.
+        :param port: The network port to bind to (defaults to 8888).
+        :param host: The host interface to bind to (defaults to "0.0.0.0").
         """
         self.port: int = port
         self.host: str = host
@@ -37,8 +37,10 @@ class TradingViewWebhook:
         """
         Handles incoming POST requests containing JSON payloads from TradingView.
 
+        Expects a JSON body. Updates `self.latest_signal` on successful parse.
+
         :param request: The incoming aiohttp request.
-        :return: A JSON response indicating success or failure.
+        :return: A JSON response indicating status 'ok' or 'error'.
         """
         try:
             data = await request.json()
@@ -59,6 +61,8 @@ class TradingViewWebhook:
     async def start(self) -> None:
         """
         Starts the webhook server, setting up the runner and TCP site.
+        
+        Raises RuntimeError if the server is already running.
         """
         if self._runner is not None:
             logger.warning("Webhook server is already running.")

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Protocol, runtime_checkable, TYPE_CHECKING
-from src.memory.local_memory import MemoryRecord, LocalMemoryAPI
+from typing import Any, Dict, Protocol, runtime_checkable, TYPE_CHECKING
+
+from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 
 if TYPE_CHECKING:
     from src.security.crypto_manager import CryptoManager
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 @runtime_checkable
 class ReputationManagerProtocol(Protocol):
     """Protocol defining the expected interface for a ReputationManager."""
+
     def is_trusted(self, entity_id: str) -> bool:
         """Checks if the given entity ID is considered trusted."""
         ...
@@ -21,9 +23,9 @@ class QuarantineBuffer:
     A buffer and validation layer for incoming MemoryRecords.
     Performs confidence, signature, and reputation checks before memory ingestion.
     """
-    
+
     __slots__ = ("memory", "reputation")
-    
+
     MIN_CONFIDENCE_THRESHOLD: float = 0.3
 
     def __init__(self, memory_api: LocalMemoryAPI, reputation: ReputationManagerProtocol) -> None:
@@ -69,17 +71,18 @@ class QuarantineBuffer:
             logger.info("Quarantine: Discarding record %s due to low confidence (%s)", record.id, record.confidence)
             return False
 
-        origin_id = record.source.get("origin_pubkey") or record.source.get("originNodeId")
+        origin_id: str | None = record.source.get("origin_pubkey") or record.source.get("originNodeId")
 
         # Signature Verification
         if record.signature:
             if not origin_id:
                 logger.warning("Quarantine: Record %s has signature but no origin identity.", record.id)
                 return False
-            
+
             from src.security.crypto_manager import CryptoManager
+
             payload = {"payload": record.payload, "kind": record.kind, "scope": record.scope}
-            
+
             if not CryptoManager.verify(payload, record.signature, origin_id):
                 logger.warning("Quarantine: Signature verification failed for record %s", record.id)
                 return False

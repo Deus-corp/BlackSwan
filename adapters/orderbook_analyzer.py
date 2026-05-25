@@ -30,8 +30,12 @@ class ExchangeAdapter(Protocol):
 
 class OrderBookAnalyzer:
     """
-    Order Book Analyzer – calculates liquidity imbalance (pressure of buys/sells).
-    This class fetches order book data and calculates liquidity metrics.
+    Analyzes order book depth to calculate liquidity imbalance metrics.
+    
+    Attributes:
+        adapter: The exchange adapter instance providing access to order book data.
+        last_imbalance: The most recently calculated imbalance ratio.
+        last_delta_volume: The most recently calculated net volume delta.
     """
     def __init__(self, adapter: ExchangeAdapter) -> None:
         self.adapter = adapter
@@ -40,8 +44,14 @@ class OrderBookAnalyzer:
 
     async def update(self, symbol: Optional[str] = None, depth: int = 20) -> Optional[OrderBookMetrics]:
         """
-        Fetches the order book for the specified symbol and depth,
-        then calculates liquidity metrics.
+        Fetches order book data for the symbol and calculates liquidity metrics.
+
+        Args:
+            symbol: The ticker symbol to analyze. Defaults to the adapter's symbol.
+            depth: Number of levels to include from the order book.
+
+        Returns:
+            OrderBookMetrics dictionary if analysis is successful, otherwise None.
         """
         target_symbol = symbol or getattr(self.adapter, 'symbol', None)
         if not target_symbol:
@@ -51,11 +61,11 @@ class OrderBookAnalyzer:
         try:
             book = await self.adapter.exchange.fetch_order_book(target_symbol, limit=depth)
             
-            bids = book.get('bids', [])
-            asks = book.get('asks', [])
+            bids: List[Tuple[float, float]] = book.get('bids', [])
+            asks: List[Tuple[float, float]] = book.get('asks', [])
 
-            total_bid_volume = sum(b[1] for b in bids)
-            total_ask_volume = sum(a[1] for a in asks)
+            total_bid_volume = sum(level[1] for level in bids)
+            total_ask_volume = sum(level[1] for level in asks)
             total_volume = total_bid_volume + total_ask_volume
 
             imbalance = (total_bid_volume - total_ask_volume) / total_volume if total_volume > 0 else 0.0
@@ -76,7 +86,10 @@ class OrderBookAnalyzer:
 
     def get_context_string(self) -> str:
         """
-        Returns a formatted string describing the last calculated order book imbalance.
+        Returns a descriptive string for the last calculated order book imbalance.
+
+        Returns:
+            A formatted summary string or an empty string if no data is available.
         """
         if self.last_imbalance is None or self.last_delta_volume is None:
             return ""

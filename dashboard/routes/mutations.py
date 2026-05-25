@@ -6,8 +6,10 @@ import sqlite3
 import os
 from pathlib import Path
 from typing import Any, Dict, List
+
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
+
 from dashboard.routes.base_template import render_page
 
 router: APIRouter = APIRouter()
@@ -78,6 +80,12 @@ MUTATIONS_CONTENT: str = """
 async def mutations_page(request: Request) -> HTMLResponse:
     """
     Renders the page displaying the history of strategy mutations.
+
+    Args:
+        request: The incoming FastAPI request.
+
+    Returns:
+        An HTML response containing the rendered mutations dashboard.
     """
     return HTMLResponse(render_page(request, MUTATIONS_CONTENT, "Strategy Evolution"))
 
@@ -87,10 +95,13 @@ async def get_mutations(limit: int = 100) -> Dict[str, Any]:
     Retrieves a list of mutation history entries from the SQLite database.
 
     Args:
-        limit: The maximum number of entries to return.
+        limit: The maximum number of entries to return. Defaults to 100.
 
     Returns:
-        A dictionary containing the mutation data or an error state.
+        A dictionary containing a list of database rows or an error message.
+
+    Raises:
+        HTTPException: If the database operation fails.
     """
     if not DB_PATH.exists():
         return {"error": f"DB not found at {DB_PATH}", "data": []}

@@ -57,27 +57,58 @@ class TradeFlowService:
 
     async def _execute(self, intent: TradeIntent, amount: float) -> Optional[Dict[str, Any]]:
         """
-        Executes the trade and manages post-trade lifecycle.
+        Executes the trade or records a dry-run result depending on runtime gates.
         """
         symbol = intent.symbol
         side = intent.side
         prev_capital = self._ctx.capital
 
-        try:
-            trade_result = await self._ctx.executor.execute_order(
-                symbol=symbol,
-                side=side,
-                amount=amount,
-                price=intent.price,
-                capital=self._ctx.capital,
-            )
-        except Exception as e:
-            logger.exception("Critical failure during trade execution")
-            trade_result = {"success": False, "status": str(e), "tx_hash": ""}
+        execution_enabled = bool(getattr(self._ctx.config, "execution_enabled", False))
+        dry_run = bool(getattr(self._ctx.config, "dry_run", not execution_enabled))
 
-        self._apply_post_trade_capital(amount=amount, price=intent.price)
+        if not execution_enabled or dry_run:
+            logger.info(
+                "Trade dry-run: execution_enabled=%s dry_run=%s symbol=%s side=%s amount=%s price=%s",
+                execution_enabled,
+                dry_run,
+                symbol,
+                side,
+                amount,
+                intent.price,
+            )
+            trade_result: Dict[str, Any] = {
+                "success": True,
+                "status": "dry_run",
+                "tx_hash": None,
+                "symbol": symbol,
+                "side": side,
+                "amount": amount,
+                "price": intent.price,
+                "new_capital": self._ctx.capital,
+                "execution_enabled": execution_enabled,
+                "dry_run": dry_run,
+            }
+        else:
+            try:
+                trade_result = await self._ctx.executor.execute_order(
+                    symbol=symbol,
+                    side=side,
+                    amount=amount,
+                    price=intent.price,
+                    capital=self._ctx.capital,
+                )
+            except Exception as e:
+                logger.exception("Critical failure during trade execution")
+                trade_result = {
+                    "success": False,
+                    "status": "error",
+                    "error": str(e),
+                    "tx_hash": None,
+                    "new_capital": self._ctx.capital,
+                }
 
         if trade_result and trade_result.get("success"):
+            self._apply_post_trade_capital(amount=amount, price=intent.price)
             await self._publish_trade(trade_result, symbol, side, amount, prev_capital)
             await self._handle_hedge(symbol=symbol, side=side, amount=amount)
 

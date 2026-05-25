@@ -1,8 +1,11 @@
 """
 Abstract interface for trade execution modules.
+
+This module defines the contract for trade execution backends, enabling
+interchangeable use of live exchange integrations and simulation environments.
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Final, Literal, TypedDict
+from typing import Final, Literal, TypedDict, Optional
 
 
 class ExecutionResult(TypedDict):
@@ -11,9 +14,9 @@ class ExecutionResult(TypedDict):
     """
     success: bool
     new_capital: float
-    status: Literal["filled", "rejected", "skipped", "error"]
-    tx_hash: str | None
-    error: str | None
+    status: Literal["filled", "rejected", "skipped", "error", "simulated"]
+    tx_hash: Optional[str]
+    error: Optional[str]
 
 
 class ExecutionBackend(ABC):

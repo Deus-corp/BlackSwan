@@ -21,7 +21,7 @@ def select_leader(node_id: str, block_number: int, total_nodes: int) -> int:
         An integer index within the range [0, total_nodes - 1].
 
     Raises:
-        ValueError: If total_nodes is less than 1.
+        ValueError: If total_nodes is not a positive integer.
     """
     if not isinstance(total_nodes, int) or total_nodes <= 0:
         raise ValueError(f"total_nodes must be a positive integer, got {total_nodes}.")
@@ -29,8 +29,6 @@ def select_leader(node_id: str, block_number: int, total_nodes: int) -> int:
     # Generate consistent hash input
     seed: bytes = f"{node_id}:{block_number}".encode("utf-8")
     
-    # Compute SHA-256 hash
+    # Compute SHA-256 hash and map to index space
     hash_hex: str = hashlib.sha256(seed).hexdigest()
-    
-    # Map hash space to index space
     return int(hash_hex, 16) % total_nodes

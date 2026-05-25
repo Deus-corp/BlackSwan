@@ -226,6 +226,16 @@ class SwarmConfig(BaseSettings):
         default="web3", alias="MARKET_MODE",
         description="Operating mode for market interactions ('web3', 'binance_testnet', 'simulated', etc.)."
     )
+    execution_enabled: bool = Field(
+        default=False,
+        alias="EXECUTION_ENABLED",
+        description="Enable real trade execution. Defaults to False for safety.",
+    )
+    dry_run: bool = Field(
+        default=True,
+        alias="DRY_RUN",
+        description="If True, trade flow returns dry-run execution results without calling live executor.",
+    )
     trading_symbols: str = Field(
         default="WETH/USDC", alias="TRADING_SYMBOLS",
         description="Comma-separated list of trading symbols (e.g., 'WETH/USDC,BTC/USDT')."

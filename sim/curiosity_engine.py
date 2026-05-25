@@ -9,7 +9,8 @@ is detected, it proposes new, slightly perturbed parameters for a trading
 strategy. These parameters are then reported back for evaluation.
 """
 import random
-from typing import Dict, List, Optional
+from collections import deque
+from typing import Dict, List, Optional, Final
 
 from sim.evolve_kelly import random_params, PARAM_BOUNDS
 
@@ -32,11 +33,13 @@ class CuriosityEngine:
             surprise_threshold: Threshold for average prediction error to trigger a hypothesis.
             error_average_window: Number of recent prediction errors to average for surprise detection.
         """
-        self.window_size = window_size
-        self.surprise_threshold = surprise_threshold
-        self.error_average_window = error_average_window
-        self.price_history: List[float] = []
-        self.prediction_errors: List[float] = []
+        self.window_size: Final[int] = window_size
+        self.surprise_threshold: Final[float] = surprise_threshold
+        self.error_average_window: Final[int] = error_average_window
+
+        self.price_history: deque[float] = deque(maxlen=window_size)
+        self.prediction_errors: deque[float] = deque(maxlen=error_average_window)
+        
         self.hypotheses_tested: int = 0
         self.hypotheses_adopted: int = 0
         self.last_hypothesis: Optional[Dict[str, float]] = None
@@ -50,28 +53,23 @@ class CuriosityEngine:
         a new set of randomized strategy parameters is generated.
         """
         price = market_data.get("price", 0.0)
-        self.price_history.append(price)
-
-        relevant_price_history = self.price_history[-self.window_size:]
-        if not relevant_price_history:
-            return None
-
-        predicted = sum(relevant_price_history) / len(relevant_price_history)
         
-        # Use 1e-9 epsilon to prevent division by zero; high error signals anomaly.
-        error = abs(price - predicted) / (predicted + 1e-9)
-        self.prediction_errors.append(error)
+        if len(self.price_history) >= self.window_size:
+            predicted = sum(self.price_history) / self.window_size
+            # Use 1e-9 epsilon to prevent division by zero; high error signals anomaly.
+            error = abs(price - predicted) / (predicted + 1e-9)
+            self.prediction_errors.append(error)
 
-        recent_errors = self.prediction_errors[-self.error_average_window:]
-        avg_surprise = sum(recent_errors) / len(recent_errors)
+            if len(self.prediction_errors) == self.error_average_window:
+                avg_surprise = sum(self.prediction_errors) / self.error_average_window
+                if avg_surprise > self.surprise_threshold:
+                    hypothesis = self._generate_hypothesis()
+                    self.hypotheses_tested += 1
+                    self.last_hypothesis = hypothesis
+                    self.prediction_errors.clear()
+                    return hypothesis
 
-        if avg_surprise > self.surprise_threshold:
-            hypothesis = self._generate_hypothesis()
-            self.hypotheses_tested += 1
-            self.last_hypothesis = hypothesis
-            self.prediction_errors.clear()
-            return hypothesis
-            
+        self.price_history.append(price)
         return None
 
     def _generate_hypothesis(self) -> Dict[str, float]:

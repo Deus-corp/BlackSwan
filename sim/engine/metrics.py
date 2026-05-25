@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Final, List, Tuple
+from typing import Any, Dict, Final, List, Tuple, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +14,7 @@ METRICS_KEYS: Final[List[str]] = [
 ]
 
 
-def compute_metrics(history: List[float], risk_free_rate: float = 0.0) -> Dict[str, float]:
+def compute_metrics(history: Sequence[float], risk_free_rate: float = 0.0) -> Dict[str, float]:
     """
     Computes performance metrics based on capital history.
 
@@ -23,10 +23,11 @@ def compute_metrics(history: List[float], risk_free_rate: float = 0.0) -> Dict[s
         risk_free_rate: Per-period risk-free rate.
 
     Returns:
-        Dictionary of calculated financial performance metrics.
+        Dictionary containing 'final_capital', 'sharpe_ratio', 'max_drawdown', 
+        'mean_return', and 'volatility'.
 
     Raises:
-        ValueError: If input data is insufficient, non-positive, or non-finite.
+        ValueError: If input data is insufficient, non-positive, or contains non-finite values.
     """
     if len(history) < 2:
         raise ValueError("History must contain at least two elements.")
@@ -37,14 +38,17 @@ def compute_metrics(history: List[float], risk_free_rate: float = 0.0) -> Dict[s
     if np.any(history_arr <= 0):
         raise ValueError("History must contain only positive, non-zero values.")
 
+    # Calculate percentage returns
     returns = np.diff(history_arr) / history_arr[:-1]
     if not np.all(np.isfinite(returns)):
         raise ValueError("Computed returns contain non-finite values.")
 
+    # Sharpe Ratio
     excess_returns = returns - risk_free_rate
-    std_excess = np.std(excess_returns)
+    std_excess = float(np.std(excess_returns))
     sharpe_ratio = float(np.mean(excess_returns) / std_excess) if std_excess > 0 else 0.0
 
+    # Max Drawdown
     peak = np.maximum.accumulate(history_arr)
     drawdown = (history_arr - peak) / peak
     max_drawdown = float(np.min(drawdown))
@@ -62,11 +66,14 @@ def plot_results(
     agents_data: Dict[str, Tuple[List[float], Any]], title: str = "Simulation Results"
 ) -> None:
     """
-    Visualizes agent capital and market trends.
+    Visualizes agent capital history and market trends.
 
     Args:
-        agents_data: Dict mapping agent names to (capital_history, agent_instance).
-        title: Plot title.
+        agents_data: Dictionary mapping agent names to (capital_history, agent_instance).
+        title: Plot title for the figure.
+
+    Raises:
+        ValueError: If agents_data is empty.
     """
     if not agents_data:
         raise ValueError("Agents data cannot be empty.")
@@ -80,6 +87,7 @@ def plot_results(
     ax1.legend()
     ax1.grid(True)
 
+    # Attempt to extract market price data if available on the agent instance
     sample_agent = next(iter(agents_data.values()))[1]
     market = getattr(sample_agent, "market", None)
     prices = getattr(market, "prices", None)

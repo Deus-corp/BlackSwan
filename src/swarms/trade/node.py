@@ -53,6 +53,16 @@ from .maintenance.service import MaintenanceService
 from .market.snapshot import MarketCollector, MarketSnapshot
 from .meta.commands import apply_meta_commands
 from .trading.flow import TradeFlowService
+from dataclasses import replace
+
+from collections.abc import Mapping
+
+from src.swarms.common.protocols import (
+    command_action,
+    command_targets,
+    normalize_command,
+)
+from src.swarms.common.utils import is_expired
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
@@ -246,6 +256,9 @@ class SwarmNode:
         self.shutdown_event: asyncio.Event = asyncio.Event()
         self._evolution_task: Optional[asyncio.Task[Any]] = None
         self._sync_task: Optional[asyncio.Task[Any]] = None
+        self._command_task: Optional[asyncio.Task[Any]] = None
+        self._paused: bool = False
+        self._processed_command_gids: set[str] = set()
 
         # -----------------------------
         # Shared runtime context
@@ -300,6 +313,8 @@ class SwarmNode:
             test_web3_swap_side=str(config.trading.test_web3_swap_side),
             test_web3_swap_amount=float(config.trading.test_web3_swap_amount),
             log_level=str(config.log_level),
+            execution_enabled=bool(getattr(config, "execution_enabled", False)),
+            dry_run=bool(getattr(config, "dry_run", not bool(getattr(config, "execution_enabled", False)))),
         )
 
     def _build_runtime_context(self) -> RuntimeContext:
@@ -644,6 +659,10 @@ class SwarmNode:
     async def _run_one_step(self, session: aiohttp.ClientSession) -> bool:
         self.step_count += 1
         self._trace_id = str(uuid.uuid4())
+        if self._paused:
+            logger.debug("[%s] Trade node paused; skipping trading step.", self.node_id)
+            await asyncio.sleep(0.5)
+            return True
 
         if await self._maybe_trigger_failure_shutdown():
             return False
@@ -755,6 +774,205 @@ class SwarmNode:
             self.sync_context()
             await self.maintenance_service.run(self.current_params)
 
+    async def _emit_trade_event(
+        self,
+        *,
+        event_type: str,
+        parent_gid: Optional[str] = None,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        event: Dict[str, Any] = {
+            "type": "swarm_event",
+            "swarm": "trade",
+            "node_id": self.node_id,
+            "event_type": event_type,
+            "timestamp": time.time(),
+            "payload": payload or {},
+        }
+        if parent_gid:
+            event["parent_gid"] = parent_gid
+
+        try:
+            await self.crdt.add_genome(event)
+        except Exception:
+            logger.exception("Failed to emit trade event %s", event_type)
+
+    def _command_applies_to_self(self, normalized: Dict[str, Any]) -> bool:
+        targets = command_targets(normalized)
+        target_swarm = targets.get("target_swarm")
+        target_node = targets.get("target_node")
+        target_role = targets.get("target_role")
+
+        if target_swarm not in {None, "", "*", "trade"}:
+            return False
+
+        if target_node not in {None, "", "*", self.node_id}:
+            return False
+
+        if target_role not in {None, "", "*", "node", "trade_node"}:
+            return False
+
+        return True
+
+    def _command_has_explicit_approval(self, normalized: Dict[str, Any]) -> bool:
+        payload = normalized.get("payload") if isinstance(normalized.get("payload"), Mapping) else {}
+        data = normalized.get("data") if isinstance(normalized.get("data"), Mapping) else {}
+
+        explicit_approval = bool(
+            normalized.get("explicit_approval")
+            or payload.get("explicit_approval")
+            or data.get("explicit_approval")
+        )
+        safety_gate = str(
+            normalized.get("safety_gate")
+            or payload.get("safety_gate")
+            or data.get("safety_gate")
+            or ""
+        ).lower()
+
+        return explicit_approval and safety_gate in {"approved", "allow", "enabled"}
+
+    def _command_value(self, normalized: Dict[str, Any], key: str, default: Any = None) -> Any:
+        payload = normalized.get("payload") if isinstance(normalized.get("payload"), Mapping) else {}
+        data = normalized.get("data") if isinstance(normalized.get("data"), Mapping) else {}
+
+        if key in payload:
+            return payload.get(key)
+        if key in data:
+            return data.get(key)
+        if key in normalized:
+            return normalized.get(key)
+        return default
+
+    async def process_command(self, command: Mapping[str, Any]) -> None:
+        normalized = normalize_command(command)
+
+        gid = str(normalized.get("gid") or command.get("gid") or "")
+        if gid and gid in self._processed_command_gids:
+            return
+
+        if is_expired(normalized):
+            if gid:
+                self._processed_command_gids.add(gid)
+            return
+
+        if not self._command_applies_to_self(normalized):
+            return
+
+        action = command_action(normalized)
+        if not action:
+            return
+
+        if gid:
+            self._processed_command_gids.add(gid)
+
+        if action == "PAUSE":
+            self._paused = True
+            await self._emit_trade_event(
+                event_type="command_applied",
+                parent_gid=gid or None,
+                payload={"action": action, "status": "paused"},
+            )
+            logger.info("[%s] Trade node paused by command.", self.node_id)
+            return
+
+        if action == "RESUME":
+            self._paused = False
+            await self._emit_trade_event(
+                event_type="command_applied",
+                parent_gid=gid or None,
+                payload={"action": action, "status": "resumed"},
+            )
+            logger.info("[%s] Trade node resumed by command.", self.node_id)
+            return
+
+        if action == "RESTART_NODE":
+            await self._emit_trade_event(
+                event_type="command_applied",
+                parent_gid=gid or None,
+                payload={"action": action, "status": "shutdown_requested"},
+            )
+            logger.critical("[%s] Received RESTART_NODE. Requesting shutdown.", self.node_id)
+            self.shutdown_event.set()
+            return
+
+        if action == "SET_DRY_RUN":
+            value = self._command_value(normalized, "enabled", self._command_value(normalized, "value", True))
+            dry_run = bool(value)
+            self.trade_config = replace(
+                self.trade_config,
+                dry_run=dry_run,
+                execution_enabled=False if dry_run else self.trade_config.execution_enabled,
+            )
+            self.ctx.config = self.trade_config
+            await self._emit_trade_event(
+                event_type="command_applied",
+                parent_gid=gid or None,
+                payload={
+                    "action": action,
+                    "dry_run": self.trade_config.dry_run,
+                    "execution_enabled": self.trade_config.execution_enabled,
+                },
+            )
+            return
+
+        if action == "SET_EXECUTION_ENABLED":
+            value = bool(self._command_value(normalized, "enabled", self._command_value(normalized, "value", False)))
+
+            if value and not self._command_has_explicit_approval(normalized):
+                await self._emit_trade_event(
+                    event_type="command_blocked",
+                    parent_gid=gid or None,
+                    payload={
+                        "action": action,
+                        "reason": "explicit_approval_required",
+                        "execution_enabled": self.trade_config.execution_enabled,
+                        "dry_run": self.trade_config.dry_run,
+                    },
+                )
+                logger.warning("[%s] Blocked SET_EXECUTION_ENABLED without approval.", self.node_id)
+                return
+
+            self.trade_config = replace(
+                self.trade_config,
+                execution_enabled=value,
+                dry_run=False if value else True,
+            )
+            self.ctx.config = self.trade_config
+            await self._emit_trade_event(
+                event_type="command_applied",
+                parent_gid=gid or None,
+                payload={
+                    "action": action,
+                    "execution_enabled": self.trade_config.execution_enabled,
+                    "dry_run": self.trade_config.dry_run,
+                },
+            )
+            return
+
+        await self._emit_trade_event(
+            event_type="command_unsupported",
+            parent_gid=gid or None,
+            payload={"action": action},
+        )
+
+    async def _command_loop(self) -> None:
+        while not self.shutdown_event.is_set():
+            try:
+                state = getattr(self.crdt, "state", {})
+                for value in list(state.values()):
+                    if not isinstance(value, Mapping):
+                        continue
+                    if value.get("type") not in {"swarm_command", "trade_command"}:
+                        continue
+                    await self.process_command(value)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("[%s] command loop failed", self.node_id)
+
+            await asyncio.sleep(1.0)
+
     async def _graceful_shutdown(self) -> None:
         if self._evolution_task:
             self._evolution_task.cancel()
@@ -770,6 +988,13 @@ class SwarmNode:
             except asyncio.CancelledError:
                 logger.debug("Sync task cancelled.")
 
+        if self._command_task:
+            self._command_task.cancel()
+            try:
+                await self._command_task
+            except asyncio.CancelledError:
+                logger.debug("Command task cancelled.")
+
         if self.memory_api_enabled:
             await self.memory_api.save_to_db()
             logger.info("[%s] Memory saved before exit.", self.node_id)
@@ -777,6 +1002,27 @@ class SwarmNode:
         if self.tradingview_enabled and self.tradingview_webhook:
             await self.tradingview_webhook.stop()
             logger.info("[%s] TradingView webhook stopped.", self.node_id)
+
+        if self.telegram_notifier:
+            try:
+                close = getattr(self.telegram_notifier, "close", None)
+                if callable(close):
+                    result = close()
+                    if asyncio.iscoroutine(result):
+                        await result
+                    logger.info("[%s] Telegram notifier closed.", self.node_id)
+            except Exception:
+                logger.exception("[%s] Failed to close Telegram notifier.", self.node_id)
+
+        if self.market_adapter:
+            try:
+                if hasattr(self.market_adapter, "close") and callable(self.market_adapter.close):
+                    result = self.market_adapter.close()
+                    if asyncio.iscoroutine(result):
+                        await result
+                    logger.info("[%s] Market adapter closed.", self.node_id)
+            except Exception:
+                logger.exception("[%s] Failed to close market adapter.", self.node_id)
 
         if hasattr(self.crdt, "close") and callable(self.crdt.close):
             await self.crdt.close()
@@ -850,11 +1096,19 @@ class SwarmNode:
 
         self._register_signal_handlers(loop)
 
+        await self._initialize_web3_executor()
+
         self.sync_context()
         self._evolution_task = asyncio.create_task(self._evolution_cycle(), name="evolution_cycle")
         self._sync_task = asyncio.create_task(self._sync_cycle(), name="sync_cycle")
-        shutdown_watcher_task = asyncio.create_task(self._shutdown_watcher(), name="shutdown_watcher")
+        self._command_task = asyncio.create_task(self._command_loop(), name="command_loop")
         self.sync_context()
+
+        try:
+            await self.main_loop()
+        finally:
+            self.shutdown_event.set()
+            await self._graceful_shutdown()
         
 if __name__ == "__main__":
     if not logging.root.handlers:

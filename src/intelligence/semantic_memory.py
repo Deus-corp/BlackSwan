@@ -67,17 +67,17 @@ class SemanticMemory:
         high_dq = [r for r in episodic_records if r.get("dq", 0.0) > self.HIGH_DQ_THRESHOLD]
 
         if high_vol:
-            avg = math.fsum(r["params"].get("max_risk_per_trade", 0.0) for r in high_vol) / len(high_vol)
+            avg = math.fsum(r.get("params", {}).get("max_risk_per_trade", 0.0) for r in high_vol) / len(high_vol)
             val = max(self.MIN_MAX_RISK_PER_TRADE, avg * self.RISK_REDUCTION_FACTOR)
             derived_rules.append({"condition": {"volatility": "high"}, "action": {"max_risk_per_trade": val}})
 
         if low_vol:
-            avg = math.fsum(r["params"].get("max_risk_per_trade", 0.0) for r in low_vol) / len(low_vol)
+            avg = math.fsum(r.get("params", {}).get("max_risk_per_trade", 0.0) for r in low_vol) / len(low_vol)
             val = min(self.MAX_MAX_RISK_PER_TRADE, avg * self.RISK_INCREASE_FACTOR)
             derived_rules.append({"condition": {"volatility": "low"}, "action": {"max_risk_per_trade": val}})
 
         if high_dq:
-            avg = math.fsum(r["params"].get("phi_llm", 0.0) for r in high_dq) / len(high_dq)
+            avg = math.fsum(r.get("params", {}).get("phi_llm", 0.0) for r in high_dq) / len(high_dq)
             val = max(self.MIN_PHI_LLM, avg * self.PHI_LLM_REDUCTION_FACTOR)
             derived_rules.append({"condition": {"dq": "high"}, "action": {"phi_llm": val}})
 

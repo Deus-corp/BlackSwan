@@ -27,14 +27,20 @@ class CryptoManager:
         """
         Initializes the CryptoManager by generating a new Ed25519 key pair.
         """
-        self._private_key = ed25519.Ed25519PrivateKey.generate()
-        self.public_key = self._private_key.public_key()
-        self.public_bytes_hex = self.public_key.public_bytes_raw().hex()
+        self._private_key: ed25519.Ed25519PrivateKey = ed25519.Ed25519PrivateKey.generate()
+        self.public_key: ed25519.Ed25519PublicKey = self._private_key.public_key()
+        self.public_bytes_hex: str = self.public_key.public_bytes_raw().hex()
 
     @staticmethod
     def _serialize_data(data: Dict[str, Any]) -> bytes:
         """
         Serializes data to a deterministic JSON byte string.
+
+        Args:
+            data: The dictionary to serialize.
+
+        Returns:
+            UTF-8 encoded JSON bytes with sorted keys.
         """
         return json.dumps(data, sort_keys=True).encode("utf-8")
 
@@ -48,8 +54,8 @@ class CryptoManager:
         Returns:
             A hexadecimal string representation of the signature.
         """
-        message = self._serialize_data(data)
-        signature = self._private_key.sign(message)
+        message: bytes = self._serialize_data(data)
+        signature: bytes = self._private_key.sign(message)
         return signature.hex()
 
     @staticmethod
@@ -66,20 +72,19 @@ class CryptoManager:
             True if the signature is valid, False otherwise.
         """
         try:
-            public_bytes = bytes.fromhex(public_key_hex)
-            pub_key = ed25519.Ed25519PublicKey.from_public_bytes(public_bytes)
+            public_bytes: bytes = bytes.fromhex(public_key_hex)
+            pub_key: ed25519.Ed25519PublicKey = ed25519.Ed25519PublicKey.from_public_bytes(public_bytes)
             
-            message = CryptoManager._serialize_data(data)
-            signature = bytes.fromhex(signature_hex)
+            message: bytes = CryptoManager._serialize_data(data)
+            signature: bytes = bytes.fromhex(signature_hex)
             
             pub_key.verify(signature, message)
             return True
         except (ValueError, TypeError, InvalidSignature) as e:
             logger.warning(
-                "Signature verification failed for key '%s...': %s: %s",
+                "Signature verification failed for key '%s...': %s",
                 public_key_hex[:16],
                 type(e).__name__,
-                e,
             )
             return False
         except Exception:

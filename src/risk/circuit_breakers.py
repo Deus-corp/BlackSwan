@@ -74,13 +74,15 @@ class CircuitBreaker:
             fill: Information about the filled trade, expected to contain 'pnl'.
 
         Raises:
+            TypeError: If `fill` is not a dictionary.
             ValueError: If 'pnl' is missing or not a valid number.
         """
         if not isinstance(fill, dict):
             raise TypeError("Fill information must be a dictionary.")
 
         try:
-            pnl = float(fill.get('pnl', 0.0))
+            pnl_val = fill.get('pnl', 0.0)
+            pnl = float(pnl_val) if pnl_val is not None else 0.0
         except (TypeError, ValueError) as exc:
             raise ValueError(f"Invalid PnL value in fill data: {fill.get('pnl')}") from exc
 

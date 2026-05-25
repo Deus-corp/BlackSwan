@@ -2,7 +2,7 @@
 Last-Write-Wins (LWW) Register CRDT implementation for distributed state replication.
 
 This module provides a thread-safe LWW-Register structure. Conflicts are resolved
-by selecting the value associated with the highest timestamp. 
+by selecting the value associated with the highest timestamp.
 
 NOTE: This is a legacy implementation. Please prefer GenomeCRDT systems for production.
 """
@@ -18,7 +18,7 @@ class CRDTEntry(TypedDict):
 class CRDTState:
     """
     Thread-safe Last-Write-Wins (LWW) Register CRDT.
-    
+
     Attributes:
         node_id (str): Unique identifier for the local node.
     """
@@ -27,7 +27,7 @@ class CRDTState:
         """Initializes the CRDT state store."""
         self.node_id: str = node_id
         self._state: Dict[str, CRDTEntry] = {}
-        self._lock = threading.RLock()
+        self._lock: threading.RLock = threading.RLock()
 
     def update(self, key: str, value: Any) -> None:
         """
@@ -51,15 +51,16 @@ class CRDTState:
             remote_state: Dictionary of entries to integrate.
 
         Returns:
-            bool: True if the local state was modified.
+            bool: True if the local state was modified by the merge operation.
         """
-        changed = False
+        changed: bool = False
         with self._lock:
             for key, entry in remote_state.items():
+                # Validate entry structure before processing
                 if not isinstance(entry, dict) or "value" not in entry or "timestamp" not in entry:
                     continue
 
-                local_entry = self._state.get(key)
+                local_entry: Optional[CRDTEntry] = self._state.get(key)
                 if local_entry is None or entry["timestamp"] > local_entry["timestamp"]:
                     self._state[key] = entry
                     changed = True
@@ -76,12 +77,15 @@ class CRDTState:
             The stored value if found, else None.
         """
         with self._lock:
-            entry = self._state.get(key)
+            entry: Optional[CRDTEntry] = self._state.get(key)
             return entry["value"] if entry is not None else None
 
     def to_dict(self) -> Dict[str, CRDTEntry]:
         """
         Returns a thread-safe shallow copy of the state.
+
+        Returns:
+            A dictionary representation of the current state.
         """
         with self._lock:
             return self._state.copy()

@@ -39,16 +39,23 @@ class EpisodicMemory:
         self.cleanup_interval: int = 100
         self.add_count: int = 0
 
-    def add(self, market_volatility: float, dq: float, capital: float, params: Dict[str, Any], fitness: float) -> None:
+    def add(
+        self,
+        market_volatility: float,
+        dq: float,
+        capital: float,
+        params: Dict[str, Any],
+        fitness: float,
+    ) -> None:
         """
         Adds a record of a market situation and an associated optimal strategy.
         """
         record: MemoryRecord = {
-            "volatility": market_volatility,
-            "dq": dq,
-            "capital": capital,
+            "volatility": float(market_volatility),
+            "dq": float(dq),
+            "capital": float(capital),
             "params": params,
-            "fitness": fitness,
+            "fitness": float(fitness),
             "timestamp": time.time(),
             "weight": None,
         }
@@ -70,15 +77,17 @@ class EpisodicMemory:
         if not self.records:
             return []
 
-        safe_vol = max(0.01, current_volatility)
-        safe_dq = max(0.01, current_dq)
+        cur_vol = float(current_volatility)
+        cur_dq = float(current_dq)
+
+        safe_vol = max(0.01, abs(cur_vol))
+        safe_dq = max(0.01, abs(cur_dq))
 
         def calculate_distance(rec: MemoryRecord) -> float:
-            vol_diff = (rec["volatility"] - current_volatility) / safe_vol
-            dq_diff = (rec["dq"] - current_dq) / safe_dq
+            vol_diff = (rec["volatility"] - cur_vol) / safe_vol
+            dq_diff = (rec["dq"] - cur_dq) / safe_dq
             return math.sqrt(vol_diff**2 + dq_diff**2)
 
-        # Sort by distance (ascending) and return top_k
         return sorted(self.records, key=calculate_distance)[:top_k]
 
     def to_dict_list(self) -> List[Dict[str, Any]]:
@@ -108,7 +117,6 @@ class EpisodicMemory:
             age = now - rec.get("timestamp", now)
             rec["weight"] = math.exp(-abs(age) / decay_constant)
 
-        # Filter by threshold then by capacity
         self.records = [r for r in self.records if (r.get("weight") or 1.0) >= 0.1]
         
         if len(self.records) > self.max_size:

@@ -10,9 +10,10 @@ from typing import Any, Final
 
 def _canonical_json(data: dict[str, Any]) -> str:
     """
-    Generates a canonical JSON string for hashing.
-    Ensures consistent key ordering and no unnecessary whitespace,
-    which is crucial for producing stable and reproducible hashes.
+    Generates a deterministic JSON string for hashing.
+
+    Uses lexicographical key sorting and compact separators to ensure
+    identical inputs consistently yield identical hash strings.
     """
     return json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
@@ -23,13 +24,13 @@ class Event:
     Represents an immutable event within the BlackSwan swarm's append-only ledger.
 
     Attributes:
-        event_id: Unique UUID string.
+        event_id: Unique UUIDv4 identifier.
         ts: Unix epoch timestamp.
         node_id: Originating node identifier.
         type: Category identifier (e.g., 'Observation', 'Action').
         payload: Event-specific data dictionary.
-        parent_id: Optional reference to a preceding event.
-        hash: SHA256 integrity hash.
+        parent_id: Optional reference to a preceding event ID.
+        hash: SHA256 integrity hash of the event contents.
     """
     event_id: str
     ts: float
@@ -49,7 +50,14 @@ class Event:
         ts: float | None = None,
     ) -> Event:
         """
-        Creates a new Event instance and calculates its integrity hash.
+        Creates a new Event instance and computes its integrity hash.
+
+        Args:
+            node_id: Identifier of the originating node.
+            event_type: Category identifier for the event.
+            payload: Data dictionary content of the event.
+            parent_id: Optional UUID of a related prior event.
+            ts: Optional override for the event timestamp.
         """
         if not node_id.strip():
             raise ValueError("node_id must be a non-empty string.")
@@ -61,7 +69,7 @@ class Event:
         event_id: str = str(uuid.uuid4())
         timestamp: float = ts if ts is not None else time.time()
 
-        base_data = {
+        base_data: dict[str, Any] = {
             "event_id": event_id,
             "ts": timestamp,
             "node_id": node_id,
@@ -83,9 +91,9 @@ class Event:
 
     def verify_hash(self) -> bool:
         """
-        Verifies event integrity by re-calculating the hash against the payload.
+        Validates the event's integrity by comparing its hash against the current content.
         """
-        base_data = {
+        base_data: dict[str, Any] = {
             "event_id": self.event_id,
             "ts": self.ts,
             "node_id": self.node_id,
@@ -98,7 +106,7 @@ class Event:
 
     def to_dict(self) -> dict[str, Any]:
         """
-        Serializes the event into a dictionary.
+        Serializes the event into a standard dictionary representation.
         """
         return asdict(self)
 
@@ -106,14 +114,18 @@ class Event:
     def from_dict(cls, data: dict[str, Any]) -> Event:
         """
         Deserializes a dictionary into an Event instance.
+
+        Raises:
+            ValueError: If required fields are missing or malformed.
+            TypeError: If the input is not a dictionary.
         """
         if not isinstance(data, dict):
             raise TypeError("Input data must be a dictionary.")
 
-        required: Final = {"event_id", "ts", "node_id", "type", "payload"}
+        required: Final[set[str]] = {"event_id", "ts", "node_id", "type", "payload"}
         if not required.issubset(data.keys()):
             missing = required - data.keys()
-            raise ValueError(f"Missing required keys: {missing}")
+            raise ValueError(f"Missing required keys for Event: {missing}")
 
         try:
             ts = float(data["ts"])
@@ -127,5 +139,5 @@ class Event:
             type=str(data["type"]),
             payload=dict(data["payload"]),
             parent_id=data.get("parent_id"),
-            hash=data.get("hash", ""),
+            hash=str(data.get("hash", "")),
         )

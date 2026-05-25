@@ -7,7 +7,7 @@ Simulates interactions between Kelly-criterion and stochastic trading agents.
 import random
 import statistics
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -22,6 +22,7 @@ from src.economy.roi_dispatcher import ROIDispatcher
 
 class RandomAgent:
     """Stochastic trader with basic risk appetite bounds."""
+
     def __init__(self, capital: float, max_risk: float = 0.05) -> None:
         self.capital = capital
         self.max_risk = max_risk
@@ -39,6 +40,7 @@ class RandomAgent:
 
 class AgentState:
     """Container for individual agent lifecycle and strategy execution."""
+
     def __init__(self, agent_id: int, initial_capital: float, is_kelly: bool) -> None:
         self.id = agent_id
         self.capital = initial_capital
@@ -72,6 +74,7 @@ class SimulationConfig:
 
 class MultiAgentSimulation:
     """Orchestrator for the market environment and agent interactions."""
+
     def __init__(self, config: SimulationConfig) -> None:
         self.config = config
         self.market = MarketEnvironment(volatility=config.volatility, drift=config.drift)
@@ -104,7 +107,8 @@ class MultiAgentSimulation:
             self.market.drift *= (1.0 - self.config.shock_magnitude)
 
         for agent in self.agents:
-            if not agent.alive: continue
+            if not agent.alive:
+                continue
             agent.capital -= self.config.burn_rate_per_step
             if agent.capital <= 0 or random.random() < self.config.agent_failure_prob:
                 agent.alive = False
@@ -118,11 +122,15 @@ class MultiAgentSimulation:
         self.apply_shocks_and_burn()
 
         for agent in self.agents:
-            if not agent.alive: continue
+            if not agent.alive:
+                continue
+            
             fraction = 0.0
             if agent.is_kelly and agent.dispatcher:
+                # Evaluate strategy via dispatcher
                 fraction, _ = agent.dispatcher.evaluate(market_state, agent.capital)
             elif agent.random_agent:
+                # Sample strategy via random agent
                 fraction = agent.random_agent.decide(market_state)
 
             ret = price * fraction * self.config.trade_leverage_factor
@@ -130,7 +138,9 @@ class MultiAgentSimulation:
             agent.trades += 1
             agent.total_return += ret
             agent.history.append(agent.capital)
-            if agent.capital <= 0: agent.alive = False
+            
+            if agent.capital <= 0:
+                agent.alive = False
 
     def collect_metrics(self) -> Dict[str, float]:
         """Aggregates simulation performance metrics."""
@@ -142,7 +152,7 @@ class MultiAgentSimulation:
             "steps": float(self.config.steps),
             "num_agents": float(self.config.num_agents),
             "agents_alive": float(len(alive_agents)),
-            "survival_rate": len(alive_agents) / self.config.num_agents if self.config.num_agents else 0.0,
+            "survival_rate": len(alive_agents) / self.config.num_agents if self.config.num_agents > 0 else 0.0,
             "kelly_avg_capital": statistics.mean([a.capital for a in kelly]) if kelly else 0.0,
             "random_avg_capital": statistics.mean([a.capital for a in rand]) if rand else 0.0,
             "total_trades": float(sum(a.trades for a in self.agents)),
@@ -157,7 +167,7 @@ class MultiAgentSimulation:
 
 
 if __name__ == "__main__":
-    config = SimulationConfig(num_agents=10, steps=200, agent_failure_prob=0.01, shock_probability=0.1)
-    sim = MultiAgentSimulation(config)
-    results = sim.run()
-    print(f"Results: {results}")
+    sim_config = SimulationConfig(num_agents=10, steps=200, agent_failure_prob=0.01, shock_probability=0.1)
+    simulation = MultiAgentSimulation(sim_config)
+    sim_results = simulation.run()
+    print(f"Results: {sim_results}")

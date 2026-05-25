@@ -71,6 +71,15 @@ from src.swarms.overseer.overseer_core.policy import (
     command_event_thresholds,
 )
 
+SMOKE_DATA_DIR = Path(os.getenv("SWARM_SMOKE_DATA_DIR", "./data/smoke_test"))
+SMOKE_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def smoke_data_path(*parts: str) -> Path:
+    path = SMOKE_DATA_DIR.joinpath(*parts)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
 
 class MemorySink:
     """Simple async command sink for executor tests."""
@@ -135,7 +144,7 @@ async def check_command_normalization() -> None:
 async def check_security_dedup() -> None:
     node = SecurityNode(
         node_id="sec-smoke-dedup",
-        memory_db=Path("./data/test_smoke_security_dedup.sqlite3"),
+        memory_db=smoke_data_path("test_smoke_security_dedup.sqlite3"),
     )
 
     calls = {"count": 0}
@@ -176,7 +185,7 @@ async def check_explorer_dedup() -> None:
 
     node = ExplorerNode(
         node_id="exp-smoke-dedup",
-        memory_db=Path("./data/test_smoke_explorer_dedup.sqlite3"),
+        memory_db=smoke_data_path("test_smoke_explorer_dedup.sqlite3"),
     )
 
     canonical = make_swarm_command(
@@ -228,11 +237,11 @@ async def check_improver_dry_cycle() -> None:
         enable_validation=False,
         enable_critique=False,
         scan_dirs=[],
-        memory_db=Path("./data/test_smoke_improver.sqlite3"),
-        output_dir=Path("./data/test_smoke_improver_output"),
-        failed_dir=Path("./data/test_smoke_improver_failed"),
-        proposals_dir=Path("./data/test_smoke_improver_proposals"),
-        staging_dir=Path("./data/test_smoke_improver_staging"),
+        memory_db=smoke_data_path("test_smoke_improver.sqlite3"),
+        output_dir=smoke_data_path("test_smoke_improver_output"),
+        failed_dir=smoke_data_path("test_smoke_improver_failed"),
+        proposals_dir=smoke_data_path("test_smoke_improver_proposals"),
+        staging_dir=smoke_data_path("test_smoke_improver_staging"),
     )
 
     await agent.on_startup()
@@ -755,12 +764,12 @@ async def check_common_lifecycle_security_explorer() -> None:
 
     security = SecurityNode(
         node_id="sec-smoke-lifecycle",
-        memory_db=Path("./data/test_smoke_security_lifecycle.sqlite3"),
+        memory_db=smoke_data_path("test_smoke_security_lifecycle.sqlite3"),
     )
 
     explorer = ExplorerNode(
         node_id="exp-smoke-lifecycle",
-        memory_db=Path("./data/test_smoke_explorer_lifecycle.sqlite3"),
+        memory_db=smoke_data_path("test_smoke_explorer_lifecycle.sqlite3"),
     )
 
     sec_pause = make_swarm_command(
@@ -842,11 +851,11 @@ async def check_improver_lifecycle_pause_resume() -> None:
         enable_validation=False,
         enable_critique=False,
         scan_dirs=[],
-        memory_db=Path("./data/test_smoke_improver_lifecycle.sqlite3"),
-        output_dir=Path("./data/test_smoke_improver_lifecycle_output"),
-        failed_dir=Path("./data/test_smoke_improver_lifecycle_failed"),
-        proposals_dir=Path("./data/test_smoke_improver_lifecycle_proposals"),
-        staging_dir=Path("./data/test_smoke_improver_lifecycle_staging"),
+        memory_db=smoke_data_path("test_smoke_improver_lifecycle.sqlite3"),
+        output_dir=smoke_data_path("test_smoke_improver_lifecycle_output"),
+        failed_dir=smoke_data_path("test_smoke_improver_lifecycle_failed"),
+        proposals_dir=smoke_data_path("test_smoke_improver_lifecycle_proposals"),
+        staging_dir=smoke_data_path("test_smoke_improver_lifecycle_staging"),
     )
 
     await agent.on_startup()
@@ -903,11 +912,11 @@ async def check_improver_run_once_blocked_without_approval() -> None:
         enable_validation=False,
         enable_critique=False,
         scan_dirs=[],
-        memory_db=Path("./data/test_smoke_improver_runonce_blocked.sqlite3"),
-        output_dir=Path("./data/test_smoke_improver_runonce_blocked_output"),
-        failed_dir=Path("./data/test_smoke_improver_runonce_blocked_failed"),
-        proposals_dir=Path("./data/test_smoke_improver_runonce_blocked_proposals"),
-        staging_dir=Path("./data/test_smoke_improver_runonce_blocked_staging"),
+        memory_db=smoke_data_path("test_smoke_improver_runonce_blocked.sqlite3"),
+        output_dir=smoke_data_path("test_smoke_improver_runonce_blocked_output"),
+        failed_dir=smoke_data_path("test_smoke_improver_runonce_blocked_failed"),
+        proposals_dir=smoke_data_path("test_smoke_improver_runonce_blocked_proposals"),
+        staging_dir=smoke_data_path("test_smoke_improver_runonce_blocked_staging"),
     )
 
     await agent.on_startup()
@@ -950,11 +959,11 @@ async def check_improver_run_once_approved_dry_cycle() -> None:
         enable_validation=False,
         enable_critique=False,
         scan_dirs=[],
-        memory_db=Path("./data/test_smoke_improver_runonce_approved.sqlite3"),
-        output_dir=Path("./data/test_smoke_improver_runonce_approved_output"),
-        failed_dir=Path("./data/test_smoke_improver_runonce_approved_failed"),
-        proposals_dir=Path("./data/test_smoke_improver_runonce_approved_proposals"),
-        staging_dir=Path("./data/test_smoke_improver_runonce_approved_staging"),
+        memory_db=smoke_data_path("test_smoke_improver_runonce_approved.sqlite3"),
+        output_dir=smoke_data_path("test_smoke_improver_runonce_approved_output"),
+        failed_dir=smoke_data_path("test_smoke_improver_runonce_approved_failed"),
+        proposals_dir=smoke_data_path("test_smoke_improver_runonce_approved_proposals"),
+        staging_dir=smoke_data_path("test_smoke_improver_runonce_approved_staging"),
     )
 
     await agent.on_startup()
@@ -1002,7 +1011,7 @@ async def check_explorer_pause_guard() -> None:
 
     node = ExplorerNode(
         node_id="exp-smoke-pause-guard",
-        memory_db=Path("./data/test_smoke_explorer_pause_guard.sqlite3"),
+        memory_db=smoke_data_path("test_smoke_explorer_pause_guard.sqlite3"),
     )
 
     pause = make_swarm_command(
@@ -1029,7 +1038,7 @@ async def check_security_pause_guard() -> None:
 
     node = SecurityNode(
         node_id="sec-smoke-pause-guard",
-        memory_db=Path("./data/test_smoke_security_pause_guard.sqlite3"),
+        memory_db=smoke_data_path("test_smoke_security_pause_guard.sqlite3"),
     )
 
     calls = {"count": 0}
@@ -1092,11 +1101,11 @@ async def check_improver_pause_guard() -> None:
         enable_validation=False,
         enable_critique=False,
         scan_dirs=[],
-        memory_db=Path("./data/test_smoke_improver_pause_guard.sqlite3"),
-        output_dir=Path("./data/test_smoke_improver_pause_guard_output"),
-        failed_dir=Path("./data/test_smoke_improver_pause_guard_failed"),
-        proposals_dir=Path("./data/test_smoke_improver_pause_guard_proposals"),
-        staging_dir=Path("./data/test_smoke_improver_pause_guard_staging"),
+        memory_db=smoke_data_path("test_smoke_improver_pause_guard.sqlite3"),
+        output_dir=smoke_data_path("test_smoke_improver_pause_guard_output"),
+        failed_dir=smoke_data_path("test_smoke_improver_pause_guard_failed"),
+        proposals_dir=smoke_data_path("test_smoke_improver_pause_guard_proposals"),
+        staging_dir=smoke_data_path("test_smoke_improver_pause_guard_staging"),
     )
 
     await agent.on_startup()
@@ -3108,9 +3117,122 @@ async def check_security_command_semantic_key_normalized() -> None:
         "node-specific security command should have distinct semantic key",
     )
 
+async def check_improver_command_normalization_target_action_parity() -> None:
+    canonical = normalize_command(
+        {
+            "type": "swarm_command",
+            "gid": "canonical-improver-target-smoke",
+            "command_type": "RUN_ONCE",
+            "target_swarm": "improver",
+            "target_role": "maintenance_agent",
+            "target_node": "improver-1",
+            "payload": {
+                "explicit_approval": True,
+                "safety_gate": "approved",
+                "reason": "test",
+            },
+        }
+    )
+
+    legacy_like = normalize_command(
+        {
+            "type": "meta_command_json",
+            "gid": "legacy-improver-target-smoke",
+            "data": {
+                "action": "RUN_ONCE",
+                "target_swarm": "improver",
+                "target_role": "maintenance_agent",
+                "node_id": "improver-1",
+                "explicit_approval": True,
+                "safety_gate": "approved",
+                "reason": "test",
+            },
+        }
+    )
+
+    assert_true(command_action(canonical) == "RUN_ONCE", "canonical improver action mismatch")
+    assert_true(command_action(legacy_like) == "RUN_ONCE", "legacy improver action mismatch")
+
+    assert_true(canonical["target_swarm"] == "improver", "canonical improver target_swarm mismatch")
+    assert_true(legacy_like["target_swarm"] == "improver", "legacy improver target_swarm mismatch")
+
+    assert_true(
+        canonical["target_role"] == "maintenance_agent",
+        "canonical improver target_role mismatch",
+    )
+    assert_true(
+        legacy_like["target_role"] == "maintenance_agent",
+        "legacy improver target_role mismatch",
+    )
+
+    assert_true(canonical["target_node"] == "improver-1", "canonical improver target_node mismatch")
+    assert_true(legacy_like["target_node"] == "improver-1", "legacy improver target_node mismatch")
+
+    assert_true(
+        canonical["payload"]["explicit_approval"] is True,
+        "canonical improver explicit approval missing",
+    )
+    assert_true(
+        legacy_like["data"]["explicit_approval"] is True,
+        "legacy improver explicit approval missing",
+    )
+
+async def check_base_node_command_intake_guard() -> None:
+    node = ExplorerNode(node_id="exp-smoke-command-intake-guard")
+
+    now = time.time()
+    node._command_consumer_started_at = now
+    node._command_history_grace_seconds = 5
+
+    old_command = {
+        "type": "swarm_command",
+        "gid": "old-command-smoke",
+        "command_type": "PAUSE",
+        "target_swarm": "explorer",
+        "timestamp": now - 60,
+    }
+
+    recent_command = {
+        "type": "swarm_command",
+        "gid": "recent-command-smoke",
+        "command_type": "PAUSE",
+        "target_swarm": "explorer",
+        "timestamp": now,
+    }
+
+    expired_command = {
+        "type": "swarm_command",
+        "gid": "expired-command-smoke",
+        "command_type": "PAUSE",
+        "target_swarm": "explorer",
+        "timestamp": now,
+        "expires_at": now - 1,
+    }
+
+    assert_true(
+        node._should_skip_command_record(old_command) is True,
+        "old command should be skipped by runtime intake guard",
+    )
+
+    assert_true(
+        node._should_skip_command_record(recent_command) is False,
+        "fresh command should pass runtime intake guard first time",
+    )
+
+    assert_true(
+        node._should_skip_command_record(recent_command) is True,
+        "same command gid should be skipped after first intake",
+    )
+
+    assert_true(
+        node._should_skip_command_record(expired_command) is True,
+        "expired command should be skipped by runtime intake guard",
+    )
+
 async def main() -> None:
     checks = [
         ("common runtime", check_common_runtime),
+        ("base node command intake guard", check_base_node_command_intake_guard),
         ("command normalization", check_command_normalization),
         ("command action targets helpers", check_command_action_targets_helpers),
         ("normalize commands ordering and skip", check_normalize_commands_ordering_and_skip),
@@ -3135,6 +3257,7 @@ async def main() -> None:
         ("improver run once blocked without approval", check_improver_run_once_blocked_without_approval),
         ("improver run once approved dry cycle", check_improver_run_once_approved_dry_cycle),
         ("improver pause guard", check_improver_pause_guard),
+        ("improver command normalization target action parity", check_improver_command_normalization_target_action_parity),
         ("overseer topology summary", check_overseer_topology_summary),
         ("overseer topology legacy command summary", check_overseer_topology_legacy_command_summary),
         ("overseer topology command events summary", check_overseer_topology_command_events_summary),

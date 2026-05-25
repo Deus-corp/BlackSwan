@@ -7,7 +7,7 @@ where drift (μ) and volatility (σ) are configurable parameters.
 
 from __future__ import annotations
 
-from typing import Final, TypedDict
+from typing import Final, TypedDict, List
 import numpy as np
 
 
@@ -50,7 +50,7 @@ class MarketEnvironment:
         self.volatility: Final[float] = float(volatility)
         self.drift: Final[float] = float(drift)
         self.lookback_period: Final[int] = lookback_period
-        self.prices: list[float] = [1.0]
+        self.prices: List[float] = [1.0]
 
     def step(self) -> float:
         """
@@ -62,15 +62,15 @@ class MarketEnvironment:
         Raises:
             ValueError: If the resulting price is non-finite or non-positive.
         """
-        last_price = self.prices[-1]
-        returns = np.random.normal(loc=self.drift, scale=self.volatility)
-        new_price = last_price * (1.0 + returns)
+        last_price: float = self.prices[-1]
+        returns: float = float(np.random.normal(loc=self.drift, scale=self.volatility))
+        new_price: float = last_price * (1.0 + returns)
 
         if not np.isfinite(new_price) or new_price <= 0:
             raise ValueError(f"Simulation error: invalid price generated: {new_price}")
 
-        self.prices.append(float(new_price))
-        return self.prices[-1]
+        self.prices.append(new_price)
+        return new_price
 
     def get_state(self) -> MarketState:
         """
@@ -79,15 +79,15 @@ class MarketEnvironment:
         Returns:
             MarketState containing current price and estimated realized volatility.
         """
-        current_price = self.prices[-1]
+        current_price: float = self.prices[-1]
 
         if len(self.prices) < 2:
-            vol_estimate = self.volatility
+            vol_estimate: float = self.volatility
         else:
             # Calculate realized volatility over the lookback window
-            start_idx = max(0, len(self.prices) - (self.lookback_period + 1))
-            window = np.array(self.prices[start_idx:])
-            returns = np.diff(window) / window[:-1]
+            start_idx: int = max(0, len(self.prices) - (self.lookback_period + 1))
+            window: np.ndarray = np.array(self.prices[start_idx:])
+            returns: np.ndarray = np.diff(window) / window[:-1]
 
             vol_estimate = float(np.std(returns)) if returns.size > 0 else self.volatility
 

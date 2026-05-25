@@ -10,8 +10,10 @@ from __future__ import annotations
 from typing import Final, List, Tuple
 from fastapi import Request
 
-# Navigation configuration: (path, display_label, unique_key)
+#: Default page title for the dashboard browser tabs
 DEFAULT_PAGE_TITLE: Final[str] = "BlackSwan Control Panel"
+
+#: Navigation configuration: (path, display_label, unique_key)
 TABS_CONFIG: Final[List[Tuple[str, str, str]]] = [
     ("/", "🏠 Main", "main"),
     ("/trades", "📈 Trades", "trades"),

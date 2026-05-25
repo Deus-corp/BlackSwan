@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Final
+from typing import Any, Final, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -25,19 +25,31 @@ class Proposal:
         self.action: Final[str] = action
         self.amount: Final[float] = amount
         self.symbol: Final[str] = symbol
-        self.signatures: dict[str, str] = {}
+        self.signatures: Dict[str, str] = {}
 
     def sign(self, node_id: str, signature: str) -> None:
-        """Adds a node's signature to the proposal."""
+        """Adds a node's signature to the proposal.
+
+        Args:
+            node_id: Unique identifier of the signing node.
+            signature: The cryptographic string representation.
+
+        Raises:
+            ValueError: If node_id is empty.
+        """
         if not node_id:
             raise ValueError("node_id cannot be empty")
         self.signatures[node_id] = signature
 
     def is_approved(self, quorum: int = 3) -> bool:
-        """Checks if the count of unique signatures meets or exceeds the quorum."""
+        """Checks if the count of unique signatures meets or exceeds the quorum.
+
+        Args:
+            quorum: The minimum number of signatures required.
+        """
         return len(self.signatures) >= quorum
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Serializes the proposal for gossip transmission or storage."""
         return {
             "proposer_node_id": self.proposer_node_id,
@@ -68,11 +80,16 @@ class ConsensusManager:
         """
         Validates and adds an incoming signature to an existing proposal.
 
+        Args:
+            proposal: The target Proposal object.
+            node_id: The ID of the node submitting the signature.
+            signature: The signature string.
+
         Returns:
             True if the proposal reaches the quorum after this signature application.
         """
         proposal.sign(node_id, signature)
-        is_approved = proposal.is_approved()
+        is_approved: bool = proposal.is_approved()
         if is_approved:
             logger.info("Proposal reached quorum for symbol %s", proposal.symbol)
         return is_approved
