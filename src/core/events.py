@@ -1,3 +1,5 @@
+"""Immutable append-only ledger events with deterministic integrity hashes."""
+
 from __future__ import annotations
 
 import hashlib
@@ -9,29 +11,24 @@ from typing import Any, Final
 
 
 def _canonical_json(data: dict[str, Any]) -> str:
-    """
-    Generates a deterministic JSON string for hashing.
+    """Return deterministic compact JSON suitable for hashing."""
+    return json.dumps(
+        data,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
+    )
 
-    Uses lexicographical key sorting and compact separators to ensure
-    identical inputs consistently yield identical hash strings.
-    """
-    return json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+def _compute_hash(data: dict[str, Any]) -> str:
+    return hashlib.sha256(_canonical_json(data).encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
 class Event:
-    """
-    Represents an immutable event within the BlackSwan swarm's append-only ledger.
+    """Immutable event stored in the BlackSwan append-only ledger."""
 
-    Attributes:
-        event_id: Unique UUIDv4 identifier.
-        ts: Unix epoch timestamp.
-        node_id: Originating node identifier.
-        type: Category identifier (e.g., 'Observation', 'Action').
-        payload: Event-specific data dictionary.
-        parent_id: Optional reference to a preceding event ID.
-        hash: SHA256 integrity hash of the event contents.
-    """
     event_id: str
     ts: float
     node_id: str
@@ -39,6 +36,29 @@ class Event:
     payload: dict[str, Any]
     parent_id: str | None = None
     hash: str = ""
+
+    def __post_init__(self) -> None:
+        if not str(self.event_id or "").strip():
+            raise ValueError("event_id must be a non-empty string")
+        if not str(self.node_id or "").strip():
+            raise ValueError("node_id must be a non-empty string")
+        if not str(self.type or "").strip():
+            raise ValueError("type must be a non-empty string")
+        if not isinstance(self.payload, dict):
+            raise TypeError("payload must be a dictionary")
+
+        object.__setattr__(self, "event_id", str(self.event_id).strip())
+        object.__setattr__(self, "ts", float(self.ts))
+        object.__setattr__(self, "node_id", str(self.node_id).strip())
+        object.__setattr__(self, "type", str(self.type).strip())
+        object.__setattr__(self, "payload", dict(self.payload))
+
+        if self.parent_id is not None:
+            parent_id = str(self.parent_id).strip()
+            object.__setattr__(self, "parent_id", parent_id or None)
+
+        if not self.hash:
+            object.__setattr__(self, "hash", self.compute_hash())
 
     @classmethod
     def create(
@@ -48,52 +68,22 @@ class Event:
         payload: dict[str, Any],
         parent_id: str | None = None,
         ts: float | None = None,
+        event_id: str | None = None,
     ) -> Event:
-        """
-        Creates a new Event instance and computes its integrity hash.
-
-        Args:
-            node_id: Identifier of the originating node.
-            event_type: Category identifier for the event.
-            payload: Data dictionary content of the event.
-            parent_id: Optional UUID of a related prior event.
-            ts: Optional override for the event timestamp.
-        """
-        if not node_id.strip():
-            raise ValueError("node_id must be a non-empty string.")
-        if not event_type.strip():
-            raise ValueError("event_type must be a non-empty string.")
-        if not isinstance(payload, dict):
-            raise ValueError("payload must be a dictionary.")
-
-        event_id: str = str(uuid.uuid4())
-        timestamp: float = ts if ts is not None else time.time()
-
-        base_data: dict[str, Any] = {
-            "event_id": event_id,
-            "ts": timestamp,
-            "node_id": node_id,
-            "type": event_type,
-            "parent_id": parent_id,
-            "payload": payload,
-        }
-        event_hash: str = hashlib.sha256(_canonical_json(base_data).encode("utf-8")).hexdigest()
-
+        """Create a new event and compute its integrity hash."""
         return cls(
-            event_id=event_id,
-            ts=timestamp,
+            event_id=str(event_id or uuid.uuid4()),
+            ts=float(ts if ts is not None else time.time()),
             node_id=node_id,
             type=event_type,
             payload=payload,
             parent_id=parent_id,
-            hash=event_hash,
         )
 
-    def verify_hash(self) -> bool:
-        """
-        Validates the event's integrity by comparing its hash against the current content.
-        """
-        base_data: dict[str, Any] = {
+    @property
+    def hash_payload(self) -> dict[str, Any]:
+        """Return the fields covered by the integrity hash."""
+        return {
             "event_id": self.event_id,
             "ts": self.ts,
             "node_id": self.node_id,
@@ -101,43 +91,40 @@ class Event:
             "parent_id": self.parent_id,
             "payload": self.payload,
         }
-        expected_hash: str = hashlib.sha256(_canonical_json(base_data).encode("utf-8")).hexdigest()
-        return expected_hash == self.hash
+
+    def compute_hash(self) -> str:
+        """Compute the SHA256 integrity hash for current event contents."""
+        return _compute_hash(self.hash_payload)
+
+    def verify_hash(self) -> bool:
+        """Return True if the stored hash matches the event contents."""
+        return self.compute_hash() == self.hash
 
     def to_dict(self) -> dict[str, Any]:
-        """
-        Serializes the event into a standard dictionary representation.
-        """
+        """Serialize the event to a dictionary."""
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Event:
-        """
-        Deserializes a dictionary into an Event instance.
-
-        Raises:
-            ValueError: If required fields are missing or malformed.
-            TypeError: If the input is not a dictionary.
-        """
+        """Deserialize an Event from a dictionary."""
         if not isinstance(data, dict):
-            raise TypeError("Input data must be a dictionary.")
+            raise TypeError("Event data must be a dictionary")
 
         required: Final[set[str]] = {"event_id", "ts", "node_id", "type", "payload"}
-        if not required.issubset(data.keys()):
-            missing = required - data.keys()
-            raise ValueError(f"Missing required keys for Event: {missing}")
+        missing = required.difference(data)
+        if missing:
+            raise ValueError(f"Missing required Event keys: {sorted(missing)}")
 
-        try:
-            ts = float(data["ts"])
-        except (ValueError, TypeError) as e:
-            raise ValueError(f"Invalid timestamp format: {data.get('ts')}") from e
+        payload = data["payload"]
+        if not isinstance(payload, dict):
+            raise TypeError("Event payload must be a dictionary")
 
         return cls(
             event_id=str(data["event_id"]),
-            ts=ts,
+            ts=float(data["ts"]),
             node_id=str(data["node_id"]),
             type=str(data["type"]),
-            payload=dict(data["payload"]),
+            payload=dict(payload),
             parent_id=data.get("parent_id"),
             hash=str(data.get("hash", "")),
         )

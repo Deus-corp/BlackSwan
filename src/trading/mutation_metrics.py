@@ -1,80 +1,140 @@
-"""
-Global LLM mutation metrics tracking.
+"""Thread-safe LLM mutation metrics tracking with optional Prometheus integration."""
 
-This module provides a thread-safe registry for tracking LLM mutation events
-and their impact on capital, integrated with Prometheus for observability.
-"""
+from __future__ import annotations
 
+import logging
+import math
 import threading
-from typing import Tuple, Optional
-from prometheus_client import Counter, Gauge
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
+
+try:
+    from prometheus_client import Counter, Gauge
+except ImportError:  # pragma: no cover - optional dependency
+    Counter = None  # type: ignore[assignment]
+    Gauge = None  # type: ignore[assignment]
+
+
+class _NoopMetric:
+    """Fallback metric object used when prometheus_client is unavailable."""
+
+    def inc(self, amount: float = 1.0) -> None:
+        del amount
+
+    def set(self, value: float) -> None:
+        del value
+
 
 class MutationMetrics:
-    """
-    Thread-safe manager for LLM mutation statistics and Prometheus metrics.
+    """Thread-safe manager for LLM mutation statistics and Prometheus metrics."""
 
-    Encapsulates mutation counting and capital impact calculations to provide
-    consistent state management across the application.
-    """
-
-    def __init__(self) -> None:
-        """Initialize counters, gauges, and synchronization primitives."""
-        self._llm_mutation_count: int = 0
-        self._llm_mutation_total_impact: float = 0.0
+    def __init__(self, *, namespace: str = "swarm") -> None:
+        self._llm_mutation_count = 0
+        self._llm_mutation_total_impact = 0.0
         self._last_capital: Optional[float] = None
-        self._lock: threading.Lock = threading.Lock()
+        self._lock = threading.RLock()
 
-        self.mutation_counter: Counter = Counter(
-            "swarm_mutations_total", "Total number of LLM mutations across all nodes"
-        )
-        self.mutation_impact_gauge: Gauge = Gauge(
-            "swarm_mutation_impact", "Average impact of LLM mutations on capital"
-        )
+        self.mutation_counter = self._make_counter(namespace)
+        self.mutation_impact_gauge = self._make_gauge(namespace)
 
-    def note_llm_mutation(self) -> None:
-        """Increment mutation counter and update Prometheus metrics."""
+    def note_llm_mutation(self, count: int = 1) -> None:
+        """Increment mutation counter."""
+        safe_count = max(0, int(count))
+        if safe_count == 0:
+            return
+
         with self._lock:
-            self._llm_mutation_count += 1
-        self.mutation_counter.inc()
+            self._llm_mutation_count += safe_count
+
+        self.mutation_counter.inc(safe_count)
 
     def update_llm_impact(self, current_capital: float) -> None:
-        """
-        Update total capital impact and calculate average impact gauge.
+        """Update mutation capital impact using current capital delta."""
+        capital = self._safe_float(current_capital, float("nan"))
+        if not math.isfinite(capital):
+            logger.warning("Ignoring non-finite capital for LLM impact update: %r", current_capital)
+            return
 
-        Args:
-            current_capital: The current portfolio capital post-mutation.
-        """
         with self._lock:
             if self._last_capital is not None:
-                self._llm_mutation_total_impact += current_capital - self._last_capital
-            self._last_capital = current_capital
+                self._llm_mutation_total_impact += capital - self._last_capital
 
-            avg: float = (
-                self._llm_mutation_total_impact / self._llm_mutation_count
-                if self._llm_mutation_count > 0
-                else 0.0
-            )
-            self.mutation_impact_gauge.set(avg)
+            self._last_capital = capital
+            avg = self._average_impact_locked()
 
-    def get_llm_stats(self) -> Tuple[int, float]:
-        """
-        Return the current state of mutation metrics.
+        self.mutation_impact_gauge.set(avg)
 
-        Returns:
-            A tuple containing (total_mutations, average_impact).
+    def reset(self) -> None:
+        """Reset in-memory mutation statistics.
+
+        Prometheus counters are monotonic and are not reset.
         """
         with self._lock:
-            avg: float = (
-                self._llm_mutation_total_impact / self._llm_mutation_count
-                if self._llm_mutation_count > 0
-                else 0.0
+            self._llm_mutation_count = 0
+            self._llm_mutation_total_impact = 0.0
+            self._last_capital = None
+
+        self.mutation_impact_gauge.set(0.0)
+
+    def get_llm_stats(self) -> tuple[int, float]:
+        """Return (total_mutations, average_impact)."""
+        with self._lock:
+            return self._llm_mutation_count, self._average_impact_locked()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable mutation metrics state."""
+        with self._lock:
+            return {
+                "llm_mutation_count": self._llm_mutation_count,
+                "llm_mutation_total_impact": self._llm_mutation_total_impact,
+                "llm_mutation_average_impact": self._average_impact_locked(),
+                "last_capital": self._last_capital,
+            }
+
+    def _average_impact_locked(self) -> float:
+        if self._llm_mutation_count <= 0:
+            return 0.0
+        return self._llm_mutation_total_impact / self._llm_mutation_count
+
+    @staticmethod
+    def _make_counter(namespace: str) -> Any:
+        if Counter is None:
+            return _NoopMetric()
+
+        try:
+            return Counter(
+                f"{namespace}_mutations_total",
+                "Total number of LLM mutations across all nodes",
             )
-            return self._llm_mutation_count, avg
+        except ValueError:
+            logger.debug("Prometheus counter already registered; using noop local handle.", exc_info=True)
+            return _NoopMetric()
 
-# Global instance for cross-module access
-mutation_metrics: MutationMetrics = MutationMetrics()
+    @staticmethod
+    def _make_gauge(namespace: str) -> Any:
+        if Gauge is None:
+            return _NoopMetric()
 
-# Functional interface for legacy support
+        try:
+            return Gauge(
+                f"{namespace}_mutation_impact",
+                "Average impact of LLM mutations on capital",
+            )
+        except ValueError:
+            logger.debug("Prometheus gauge already registered; using noop local handle.", exc_info=True)
+            return _NoopMetric()
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+
+mutation_metrics = MutationMetrics()
+
 note_llm_mutation = mutation_metrics.note_llm_mutation
 update_llm_impact = mutation_metrics.update_llm_impact
 get_llm_stats = mutation_metrics.get_llm_stats

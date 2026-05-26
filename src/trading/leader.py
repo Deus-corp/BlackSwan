@@ -1,34 +1,40 @@
-"""
-Deterministic leader selection for a swarm using SHA-256.
-"""
+"""Deterministic leader selection helpers for swarm execution."""
+
+from __future__ import annotations
+
 import hashlib
+from collections.abc import Sequence
 
 
 def select_leader(node_id: str, block_number: int, total_nodes: int) -> int:
-    """
-    Selects the swarm leader deterministically based on an SHA-256 hash.
-
-    This function combines a node identifier and a block number to create a
-    unique seed, hashing it to determine the leader index. This ensures 
-    consistent outcomes across distributed nodes.
-
-    Args:
-        node_id: A unique identifier for the node.
-        block_number: The current block or round index.
-        total_nodes: The number of active nodes in the swarm.
-
-    Returns:
-        An integer index within the range [0, total_nodes - 1].
-
-    Raises:
-        ValueError: If total_nodes is not a positive integer.
-    """
+    """Select a deterministic leader index in range [0, total_nodes - 1]."""
+    clean_node_id = str(node_id or "").strip()
+    if not clean_node_id:
+        raise ValueError("node_id must be a non-empty string")
+    if not isinstance(block_number, int) or block_number < 0:
+        raise ValueError(f"block_number must be a non-negative integer, got {block_number!r}")
     if not isinstance(total_nodes, int) or total_nodes <= 0:
-        raise ValueError(f"total_nodes must be a positive integer, got {total_nodes}.")
+        raise ValueError(f"total_nodes must be a positive integer, got {total_nodes!r}")
 
-    # Generate consistent hash input
-    seed: bytes = f"{node_id}:{block_number}".encode("utf-8")
-    
-    # Compute SHA-256 hash and map to index space
-    hash_hex: str = hashlib.sha256(seed).hexdigest()
-    return int(hash_hex, 16) % total_nodes
+    seed = f"{clean_node_id}:{block_number}:{total_nodes}".encode("utf-8")
+    return int(hashlib.sha256(seed).hexdigest(), 16) % total_nodes
+
+
+def select_leader_node(nodes: Sequence[str], block_number: int) -> str:
+    """Select a deterministic leader node id from a sequence of node ids."""
+    normalized_nodes = sorted({str(node or "").strip() for node in nodes if str(node or "").strip()})
+    if not normalized_nodes:
+        raise ValueError("nodes must contain at least one non-empty node id")
+
+    seed = f"{block_number}:{'|'.join(normalized_nodes)}".encode("utf-8")
+    index = int(hashlib.sha256(seed).hexdigest(), 16) % len(normalized_nodes)
+    return normalized_nodes[index]
+
+
+def is_leader(node_id: str, nodes: Sequence[str], block_number: int) -> bool:
+    """Return True when node_id is selected as leader for the given block."""
+    clean_node_id = str(node_id or "").strip()
+    if not clean_node_id:
+        raise ValueError("node_id must be a non-empty string")
+
+    return select_leader_node(nodes, block_number) == clean_node_id

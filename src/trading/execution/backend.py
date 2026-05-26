@@ -1,52 +1,84 @@
-"""
-Abstract interface for trade execution modules.
+"""Abstract interface and helpers for trade execution backends."""
 
-This module defines the contract for trade execution backends, enabling
-interchangeable use of live exchange integrations and simulation environments.
-"""
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Final, Literal, TypedDict, Optional
+from typing import Literal, Optional, TypedDict
+
+
+OrderSide = Literal["buy", "sell"]
+ExecutionStatus = Literal["filled", "rejected", "skipped", "error", "simulated"]
 
 
 class ExecutionResult(TypedDict):
-    """
-    Typed dictionary defining the required response structure for trade execution.
-    """
+    """Required response structure for trade execution."""
+
     success: bool
     new_capital: float
-    status: Literal["filled", "rejected", "skipped", "error", "simulated"]
+    status: ExecutionStatus
     tx_hash: Optional[str]
     error: Optional[str]
 
 
 class ExecutionBackend(ABC):
-    """
-    Abstract base class defining the interface for executing trade orders.
-
-    Concrete implementations must handle the specific API or simulation logic required
-    to bridge the execution engine with the target exchange or market environment.
-    """
+    """Abstract base class for live and simulated order execution backends."""
 
     @abstractmethod
     async def execute_order(
         self,
         symbol: str,
-        side: Literal["buy", "sell"],
+        side: OrderSide,
         amount: float,
         price: float,
         capital: float,
     ) -> ExecutionResult:
-        """
-        Executes a trade order with the specified parameters.
-
-        Args:
-            symbol: The trading pair symbol (e.g., "BTC/USD").
-            side: The order side, either "buy" or "sell".
-            amount: The quantity of the base currency to trade.
-            price: The price at which the order is executed.
-            capital: The total capital available for the trade in quote currency.
-
-        Returns:
-            ExecutionResult: A dictionary containing the outcome of the order execution.
-        """
+        """Execute an order and return normalized execution result."""
         ...
+
+
+def make_execution_result(
+    *,
+    success: bool,
+    new_capital: float,
+    status: ExecutionStatus,
+    tx_hash: Optional[str] = None,
+    error: Optional[str] = None,
+) -> ExecutionResult:
+    """Build a normalized ExecutionResult."""
+    return {
+        "success": bool(success),
+        "new_capital": float(new_capital),
+        "status": status,
+        "tx_hash": tx_hash,
+        "error": error,
+    }
+
+
+def rejected_result(capital: float, error: str) -> ExecutionResult:
+    """Return a standardized rejected execution result."""
+    return make_execution_result(
+        success=False,
+        new_capital=capital,
+        status="rejected",
+        error=str(error),
+    )
+
+
+def error_result(capital: float, error: str) -> ExecutionResult:
+    """Return a standardized error execution result."""
+    return make_execution_result(
+        success=False,
+        new_capital=capital,
+        status="error",
+        error=str(error),
+    )
+
+
+def skipped_result(capital: float, reason: str = "skipped") -> ExecutionResult:
+    """Return a standardized skipped execution result."""
+    return make_execution_result(
+        success=False,
+        new_capital=capital,
+        status="skipped",
+        error=str(reason),
+    )

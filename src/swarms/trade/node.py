@@ -41,7 +41,7 @@ from src.security.key_manager import KeyManager
 from src.security.reputation_manager import ReputationManager
 from src.trading.capital_manager import CapitalManager
 from src.trading.execution import build_backend
-from src.trading.heartbeat_publisher import HeartbeatPublisher
+from src.swarms.trade.heartbeat import HeartbeatPublisher
 from src.trading.leader import select_leader
 from src.trading.market import MarketSnapshotService
 from src.trading.mutation_metrics import get_llm_stats, note_llm_mutation, update_llm_impact
@@ -273,6 +273,14 @@ class SwarmNode:
         self.trade_flow: TradeFlowService = TradeFlowService(self.ctx)
         self.maintenance_service: MaintenanceService = MaintenanceService(self.ctx)
         self.heartbeat_publisher: HeartbeatPublisher = HeartbeatPublisher(self.ctx)
+        import inspect
+        logger.info(
+            "[%s] HeartbeatPublisher runtime class: module=%s file=%s signature=%s",
+            self.node_id,
+            self.heartbeat_publisher.__class__.__module__,
+            inspect.getfile(self.heartbeat_publisher.__class__),
+            inspect.signature(self.heartbeat_publisher.publish),
+        )
 
         # Keep the shared context aligned with the node-owned service instances.
         self.ctx.market_collector = self.market_collector
@@ -419,7 +427,31 @@ class SwarmNode:
         return self.node_index == leader_index
 
     async def _apply_meta_commands(self) -> None:
-        await apply_meta_commands(self)
+        commands: List[Dict[str, Any]] = []
+
+        try:
+            state = getattr(self.crdt, "state", {}) or {}
+            for value in state.values():
+                if not isinstance(value, dict):
+                    continue
+
+                item_type = str(value.get("type") or "")
+                target_swarm = str(value.get("target_swarm") or value.get("swarm") or "")
+                command_type = str(value.get("command_type") or value.get("action") or "")
+
+                if item_type not in {"meta_command", "trade_command", "swarm_command"}:
+                    continue
+                if target_swarm not in {"", "*", "trade"}:
+                    continue
+                if not command_type:
+                    continue
+
+                commands.append(value)
+
+            apply_meta_commands(self.ctx, commands)
+
+        except Exception:
+            logger.exception("[%s] Failed to apply trade meta commands.", self.node_id)
 
     async def _evolution_cycle(self) -> None:
         while True:
@@ -763,9 +795,12 @@ class SwarmNode:
         if self.step_count % 50 == 0:
             await self._apply_meta_commands()
 
-        if self.step_count % 30 == 0:
+        if self.step_count % 10 == 0:
             self.sync_context()
-            await self.heartbeat_publisher.publish(snapshot)
+            try:
+                await self.heartbeat_publisher.publish(snapshot)
+            except Exception:
+                logger.exception("[%s] Failed to publish trade heartbeat.", self.node_id)
 
         if (
             self.step_count % 200 == 0
@@ -1132,6 +1167,13 @@ class SwarmNode:
         self._sync_task = asyncio.create_task(self._sync_cycle(), name="sync_cycle")
         self._command_task = asyncio.create_task(self._command_loop(), name="command_loop")
         self.sync_context()
+
+        # Publish an initial heartbeat before entering the main loop so the
+        # overseer can discover the trade node during its first collection cycle.
+        try:
+            await self.heartbeat_publisher.publish()
+        except Exception:
+            logger.exception("[%s] Failed to publish initial trade heartbeat.", self.node_id)
 
         try:
             await self.main_loop()

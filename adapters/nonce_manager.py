@@ -1,62 +1,59 @@
-"""
-NonceManager — async-safe nonce management using SQLite (WAL-mode).
-Provides atomic nonce reservation and synchronization with on-chain nonces.
-"""
-import sqlite3
-import time
+"""Async-safe Ethereum nonce management using SQLite WAL mode."""
+
+from __future__ import annotations
+
 import asyncio
 import json
+import logging
+import math
+import sqlite3
+import time
 from pathlib import Path
-from typing import Optional, Dict, Any, Union
-from loguru import logger
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class NonceManager:
-    """
-    Manages nonces for a given Ethereum account address in an async-safe manner
-    using an SQLite database. Supports atomic nonce reservation and synchronization
-    with the blockchain.
+    """Manage account nonces with process-safe SQLite reservations."""
 
-    Utilizes WAL journal mode for better concurrency and handles nonce updates
-    based on on-chain data and successful transaction receipts.
-    """
+    DEFAULT_DB_PATH = "/app/nonce_data/nonce.db"
+    BUSY_TIMEOUT_MS = 10_000
+    CONNECT_TIMEOUT_SECONDS = 10.0
+    MAX_LOCK_RETRIES = 8
 
     def __init__(self, account_address: str, db_path: Optional[str] = None) -> None:
-        """
-        Initializes the NonceManager.
+        clean_address = str(account_address or "").strip().lower()
+        if not clean_address:
+            raise ValueError("account_address cannot be empty")
 
-        Args:
-            account_address (str): The Ethereum account address for which to manage nonces.
-            db_path (Optional[str]): Path to the SQLite database file. If None, it defaults
-                                      to '/app/nonce_data/nonce.db'.
-        """
-        self.account_address: str = account_address.lower()
+        self.account_address = clean_address
+
         if db_path is None:
-            db_dir: Path = Path("/app/nonce_data")
-            db_dir.mkdir(parents=True, exist_ok=True)
-            self.db_path: str = str(db_dir / "nonce.db")
+            path = Path(self.DEFAULT_DB_PATH)
         else:
-            self.db_path: str = db_path
+            path = Path(db_path)
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.db_path = str(path)
+
         self._init_db()
-        logger.info(f"NonceManager ready for {self.account_address[:8]}... | db={self.db_path}")
+        logger.info("NonceManager ready for %s... | db=%s", self.account_address[:8], self.db_path)
 
     def _init_db(self) -> None:
-        """
-        Initializes the SQLite database with necessary tables and PRAGMA settings.
-        Sets journal_mode to WAL for better concurrency and busy_timeout for handling contention.
-        """
-        with sqlite3.connect(self.db_path, timeout=10) as conn:
-            conn.execute("PRAGMA journal_mode=WAL;")
-            conn.execute("PRAGMA synchronous=NORMAL;")
-            conn.execute("PRAGMA busy_timeout=5000;") # 5 seconds
-            conn.execute("""
+        """Initialize SQLite schema and WAL-related pragmas."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS nonces (
                     address TEXT PRIMARY KEY,
-                    nonce INTEGER DEFAULT 0,
-                    last_updated REAL DEFAULT 0
+                    nonce INTEGER NOT NULL DEFAULT 0,
+                    last_updated REAL NOT NULL DEFAULT 0
                 )
-            """)
-            conn.execute("""
+                """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS mutation_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     node_id TEXT NOT NULL,
@@ -65,203 +62,228 @@ class NonceManager:
                     new_params TEXT,
                     context TEXT
                 )
-            """)
+                """
+            )
             conn.commit()
 
     def _get_connection(self) -> sqlite3.Connection:
-        """
-        Returns a new SQLite database connection with a specified timeout.
-
-        Returns:
-            sqlite3.Connection: An SQLite database connection object.
-        """
-        return sqlite3.connect(self.db_path, timeout=8)
+        """Return configured SQLite connection."""
+        conn = sqlite3.connect(
+            self.db_path,
+            timeout=self.CONNECT_TIMEOUT_SECONDS,
+            isolation_level=None,
+        )
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute(f"PRAGMA busy_timeout={self.BUSY_TIMEOUT_MS};")
+        return conn
 
     async def get_nonce_async(self, onchain_pending_nonce: int) -> int:
-        """
-        Asynchronously retrieves a safe nonce, which is the maximum of the provided
-        on-chain pending nonce and the stored database nonce, then increments it for future use.
-        This method is less atomic for concurrent processes than `reserve_nonce`
-        as it relies on `asyncio.to_thread` for the synchronous DB operation.
-
-        Args:
-            onchain_pending_nonce (int): The current pending transaction count for the account on-chain.
-
-        Returns:
-            int: The safe nonce to use for the next transaction.
-        """
+        """Reserve next nonce using provided on-chain pending nonce."""
         return await asyncio.to_thread(self._get_next_nonce, onchain_pending_nonce)
 
     def _get_next_nonce(self, onchain_nonce: int) -> int:
-        """
-        Synchronously calculates the next safe nonce. It ensures the stored nonce
-        is at least `onchain_nonce`, then updates the database to reflect the next available nonce.
-        This method is called by `get_nonce_async`.
+        """Synchronously reserve next safe nonce."""
+        safe_onchain = self._non_negative_int(onchain_nonce, "onchain_nonce")
+        return self._reserve_from_onchain_nonce(safe_onchain)
 
-        Args:
-            onchain_nonce (int): The current pending transaction count for the account on-chain.
-
-        Returns:
-            int: The safe nonce to use for the next transaction.
-        """
-        with self._get_connection() as conn:
-            # Ensure the address exists in the nonces table, initializing if not present.
-            # If it exists, this does nothing due to IGNORE.
-            conn.execute("INSERT OR IGNORE INTO nonces (address, nonce, last_updated) VALUES (?, ?, ?)",
-                         (self.account_address, onchain_nonce, time.time()))
-            
-            # Fetch current DB nonce (it's guaranteed to exist now due to INSERT OR IGNORE)
-            cur = conn.execute("SELECT nonce FROM nonces WHERE address = ?", (self.account_address,))
-            row = cur.fetchone()
-            db_nonce: int = row[0] # Will always find a row
-
-            # The safe nonce is the maximum of what's on-chain and what's in DB
-            safe_nonce: int = max(onchain_nonce, db_nonce)
-            
-            # Update the DB to the *next* available nonce for this address
-            conn.execute("UPDATE nonces SET nonce = ?, last_updated = ? WHERE address = ?",
-                         (safe_nonce + 1, time.time(), self.account_address))
-            conn.commit()
-            return safe_nonce
-
-    async def update_nonce_async(self, transaction_info: Dict[str, Any]) -> Optional[int]:
-        """
-        Asynchronously updates the stored nonce based on a successful transaction's information.
-        This method is designed to confirm a transaction and ensure the database nonce
-        is at least one greater than the successful transaction's nonce. It only increments
-        the stored nonce if the transaction's nonce is higher than the current stored value.
-
-        Args:
-            transaction_info (Dict[str, Any]): A dictionary containing transaction details.
-                It *must* include 'status' (1 for success) and 'nonce' (the nonce of the transaction).
-
-        Returns:
-            Optional[int]: The new stored nonce if updated, or the current stored nonce if no update was
-                           needed (i.e., stored nonce was already sufficiently high). Returns None
-                           if the transaction was not successful or lacked required info.
-        """
+    async def update_nonce_async(self, transaction_info: dict[str, Any]) -> Optional[int]:
+        """Advance stored nonce from a successful transaction receipt/info dict."""
         return await asyncio.to_thread(self._update_nonce, transaction_info)
 
-    def _update_nonce(self, transaction_info: Dict[str, Any]) -> Optional[int]:
-        """
-        Synchronously updates the stored nonce based on a successful transaction's information.
-        This method is called by `update_nonce_async`. It prevents the stored nonce from
-        being decremented by an older receipt and ensures it only moves forward.
-
-        Args:
-            transaction_info (Dict[str, Any]): A dictionary containing transaction details.
-                It *must* include 'status' (1 for success) and 'nonce' (the nonce of the transaction).
-
-        Returns:
-            Optional[int]: The new stored nonce if updated, or the current stored nonce if no update was
-                           needed (i.e., stored nonce was already sufficiently high). Returns None
-                           if the transaction was not successful or lacked required info.
-        """
-        if isinstance(transaction_info, dict) and transaction_info.get('status') == 1:
-            tx_nonce: Optional[int] = transaction_info.get('nonce')
-            if tx_nonce is not None:
-                new_next_nonce: int = tx_nonce + 1
-                with self._get_connection() as conn:
-                    # Ensure the address exists. If not, initialize its nonce to 0.
-                    conn.execute("INSERT OR IGNORE INTO nonces (address, nonce, last_updated) VALUES (?, ?, ?)",
-                                 (self.account_address, 0, time.time()))
-                    
-                    # Fetch current DB nonce (guaranteed to exist now)
-                    cur = conn.execute("SELECT nonce FROM nonces WHERE address = ?", (self.account_address,))
-                    row = cur.fetchone()
-                    current_db_nonce: int = row[0]
-
-                    # Only update if the new_next_nonce is strictly greater than the current stored nonce
-                    if new_next_nonce > current_db_nonce:
-                        conn.execute("UPDATE nonces SET nonce = ?, last_updated = ? WHERE address = ?",
-                                     (new_next_nonce, time.time(), self.account_address))
-                        conn.commit()
-                        logger.debug(f"Nonce for {self.account_address[:8]}... updated to {new_next_nonce} "
-                                     f"based on successful tx nonce {tx_nonce}.")
-                        return new_next_nonce
-                    else:
-                        logger.debug(f"No nonce update needed for tx nonce {tx_nonce}. "
-                                     f"DB nonce for {self.account_address[:8]}... is already {current_db_nonce} or higher.")
-                        return current_db_nonce # Return current DB nonce as it's already sufficiently high
-            else:
-                logger.warning(f"Transaction info dict provided without 'nonce' field for successful transaction: {transaction_info}")
-                return None
-        else:
-            logger.debug(f"Transaction info does not indicate a successful transaction or is malformed: {transaction_info}")
+    def _update_nonce(self, transaction_info: dict[str, Any]) -> Optional[int]:
+        """Synchronously advance stored nonce from transaction info."""
+        if not isinstance(transaction_info, dict):
+            logger.debug("Ignoring malformed transaction_info: %r", transaction_info)
             return None
 
-    async def sync_with_chain_async(self, onchain_pending: int) -> None:
-        """
-        Asynchronously synchronizes the stored nonce with the latest on-chain pending nonce.
-        This method will overwrite the stored nonce if the on-chain nonce is newer or if
-        it's the first time synchronizing.
+        if transaction_info.get("status") != 1:
+            logger.debug("Transaction info does not indicate success: %s", transaction_info)
+            return None
 
-        Args:
-            onchain_pending (int): The current pending transaction count for the account on-chain.
-        """
+        if "nonce" not in transaction_info or transaction_info.get("nonce") is None:
+            logger.warning("Successful transaction info without nonce: %s", transaction_info)
+            return None
+
+        tx_nonce = self._non_negative_int(transaction_info.get("nonce"), "nonce")
+        new_next_nonce = tx_nonce + 1
+
+        def _op(conn: sqlite3.Connection) -> int:
+            self._ensure_row(conn, initial_nonce=0)
+            current_db_nonce = self._read_nonce(conn)
+
+            if new_next_nonce > current_db_nonce:
+                self._write_nonce(conn, new_next_nonce)
+                logger.debug(
+                    "Nonce for %s... updated to %s from successful tx nonce %s.",
+                    self.account_address[:8],
+                    new_next_nonce,
+                    tx_nonce,
+                )
+                return new_next_nonce
+
+            logger.debug(
+                "No nonce update needed for tx nonce %s; db nonce=%s.",
+                tx_nonce,
+                current_db_nonce,
+            )
+            return current_db_nonce
+
+        return self._with_immediate_transaction(_op)
+
+    async def sync_with_chain_async(self, onchain_pending: int) -> None:
+        """Synchronize stored nonce with on-chain pending nonce."""
         await asyncio.to_thread(self._sync_with_chain, onchain_pending)
 
     def _sync_with_chain(self, onchain_nonce: int) -> None:
-        """
-        Synchronously synchronizes the stored nonce with the latest on-chain pending nonce.
-        This method is called by `sync_with_chain_async`.
+        """Synchronously set stored nonce to on-chain pending nonce."""
+        safe_onchain = self._non_negative_int(onchain_nonce, "onchain_nonce")
 
-        Args:
-            onchain_nonce (int): The current pending transaction count for the account on-chain.
-        """
-        with self._get_connection() as conn:
-            # INSERT OR REPLACE ensures the row exists and updates it if it does,
-            # effectively setting the DB nonce to the provided onchain_nonce.
-            conn.execute("INSERT OR REPLACE INTO nonces (address, nonce, last_updated) VALUES (?, ?, ?)",
-                         (self.account_address, onchain_nonce, time.time()))
-            conn.commit()
-        logger.info(f"Nonce for {self.account_address[:8]}... synced with chain: {onchain_nonce}")
+        def _op(conn: sqlite3.Connection) -> None:
+            self._write_nonce(conn, safe_onchain)
+
+        self._with_immediate_transaction(_op)
+        logger.info("Nonce for %s... synced with chain: %s", self.account_address[:8], safe_onchain)
 
     async def reserve_nonce(self, w3: Any) -> int:
-        """
-        Asynchronously and atomically reserves the next available nonce for the account.
-        This method fetches the latest on-chain pending nonce, compares it with the
-        database-stored nonce, and atomically increments the stored nonce before returning it.
-        It uses optimistic locking with SQLite's `BEGIN IMMEDIATE` to handle concurrent access
-        and retries if a conflict occurs.
+        """Fetch pending nonce from chain and atomically reserve next local nonce."""
+        if w3 is None:
+            raise ValueError("w3 is required")
 
-        Args:
-            w3 (Any): An instance of web3.py (web3.Web3) to query the blockchain.
-                      Type is `Any` to avoid importing web3.py directly.
+        checksum_address = w3.to_checksum_address(self.account_address)
 
-        Returns:
-            int: The unique nonce reserved for the next transaction.
-        """
-        checksum_address: str = w3.to_checksum_address(self.account_address)
-        while True:
-            # Get the current pending transaction count from the chain
-            onchain_pending: int = await w3.eth.get_transaction_count(checksum_address, "pending")
-            
-            with self._get_connection() as conn:
-                conn.execute("BEGIN IMMEDIATE") # Start an immediate transaction
-                try:
-                    # Ensure the address exists in the nonces table, initializing if not present.
-                    # If it exists, this does nothing due to IGNORE.
-                    conn.execute("INSERT OR IGNORE INTO nonces (address, nonce, last_updated) VALUES (?, ?, ?)",
-                                 (self.account_address, onchain_pending, time.time()))
-                    
-                    # Fetch current DB nonce (it's guaranteed to exist now due to INSERT OR IGNORE)
-                    cur = conn.execute("SELECT nonce FROM nonces WHERE address = ?", (self.account_address,))
-                    row = cur.fetchone()
-                    db_nonce: int = row[0] # Will always find a row
+        last_error: Exception | None = None
+        for attempt in range(self.MAX_LOCK_RETRIES):
+            try:
+                onchain_pending = await w3.eth.get_transaction_count(checksum_address, "pending")
+                safe_onchain = self._non_negative_int(onchain_pending, "onchain_pending")
+                return self._reserve_from_onchain_nonce(safe_onchain)
 
-                    # The safe nonce is the maximum of what's on-chain and what's in DB
-                    safe_nonce: int = max(onchain_pending, db_nonce)
-                    
-                    # Update the DB to the *next* available nonce for this address
-                    conn.execute("UPDATE nonces SET nonce = ?, last_updated = ? WHERE address = ?",
-                                 (safe_nonce + 1, time.time(), self.account_address))
-                    conn.commit()
-                    return safe_nonce
-                except sqlite3.OperationalError as e:
-                    if "database is locked" in str(e):
-                        # If the database is locked, wait a bit and retry
-                        await asyncio.sleep(0.1)
-                        continue
-                    else:
-                        raise
+            except sqlite3.OperationalError as exc:
+                last_error = exc
+                if "database is locked" not in str(exc).lower():
+                    raise
+                delay = min(0.05 * (2**attempt), 1.0)
+                logger.debug("Nonce DB locked; retrying in %.3fs.", delay)
+                await asyncio.sleep(delay)
+
+        raise RuntimeError("failed to reserve nonce after retries") from last_error
+
+    async def record_mutation_async(
+        self,
+        *,
+        node_id: str,
+        old_params: dict[str, Any] | None = None,
+        new_params: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> int:
+        """Record mutation metadata in the nonce DB auxiliary history table."""
+        return await asyncio.to_thread(
+            self.record_mutation,
+            node_id=node_id,
+            old_params=old_params,
+            new_params=new_params,
+            context=context,
+        )
+
+    def record_mutation(
+        self,
+        *,
+        node_id: str,
+        old_params: dict[str, Any] | None = None,
+        new_params: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> int:
+        """Record mutation metadata and return inserted row id."""
+        clean_node_id = str(node_id or "").strip()
+        if not clean_node_id:
+            raise ValueError("node_id cannot be empty")
+
+        with self._get_connection() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO mutation_history (node_id, timestamp, old_params, new_params, context)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    clean_node_id,
+                    time.time(),
+                    self._json(old_params or {}),
+                    self._json(new_params or {}),
+                    self._json(context or {}),
+                ),
+            )
+            conn.commit()
+            return int(cur.lastrowid)
+
+    def get_current_nonce(self) -> Optional[int]:
+        """Return current stored next nonce for this account, if present."""
+        with self._get_connection() as conn:
+            cur = conn.execute("SELECT nonce FROM nonces WHERE address = ?", (self.account_address,))
+            row = cur.fetchone()
+            return int(row[0]) if row else None
+
+    def _reserve_from_onchain_nonce(self, onchain_nonce: int) -> int:
+        def _op(conn: sqlite3.Connection) -> int:
+            self._ensure_row(conn, initial_nonce=onchain_nonce)
+            db_nonce = self._read_nonce(conn)
+            safe_nonce = max(onchain_nonce, db_nonce)
+            self._write_nonce(conn, safe_nonce + 1)
+            return safe_nonce
+
+        return self._with_immediate_transaction(_op)
+
+    def _with_immediate_transaction(self, fn: Any) -> Any:
+        with self._get_connection() as conn:
+            try:
+                conn.execute("BEGIN IMMEDIATE;")
+                result = fn(conn)
+                conn.commit()
+                return result
+            except Exception:
+                conn.rollback()
+                raise
+
+    def _ensure_row(self, conn: sqlite3.Connection, *, initial_nonce: int) -> None:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO nonces (address, nonce, last_updated)
+            VALUES (?, ?, ?)
+            """,
+            (self.account_address, initial_nonce, time.time()),
+        )
+
+    def _read_nonce(self, conn: sqlite3.Connection) -> int:
+        cur = conn.execute("SELECT nonce FROM nonces WHERE address = ?", (self.account_address,))
+        row = cur.fetchone()
+        if row is None:
+            raise RuntimeError("nonce row missing after initialization")
+        return int(row[0])
+
+    def _write_nonce(self, conn: sqlite3.Connection, nonce: int) -> None:
+        safe_nonce = self._non_negative_int(nonce, "nonce")
+        conn.execute(
+            """
+            INSERT INTO nonces (address, nonce, last_updated)
+            VALUES (?, ?, ?)
+            ON CONFLICT(address) DO UPDATE SET
+                nonce = excluded.nonce,
+                last_updated = excluded.last_updated
+            """,
+            (self.account_address, safe_nonce, time.time()),
+        )
+
+    @staticmethod
+    def _non_negative_int(value: Any, name: str) -> int:
+        try:
+            number = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name} must be a non-negative integer") from exc
+
+        if number < 0 or not math.isfinite(float(number)):
+            raise ValueError(f"{name} must be a non-negative integer")
+        return number
+
+    @staticmethod
+    def _json(data: dict[str, Any]) -> str:
+        return json.dumps(data, ensure_ascii=False, sort_keys=True, default=str)

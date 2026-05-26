@@ -1,7 +1,9 @@
 # BlackSwan 🦢
 
-**A self‑sovereign, evolutionary multi‑agent system that trades autonomously on Uniswap V3.**
-**Built with genetic algorithms, LLM‑powered mutations, formal verification, and professional observability.**
+**A self-sovereign, evolutionary multi-agent trading swarm.**  
+BlackSwan combines genetic algorithms, CRDT-based swarm memory, LLM-assisted strategy mutation, formal models, and guarded testnet execution.
+
+> Current focus: stabilizing the modular swarm runtime, improving adapters, validating multi-agent behavior, and preparing a new dashboard.
 
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen)](https://deus-corp.github.io/BlackSwan/)
@@ -9,235 +11,416 @@
 
 ---
 
-## 🚀 Quick Start
+## ⚠️ Disclaimer
 
-### 1. 🌐 Web Control Panel
+BlackSwan is experimental research software. It has been tested primarily in simulation, dry-run, and testnet environments. It is not financial advice. Do not use it with funds you cannot afford to lose.
 
-```bash
-pip install fastapi uvicorn docker
-python dashboard/app.py
-```
-
-Open `http://localhost:8080` to manage the entire swarm:
-
-| Tab | Description |
-|-----|-------------|
-| 🏠 **Main** | Start/stop nodes, container management (stats, inspect, pause) |
-| 📈 **Trades** | Real-time feed of all on-chain swaps with tx links |
-| 📜 **Logs** | Filtered swarm logs with auto-refresh and save to disk |
-| 📊 **Dashboard** | Embedded Grafana with capital, fitness, diversity charts |
-| ⚙️ **Settings** | Edit all compose variables, secrets, and one-click token approval |
-
-![Dashboard](assets/dashboard.gif)
-
-### 2. Prometheus + Grafana (optional)
-
-The project includes Prometheus and Grafana for advanced monitoring.  
-Start them alongside the swarm:
-
-```bash
-docker compose -f mvp/lab_swarm_demo/docker-compose.async.yml up -d prometheus grafana
-```
-
-- Prometheus scrapes metrics from http://localhost:8080/metrics
-- Grafana (http://localhost:3000, admin/admin) visualizes them. Import the dashboard from grafana/dashboards/blackswan-swarm.json.
-Grafana dashboard is also embedded directly in the Web Control Panel (📊 Dashboard tab) in kiosk mode.
-
-### 3. Download LLM Models
-
-The swarm requires at least one local LLM model. Download the recommended ones:
-
-```bash
-curl -L "https://huggingface.co/bartowski/Zyphra_ZR1-1.5B-GGUF/resolve/main/Zyphra_ZR1-1.5B-Q4_K_M.gguf" -o llama_cpp/Zyphra_ZR1-1.5B-Q4_K_M.gguf
-```
-Set LLM_MODEL=Zyphra_ZR1-1.5B-Q4_K_M in docker-compose.async.yml.
+The project includes safety gates such as dry-run mode, explicit execution approval, nonce management, and leader-election checks, but these mechanisms do not eliminate trading or software risk.
 
 ---
 
-## 📌 Project Status: **TRL‑4** (laboratory‑validated components)
+## 📌 Current Status — May 2026
 
-### Core & Formal Verification
-- ✅ TLA+ specs for 8 protocols (Ouroboros, SurvivalObjective, GeneticEngine, CuriosityEngine, AdaptiveMotivation)
-- ✅ Industrial CRDT – SQLite‑backed, op‑based with deterministic LWW merge
-- ✅ Secure Gossip – HMAC‑signed envelopes, replay protection, peer scoring & backoff
-- ✅ Gossip Filter – replay protection and monotonic sequence numbers across all messages
-- ✅ Signed genome exchange (Ed25519) for cryptographically verified genome distribution
+**Readiness:** TRL-5 research prototype with modular swarm runtime, testnet execution support, CRDT coordination, and active hardening.
 
-### Swarm & Communication
-- ✅ Docker lab swarm (4–5 nodes) with auto‑recovery (Spore Protocol validated)
-- ✅ Spore Protocol – sustained fault‑recovery on 4‑node swarm (SmolLM2‑1.7B, 1h+ run)
-- ✅ Logical layer separation (Infrastructure / Intelligence layers) via documented Intelligence Contract v1.0
+Recent validated state:
 
-### Memory & Data Pipeline
-- ✅ LocalMemoryAPI – layered memory (episodic, semantic, policy) with snapshot/restore & SQLite persistence
-- ✅ Quarantine Buffer – signature, reputation, and confidence checks for incoming memory records
-- ✅ Event sourcing – append‑only ledger with trace IDs
-- ✅ Gold Filter & dataset export pipeline for future LoRA training
-
-### LLM & Evolution
-- ✅ Speciated Genetic Engine with adaptive mutation and fitness cache
-- ✅ LLM‑Powered Mutations – local LLMs generate new strategy parameters
-- ✅ Multi‑model benchmark – 10 local LLMs compared (135M–1.7B). Report: [benchmark](docs/reports/benchmark_10_models_2026-05-03.md)
-
-### Security & Key Management
-- 🔑 Centralized Key Manager – isolated, env‑based secret store; private keys never leaked to logs
-
-### Observability & Operations
-- ✅ Health endpoint (`/health`), graceful shutdown, model integrity check
-- ✅ Improved Dashboard – 2×2 layout with capital, fitness, diversity/CRDT, and niche pie chart
-- 🤖 Telegram Bot – remote monitoring via /status, /nodes, /memory
-
-### Market & Trading
-- ✅ **Web3 Testnet Adapter** – fully autonomous Uniswap V3 swaps on Ethereum Sepolia (Alchemy RPC).
-- 🔁 **Autonomous Token Manager** – auto-wrap ETH, auto-convert USDC↔WETH based on configurable thresholds.
-- 🔗 **Multi‑node Nonce Sync** – SQLite with WAL mode, conflict-free parallel swaps.
-- 🏆 **First AI‑driven swap** – [0xba457b54...](https://sepolia.etherscan.io/tx/0xba457b54f9f674cd2118ba25a8caa342a3cf69c5685523eac814916739825213)
-- 🌐 **Web Control Panel** – multi‑tab dashboard with trades feed, Grafana, container management.
-- 📊 **Prometheus + Grafana** – professional metrics and embedded monitoring dashboards.
-
-- 🌐 **Multi‑Pair Trading** – single node trades BTC/USDT, ETH/USDT, SOL/USDT simultaneously.
-- 🧠 **Internet Researcher** – gathers crypto news (sentiment) and on‑chain data for LLM context.
-- 📈 **Binance Futures** – long/short trading with configurable leverage, stop‑loss, and dynamic leverage adjustment.
-- 🛡️ **Spot/Futures Hedging** – automatic hedging of futures positions with spot orders (configurable ratio).
-- 📊 **Order Book Analysis** – real‑time imbalance and delta volume for smarter entries.
-- 📡 **TradingView Webhooks** – external trading signals injected directly into LLM context.
-
-## 🧬 Key Features
-
-- **Self‑Sovereign Economy** – built‑in market and Kelly‑criterion capital dispatcher.
-- **Ouroboros Self‑Improvement** – genetic search for optimal strategies, genome exchange in the swarm, Champion/Challenger.
-- **Survival Objective** – each node evaluates detection risk and refuses dangerous actions.
-- **Adaptive Intrinsic Motivation** – dynamic balancing of capital, stealth, and curiosity via Meta‑POMDP.
-- **Curiosity Engine** – autonomous detection of market anomalies and generation of research hypotheses.
-- **Swarm Resilience** – automatic failure detection and Spore Protocol (node rebirth).
-- **Formally Verified Core** – critical invariants proven in TLA+.
-- **Defense in Depth** – multi‑layer isolation, traffic obfuscation.
-- **Control Panel** – interactive CLI menu to start/stop/configure the swarm without Docker commands.
-
-### Current State (16 May 2026) – Autonomous Swarm v0.5.0
-- **Fully autonomous closed-loop system** – MetaAgent (separate node) observes swarm via CRDT, issues structured JSON commands, nodes apply them with mathematical damping.
-- **Async Web3 adapter** with retry logic for RPC calls and nonce manager (SQLite/WAL).
-- **Modular architecture** – node_agent is a thin orchestrator; market, execution, capital, evolution, swarm sync, telemetry extracted into dedicated services.
-- **Deterministic leader election** (SHA-256) for reproducible behavior.
-- **50+ unit tests** covering all major services and models.
-- **Watchdog** – gradual rollback of unsafe parameters when capital drops below threshold.
-- **Shared CRDT** (SQLite) – all nodes and MetaAgent read/write heartbeats and commands.
-- **LLM-driven mutations** with robust JSON extraction from DeepSeek-R1 responses.
-- **Secure gossip** with signed envelopes, replay protection, and reputation filtering.
-- **Prometheus + Grafana** for live metrics; web dashboard for trading, logs, mutations.
-- **Controlled Chaos mode** – ability to inject experimental commands into the swarm with expiration TTL.
+- ✅ 60+ unit tests passing.
+- ✅ Swarm runtime smoke test passing.
+- ✅ Trade heartbeat publishing fixed and visible to Overseer.
+- ✅ Trade swarm can publish `trade_heartbeat` payloads into CRDT.
+- ✅ Overseer can detect active trade nodes from CRDT state.
+- ✅ Execution backend safety path restored for sim/web3/live/futures modes.
+- ✅ Web3 execution backend refuses execution when leader checks fail.
+- ✅ Legacy/prototype modules identified for quarantine.
+- ✅ `src` pass completed, excluding `src/swarms`.
+- ✅ `adapters` cleanup in progress.
+- 🔜 Next: inspect `sim`, tune trade/security/explorer/improver swarms, then build the new dashboard.
 
 ---
 
-## ⚡ Quick Start: Real Web3 Trading on Sepolia
+## 🧬 What BlackSwan Does
 
-1. **Get testnet ETH & WETH** – use Sepolia faucets to fund your wallet.
-2. **Create a `.env` file** in `mvp/lab_swarm_demo/`:
-   ```ini
-   WEB3_PRIVATE_KEY=your_private_key
-   MARKET_MODE=web3
-   TRADING_SYMBOLS=WETH/USDC
-   TEST_WEB3_SWAP_AMOUNT=0.001
-   TEST_WEB3_SWAP_SIDE=sell
-   WEB3_POOL_FEE=3000
-   WEB3_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY   # ← Alchemy
-   ```
-3. Run the swarm:
-```bash
-cd mvp/lab_swarm_demo
-docker-compose -f docker-compose.async.yml up -d --scale node=1
-```
-4. Watch logs – within minutes, you'll see ✅ Swap successful! in the output.
+BlackSwan is a distributed AI swarm where nodes can:
+
+- observe market state,
+- evolve trading parameters,
+- exchange genomes through CRDT,
+- publish heartbeats and events,
+- apply meta-agent commands,
+- execute simulated or testnet trades through guarded backends,
+- recover from failures and continue operating.
+
+The system is designed as a research platform for autonomous, self-improving agents with explicit safety boundaries.
+
+---
+
+## 🏗️ Architecture Overview
+
 ```text
-🦢 The very first AI‑driven on‑chain swap occurred at tx 0xba457b54.... The strategy evolves via genetic algorithms and can repeat profitable trades.
+BlackSwan
+├── src/
+│   ├── core/                 # CRDT, event store, gossip, global state
+│   ├── swarms/               # Runtime swarms: trade, explorer, security, improver, overseer
+│   ├── trading/              # Reusable trading domain: execution, market, capital, sync
+│   ├── risk/                 # Circuit breakers, exposure, risk manager
+│   ├── intelligence/         # LLM, memory, research, semantic/episodic modules
+│   ├── memory/               # Local memory, quarantine, gold-filter export
+│   ├── observability/        # Metrics, telemetry, Telegram notifier
+│   ├── security/             # Crypto, keys, reputation, gossip envelopes
+│   └── validation/           # Shared validators
+├── adapters/                 # External integrations: Web3, Binance, futures, webhooks
+├── sim/                      # Simulation/evolution components used by the trade swarm
+├── tests/                    # Unit and runtime smoke tests
+├── formal/                   # TLA+ specifications
+└── docs/                     # Reports, architecture notes, validation docs
+```
+
+### Layering
+
+* `src/swarms/*` is the runtime orchestration layer.
+* `src/trading/*` is the reusable trading-domain library.
+* `adapters/*` bridges external systems.
+* `sim/*` currently contains both research scripts and runtime dependencies used by the trade swarm.
+* `src/core/*` provides CRDT, event, gossip, and persistence infrastructure.
+
+---
+
+## 🚀 Quick Start: Local Runtime Smoke
+
+From the repository root:
+
+```bash
+python -m pytest -q tests/unit/core tests/unit --maxfail=1
+python -m src.testing.swarm_runtime_smoke
+```
+
+Expected result:
+
+```text
+60 passed
+✅ swarm runtime smoke OK
 ```
 
 ---
 
-## 🛠️ Swarm Configuration Guide
-
-The default docker‑compose setup uses a local LLM and a simulated market.  
-You can customise the swarm through environment variables in `docker-compose.async.yml`.
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LLM_MODEL` | Which local LLM to use (`smollm2`, `qwen`, `deepseek`, `smollm17`, `llama1b`, `abl_qwen05`, `unc_llama1b` …) | `smollm2` |
-| `GOSSIP_SIGNING_ENABLED` | Enable Ed25519 signatures for genome exchange | `false` |
-| `FAILURE_PROB` | Probability of node failure per step (Spore test) | `0.0` |
-| `TOTAL_NODES` | Number of peers expected in the swarm | `4` |
-| `BURN_RATE` | Capital burned per step (cost of living) | `0.1` |
-| `MARKET_MODE` | `sim` (simulated), `live` (Binance Testnet), `futures` (Binance Testnet Futures), or `web3` (Arbitrum Sepolia) | `sim` |
-| `TRADING_SYMBOLS` | Comma-separated list of trading pairs | `BTC/USDT,ETH/USDT,SOL/USDT` |
-| `PRICE_SCALE` | Divider for live prices to fit strategy range | `10000` |
-| `FUTURES_LEVERAGE` | Leverage for futures trading | `2` |
-| `STOP_LOSS_PERCENT` | Maximum loss before stop-loss (percent) | `2.0` |
-| `MAX_LEVERAGE` / `MIN_LEVERAGE` | Dynamic leverage range | `5` / `1` |
-| `HEDGE_ENABLED` | Enable spot/futures hedging | `false` |
-| `HEDGE_RATIO` | Portion of futures position to hedge with spot | `0.5` |
-| `INTERNET_RESEARCHER_ENABLED` | Fetch crypto news and on-chain data | `false` |
-| `ORDERBOOK_ANALYSIS_ENABLED` | Analyse order book imbalance | `false` |
-| `TRADINGVIEW_WEBHOOK_ENABLED` / `TRADINGVIEW_WEBHOOK_PORT` | Enable TradingView signal webhook | `false` / `8888` |
-| `WEB3_RPC_URL` | RPC endpoint for Web3 adapter | `https://sepolia-rollup.arbitrum.io/rpc` |
-| `WEB3_PRIVATE_KEY` | Private key for Web3 transactions (store in `.env`) | – |
-| `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_API_SECRET` | API credentials for live/futures trading (store in `.env`) | – |
-| `ETHERSCAN_API_KEY` | API key for Internet Researcher (store in `.env`) | – |
-| `MEMORY_API_ENABLED` | Enable layered persistent memory (`LocalMemoryAPI`) | `false` |
-| `LOG_LEVEL` | Python logging level (`INFO`, `DEBUG`) | `INFO` |
-| `EVENT_LEDGER_PATH` | Path to append-only event journal | `./data/ledgers/events.jsonl` |
-| `EVENT_SQLITE_PATH` | Optional SQLite index for events | `./data/ledgers/events.db` |
-| `TELEGRAM_BOT_TOKEN` | Token for Telegram monitoring bot (store in `.env`) | – |
-
-## 🧪 Model Benchmark
-
-```python
-python tools/model_benchmark.py   # automatically tests all local LLMs and saves logs to docs/logs/models/
-```
-
-## 🤖 Telegram Bot
-
-Commands: `/status`, `/nodes`, `/memory`, `/logs`, `/capital`, `/help`.
-The bot answers with real-time swarm metrics and recent logs from running nodes.
+## 🧪 Run Unit Tests
 
 ```bash
-export TELEGRAM_BOT_TOKEN=your_token  # or add to .env
-python3 tools/telegram_bot.py
+python -m pytest -q
 ```
+
+Focused checks:
+
+```bash
+python -m pytest -q tests/unit/core/test_trade_execution_safety.py
+python -m pytest -q tests/unit/economy/test_roi_dispatcher.py
+```
+
+---
+
+## 🧠 Run the Modular Swarm Runtime
+
+Example dry-run cluster:
+
+```bash
+python -m src.swarms.runtime.cluster_cli up \
+  --trade-nodes 3 \
+  --run-dir data/cluster_runtime/latest \
+  --duration 300 \
+  --safe \
+  --echo
+```
+
+Inspect logs:
+
+```bash
+grep -R "Publishing trade heartbeat\|Published trade heartbeat\|trade_heartbeat\|Overseer snapshot" \
+  data/cluster_runtime/latest/logs | tail -200
+```
+
+Expected heartbeat path:
+
+```text
+SwarmNode.Heartbeat - Publishing trade heartbeat payload: type=trade_heartbeat swarm=trade role=node
+src.core.crdt_adapter - Custom data imported: ... (type=trade_heartbeat)
+SwarmNode.Heartbeat - Published trade heartbeat.
+Overseer snapshot: trade_nodes=...
+```
+
+---
+
+## ⚙️ Execution Modes
+
+BlackSwan supports multiple market/execution modes:
+
+| Mode      | Description                                         |
+| --------- | --------------------------------------------------- |
+| `sim`     | Simulation/dry-run backend. Recommended default.    |
+| `live`    | Binance spot/testnet adapter path.                  |
+| `futures` | Binance futures/testnet adapter path.               |
+| `web3`    | Ethereum Sepolia / Uniswap V3 testnet adapter path. |
+
+Execution is guarded by:
+
+* `dry_run`
+* `execution_enabled`
+* explicit approval commands
+* deterministic leader election
+* backend-level safety checks
+* nonce manager coordination for Web3 transactions
+
+---
+
+## ⚡ Web3 Testnet Trading on Sepolia
+
+1. Fund a Sepolia wallet with testnet ETH.
+2. Configure environment variables:
+
+```ini
+MARKET_MODE=web3
+TRADING_SYMBOLS=WETH/USDC
+WEB3_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+WEB3_PRIVATE_KEY=your_testnet_private_key
+
+TEST_WEB3_SWAP_AMOUNT=0.001
+TEST_WEB3_SWAP_SIDE=sell
+WEB3_POOL_FEE=3000
+
+EXECUTION_ENABLED=false
+DRY_RUN=true
+```
+
+3. Start with dry-run first.
+4. Enable real testnet execution only after validating logs and balances.
+
+Important: never commit private keys.
+
+---
+
+## 🛡️ Safety Defaults
+
+Recommended development defaults:
+
+```ini
+EXECUTION_ENABLED=false
+DRY_RUN=true
+MARKET_MODE=sim
+```
+
+For testnet execution, use explicit approvals and small amounts only.
+
+The project currently includes:
+
+* dry-run trade flow,
+* execution backend guards,
+* capital manager,
+* exposure manager,
+* circuit breaker,
+* survival evaluator,
+* nonce manager,
+* leader-election gate,
+* CRDT-visible heartbeats and commands.
+
+---
+
+## 🧩 Core Components
+
+### CRDT and Events
+
+* SQLite-backed CRDT layer.
+* Operation-based records with deterministic merge behavior.
+* CRDT adapter for genomes, heartbeats, commands, and swarm events.
+* Event store for append-only event persistence.
+
+Key files:
+
+```text
+src/core/crdt_layer.py
+src/core/crdt_adapter.py
+src/core/event_store.py
+src/core/events.py
+```
+
+### Trade Swarm
+
+The trade swarm is the most mature runtime swarm. It includes:
+
+* market snapshots,
+* trading flow,
+* heartbeat publisher,
+* meta-command application,
+* maintenance service,
+* risk checks,
+* CRDT sync,
+* evolution loop,
+* execution backend integration.
+
+Key files:
+
+```text
+src/swarms/trade/node.py
+src/swarms/trade/heartbeat.py
+src/swarms/trade/trading/flow.py
+src/swarms/trade/meta/commands.py
+src/swarms/trade/maintenance/service.py
+```
+
+### Adapters
+
+External integration layer:
+
+```text
+adapters/base.py
+adapters/live_market.py
+adapters/futures_adapter.py
+adapters/multi_pair_adapter.py
+adapters/nonce_manager.py
+adapters/orderbook_analyzer.py
+adapters/tradingview_webhook.py
+adapters/web3_testnet.py
+```
+
+Current adapter focus:
+
+* consistent result contracts,
+* safe close/cleanup,
+* nonce safety,
+* dry-run/live separation,
+* async error handling,
+* slippage protection,
+* no private-key leakage.
+
+### Simulation
+
+`sim/` is currently both a research sandbox and a runtime dependency. The trade node imports:
+
+```text
+sim.curiosity_engine
+sim.genetic_engine
+sim.meta_pomdp_agent
+sim.survival_evaluator
+```
+
+`src/trading/market_service.py` also uses:
+
+```text
+sim.engine.environment.MarketEnvironment
+```
+
+So `sim/` should not be deleted. It will be cleaned and split later into runtime modules and experiments.
+
+---
+
+## 📊 Observability
+
+Current observability pieces:
+
+* CRDT heartbeats.
+* Overseer snapshots.
+* Log inspection.
+* Prometheus-compatible metrics.
+* Telegram notifier.
+* Event store.
+* Runtime smoke checks.
+
+Planned next dashboard work:
+
+* `cluster_cli status --json`
+* `cluster_cli doctor`
+* CRDT reader for latest nodes/heartbeats
+* log viewer
+* node status cards
+* capital/fitness/diversity charts
+* command console with safety confirmation
+
+---
+
+## 🛠️ Configuration Guide
+
+Common environment variables:
+
+| Variable                      | Description                         | Default                  |
+| ----------------------------- | ----------------------------------- | ------------------------ |
+| `MARKET_MODE`                 | `sim`, `live`, `futures`, or `web3` | `sim`                    |
+| `TRADING_SYMBOLS`             | Comma-separated trading pairs       | `WETH/USDC`              |
+| `EXECUTION_ENABLED`           | Enables real execution path         | `false`                  |
+| `DRY_RUN`                     | Forces dry-run behavior             | `true`                   |
+| `WEB3_RPC_URL`                | Web3 RPC endpoint                   | —                        |
+| `WEB3_PRIVATE_KEY`            | Testnet private key                 | —                        |
+| `WEB3_POOL_FEE`               | Uniswap V3 pool fee                 | `3000`                   |
+| `WEB3_SLIPPAGE_BPS`           | Web3 swap slippage in basis points  | `100`                    |
+| `BINANCE_TESTNET_API_KEY`     | Binance testnet key                 | —                        |
+| `BINANCE_TESTNET_API_SECRET`  | Binance testnet secret              | —                        |
+| `FUTURES_LEVERAGE`            | Futures leverage                    | `2`                      |
+| `STOP_LOSS_PERCENT`           | Futures stop-loss percent           | `2.0`                    |
+| `HEDGE_ENABLED`               | Enables futures/spot hedging        | `false`                  |
+| `ORDERBOOK_ANALYSIS_ENABLED`  | Enables order book analyzer         | `false`                  |
+| `TRADINGVIEW_WEBHOOK_ENABLED` | Enables TradingView webhook         | `false`                  |
+| `TRADINGVIEW_WEBHOOK_SECRET`  | Optional webhook shared secret      | —                        |
+| `LOG_LEVEL`                   | Python logging level                | `INFO`                   |
+| `EVENT_SQLITE_PATH`           | Event SQLite DB path                | `data/ledgers/events.db` |
+| `TELEGRAM_BOT_TOKEN`          | Telegram bot token                  | —                        |
+
+---
+
+## 🧪 Formal Verification
+
+Formal specifications live in:
+
+```text
+formal/tla/
+```
+
+Validated/prototyped areas include:
+
+* Ouroboros/self-improvement,
+* Survival Objective,
+* Genetic Engine,
+* Curiosity Engine,
+* Adaptive Motivation,
+* D2BFT prototype,
+* swarm-level invariants.
+
+---
 
 ## 📚 Documentation & Reports
 
-- 📖 [Documentation site](https://deus-corp.github.io/BlackSwan/)
-- 📖 [Architecture decisions](docs/architecture/)
-- 📖 [Formal verification](formal/tla/)
-- 📖 [Simulation report](docs/TRL4_simulation_baseline.md)
-- 📖 [Full TRL‑4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
-- 📖 [Ouroboros Report](docs/TRL4_OUROBOROS_REPORT.md)
-- 🗺 [Roadmap](ROADMAP.md)
+* [Documentation site](https://deus-corp.github.io/BlackSwan/)
+* [Architecture decisions](docs/architecture/)
+* [Formal verification](formal/tla/)
+* [TRL-4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
+* [Ouroboros Report](docs/TRL4_OUROBOROS_REPORT.md)
+* [Roadmap](ROADMAP.md)
+
+---
+
+## 🧭 Near-Term Plan
+
+1. Finish inspecting and cleaning `adapters/`.
+2. Inspect and split `sim/` into runtime-critical modules and experiments.
+3. Tune trade swarm runtime.
+4. Validate security/explorer/improver/overseer together.
+5. Add `cluster_cli status --json` and `cluster_cli doctor`.
+6. Build the new dashboard on top of runtime JSON status, CRDT, logs, and metrics.
 
 ---
 
 ## ❤️ Support the Project
 
-BlackSwan is an independent research project. If you find it valuable,
-consider supporting its development:
+BlackSwan is an independent research project. If you find it valuable, consider supporting its development:
 
-- **Crypto donations** — see [DONATIONS.md](DONATIONS.md)
+* Crypto donations — see [DONATIONS.md](DONATIONS.md)
 
-All funds go toward infrastructure, compute resources, and further research.
-Sponsorship does not confer any rights over the project.
-
----
-
-## ⚠️ Disclaimer
-
-This software is experimental and has been tested exclusively on simulated and testnet environments (Binance Testnet, local sim). It is not financial advice. Use in real market conditions is at your own risk. Always verify strategies thoroughly and never trade with funds you cannot afford to lose.
+All funds go toward infrastructure, compute resources, and further research. Sponsorship does not confer any rights over the project.
 
 ---
 
 ## 📄 License
 
-Dual‑licensed under MIT or Apache‑2.0, at your option.  
+Dual-licensed under MIT or Apache-2.0, at your option.
 See [LICENSE-MIT](LICENSE-MIT.md) and [LICENSE-APACHE](LICENSE-APACHE.md).
 
 ---
 
-*Black Swan © 2026. Technical preprint. Does not constitute a call to action.*
+*BlackSwan © 2026. Experimental research software. Does not constitute financial advice or a call to action.*

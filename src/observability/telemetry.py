@@ -1,176 +1,228 @@
-"""
-Telemetry – A unified observability layer for tracking node operations, events, and metrics.
+"""Unified observability layer for node events, metrics, and alerts."""
 
-This module provides an abstraction over event logging, metrics aggregation, 
-and alert notifications for the node ecosystem.
-"""
+from __future__ import annotations
+
+import inspect
 import logging
-from typing import Dict, Any, Callable, Protocol, Final
+from typing import Any, Callable, Protocol
+
 from src.core.events import Event
 
-logger: Final = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+
 
 class EventStoreLike(Protocol):
-    """Protocol for a repository that persists system events."""
+    """Repository that persists system events."""
+
     def append(self, event: Event) -> None:
         ...
 
+
 class TelegramNotifierLike(Protocol):
-    """Protocol for a service capable of sending Telegram alerts."""
-    async def send(self, message: str) -> None:
+    """Service capable of sending Telegram alerts."""
+
+    async def send(self, message: str) -> bool:
         ...
 
+
 class Telemetry:
-    """
-    Centralized observability manager for node activity tracking, LLM health checks,
-    and incident alerting.
-    """
+    """Centralized observability manager for node activity and incident alerting."""
 
     def __init__(
-        self, 
-        node_id: str, 
-        event_store: EventStoreLike, 
+        self,
+        node_id: str,
+        event_store: EventStoreLike,
         telegram_notifier: TelegramNotifierLike,
-        get_llm_stats_func: Callable[[], Dict[str, Any]],
-        update_llm_impact_func: Callable[[float], None]
+        get_llm_stats_func: Callable[[], dict[str, Any]] | None = None,
+        update_llm_impact_func: Callable[[float], None] | None = None,
     ) -> None:
-        self.node_id = node_id
+        clean_node_id = str(node_id or "").strip()
+        if not clean_node_id:
+            raise ValueError("node_id cannot be empty")
+
+        self.node_id = clean_node_id
         self.event_store = event_store
         self.telegram = telegram_notifier
-        self._get_llm_stats = get_llm_stats_func
-        self._update_llm_impact = update_llm_impact_func
+        self._get_llm_stats = get_llm_stats_func or (lambda: {})
+        self._update_llm_impact = update_llm_impact_func or (lambda _capital: None)
 
     async def trade(
-        self, 
-        step: int, 
-        symbol: str, 
-        side: str, 
+        self,
+        step: int,
+        symbol: str,
+        side: str,
         amount: float,
-        tx_hash: str, 
-        status: str, 
+        tx_hash: str,
+        status: str,
         capital_before: float,
-        capital_after: float, 
-        trace_id: str
+        capital_after: float,
+        trace_id: str,
     ) -> None:
-        """Logs a trade execution event and pushes a notification to Telegram."""
-        event = Event.create(
-            node_id=self.node_id,
-            event_type="trade_executed",
-            payload={
-                "step": step,
-                "symbol": symbol,
-                "side": side,
-                "amount": amount,
-                "tx_hash": tx_hash,
-                "status": status,
-                "capital_before": capital_before,
-                "capital_after": capital_after,
-                "trace_id": trace_id,
-            },
-            parent_id=trace_id,
-        )
-        self.event_store.append(event)
-        
-        msg = (
-            f"🦢 <b>Trade</b>\n"
+        """Record a trade execution event and send a Telegram notification."""
+        payload = {
+            "step": int(step),
+            "symbol": str(symbol or ""),
+            "side": str(side or "").lower(),
+            "amount": float(amount),
+            "tx_hash": str(tx_hash or ""),
+            "status": str(status or ""),
+            "capital_before": float(capital_before),
+            "capital_after": float(capital_after),
+            "capital_delta": float(capital_after) - float(capital_before),
+            "trace_id": str(trace_id or ""),
+        }
+
+        self._append_event("trade_executed", payload, parent_id=payload["trace_id"] or None)
+
+        message = (
+            "🦢 <b>Trade</b>\n"
             f"Node: {self.node_id}\n"
-            f"Step: {step}\n"
-            f"Symbol: {symbol}\n"
-            f"Side: {side}\n"
-            f"Amount: {amount}\n"
-            f"Status: {status}\n"
-            f"Capital: {capital_after:.2f}"
+            f"Step: {payload['step']}\n"
+            f"Symbol: {payload['symbol']}\n"
+            f"Side: {payload['side']}\n"
+            f"Amount: {payload['amount']}\n"
+            f"Status: {payload['status']}\n"
+            f"Capital: {payload['capital_after']:.2f}"
         )
-        await self.telegram.send(msg)
+        await self._send_alert(message)
 
     def heartbeat(
-        self, 
-        step: int, 
-        capital: float, 
+        self,
+        step: int,
+        capital: float,
         dq: float,
-        fitness: float, 
-        diversity: float, 
+        fitness: float,
+        diversity: float,
         crdt_size: int,
-        llm_mutations: int, 
-        niche_counts: Dict[str, int], 
-        trace_id: str
+        llm_mutations: int,
+        niche_counts: dict[str, int],
+        trace_id: str,
     ) -> None:
-        """Records system health statistics and emits a heartbeat event."""
+        """Record node heartbeat metrics."""
         stats = {
-            "step": step,
-            "capital": round(capital, 4),
-            "dq": round(dq, 4),
-            "fitness": round(fitness, 4),
-            "diversity": round(diversity, 4),
-            "crdt_size": crdt_size,
-            "llm_mutations": llm_mutations,
-            "niche_counts": niche_counts,
+            "step": int(step),
+            "capital": round(float(capital), 4),
+            "dq": round(float(dq), 4),
+            "fitness": round(float(fitness), 4),
+            "diversity": round(float(diversity), 4),
+            "crdt_size": int(crdt_size),
+            "llm_mutations": int(llm_mutations),
+            "niche_counts": dict(niche_counts or {}),
+            "trace_id": str(trace_id or ""),
         }
-        logger.info(f"Heartbeat | Node: {self.node_id} | Stats: {stats}")
-        
-        event = Event.create(
-            node_id=self.node_id,
-            event_type="heartbeat",
-            payload=stats,
-            parent_id=trace_id,
-        )
-        self.event_store.append(event)
 
-    def mutation_event(self, old_params: Dict[str, float], new_params: Dict[str, float], context: str) -> None:
-        """Logs changes to model parameters caused by LLM-driven evolution."""
-        event = Event.create(
-            node_id=self.node_id,
-            event_type="llm_mutation",
-            payload={
-                "old_params": old_params,
-                "new_params": new_params,
-                "context": context,
-            },
-            parent_id=None,
-        )
-        self.event_store.append(event)
+        logger.info("Heartbeat | node=%s stats=%s", self.node_id, stats)
+        self._append_event("heartbeat", stats, parent_id=stats["trace_id"] or None)
+
+    def mutation_event(
+        self,
+        old_params: dict[str, float],
+        new_params: dict[str, float],
+        context: str,
+    ) -> None:
+        """Record LLM-driven strategy parameter mutation."""
+        payload = {
+            "old_params": dict(old_params or {}),
+            "new_params": dict(new_params or {}),
+            "context": str(context or ""),
+        }
+        self._append_event("llm_mutation", payload)
 
     def update_impact(self, current_capital: float) -> None:
-        """Updates internal LLM impact metrics based on performance."""
-        self._update_llm_impact(current_capital)
+        """Update internal LLM impact metrics based on performance."""
+        try:
+            self._update_llm_impact(float(current_capital))
+        except Exception:
+            logger.exception("[%s] Failed to update LLM impact.", self.node_id)
 
-    def get_llm_stats(self) -> Dict[str, Any]:
-        """Retrieves current statistics for the LLM component."""
-        return self._get_llm_stats()
+    def get_llm_stats(self) -> dict[str, Any]:
+        """Return current LLM component statistics."""
+        try:
+            stats = self._get_llm_stats()
+            return dict(stats) if isinstance(stats, dict) else {"value": stats}
+        except Exception:
+            logger.exception("[%s] Failed to get LLM stats.", self.node_id)
+            return {}
 
     async def low_capital_alert(self, capital: float, threshold: float) -> None:
-        """Sends an urgent Telegram notification if capital drops below the defined threshold."""
-        await self.telegram.send(
-            f"⚠️ <b>Low capital alert</b>\n"
+        """Send low-capital alert and persist an alert event."""
+        payload = {
+            "capital": float(capital),
+            "threshold": float(threshold),
+            "severity": "warning",
+        }
+        self._append_event("low_capital_alert", payload)
+
+        await self._send_alert(
+            "⚠️ <b>Low capital alert</b>\n"
             f"Node: {self.node_id}\n"
-            f"Capital: {capital:.2f} (threshold: {threshold})"
+            f"Capital: {payload['capital']:.2f} "
+            f"(threshold: {payload['threshold']:.2f})"
         )
 
     async def spore_failure(
-        self, 
-        step: int, 
-        capital: float, 
+        self,
+        step: int,
+        capital: float,
         dq: float,
-        fitness: float, 
-        diversity: float, 
+        fitness: float,
+        diversity: float,
         crdt_size: int,
-        trace_id: str
+        trace_id: str,
     ) -> None:
-        """Logs the termination of a node and emits a spore failure event."""
+        """Record node termination/failure event and send alert."""
         payload = {
-            "step": step,
-            "capital": capital,
-            "dq": dq,
-            "fitness": fitness,
-            "diversity": diversity,
-            "crdt_size": crdt_size,
-            "trace_id": trace_id,
+            "step": int(step),
+            "capital": float(capital),
+            "dq": float(dq),
+            "fitness": float(fitness),
+            "diversity": float(diversity),
+            "crdt_size": int(crdt_size),
+            "trace_id": str(trace_id or ""),
         }
-        event = Event.create(
-            node_id=self.node_id,
-            event_type="spore_failure",
-            payload=payload,
-            parent_id=trace_id,
+
+        self._append_event("spore_failure", payload, parent_id=payload["trace_id"] or None)
+        logger.warning("[%s] Spore failure at step %s", self.node_id, payload["step"])
+
+        await self._send_alert(
+            "🧬 <b>Spore failure</b>\n"
+            f"Node: {self.node_id}\n"
+            f"Step: {payload['step']}\n"
+            f"Capital: {payload['capital']:.2f}\n"
+            f"Fitness: {payload['fitness']:.4f}"
         )
-        self.event_store.append(event)
-        logger.warning(f"[{self.node_id}] Spore failure at step {step}")
+
+    def _append_event(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        *,
+        parent_id: str | None = None,
+    ) -> Event | None:
+        try:
+            event = Event.create(
+                node_id=self.node_id,
+                event_type=event_type,
+                payload=payload,
+                parent_id=parent_id,
+            )
+            self.event_store.append(event)
+            return event
+        except Exception:
+            logger.exception("[%s] Failed to append telemetry event type=%s.", self.node_id, event_type)
+            return None
+
+    async def _send_alert(self, message: str) -> bool:
+        send = getattr(self.telegram, "send", None)
+        if not callable(send):
+            logger.debug("[%s] Telegram notifier has no send() method.", self.node_id)
+            return False
+
+        try:
+            result = send(message)
+            if inspect.isawaitable(result):
+                result = await result
+            return bool(result) if result is not None else True
+        except Exception:
+            logger.exception("[%s] Failed to send Telegram telemetry alert.", self.node_id)
+            return False

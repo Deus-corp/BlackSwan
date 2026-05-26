@@ -1,123 +1,164 @@
-"""
-IPFS Client – saving and retrieving JSON snapshots in IPFS.
+"""IPFS client with deterministic local JSON fallback storage."""
 
-Uses a local IPFS daemon if available (http://localhost:5001), 
-otherwise falls back to local file storage (.ipfs_fallback).
-"""
+from __future__ import annotations
 
 import hashlib
 import json
 import logging
-import os
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any, Optional
 
 import requests
 
-# Configure logger for module-specific issues
 logger = logging.getLogger(__name__)
 
-class IPFSClient:
-    """
-    Client for interacting with IPFS, supporting a local IPFS daemon
-    or a file-system-based fallback for adding and retrieving JSON data.
-    """
 
-    _AVAILABILITY_TIMEOUT: float = 2.0
-    _ADD_TIMEOUT: float = 10.0
-    _GET_TIMEOUT: float = 10.0
+class IPFSClient:
+    """Small client for storing/retrieving JSON snapshots via IPFS or local fallback."""
+
+    __slots__ = ("host", "fallback_dir", "_available")
+
+    AVAILABILITY_TIMEOUT: float = 2.0
+    ADD_TIMEOUT: float = 10.0
+    GET_TIMEOUT: float = 10.0
 
     def __init__(self, host: str = "http://localhost:5001", fallback_dir: str = ".ipfs_fallback") -> None:
-        """
-        Initializes the IPFSClient.
+        clean_host = str(host or "").strip().rstrip("/")
+        if not clean_host:
+            raise ValueError("host cannot be empty")
 
-        Args:
-            host: The URL of the IPFS API daemon.
-            fallback_dir: Directory to use for local storage if IPFS is unreachable.
-        """
-        self.host: str = host.rstrip("/")
-        self.fallback_dir: str = fallback_dir
+        self.host: str = clean_host
+        self.fallback_dir: Path = Path(fallback_dir)
         self._available: Optional[bool] = None
 
-    def _reset_availability_cache(self) -> None:
-        """Resets the connectivity state to force a re-check on the next operation."""
+    def reset_availability_cache(self) -> None:
+        """Force IPFS daemon availability to be rechecked on the next operation."""
         self._available = None
 
     def is_available(self) -> bool:
-        """Checks if the IPFS daemon is reachable.
+        """Return True when the configured IPFS HTTP API is reachable."""
+        if self._available is not None:
+            return self._available
 
-        Returns:
-            True if the daemon responds to health checks, False otherwise.
-        """
-        if self._available is None:
-            try:
-                response = requests.get(f"{self.host}/api/v0/id", timeout=self._AVAILABILITY_TIMEOUT)
-                self._available = (response.status_code == 200)
-            except requests.RequestException:
-                self._available = False
+        try:
+            response = requests.post(
+                f"{self.host}/api/v0/id",
+                timeout=self.AVAILABILITY_TIMEOUT,
+            )
+            self._available = response.status_code == 200
+        except requests.RequestException:
+            self._available = False
+
         return self._available
 
-    def add_json(self, data: Dict[str, Any]) -> str:
-        """Stores a dictionary as JSON in IPFS or the fallback directory.
+    def add_json(self, data: dict[str, Any]) -> str:
+        """Store a dictionary as JSON and return its CID or deterministic fallback CID."""
+        if not isinstance(data, dict):
+            raise TypeError("data must be a dictionary")
 
-        Args:
-            data: Dictionary to serialize and store.
-        Returns:
-            The CID (or pseudo-CID) of the content.
-        """
         if self.is_available():
             try:
                 return self._add_via_api(data)
-            except requests.RequestException as e:
-                logger.warning(f"IPFS API add failed: {e}")
-                self._reset_availability_cache()
-        
+            except (requests.RequestException, KeyError, ValueError, json.JSONDecodeError) as exc:
+                logger.warning("IPFS API add failed, using fallback storage: %s", exc)
+                self.reset_availability_cache()
+
         return self._add_fallback(data)
 
-    def get_json(self, cid: str) -> Optional[Dict[str, Any]]:
-        """Retrieves JSON data by CID from IPFS or the fallback directory.
+    def get_json(self, cid: str) -> Optional[dict[str, Any]]:
+        """Retrieve a JSON dictionary by CID from IPFS or fallback storage."""
+        clean_cid = self._clean_cid(cid)
 
-        Args:
-            cid: Content identifier string.
-        Returns:
-            Deserialized dictionary, or None if retrieval failed.
-        """
         if self.is_available():
             try:
-                response = requests.post(f"{self.host}/api/v0/cat?arg={cid}", timeout=self._GET_TIMEOUT)
-                if response.status_code == 200:
-                    return response.json()
-            except (requests.RequestException, json.JSONDecodeError) as e:
-                logger.warning(f"IPFS API get failed for {cid}: {e}")
-                self._reset_availability_cache()
-        
-        return self._get_fallback(cid)
+                data = self._get_via_api(clean_cid)
+                if data is not None:
+                    return data
+            except (requests.RequestException, json.JSONDecodeError, ValueError) as exc:
+                logger.warning("IPFS API get failed for %s, trying fallback: %s", clean_cid, exc)
+                self.reset_availability_cache()
 
-    def _add_via_api(self, data: Dict[str, Any]) -> str:
-        """Internal helper to push data via IPFS HTTP API."""
-        json_bytes = json.dumps(data, indent=2, default=str).encode("utf-8")
-        files = {"file": ("snapshot.json", json_bytes)}
-        response = requests.post(f"{self.host}/api/v0/add", files=files, timeout=self._ADD_TIMEOUT)
+        return self._get_fallback(clean_cid)
+
+    def _add_via_api(self, data: dict[str, Any]) -> str:
+        payload = self._canonical_json(data).encode("utf-8")
+        files = {"file": ("snapshot.json", payload, "application/json")}
+
+        response = requests.post(
+            f"{self.host}/api/v0/add",
+            files=files,
+            timeout=self.ADD_TIMEOUT,
+        )
         response.raise_for_status()
-        return str(response.json()["Hash"])
 
-    def _add_fallback(self, data: Dict[str, Any]) -> str:
-        """Internal helper for filesystem-based storage fallback."""
-        json_str = json.dumps(data, indent=2, default=str)
-        cid = hashlib.sha256(json_str.encode("utf-8")).hexdigest()
-        os.makedirs(self.fallback_dir, exist_ok=True)
-        path = os.path.join(self.fallback_dir, f"{cid}.json")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(json_str)
+        body = response.json()
+        cid = str(body.get("Hash", "")).strip()
+        if not cid:
+            raise ValueError("IPFS add response did not contain Hash")
+
         return cid
 
-    def _get_fallback(self, cid: str) -> Optional[Dict[str, Any]]:
-        """Internal helper for filesystem-based retrieval fallback."""
-        path = os.path.join(self.fallback_dir, f"{cid}.json")
-        if not os.path.exists(path):
+    def _get_via_api(self, cid: str) -> Optional[dict[str, Any]]:
+        response = requests.post(
+            f"{self.host}/api/v0/cat",
+            params={"arg": cid},
+            timeout=self.GET_TIMEOUT,
+        )
+
+        if response.status_code == 404:
             return None
+
+        response.raise_for_status()
+        decoded = response.json()
+
+        if not isinstance(decoded, dict):
+            raise ValueError("IPFS cat response JSON is not a dictionary")
+
+        return decoded
+
+    def _add_fallback(self, data: dict[str, Any]) -> str:
+        json_str = self._canonical_json(data)
+        cid = hashlib.sha256(json_str.encode("utf-8")).hexdigest()
+
+        self.fallback_dir.mkdir(parents=True, exist_ok=True)
+        path = self.fallback_dir / f"{cid}.json"
+
+        tmp_path = path.with_suffix(".json.tmp")
+        tmp_path.write_text(json_str, encoding="utf-8")
+        tmp_path.replace(path)
+
+        return cid
+
+    def _get_fallback(self, cid: str) -> Optional[dict[str, Any]]:
+        path = self.fallback_dir / f"{cid}.json"
+        if not path.exists() or not path.is_file():
+            return None
+
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (IOError, json.JSONDecodeError) as e:
-            logger.error(f"Failed to read fallback file {path}: {e}")
+            decoded = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(decoded, dict):
+                logger.warning("Fallback file %s does not contain a JSON object.", path)
+                return None
+            return decoded
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.error("Failed to read fallback IPFS file %s: %s", path, exc)
             return None
+
+    @staticmethod
+    def _canonical_json(data: dict[str, Any]) -> str:
+        return json.dumps(
+            data,
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+            default=str,
+        )
+
+    @staticmethod
+    def _clean_cid(cid: str) -> str:
+        clean_cid = str(cid or "").strip()
+        if not clean_cid:
+            raise ValueError("cid must be a non-empty string")
+        if "/" in clean_cid or "\\" in clean_cid:
+            raise ValueError("cid must not contain path separators")
+        return clean_cid

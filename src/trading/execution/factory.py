@@ -1,77 +1,102 @@
-"""
-Factory for creating ExecutionBackend instances based on the configured mode.
-"""
+"""Factory for creating ExecutionBackend instances based on configured market mode."""
+
+from __future__ import annotations
+
+import logging
 import os
 import sys
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable
+from typing import Any
 
-# Define a type for the leadership check function
+from .backend import ExecutionBackend
+from .live_backend import LiveExecutionBackend
+from .sim_backend import SimExecutionBackend
+
+logger = logging.getLogger(__name__)
+
 LeadershipFunc = Callable[[int], bool]
+LIVE_MODES = {"web3", "live", "futures"}
+
 
 def _load_config() -> Any:
-    """
-    Attempts to load the swarm_config module.
-
-    Dynamically adjusts sys.path if the module is not initially found relative to
-    the execution path or PYTHONPATH.
-
-    Returns:
-        The loaded configuration object.
-
-    Raises:
-        ImportError: If the configuration cannot be resolved after path adjustment.
-    """
+    """Load swarm_config.config, adding project root to sys.path if needed."""
     try:
         from swarm_config import config
+
         return config
     except ImportError:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         root_dir = os.path.abspath(os.path.join(current_dir, "../../.."))
-        
+
         if root_dir not in sys.path:
             sys.path.insert(0, root_dir)
-        
+
         try:
             from swarm_config import config
+
             return config
-        except ImportError as e:
+        except ImportError as exc:
             raise ImportError(
                 "Could not import 'config' from 'swarm_config'. "
-                "Ensure swarm_config.py is in the PYTHONPATH or relative to project root."
-            ) from e
+                "Ensure swarm_config.py is available from the project root or PYTHONPATH."
+            ) from exc
 
-# Global config instance
+
 config = _load_config()
 
-from .backend import ExecutionBackend
-from .sim_backend import SimExecutionBackend
-from .live_backend import LiveExecutionBackend
 
 def build_backend(
-    node_id: str, 
-    adapter: Any, 
-    is_leader_func: LeadershipFunc
+    node_id: str,
+    adapter: Any,
+    is_leader_func: LeadershipFunc,
+    *,
+    market_mode: str | None = None,
+    allow_sim_fallback: bool = True,
 ) -> ExecutionBackend:
+    """Build an execution backend for sim, web3, live, or futures modes.
+
+    In live-like modes, SwarmNode may call this before the Web3 adapter is initialized.
+    When adapter is missing and allow_sim_fallback=True, this returns SimExecutionBackend
+    instead of failing during construction. Runtime code may rebuild the backend after
+    adapter initialization.
     """
-    Builds and returns an appropriate ExecutionBackend instance based on market_mode.
+    clean_node_id = str(node_id or "").strip()
+    if not clean_node_id:
+        raise ValueError("node_id cannot be empty")
 
-    Args:
-        node_id: The identifier for the current node.
-        adapter: The adapter object (e.g., Web3 provider) for live systems.
-        is_leader_func: Function mapping block number to leadership status.
+    if not callable(is_leader_func):
+        raise TypeError("is_leader_func must be callable")
 
-    Returns:
-        An instance of SimExecutionBackend or LiveExecutionBackend.
+    mode = _resolve_market_mode(market_mode)
 
-    Raises:
-        ValueError: If an unsupported market mode is configured.
-    """
-    mode = getattr(config, "market_mode", "sim")
-    
     if mode == "sim":
         return SimExecutionBackend()
-    
-    if mode in ("web3", "live"):
-        return LiveExecutionBackend(node_id, adapter, is_leader_func)
-    
-    raise ValueError(f"Unsupported market mode: {mode}")
+
+    if mode in LIVE_MODES:
+        if adapter is None:
+            if allow_sim_fallback:
+                logger.warning(
+                    "[%s] Adapter is not initialized for market_mode=%r; "
+                    "using SimExecutionBackend fallback until live adapter is available.",
+                    clean_node_id,
+                    mode,
+                )
+                return SimExecutionBackend()
+
+            raise ValueError(f"adapter is required for market_mode={mode!r}")
+
+        return LiveExecutionBackend(clean_node_id, adapter, is_leader_func)
+
+    raise ValueError(f"Unsupported market mode: {mode!r}")
+
+
+def _resolve_market_mode(override: str | None = None) -> str:
+    raw_mode = (
+        override
+        or os.environ.get("MARKET_MODE")
+        or os.environ.get("TRADING_MARKET_MODE")
+        or getattr(config, "market_mode", None)
+        or getattr(getattr(config, "trading", None), "market_mode", None)
+        or "sim"
+    )
+    return str(raw_mode).strip().lower()

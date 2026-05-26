@@ -1,132 +1,252 @@
-"""
-A module providing a unified asynchronous event bus for inter-component communication.
+"""Asynchronous in-process event bus with structured event metadata."""
 
-This event bus supports subscribing to topics, publishing events with metadata,
-and basic event logging for auditing purposes.
-"""
+from __future__ import annotations
+
 import asyncio
+import inspect
 import logging
+import threading
 import uuid
+from collections import defaultdict, deque
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Literal, TypeAlias, Awaitable, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    DefaultDict,
+    Final,
+    Literal,
+    TypeAlias,
+)
 
-# Set up logging for the event bus
 logger = logging.getLogger(__name__)
 
-# Define the expected signature for an event callback.
-EventCallback: TypeAlias = Callable[[Dict[str, Any]], Union[None, Awaitable[None]]]
-
-# Define a Literal type for event visibility scopes.
+Event: TypeAlias = dict[str, Any]
+EventCallback: TypeAlias = Callable[[Event], Any]
 VisibilityScope: TypeAlias = Literal["local", "swarm", "global"]
-VALID_VISIBILITY_SCOPES: tuple[VisibilityScope, ...] = ("local", "swarm", "global")
+
+VALID_VISIBILITY_SCOPES: Final[tuple[VisibilityScope, ...]] = (
+    "local",
+    "swarm",
+    "global",
+)
+
+DEFAULT_MAX_LOG_SIZE: Final[int] = 10_000
+
 
 class EventBus:
     """
-    A unified asynchronous event bus for component interaction.
-    """
-    __slots__ = ('_subscribers', '_event_log')
+    Lightweight async event bus for swarm/runtime communication.
 
-    def __init__(self) -> None:
-        self._subscribers: Dict[str, List[EventCallback]] = {}
-        self._event_log: List[Dict[str, Any]] = []
-        logger.debug("EventBus initialized.")
+    Features:
+    - async + sync subscriber support
+    - bounded in-memory event log
+    - safe subscriber isolation
+    - topic-based dispatch
+    - optional wildcard subscription via "*"
+    """
+
+    __slots__ = (
+        "_subscribers",
+        "_event_log",
+        "_max_log_size",
+        "_lock",
+    )
+
+    def __init__(self, max_log_size: int = DEFAULT_MAX_LOG_SIZE) -> None:
+        if max_log_size < 1:
+            raise ValueError("max_log_size must be >= 1")
+
+        self._subscribers: DefaultDict[str, list[EventCallback]] = defaultdict(list)
+        self._event_log: deque[Event] = deque(maxlen=max_log_size)
+        self._max_log_size: Final[int] = max_log_size
+        self._lock: threading.RLock = threading.RLock()
+
+        logger.debug(
+            "EventBus initialized (max_log_size=%s).",
+            max_log_size,
+        )
 
     def __repr__(self) -> str:
-        return f"EventBus(topics={len(self._subscribers)}, logged_events={len(self._event_log)})"
+        with self._lock:
+            topics = len(self._subscribers)
+            subscribers = sum(len(v) for v in self._subscribers.values())
+            logged = len(self._event_log)
+
+        return (
+            f"EventBus(topics={topics}, "
+            f"subscribers={subscribers}, "
+            f"logged_events={logged})"
+        )
 
     def subscribe(self, topic: str, callback: EventCallback) -> None:
         """
-        Subscribes a callback function to events of a specific topic.
+        Subscribe a callback to a topic.
 
-        Args:
-            topic: The topic name to subscribe to.
-            callback: The function or coroutine to execute on event.
+        Special topic:
+            "*" => receive all events.
         """
-        if not isinstance(topic, str) or not topic.strip():
-            raise ValueError("topic must be a non-empty string.")
-        if not callable(callback):
-            raise TypeError("callback must be a callable function or coroutine.")
+        topic_cleaned = self._validate_topic(topic)
 
-        topic_cleaned = topic.strip()
-        if topic_cleaned not in self._subscribers:
-            self._subscribers[topic_cleaned] = []
-        self._subscribers[topic_cleaned].append(callback)
+        if not callable(callback):
+            raise TypeError("callback must be callable")
+
+        with self._lock:
+            if callback not in self._subscribers[topic_cleaned]:
+                self._subscribers[topic_cleaned].append(callback)
+
+        logger.debug(
+            "Subscriber added topic=%s callback=%s",
+            topic_cleaned,
+            getattr(callback, "__name__", repr(callback)),
+        )
 
     def unsubscribe(self, topic: str, callback: EventCallback) -> None:
-        """
-        Unsubscribes a callback function from events of a specific topic.
+        """Remove a callback subscription."""
+        topic_cleaned = self._validate_topic(topic)
 
-        Args:
-            topic: The topic name to unsubscribe from.
-            callback: The previously subscribed callback.
-        """
-        topic_cleaned = topic.strip()
-        if topic_cleaned not in self._subscribers or callback not in self._subscribers[topic_cleaned]:
-            raise ValueError(f"Callback not found for topic '{topic_cleaned}'.")
-        
-        self._subscribers[topic_cleaned].remove(callback)
-        if not self._subscribers[topic_cleaned]:
-            del self._subscribers[topic_cleaned]
+        with self._lock:
+            callbacks = self._subscribers.get(topic_cleaned)
+            if not callbacks or callback not in callbacks:
+                return
 
-    async def publish(self, topic: str, payload: Any, source_component: str = "unknown",
-                      sensitivity: int = 1, visibility: VisibilityScope = "local") -> None:
-        """
-        Publishes a new event to the bus and triggers subscribers concurrently.
+            callbacks.remove(callback)
 
-        Args:
-            topic: The event topic.
-            payload: The event data content.
-            source_component: Identifier of the origin component.
-            sensitivity: Integer level from 1 to 5.
-            visibility: The dissemination scope of the event.
+            if not callbacks:
+                self._subscribers.pop(topic_cleaned, None)
+
+        logger.debug(
+            "Subscriber removed topic=%s callback=%s",
+            topic_cleaned,
+            getattr(callback, "__name__", repr(callback)),
+        )
+
+    async def publish(
+        self,
+        topic: str,
+        payload: Any,
+        source_component: str = "unknown",
+        sensitivity: int = 1,
+        visibility: VisibilityScope = "local",
+    ) -> Event:
         """
+        Publish an event to all subscribers.
+
+        Returns:
+            The constructed event dictionary.
+        """
+        topic_cleaned = self._validate_topic(topic)
+        source_component = str(source_component).strip() or "unknown"
+
         if not (1 <= sensitivity <= 5):
-            raise ValueError("sensitivity must be an integer between 1 and 5.")
-        if visibility not in VALID_VISIBILITY_SCOPES:
-            raise ValueError(f"visibility must be one of {VALID_VISIBILITY_SCOPES}.")
+            raise ValueError("sensitivity must be between 1 and 5")
 
-        topic_cleaned = topic.strip()
-        event: Dict[str, Any] = {
+        if visibility not in VALID_VISIBILITY_SCOPES:
+            raise ValueError(
+                f"visibility must be one of {VALID_VISIBILITY_SCOPES}"
+            )
+
+        event: Event = {
             "event_id": str(uuid.uuid4()),
             "topic": topic_cleaned,
             "source_component": source_component,
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec='milliseconds'),
+            "timestamp": datetime.now(timezone.utc).isoformat(
+                timespec="milliseconds"
+            ),
             "payload": payload,
-            "sensitivity": sensitivity,
-            "visibility": visibility
+            "sensitivity": int(sensitivity),
+            "visibility": visibility,
         }
-        self._event_log.append(event)
-        
-        callbacks = self._subscribers.get(topic_cleaned, [])
+
+        with self._lock:
+            self._event_log.append(event)
+
+            callbacks = [
+                *self._subscribers.get(topic_cleaned, []),
+                *self._subscribers.get("*", []),
+            ]
+
         if not callbacks:
-            return
+            return event
 
-        tasks: List[Awaitable[Any]] = []
-        for cb in callbacks:
+        async_tasks: list[Awaitable[Any]] = []
+
+        for callback in callbacks:
             try:
-                result = cb(event)
-                if asyncio.iscoroutine(result):
-                    tasks.append(result)
-            except Exception as e:
-                logger.error(f"Synchronous callback failed in topic '{topic_cleaned}': {e}", exc_info=True)
+                result = callback(event)
 
-        if tasks:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for res in results:
-                if isinstance(res, Exception):
-                    logger.error(f"Asynchronous callback failed in topic '{topic_cleaned}': {res}", exc_info=True)
+                if inspect.isawaitable(result):
+                    async_tasks.append(result)
 
-    def get_log(self, topic: Optional[str] = None) -> List[Dict[str, Any]]:
-        """
-        Retrieves a copy of the event log, optionally filtered by topic.
-        """
-        if topic:
-            topic_cleaned = topic.strip()
-            return [e for e in self._event_log if e["topic"] == topic_cleaned]
-        return list(self._event_log)
+            except Exception:
+                logger.exception(
+                    "Synchronous event callback failed "
+                    "(topic=%s callback=%s)",
+                    topic_cleaned,
+                    getattr(callback, "__name__", repr(callback)),
+                )
+
+        if async_tasks:
+            results = await asyncio.gather(
+                *async_tasks,
+                return_exceptions=True,
+            )
+
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.exception(
+                        "Asynchronous event callback failed "
+                        "(topic=%s): %s",
+                        topic_cleaned,
+                        result,
+                    )
+
+        return event
+
+    def get_log(self, topic: str | None = None) -> list[Event]:
+        """Return a snapshot copy of the event log."""
+        with self._lock:
+            events = list(self._event_log)
+
+        if topic is None:
+            return events
+
+        topic_cleaned = topic.strip()
+
+        return [
+            event
+            for event in events
+            if event.get("topic") == topic_cleaned
+        ]
+
+    def get_topics(self) -> list[str]:
+        """Return registered topic names."""
+        with self._lock:
+            return sorted(self._subscribers.keys())
+
+    def subscriber_count(self, topic: str | None = None) -> int:
+        """Return subscriber count."""
+        with self._lock:
+            if topic is None:
+                return sum(len(v) for v in self._subscribers.values())
+
+            return len(self._subscribers.get(topic.strip(), []))
 
     def clear_log(self) -> None:
-        """
-        Clears all events from the internal event log.
-        """
-        self._event_log.clear()
+        """Clear the in-memory event log."""
+        with self._lock:
+            self._event_log.clear()
+
+        logger.debug("Event log cleared.")
+
+    @staticmethod
+    def _validate_topic(topic: str) -> str:
+        if not isinstance(topic, str):
+            raise TypeError("topic must be a string")
+
+        topic_cleaned = topic.strip()
+
+        if not topic_cleaned:
+            raise ValueError("topic cannot be empty")
+
+        return topic_cleaned

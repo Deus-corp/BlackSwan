@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 import time
+import logging
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, Optional, cast
 
 from .context import RuntimeContext
 from .market.snapshot import MarketSnapshot
 
+logger = logging.getLogger("SwarmNode.Heartbeat")
 
 @dataclass(slots=True, frozen=True)
 class TradeHeartbeat:
     """Versioned heartbeat emitted by the trade node."""
 
     schema_version: int
+    type: str
+    swarm: str
     node_id: str
+    role: str
+    status: str
     timestamp: float
     capital: float
     dq: float
@@ -29,12 +35,12 @@ class TradeHeartbeat:
     best_symbol: str
     best_price: float
     market_mode: str
+    execution_enabled: bool
+    dry_run: bool
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert heartbeat to serializable dictionary."""
-        data = asdict(self)
-        data["type"] = "trade_heartbeat"
-        return data
+        return asdict(self)
 
 
 class HeartbeatPublisher:
@@ -47,7 +53,11 @@ class HeartbeatPublisher:
         """Construct and push heartbeat data to the CRDT."""
         heartbeat = TradeHeartbeat(
             schema_version=1,
+            type="trade_heartbeat",
+            swarm="trade",
             node_id=str(getattr(self._ctx.config, "node_id", "unknown")),
+            role="node",
+            status="ok",
             timestamp=time.time(),
             capital=float(getattr(self._ctx, "capital", 0.0)),
             dq=float(getattr(self._ctx.survival, "dq", 0.0)),
@@ -61,8 +71,23 @@ class HeartbeatPublisher:
             best_symbol=self._get_best_symbol(snapshot),
             best_price=self._get_best_price(snapshot),
             market_mode=str(getattr(self._ctx.config, "market_mode", "")),
+            execution_enabled=bool(getattr(self._ctx.config, "execution_enabled", False)),
+            dry_run=bool(getattr(self._ctx.config, "dry_run", True)),
         )
-        await self._ctx.crdt.add_genome(heartbeat.to_dict())
+
+        payload = heartbeat.to_dict()
+        logger.info(
+            "[%s] Publishing trade heartbeat payload: type=%s swarm=%s role=%s capital=%.4f dry_run=%s execution_enabled=%s",
+            heartbeat.node_id,
+            payload.get("type"),
+            payload.get("swarm"),
+            payload.get("role"),
+            heartbeat.capital,
+            heartbeat.dry_run,
+            heartbeat.execution_enabled,
+        )
+        await self._ctx.crdt.add_genome(payload)
+        logger.info("[%s] Published trade heartbeat.", heartbeat.node_id)
 
     def _fallback_snapshot(self) -> MarketSnapshot:
         symbol = str(getattr(self._ctx, "primary_symbol", "BTC/USDT"))

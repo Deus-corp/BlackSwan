@@ -1,8 +1,10 @@
-"""
-Manages swarm node capital and survival status.
-"""
+"""Capital management and survival state helpers for swarm trading nodes."""
+
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, Final, Optional, Protocol, runtime_checkable
+import math
+from typing import Any, Final, Protocol, runtime_checkable
 
 from swarm_config import config
 
@@ -11,119 +13,172 @@ logger: Final = logging.getLogger(__name__)
 
 @runtime_checkable
 class SurvivalEvaluatorProtocol(Protocol):
-    """
-    A protocol defining the expected interface for a SurvivalEvaluator.
-    """
+    """Expected interface for a survival evaluator."""
+
     dq: float
     liveness: float
 
 
 class CapitalManager:
-    """
-    Manages the capital, burn rate, and survival status of the swarm node.
+    """Manage node capital, burn rate, trade outcomes, and survival metrics."""
 
-    This class tracks the node's capital, applies a defined burn rate,
-    processes trade outcomes, and evaluates operational liveness.
-    """
+    __slots__ = ("capital", "burn_rate", "alert_threshold", "survival", "initial_capital", "realized_pnl")
 
-    __slots__ = ("capital", "burn_rate", "alert_threshold", "survival")
+    DEFAULT_CAPITAL: Final[float] = 1000.0
 
-    def __init__(self, capital: float = 1000.0) -> None:
-        """
-        Initializes the CapitalManager with validated configuration settings.
-
-        Args:
-            capital: The starting capital (must be non-negative).
-
-        Raises:
-            ValueError: If any input parameters are negative.
-        """
-        if capital < 0:
-            raise ValueError("Capital must be non-negative.")
-        if config.burn_rate < 0:
-            raise ValueError("Burn rate must be non-negative.")
-        if config.capital_alert_threshold < 0:
-            raise ValueError("Capital alert threshold must be non-negative.")
-
-        self.capital: float = float(capital)
-        self.burn_rate: float = float(config.burn_rate)
-        self.alert_threshold: float = float(config.capital_alert_threshold)
-        self.survival: Optional[SurvivalEvaluatorProtocol] = None
+    def __init__(
+        self,
+        capital: float = DEFAULT_CAPITAL,
+        *,
+        burn_rate: float | None = None,
+        alert_threshold: float | None = None,
+    ) -> None:
+        self.initial_capital = self._require_non_negative(capital, "capital")
+        self.capital = self.initial_capital
+        self.burn_rate = self._require_non_negative(
+            getattr(config, "burn_rate", 0.0) if burn_rate is None else burn_rate,
+            "burn_rate",
+        )
+        self.alert_threshold = self._require_non_negative(
+            getattr(config, "capital_alert_threshold", 0.0) if alert_threshold is None else alert_threshold,
+            "capital_alert_threshold",
+        )
+        self.survival: SurvivalEvaluatorProtocol | None = None
+        self.realized_pnl = 0.0
 
     def set_survival(self, survival_evaluator: SurvivalEvaluatorProtocol) -> None:
-        """
-        Connects a SurvivalEvaluator instance to the CapitalManager.
+        """Attach a SurvivalEvaluator-like object."""
+        dq = self._require_unit_interval(getattr(survival_evaluator, "dq", None), "dq")
+        liveness = self._require_unit_interval(getattr(survival_evaluator, "liveness", None), "liveness")
 
-        Args:
-            survival_evaluator: An object providing 'dq' and 'liveness' attributes.
-
-        Raises:
-            ValueError: If metrics are outside the [0.0, 1.0] range.
-        """
-        if not (0.0 <= survival_evaluator.dq <= 1.0):
-            raise ValueError("DQ must be in the range [0.0, 1.0].")
-        if not (0.0 <= survival_evaluator.liveness <= 1.0):
-            raise ValueError("Liveness must be in the range [0.0, 1.0].")
+        survival_evaluator.dq = dq
+        survival_evaluator.liveness = liveness
         self.survival = survival_evaluator
 
-    def burn(self) -> None:
-        """
-        Deducts the configured burn rate from the current capital.
-        """
-        self.capital = max(0.0, self.capital - self.burn_rate)
-        logger.debug("Capital after burn: %.4f", self.capital)
+    def burn(self, multiplier: float = 1.0) -> float:
+        """Deduct burn rate from capital and return deducted amount."""
+        safe_multiplier = self._require_non_negative(multiplier, "multiplier")
+        amount = min(self.capital, self.burn_rate * safe_multiplier)
+        self.capital = max(0.0, self.capital - amount)
 
-    def apply_trade(self, result: Dict[str, Any]) -> float:
-        """
-        Processes the financial result of a trade.
+        logger.debug("Capital burn applied amount=%.6f capital=%.6f", amount, self.capital)
+        return amount
 
-        Args:
-            result: Dictionary containing trade outcome metadata.
+    def apply_trade(self, result: dict[str, Any]) -> float:
+        """Apply execution result to capital and return capital delta."""
+        if not isinstance(result, dict):
+            raise TypeError("result must be a dictionary")
 
-        Returns:
-            The delta in capital (currently 0.0).
-        """
-        logger.info("Trade result received: %s. Capital not updated as method is a stub.", result)
-        return 0.0
+        old_capital = self.capital
+
+        if "new_capital" in result and result.get("new_capital") is not None:
+            new_capital = self._require_non_negative(result.get("new_capital"), "new_capital")
+            self.capital = new_capital
+            delta = self.capital - old_capital
+        else:
+            delta = self._safe_float(result.get("capital_delta", result.get("pnl", 0.0)), 0.0)
+            if not math.isfinite(delta):
+                delta = 0.0
+            self.capital = max(0.0, self.capital + delta)
+
+        self.realized_pnl += delta
+
+        logger.info(
+            "Trade result applied status=%s success=%s delta=%.6f capital=%.6f",
+            result.get("status"),
+            result.get("success"),
+            delta,
+            self.capital,
+        )
+        return delta
+
+    def deposit(self, amount: float) -> float:
+        """Increase capital and return the new capital."""
+        value = self._require_positive(amount, "amount")
+        self.capital += value
+        logger.info("Capital deposit amount=%.6f capital=%.6f", value, self.capital)
+        return self.capital
+
+    def withdraw(self, amount: float) -> float:
+        """Decrease capital and return the new capital."""
+        value = self._require_positive(amount, "amount")
+        if value > self.capital:
+            raise ValueError("withdraw amount exceeds current capital")
+
+        self.capital -= value
+        logger.info("Capital withdrawal amount=%.6f capital=%.6f", value, self.capital)
+        return self.capital
 
     def is_alive(self) -> bool:
-        """
-        Checks if the node is still operational based on capital.
+        """Return True when node has positive capital and liveness is positive."""
+        if self.capital <= 0:
+            return False
+        if self.survival is not None and float(self.survival.liveness) <= 0:
+            return False
+        return True
 
-        Returns:
-            True if capital is greater than zero, otherwise False.
-        """
-        return self.capital > 0
+    def needs_alert(self) -> bool:
+        """Return True when capital is at or below alert threshold."""
+        return self.alert_threshold > 0 and self.capital <= self.alert_threshold
 
-    def health_snapshot(self) -> Dict[str, float]:
-        """
-        Returns a summary of current capital and survival metrics.
-
-        Returns:
-            Dictionary with capital, burn_rate, dq, and liveness.
-        """
+    def health_snapshot(self) -> dict[str, float]:
+        """Return current capital and survival metrics."""
         return {
             "capital": self.capital,
+            "initial_capital": self.initial_capital,
+            "realized_pnl": self.realized_pnl,
             "burn_rate": self.burn_rate,
+            "alert_threshold": self.alert_threshold,
             "dq": float(self.survival.dq) if self.survival else 0.0,
             "liveness": float(self.survival.liveness) if self.survival else 1.0,
         }
 
     def apply_dq_delta(self, delta: float = 0.001) -> None:
-        """
-        Increments the DQ metric within the linked SurvivalEvaluator.
+        """Increment DQ metric on attached survival evaluator."""
+        safe_delta = self._require_non_negative(delta, "delta")
 
-        Args:
-            delta: Non-negative value to add to the current DQ.
+        if self.survival is None:
+            logger.warning("Attempted to apply DQ delta without SurvivalEvaluator.")
+            return
 
-        Raises:
-            ValueError: If delta is negative.
-        """
-        if delta < 0:
-            raise ValueError("Delta must be non-negative.")
+        self.survival.dq = min(1.0, max(0.0, float(self.survival.dq) + safe_delta))
+        logger.debug("DQ updated to %.6f", self.survival.dq)
 
-        if self.survival:
-            self.survival.dq = min(1.0, self.survival.dq + delta)
-            logger.debug("DQ updated to: %.4f", self.survival.dq)
-        else:
-            logger.warning("Attempted to apply DQ delta, but no SurvivalEvaluator is set.")
+    def apply_liveness_delta(self, delta: float) -> None:
+        """Adjust liveness metric on attached survival evaluator."""
+        if self.survival is None:
+            logger.warning("Attempted to apply liveness delta without SurvivalEvaluator.")
+            return
+
+        safe_delta = self._safe_float(delta, 0.0)
+        self.survival.liveness = min(1.0, max(0.0, float(self.survival.liveness) + safe_delta))
+        logger.debug("Liveness updated to %.6f", self.survival.liveness)
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return default
+        return number if math.isfinite(number) else default
+
+    @classmethod
+    def _require_non_negative(cls, value: Any, name: str) -> float:
+        number = cls._safe_float(value, float("nan"))
+        if not math.isfinite(number) or number < 0:
+            raise ValueError(f"{name} must be a non-negative finite number")
+        return number
+
+    @classmethod
+    def _require_positive(cls, value: Any, name: str) -> float:
+        number = cls._safe_float(value, float("nan"))
+        if not math.isfinite(number) or number <= 0:
+            raise ValueError(f"{name} must be a positive finite number")
+        return number
+
+    @classmethod
+    def _require_unit_interval(cls, value: Any, name: str) -> float:
+        number = cls._safe_float(value, float("nan"))
+        if not math.isfinite(number) or not 0.0 <= number <= 1.0:
+            raise ValueError(f"{name} must be in [0.0, 1.0]")
+        return number

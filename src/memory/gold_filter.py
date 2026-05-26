@@ -1,109 +1,151 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Set, Final
+from typing import Any, Final, Iterable
+
 
 @dataclass(frozen=True, slots=True)
 class ExperienceSample:
-    """
-    Represents an immutable experience sample collected from agent interactions.
+    """Immutable high-quality experience sample for training/export."""
 
-    Attributes:
-        instruction: The task prompt or instruction.
-        input_text: Contextual input provided to the agent.
-        output_text: Agent's successful action or response.
-        score: Quality score [0.0, 1.0].
-        meta: Metadata mapping including provenance information.
-    """
     instruction: str
     input_text: str
     output_text: str
     score: float
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "instruction", str(self.instruction or ""))
+        object.__setattr__(self, "input_text", str(self.input_text or ""))
+        object.__setattr__(self, "output_text", str(self.output_text or ""))
+        object.__setattr__(self, "score", _clamp(_safe_float(self.score), 0.0, 1.0))
+
+        if not isinstance(self.meta, dict):
+            object.__setattr__(self, "meta", {"raw_meta": self.meta})
+        else:
+            object.__setattr__(self, "meta", dict(self.meta))
+
+    @property
+    def fingerprint(self) -> str:
+        return sample_fingerprint(self)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "instruction": self.instruction,
+            "input_text": self.input_text,
+            "output_text": self.output_text,
+            "score": self.score,
+            "meta": dict(self.meta),
+        }
 
 
-SCORING_WEIGHTS: Final[Dict[str, float]] = {
+SCORING_WEIGHTS: Final[dict[str, float]] = {
     "pnl_delta": 0.50,
     "efficiency": 0.25,
     "peer_validation": 0.25,
-    "risk_penalty": -0.40
+    "risk_penalty": -0.40,
 }
 
-
-def _normalize_text(text: str) -> str:
-    """
-    Normalizes text by collapsing whitespace and standardizing casing.
-    """
-    return " ".join(str(text).lower().split())
+DEFAULT_THRESHOLD: Final[float] = 0.8
 
 
-def calculate_success_score(entry: Dict[str, Any]) -> float:
-    """
-    Computes a clamped success score [0.0, 1.0] for an experience entry.
-    """
-    score: float = sum(
-        float(entry.get(key, 0.0)) * weight 
-        for key, weight in SCORING_WEIGHTS.items()
-    )
-    return max(0.0, min(1.0, score))
+def calculate_success_score(entry: dict[str, Any]) -> float:
+    """Compute a clamped success score in [0.0, 1.0]."""
+    if not isinstance(entry, dict):
+        return 0.0
+
+    score = 0.0
+    for key, weight in SCORING_WEIGHTS.items():
+        score += _safe_float(entry.get(key), 0.0) * weight
+
+    return _clamp(score, 0.0, 1.0)
 
 
-def deduplicate_samples(samples: Iterable[ExperienceSample]) -> List[ExperienceSample]:
-    """
-    Filters unique samples using SHA256 fingerprints based on normalized content.
-    """
-    seen_fingerprints: Set[str] = set()
-    unique_samples: List[ExperienceSample] = []
+def deduplicate_samples(samples: Iterable[ExperienceSample]) -> list[ExperienceSample]:
+    """Return unique samples by content fingerprint, preserving first occurrence."""
+    seen: set[str] = set()
+    unique_samples: list[ExperienceSample] = []
 
     for sample in samples:
-        fingerprint_source: str = (
-            f"{_normalize_text(sample.instruction)}|"
-            f"{_normalize_text(sample.input_text)}|"
-            f"{_normalize_text(sample.output_text)}"
-        )
-        fingerprint: str = hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
+        if not isinstance(sample, ExperienceSample):
+            continue
 
-        if fingerprint not in seen_fingerprints:
-            seen_fingerprints.add(fingerprint)
-            unique_samples.append(sample)
+        fingerprint = sample.fingerprint
+        if fingerprint in seen:
+            continue
+
+        seen.add(fingerprint)
+        unique_samples.append(sample)
 
     return unique_samples
 
 
 def filter_gold_samples(
-    entries: Iterable[Dict[str, Any]],
-    threshold: float = 0.8,
-) -> List[ExperienceSample]:
-    """
-    Filters and deduplicates entries that meet the quality threshold.
-
-    Args:
-        entries: An iterable of raw interaction data dictionaries.
-        threshold: Minimum score required for inclusion (default 0.8).
-
-    Returns:
-        A list of filtered and unique ExperienceSample objects.
-    """
-    gold_samples: List[ExperienceSample] = []
+    entries: Iterable[dict[str, Any]],
+    threshold: float = DEFAULT_THRESHOLD,
+) -> list[ExperienceSample]:
+    """Filter raw entries into deduplicated gold experience samples."""
+    safe_threshold = _clamp(_safe_float(threshold, DEFAULT_THRESHOLD), 0.0, 1.0)
+    gold_samples: list[ExperienceSample] = []
 
     for entry in entries:
-        score: float = calculate_success_score(entry)
-        if score < threshold:
+        if not isinstance(entry, dict):
+            continue
+
+        score = calculate_success_score(entry)
+        if score < safe_threshold:
+            continue
+
+        instruction = str(entry.get("task_description", "") or "").strip()
+        input_text = str(entry.get("market_context", "") or "").strip()
+        output_text = str(entry.get("successful_action", "") or "").strip()
+
+        if not instruction or not output_text:
             continue
 
         sample = ExperienceSample(
-            instruction=str(entry.get("task_description", "")),
-            input_text=str(entry.get("market_context", "")),
-            output_text=str(entry.get("successful_action", "")),
+            instruction=instruction,
+            input_text=input_text,
+            output_text=output_text,
             score=score,
             meta={
                 "event_id": entry.get("event_id"),
                 "node_id": entry.get("node_id"),
                 "source": entry.get("source", "memory"),
                 "adapter_id": entry.get("adapter_id"),
-            }
+                "fingerprint_source": "task_description|market_context|successful_action",
+            },
         )
         gold_samples.append(sample)
 
     return deduplicate_samples(gold_samples)
+
+
+def sample_fingerprint(sample: ExperienceSample) -> str:
+    """Return deterministic SHA256 fingerprint for an experience sample."""
+    fingerprint_source = (
+        f"{_normalize_text(sample.instruction)}|"
+        f"{_normalize_text(sample.input_text)}|"
+        f"{_normalize_text(sample.output_text)}"
+    )
+    return hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
+
+
+def _normalize_text(text: str) -> str:
+    """Normalize text for stable deduplication."""
+    return " ".join(str(text or "").lower().split())
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+
+    return number if math.isfinite(number) else default
+
+
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))

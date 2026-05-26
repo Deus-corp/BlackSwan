@@ -1,267 +1,251 @@
-"""
-Исполнение на live/web3 (Sepolia через Uniswap V3).
-"""
+"""Live/Web3 trade execution backend."""
+
+from __future__ import annotations
+
+import inspect
 import logging
-from typing import Dict, Any, Callable, Optional, Union, TYPE_CHECKING
-from web3 import Web3 # Used for type hinting the adapter's w3 attribute
+import math
+from collections.abc import Callable
+from typing import Any, Protocol, runtime_checkable
 
-from .backend import ExecutionBackend
+from web3 import Web3
 
-# Define a Protocol for the adapter if TYPE_CHECKING is true, to enhance type safety.
-# This avoids a runtime dependency on a specific adapter implementation but helps static analysis.
-if TYPE_CHECKING:
-    from typing import Protocol
-
-    class Web3AdapterProtocol(Protocol):
-        """
-        Protocol defining the expected interface for the Web3 adapter.
-        """
-        w3: Web3 # Assumes the adapter exposes a web3 instance
-        async def _get_token_balance(self, token_address: str) -> float: ...
-        async def place_order(self, side: str, amount: float, price: float) -> Dict[str, Any]: ...
+from .backend import ExecutionBackend, ExecutionResult, OrderSide, error_result, rejected_result, skipped_result
 
 logger = logging.getLogger(__name__)
 
-# Constants for token addresses on Sepolia for demonstration purposes.
-# In a production system, these might be loaded from a configuration or a network-specific registry.
-WETH_ADDRESS: str = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"  # Example WETH address on Sepolia
-USDC_ADDRESS: str = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"  # Example USDC address on Sepolia
+WETH_ADDRESS = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+USDC_ADDRESS = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+
+
+@runtime_checkable
+class Web3AdapterProtocol(Protocol):
+    """Expected live/Web3 adapter interface."""
+
+    w3: Web3
+
+    async def _get_token_balance(self, token_address: str) -> float:
+        ...
+
+    async def place_order(self, side: str, amount: float, price: float) -> dict[str, Any]:
+        ...
 
 
 class LiveExecutionBackend(ExecutionBackend):
-    """
-    Backend for executing orders on a live Web3 environment (e.g., Sepolia via Uniswap V3).
-    It interacts with an adapter to place orders, check balances, and verify leadership status.
+    """Backend for guarded live/Web3 execution."""
 
-    Assumes the 'adapter' object provides specific methods for Web3 interaction,
-    as detailed in the `__init__` method's docstring and the `Web3AdapterProtocol`.
-    """
-    node_id: str
-    # Type `Any` is used here for `adapter` for runtime flexibility, but `Web3AdapterProtocol`
-    # (defined for static type checking) represents the expected interface.
-    adapter: Union['Web3AdapterProtocol', Any]
-    is_leader_func: Callable[[int], bool]
+    def __init__(
+        self,
+        node_id: str,
+        adapter: Web3AdapterProtocol | Any,
+        is_leader_func: Callable[[int], bool],
+    ) -> None:
+        clean_node_id = str(node_id or "").strip()
+        if not clean_node_id:
+            raise ValueError("node_id cannot be empty")
+        if adapter is None:
+            raise ValueError("adapter is required")
+        if not callable(is_leader_func):
+            raise TypeError("is_leader_func must be callable")
 
-    def __init__(self, node_id: str, adapter: Union['Web3AdapterProtocol', Any], is_leader_func: Callable[[int], bool]) -> None:
-        """
-        Initializes the LiveExecutionBackend.
-
-        Args:
-            node_id (str): Identifier for the current node. Used for logging.
-            adapter (Union[Web3AdapterProtocol, Any]): An object capable of interacting with the blockchain
-                                                       (e.g., placing orders, getting balances, accessing web3 instance).
-                                                       It's expected to conform to `Web3AdapterProtocol`, providing at least
-                                                       the following callable attributes:
-                                                       - `_get_token_balance(token_address: str) -> float`: To get token balances asynchronously.
-                                                       - `w3.eth.block_number` (awaitable property/attribute): To get the current block number.
-                                                       - `place_order(side: str, amount: float, price: float) -> Dict[str, Any]`:
-                                                         To submit a trade order asynchronously.
-            is_leader_func (Callable[[int], bool]): A callable that takes an integer (block number)
-                                                     and returns a boolean, indicating if the current node
-                                                     is the leader for that specific block.
-        """
-        self.node_id = node_id
+        self.node_id = clean_node_id
         self.adapter = adapter
         self.is_leader_func = is_leader_func
 
     async def execute_order(
         self,
         symbol: str,
-        side: str,
+        side: OrderSide,
         amount: float,
         price: float,
         capital: float,
-    ) -> Dict[str, Any]:
-        """
-        Executes a trading order on the live blockchain environment.
+    ) -> ExecutionResult:
+        """Execute a guarded live order through the configured adapter."""
+        capital_value = self._safe_float(capital, 0.0)
+        clean_symbol = str(symbol or "").strip()
+        clean_side = str(side or "").strip().lower()
 
-        Performs checks for adapter availability, balance sufficiency (for sell orders),
-        and leader status before attempting to place an order via the adapter.
+        if not clean_symbol:
+            return rejected_result(capital_value, "symbol_required")
+        if clean_side not in {"buy", "sell"}:
+            return rejected_result(capital_value, f"unsupported_side:{side}")
 
-        Note: The 'symbol' parameter is not currently utilized in the internal logic
-        for determining which specific tokens to trade (e.g., WETH/USDC). The current
-        implementation implicitly assumes WETH for selling and relies on available
-        'capital' (which is assumed to be in USDC) for buying. For a more generic
-        backend, the symbol should drive token address selection.
-        The `new_capital` returned is explicitly a placeholder, as actual balance
-        reconciliation would occur through external RPC calls or other mechanisms.
+        amount_value = self._safe_positive(amount, "amount")
+        price_value = self._safe_positive(price, "price")
+        if amount_value is None:
+            return rejected_result(capital_value, "amount_must_be_positive")
+        if price_value is None:
+            return rejected_result(capital_value, "price_must_be_positive")
 
-        Args:
-            symbol (str): The trading pair symbol (e.g., "WETH/USDC").
-                          Currently, this parameter is not directly used to determine
-                          which token addresses to use for the swap.
-            side (str): The order side ("buy" or "sell"). Expected to be "buy" to
-                        exchange USDC for WETH, or "sell" to exchange WETH for USDC.
-            amount (float): The amount of the base asset (e.g., WETH) to trade.
-            price (float): The desired price for the trade (e.g., WETH price in USDC).
-            capital (float): The current capital available, assumed to be in the quote
-                             currency (e.g., USDC) for buy orders. This value is used
-                             as a basis, but the returned `new_capital` is currently a placeholder.
+        if not self._adapter_ready():
+            logger.error("[%s] LiveExecutionBackend requires adapter.place_order().", self.node_id)
+            return error_result(capital_value, "adapter_missing_place_order")
 
-        Returns:
-            Dict[str, Any]: A dictionary containing the result of the order execution,
-            including success status, new capital (may be a placeholder), transaction hash,
-            execution status, and any error message.
-        """
-        # Ensure the adapter is properly configured before proceeding
-        if not self.adapter or not (hasattr(self.adapter, "place_order") and callable(self.adapter.place_order)):
-            logger.error(
-                f"[{self.node_id}] LiveExecutionBackend requires an adapter with a callable 'place_order' method."
-            )
-            return {
-                "success": False,
-                "new_capital": capital,
-                "tx_hash": None,
-                "status": "error",
-                "error": "No adapter or adapter missing 'place_order' method",
-            }
-
-        adjusted_amount: float = amount
-
-        # Perform balance check if selling. Currently hardcoded for WETH.
-        if side.lower() == "sell":
-            try:
-                # Assuming _get_token_balance is an async method of the adapter
-                # Type check ignored because `self.adapter` is `Any` or `Union` and mypy can't verify runtime attributes.
-                weth_bal: float = await self.adapter._get_token_balance(WETH_ADDRESS) # type: ignore [attr-defined]
-                # Ensure we don't try to sell more WETH than available
-                adjusted_amount = min(amount, weth_bal)
-                logger.debug(
-                    f"[{self.node_id}] Current WETH balance: {weth_bal:.4f}, "
-                    f"requested sell amount: {amount:.4f}, adjusted to: {adjusted_amount:.4f}"
-                )
-            except Exception as e:
-                logger.warning(
-                    f"[{self.node_id}] Balance check skipped for selling WETH due to an error: {e}",
-                    exc_info=False  # No stack trace by default for warnings
-                )
-                # If balance check fails, the current logic proceeds with the original 'amount'.
-                # This might lead to a transaction revert later if the amount is too high.
-                # Preserving original functionality.
-
-        # Check if the adjusted amount is valid for a trade
+        adjusted_amount = await self._adjust_amount_for_balance(clean_symbol, clean_side, amount_value)
         if adjusted_amount <= 0:
-            error_message: str = "Insufficient balance or adjusted amount is zero/negative for trade."
-            logger.info(f"[{self.node_id}] Skipping order: {error_message}")
-            return {
-                "success": False,
-                "new_capital": capital,
-                "tx_hash": None,
-                "status": "rejected",  # Changed from 'error' to 'rejected' for clarity
-                "error": error_message,
-            }
+            return rejected_result(capital_value, "insufficient_balance_or_zero_amount")
 
-        # Perform leader check. If leadership cannot be confirmed, do not execute.
+        leader_result = await self._leader_check()
+        if not leader_result["allowed"]:
+            status = "skipped" if leader_result["error"] == "not_leader" else "rejected"
+            if status == "skipped":
+                return skipped_result(capital_value, leader_result["error"])
+            return rejected_result(capital_value, leader_result["error"])
+
         try:
-            block_number = await self.adapter.w3.eth.block_number  # type: ignore[attr-defined]
-        except AttributeError:
-            logger.error(
-                "[%s] Adapter missing 'w3.eth.block_number'; refusing live execution.",
-                self.node_id,
+            result = await self._call_place_order(
+                symbol=clean_symbol,
+                side=clean_side,
+                amount=adjusted_amount,
+                price=price_value,
             )
-            return {
-                "success": False,
-                "new_capital": capital,
-                "tx_hash": None,
-                "status": "rejected",
-                "error": "leader_check_unavailable",
-                "reason": "adapter_missing_w3_eth_block_number",
-            }
-        except Exception as e:
-            logger.warning(
-                "[%s] Leader check failed; refusing live execution: %s",
+        except Exception as exc:
+            logger.exception("[%s] Live order execution failed unexpectedly.", self.node_id)
+            return error_result(capital_value, str(exc))
+
+        return self._normalize_adapter_result(result, capital_value)
+
+    def _adapter_ready(self) -> bool:
+        return callable(getattr(self.adapter, "place_order", None))
+
+    async def _adjust_amount_for_balance(self, symbol: str, side: str, amount: float) -> float:
+        if side != "sell":
+            return amount
+
+        get_balance = getattr(self.adapter, "_get_token_balance", None)
+        if not callable(get_balance):
+            logger.warning("[%s] Adapter has no _get_token_balance(); sell balance check skipped.", self.node_id)
+            return amount
+
+        token_address = self._base_token_address(symbol)
+
+        try:
+            balance = await self._maybe_await(get_balance(token_address))
+            balance_value = max(0.0, self._safe_float(balance, 0.0))
+            adjusted = min(amount, balance_value)
+
+            logger.debug(
+                "[%s] Sell balance check symbol=%s balance=%.8f requested=%.8f adjusted=%.8f",
                 self.node_id,
-                e,
-                exc_info=False,
+                symbol,
+                balance_value,
+                amount,
+                adjusted,
             )
-            return {
-                "success": False,
-                "new_capital": capital,
-                "tx_hash": None,
-                "status": "rejected",
-                "error": "leader_check_failed",
-                "reason": str(e),
-            }
+            return adjusted
+
+        except Exception as exc:
+            logger.warning("[%s] Sell balance check failed; refusing sell: %s", self.node_id, exc)
+            return 0.0
+
+    async def _leader_check(self) -> dict[str, Any]:
+        try:
+            block_number = await self._current_block_number()
+        except Exception as exc:
+            logger.warning("[%s] Leader check failed; refusing live execution: %s", self.node_id, exc)
+            return {"allowed": False, "error": "leader_check_failed", "block_number": None}
 
         try:
             is_leader = bool(self.is_leader_func(int(block_number)))
-        except Exception as e:
+        except Exception as exc:
             logger.warning(
                 "[%s] Leader predicate failed for block=%s; refusing live execution: %s",
                 self.node_id,
                 block_number,
-                e,
-                exc_info=False,
+                exc,
             )
-            return {
-                "success": False,
-                "new_capital": capital,
-                "tx_hash": None,
-                "status": "rejected",
-                "error": "leader_predicate_failed",
-                "block_number": int(block_number),
-                "reason": str(e),
-            }
+            return {"allowed": False, "error": "leader_check_failed", "block_number": int(block_number)}
 
         if not is_leader:
-            logger.info(
-                "[%s] Skipping live execution: not leader for block %s.",
-                self.node_id,
-                block_number,
-            )
-            return {
-                "success": False,
-                "new_capital": capital,
-                "tx_hash": None,
-                "status": "skipped",
-                "error": "not_leader",
-                "block_number": int(block_number),
-            }
-            # As per original comment, if leader check fails, current logic proceeds to attempt swap.
+            logger.info("[%s] Skipping live execution: not leader for block %s.", self.node_id, block_number)
+            return {"allowed": False, "error": "not_leader", "block_number": int(block_number)}
 
-        # Execute the swap via the adapter
+        return {"allowed": True, "error": "", "block_number": int(block_number)}
+
+    async def _current_block_number(self) -> int:
+        w3 = getattr(self.adapter, "w3", None)
+        eth = getattr(w3, "eth", None)
+        if eth is None:
+            raise RuntimeError("adapter_missing_w3_eth")
+
         try:
-            # The `place_order` method on the adapter is expected to handle the actual blockchain interaction.
-            # It's assumed to return a dict with 'status' and optionally 'tx_hash', 'error'.
-            # Type check ignored because `self.adapter` is `Any` or `Union` and mypy can't verify runtime attributes.
-            result: Dict[str, Any] = await self.adapter.place_order(side=side, amount=adjusted_amount, price=price) # type: ignore [attr-defined]
+            block_number_attr = getattr(eth, "block_number")
+        except AttributeError as exc:
+            raise RuntimeError("adapter_missing_w3_eth_block_number") from exc
 
-            if result.get("status") == "success":
-                # Important: The 'new_capital' here is a placeholder.
-                # In a real live system, the actual updated capital would need to be
-                # fetched from an RPC call (e.g., getting balance of USDC after a buy)
-                # or calculated from executed trade details (executed amount, fees).
-                # The current design defers actual balance reconciliation to another process,
-                # hence returning the initial 'capital'.
-                new_capital_after_trade: float = capital
-                logger.info(f"[{self.node_id}] Live swap successful. Tx_hash: {result.get('tx_hash')}")
-                return {
-                    "success": True,
-                    "new_capital": new_capital_after_trade,
-                    "tx_hash": result.get("tx_hash"),
-                    "status": "filled",  # Changed from 'success' to 'filled' for clarity
-                    "error": None,
-                }
-            else:
-                error_msg: str = result.get("error", "Unknown error during swap")
-                logger.error(
-                    f"[{self.node_id}] Live swap failed: {error_msg}. Result: {result}",
-                    exc_info=False  # Don't log stack trace unless truly unexpected
-                )
-                return {
-                    "success": False,
-                    "new_capital": capital,
-                    "tx_hash": result.get("tx_hash"),
-                    "status": "failed",
-                    "error": error_msg,
-                }
-        except Exception as e:
-            # Catch any unexpected exceptions during the adapter's place_order call
-            logger.error(f"[{self.node_id}] Live swap execution failed unexpectedly: {e}", exc_info=True)
+        block_number = await self._maybe_await(block_number_attr)
+        return int(block_number)
+
+    async def _call_place_order(self, *, symbol: str, side: str, amount: float, price: float) -> dict[str, Any]:
+        place_order = getattr(self.adapter, "place_order")
+
+        try:
+            result = place_order(symbol=symbol, side=side, amount=amount, price=price)
+        except TypeError:
+            result = place_order(side=side, amount=amount, price=price)
+
+        result = await self._maybe_await(result)
+        if not isinstance(result, dict):
+            raise TypeError(f"adapter.place_order returned {type(result).__name__}, expected dict")
+
+        return result
+
+    def _normalize_adapter_result(self, result: dict[str, Any], capital: float) -> ExecutionResult:
+        raw_status = str(result.get("status", "") or "").strip().lower()
+        success = bool(result.get("success", False)) or raw_status in {"success", "filled", "simulated"}
+
+        tx_hash = result.get("tx_hash") or result.get("transaction_hash") or result.get("hash")
+        tx_hash_text = str(tx_hash) if tx_hash else None
+
+        if success:
+            logger.info("[%s] Live order filled. tx_hash=%s", self.node_id, tx_hash_text)
             return {
-                "success": False,
-                "new_capital": capital,
-                "tx_hash": None,
-                "status": "error",
-                "error": str(e),
+                "success": True,
+                "new_capital": self._safe_float(result.get("new_capital"), capital),
+                "tx_hash": tx_hash_text,
+                "status": "filled",
+                "error": None,
             }
+
+        error = str(result.get("error") or result.get("reason") or "live_order_failed")
+        logger.error("[%s] Live order failed: %s result=%s", self.node_id, error, result)
+
+        status = "rejected" if raw_status in {"rejected", "failed", "failure"} else "error"
+        return {
+            "success": False,
+            "new_capital": capital,
+            "tx_hash": tx_hash_text,
+            "status": status,
+            "error": error,
+        }
+
+    @staticmethod
+    async def _maybe_await(value: Any) -> Any:
+        if inspect.isawaitable(value):
+            return await value
+        return value
+
+    @staticmethod
+    def _base_token_address(symbol: str) -> str:
+        base = str(symbol or "").split("/", 1)[0].strip().upper()
+        if base == "WETH":
+            return WETH_ADDRESS
+        if base == "USDC":
+            return USDC_ADDRESS
+        return WETH_ADDRESS
+
+    @staticmethod
+    def _safe_positive(value: Any, name: str) -> float | None:
+        number = LiveExecutionBackend._safe_float(value, float("nan"))
+        if not math.isfinite(number) or number <= 0:
+            logger.warning("%s must be positive finite number, got %r", name, value)
+            return None
+        return number
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return default
+        return number if math.isfinite(number) else default

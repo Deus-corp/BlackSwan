@@ -1,75 +1,107 @@
-"""
-Logic for selecting the best market (trading symbol) for a transaction from a given snapshot.
-"""
+"""Market selection helpers for choosing the best trading symbol from a snapshot."""
+
+from __future__ import annotations
+
 import logging
+import math
 import random
 import time
-from typing import Any, Dict, Final, Tuple
+from typing import Any, Final
 
 from swarm_config import config
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-# Numeric thresholds defined by configuration, preserved as per strategy.
-EXPECTED_RETURN_RATE: Final[float] = float(config.expected_return_rate)
+DEFAULT_FALLBACK_SYMBOL: Final[str] = "BTC/USDT"
+DEFAULT_EXPECTED_RETURN_RATE: Final[float] = 0.001
 
 
-def select_best_market(snapshot: Dict[str, Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
-    """
-    Selects the market symbol and tick data with the highest expected return.
+def _configured_expected_return_rate() -> float:
+    value = getattr(config, "expected_return_rate", DEFAULT_EXPECTED_RETURN_RATE)
+    try:
+        rate = float(value)
+    except (TypeError, ValueError):
+        logger.warning("Invalid expected_return_rate=%r; using default %.6f.", value, DEFAULT_EXPECTED_RETURN_RATE)
+        return DEFAULT_EXPECTED_RETURN_RATE
 
-    Args:
-        snapshot: A dictionary mapping symbols to market tick data.
+    if not math.isfinite(rate) or rate <= 0:
+        logger.warning("Non-positive expected_return_rate=%r; using default %.6f.", value, DEFAULT_EXPECTED_RETURN_RATE)
+        return DEFAULT_EXPECTED_RETURN_RATE
 
-    Returns:
-        A tuple containing the best symbol and its corresponding tick data.
+    return rate
 
-    Raises:
-        ValueError: If inputs are invalid or configuration is malformed.
-    """
+
+def select_best_market(snapshot: dict[str, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+    """Select the market with the highest expected score from a snapshot."""
     if not isinstance(snapshot, dict):
-        raise ValueError("Snapshot must be a dictionary.")
-    
-    if EXPECTED_RETURN_RATE <= 0.0:
-        raise ValueError("EXPECTED_RETURN_RATE must be a positive float.")
+        raise ValueError("snapshot must be a dictionary")
 
-    best_symbol: str = ""
-    best_tick: Dict[str, Any] = {}
-    max_expected_return: float = -1.0
+    expected_return_rate = _configured_expected_return_rate()
 
-    for symbol, tick in snapshot.items():
-        if not isinstance(tick, dict):
+    best_symbol = ""
+    best_tick: dict[str, Any] = {}
+    best_score = float("-inf")
+
+    for raw_symbol, raw_tick in snapshot.items():
+        symbol = str(raw_symbol or "").strip()
+        if not symbol or not isinstance(raw_tick, dict):
             continue
 
-        try:
-            price: float = float(tick.get("price", 0.0))
-        except (TypeError, ValueError):
+        price = _safe_float(raw_tick.get("price"), 0.0)
+        if price <= 0:
             continue
 
-        if price <= 0.0:
-            continue
-
-        expected_return: float = price * EXPECTED_RETURN_RATE
-        if expected_return > max_expected_return:
-            max_expected_return = expected_return
+        score = _score_tick(raw_tick, expected_return_rate=expected_return_rate)
+        if score > best_score:
+            best_score = score
             best_symbol = symbol
-            best_tick = tick
+            best_tick = dict(raw_tick)
 
-    # Fallback mechanism if no valid symbols are found in the snapshot
-    if not best_symbol or not best_tick:
-        if not snapshot:
-            logger.warning("Empty snapshot provided; using default fallback.")
-        
-        fallback_symbol: str = list(snapshot.keys())[0] if snapshot else "BTC/USDT"
-        fallback_tick: Dict[str, Any] = {
-            "price": random.uniform(90.0, 110.0),
-            "symbol": fallback_symbol,
-            "timestamp": time.time()
-        }
-        return fallback_symbol, fallback_tick
+    if not best_symbol:
+        return _fallback_market(snapshot)
 
-    # Ensure the symbol is present in the returned tick data for consistency
-    if "symbol" not in best_tick:
-        best_tick["symbol"] = best_symbol
-
+    best_tick.setdefault("symbol", best_symbol)
+    best_tick.setdefault("timestamp", time.time())
+    best_tick["selection_score"] = best_score
     return best_symbol, best_tick
+
+
+def _score_tick(tick: dict[str, Any], *, expected_return_rate: float) -> float:
+    price = _safe_float(tick.get("price"), 0.0)
+    volatility = max(0.0, _safe_float(tick.get("volatility", tick.get("volatility_estimate")), 0.0))
+    liquidity = max(0.0, _safe_float(tick.get("liquidity", tick.get("volume")), 0.0))
+    spread = max(0.0, _safe_float(tick.get("spread"), 0.0))
+
+    expected_return = price * expected_return_rate
+    liquidity_bonus = math.log1p(liquidity) * 0.0001 if liquidity > 0 else 0.0
+    volatility_penalty = price * volatility * 0.05
+    spread_penalty = price * spread
+
+    return expected_return + liquidity_bonus - volatility_penalty - spread_penalty
+
+
+def _fallback_market(snapshot: dict[str, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+    if snapshot:
+        fallback_symbol = next((str(symbol).strip() for symbol in snapshot.keys() if str(symbol).strip()), "")
+        fallback_symbol = fallback_symbol or DEFAULT_FALLBACK_SYMBOL
+    else:
+        logger.warning("Empty market snapshot provided; using default fallback.")
+        fallback_symbol = DEFAULT_FALLBACK_SYMBOL
+
+    fallback_tick = {
+        "symbol": fallback_symbol,
+        "price": random.uniform(90.0, 110.0),
+        "timestamp": time.time(),
+        "selection_score": 0.0,
+        "fallback": True,
+    }
+    return fallback_symbol, fallback_tick
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+
+    return number if math.isfinite(number) else default
