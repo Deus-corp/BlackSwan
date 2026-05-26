@@ -35,7 +35,7 @@ HOST: Final[str] = os.getenv("HOST", "0.0.0.0")
 PORT: Final[int] = int(os.getenv("PORT", "8080"))
 LOG_LEVEL: Final[str] = os.getenv("LOG_LEVEL", "info")
 
-app = FastAPI(title="BlackSwan Control Panel")
+app: FastAPI = FastAPI(title="BlackSwan Control Panel")
 
 # Mount static assets
 STATIC_DIR: Final[str] = os.path.join(os.path.dirname(__file__), "static")
@@ -53,12 +53,12 @@ app.include_router(trades_router)
 app.include_router(mutations_router)
 
 # Prometheus Metrics Setup
-_REGISTRY = CollectorRegistry()
+_REGISTRY: Final[CollectorRegistry] = CollectorRegistry()
 
-CAPITAL_GAUGE: Final = Gauge("swarm_capital", "Capital per node", ["node"], registry=_REGISTRY)
-FITNESS_GAUGE: Final = Gauge("swarm_fitness", "Fitness per node", ["node"], registry=_REGISTRY)
-DIVERSITY_GAUGE: Final = Gauge("swarm_diversity", "Diversity per node", ["node"], registry=_REGISTRY)
-CRDT_SIZE_GAUGE: Final = Gauge("swarm_crdt_size", "CRDT size per node", ["node"], registry=_REGISTRY)
+CAPITAL_GAUGE: Final[Gauge] = Gauge("swarm_capital", "Capital per node", ["node"], registry=_REGISTRY)
+FITNESS_GAUGE: Final[Gauge] = Gauge("swarm_fitness", "Fitness per node", ["node"], registry=_REGISTRY)
+DIVERSITY_GAUGE: Final[Gauge] = Gauge("swarm_diversity", "Diversity per node", ["node"], registry=_REGISTRY)
+CRDT_SIZE_GAUGE: Final[Gauge] = Gauge("swarm_crdt_size", "CRDT size per node", ["node"], registry=_REGISTRY)
 
 class NodeMetrics(TypedDict):
     """Typed definition for node telemetry data."""
@@ -91,6 +91,9 @@ def _update_global_prometheus_gauges(metrics_dict: Dict[str, NodeMetrics]) -> No
 def prometheus_metrics() -> PlainTextResponse:
     """
     Exposes current swarm telemetry in Prometheus format.
+
+    Returns:
+        PlainTextResponse: The formatted metrics data.
     """
     data: Dict[str, NodeMetrics] = collect_metrics()
     _update_global_prometheus_gauges(data)
@@ -98,4 +101,4 @@ def prometheus_metrics() -> PlainTextResponse:
 
 if __name__ == "__main__":
     print(f"🌐 Control Panel started at http://localhost:{PORT}")
-    uvicorn.run(app, host=HOST, port=PORT, log_level=LOG_LEVEL)
+    uvicorn.run("app:app", host=HOST, port=PORT, log_level=LOG_LEVEL, reload=False)

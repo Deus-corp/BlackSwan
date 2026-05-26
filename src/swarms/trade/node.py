@@ -61,6 +61,7 @@ from src.swarms.common.protocols import (
     command_action,
     command_targets,
     normalize_command,
+    command_is_expired,
 )
 from src.swarms.common.utils import is_expired
 
@@ -798,18 +799,28 @@ class SwarmNode:
             logger.exception("Failed to emit trade event %s", event_type)
 
     def _command_applies_to_self(self, normalized: Dict[str, Any]) -> bool:
-        targets = command_targets(normalized)
-        target_swarm = targets.get("target_swarm")
-        target_node = targets.get("target_node")
-        target_role = targets.get("target_role")
+        payload = normalized.get("payload") if isinstance(normalized.get("payload"), Mapping) else {}
+        data = normalized.get("data") if isinstance(normalized.get("data"), Mapping) else {}
 
-        if target_swarm not in {None, "", "*", "trade"}:
+        def pick(*keys: str) -> Any:
+            for source in (normalized, payload, data):
+                for key in keys:
+                    value = source.get(key)
+                    if value not in (None, ""):
+                        return value
+            return None
+
+        target_swarm = pick("target_swarm", "swarm")
+        target_node = pick("target_node", "target_node_id", "node_id")
+        target_role = pick("target_role", "role")
+
+        if str(target_swarm or "").strip() not in {"", "*", "trade"}:
             return False
 
-        if target_node not in {None, "", "*", self.node_id}:
+        if str(target_node or "").strip() not in {"", "*", self.node_id}:
             return False
 
-        if target_role not in {None, "", "*", "node", "trade_node"}:
+        if str(target_role or "").strip() not in {"", "*", "node", "trade_node", "maintenance_agent"}:
             return False
 
         return True
@@ -844,6 +855,24 @@ class SwarmNode:
             return normalized.get(key)
         return default
 
+    def _command_action(self, normalized: Dict[str, Any]) -> str:
+        payload = normalized.get("payload") if isinstance(normalized.get("payload"), Mapping) else {}
+        data = normalized.get("data") if isinstance(normalized.get("data"), Mapping) else {}
+
+        action = (
+            command_action(normalized)
+            or normalized.get("command_type")
+            or normalized.get("action")
+            or normalized.get("command")
+            or payload.get("command_type")
+            or payload.get("action")
+            or payload.get("command")
+            or data.get("command_type")
+            or data.get("action")
+            or data.get("command")
+        )
+        return str(action or "").strip().upper()
+
     async def process_command(self, command: Mapping[str, Any]) -> None:
         normalized = normalize_command(command)
 
@@ -851,7 +880,7 @@ class SwarmNode:
         if gid and gid in self._processed_command_gids:
             return
 
-        if is_expired(normalized):
+        if command_is_expired(normalized):
             if gid:
                 self._processed_command_gids.add(gid)
             return
@@ -859,7 +888,7 @@ class SwarmNode:
         if not self._command_applies_to_self(normalized):
             return
 
-        action = command_action(normalized)
+        action = self._command_action(normalized)
         if not action:
             return
 

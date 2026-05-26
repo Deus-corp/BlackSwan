@@ -3229,6 +3229,86 @@ async def check_base_node_command_intake_guard() -> None:
         "expired command should be skipped by runtime intake guard",
     )
 
+async def _test_trade_runtime_command_loop() -> None:
+    from src.swarms.trade.node import SwarmNode
+
+    class FakeCRDT:
+        def __init__(self) -> None:
+            self.state = {}
+            self.events = []
+            self.closed = False
+
+        async def add_genome(self, item):
+            self.events.append(item)
+
+        async def close(self):
+            self.closed = True
+
+    node = SwarmNode()
+    node.crdt = FakeCRDT()
+    node.ctx.crdt = node.crdt
+
+    # Keep the probe fully dry-run and isolated.
+    node.tradingview_enabled = False
+    node.tradingview_webhook = None
+    node.market_adapter = None
+    node.telegram_notifier = None
+
+    node.crdt.state["trade-pause-smoke"] = {
+        "type": "swarm_command",
+        "gid": "trade-pause-smoke",
+        "command_type": "PAUSE",
+        "target_swarm": "trade",
+        "target_node": node.node_id,
+    }
+
+    task = asyncio.create_task(node._command_loop(), name="trade_command_loop_smoke")
+
+    for _ in range(30):
+        if node._paused:
+            break
+        await asyncio.sleep(0.1)
+
+    assert_true(node._paused is True, "trade command loop did not apply PAUSE")
+
+    node.crdt.state["trade-enable-blocked-smoke"] = {
+        "type": "swarm_command",
+        "gid": "trade-enable-blocked-smoke",
+        "command_type": "SET_EXECUTION_ENABLED",
+        "target_swarm": "trade",
+        "target_node": node.node_id,
+        "payload": {"enabled": True},
+    }
+
+    for _ in range(30):
+        if any(
+            event.get("event_type") == "command_blocked"
+            and event.get("payload", {}).get("action") == "SET_EXECUTION_ENABLED"
+            for event in node.crdt.events
+        ):
+            break
+        await asyncio.sleep(0.1)
+
+    assert_true(
+        node.trade_config.execution_enabled is False,
+        "trade execution_enabled changed without approval",
+    )
+    assert_true(
+        node.trade_config.dry_run is True,
+        "trade dry_run changed after blocked execution command",
+    )
+
+    node.shutdown_event.set()
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+    event_types = [event.get("event_type") for event in node.crdt.events]
+    assert_true("command_applied" in event_types, "trade PAUSE command_applied event missing")
+    assert_true("command_blocked" in event_types, "trade blocked command event missing")
+
 async def main() -> None:
     checks = [
         ("common runtime", check_common_runtime),
@@ -3284,6 +3364,7 @@ async def main() -> None:
         ("overseer topology restarts default disabled", check_overseer_topology_restarts_default_disabled),
         ("overseer topology restarts enabled canonical only", check_overseer_topology_restarts_enabled_canonical_only),
         ("overseer executor gates", check_overseer_executor_gates),
+        ("trade runtime command loop", _test_trade_runtime_command_loop),
     ]
 
     for name, check in checks:

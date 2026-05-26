@@ -1,6 +1,6 @@
 import argparse
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import yaml
@@ -14,13 +14,14 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 def compute_metrics(history: List[float]) -> Dict[str, float]:
     """
-    Calculate financial metrics from agent capital history.
+    Calculate financial performance metrics from a capital history series.
 
     Args:
-        history: A sequence of capital values over simulation time steps.
+        history: A list of float values representing capital over time.
 
     Returns:
-        A dictionary containing final_capital, total_return, and max_drawdown.
+        A dictionary containing 'final_capital', 'total_return' (percentage), 
+        and 'max_drawdown' (percentage).
     """
     if not history:
         return {"final_capital": 0.0, "total_return": 0.0, "max_drawdown": 0.0}
@@ -46,7 +47,7 @@ def plot_results(agents_data: Dict[str, List[float]]) -> None:
     Visualize the capital evolution for each agent.
 
     Args:
-        agents_data: Mapping of agent type names to their list of historical capital values.
+        agents_data: Mapping of agent names to their historical capital sequences.
     """
     plt.figure(figsize=(10, 6))
     for name, history in agents_data.items():
@@ -61,10 +62,19 @@ def plot_results(agents_data: Dict[str, List[float]]) -> None:
 
 def create_agent(cfg: Dict[str, Any]) -> AgentType:
     """
-    Factory method to instantiate agents based on configuration parameters.
+    Factory method to instantiate an agent instance based on configuration data.
+
+    Args:
+        cfg: Dictionary containing agent configuration (type, capital, params).
+
+    Returns:
+        An instance of an agent conforming to AgentType.
+
+    Raises:
+        ValueError: If an unsupported agent type is requested.
     """
     agent_type = cfg.get("type")
-    params = {
+    params: Dict[str, Any] = {
         "capital": float(cfg.get("capital", 1000.0)),
         "max_risk": float(cfg.get("max_risk", 0.02)),
     }
@@ -75,34 +85,29 @@ def create_agent(cfg: Dict[str, Any]) -> AgentType:
     if agent_type == "RandomAgent":
         return RandomAgent(**params)
 
-    raise ValueError(f"Unknown agent type: {agent_type}")
+    raise ValueError(f"Unsupported agent type: {agent_type}")
 
 
-def main() -> None:
+def run_simulation(config_path: str) -> None:
     """
-    Main simulation entry point handling argument parsing and simulation loop.
+    Executes the market simulation based on the provided configuration file path.
     """
-    parser = argparse.ArgumentParser(description="Swarm-Sim economic simulator")
-    parser.add_argument(
-        "--config", default="scenarios/basic_economic.yaml", help="Path to YAML configuration file"
-    )
-    args = parser.parse_args()
-
     try:
-        with open(args.config, "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
     except (FileNotFoundError, yaml.YAMLError) as e:
-        logging.error(f"Failed to load config: {e}")
+        logging.error(f"Failed to load simulation config from {config_path}: {e}")
         return
 
     market = MarketEnvironment(
-        volatility=config["market"]["volatility"],
-        drift=config["market"].get("drift", 0.0),
+        volatility=float(config["market"]["volatility"]),
+        drift=float(config["market"].get("drift", 0.0)),
     )
 
     agents: List[AgentType] = [create_agent(a) for a in config.get("agents", [])]
 
-    for _ in range(config["simulation"]["steps"]):
+    # Main simulation loop
+    for _ in range(int(config["simulation"]["steps"] or 0)):
         price_before = float(market.prices[-1])
         market_state = market.get_state()
         new_price = market.step()
@@ -112,7 +117,8 @@ def main() -> None:
             fraction = agent.decide(market_state)
             agent.update(fraction * market_return)
 
-    results = {}
+    # Post-simulation aggregation
+    results: Dict[str, List[float]] = {}
     for agent in agents:
         name = type(agent).__name__
         metrics = compute_metrics(agent.history)
@@ -121,6 +127,21 @@ def main() -> None:
         agent.market = market
 
     plot_results(results)
+
+
+def main() -> None:
+    """
+    Entry point for the simulation CLI.
+    """
+    parser = argparse.ArgumentParser(description="Swarm-Sim economic simulator")
+    parser.add_argument(
+        "--config", 
+        default="scenarios/basic_economic.yaml", 
+        help="Path to YAML configuration file"
+    )
+    args = parser.parse_args()
+
+    run_simulation(args.config)
 
 
 if __name__ == "__main__":

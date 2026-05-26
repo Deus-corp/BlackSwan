@@ -7,18 +7,18 @@ results, including web-based interfaces and interactive data displays.
 
 from __future__ import annotations
 
-__all__ = [
-    "app",
-    "cli",
-    "docker_service",
-]
-
-# Expose sub-modules for easier package access
-from dashboard import (
+from . import (
     app,
     cli,
     docker_service,
 )
+
+__all__ = [
+    "app",
+    "cli",
+    "docker_service",
+    "__version__",
+]
 
 # Versioning for the dashboard component
 __version__: str = "0.1.0"
