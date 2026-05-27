@@ -27,10 +27,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-"""Compatibility wrapper for legacy sim imports."""
-
-from src.cognition.curiosity import *  # noqa: F401,F403
-
 
 DEFAULT_PARAM_BOUNDS: dict[str, tuple[float, float]] = {
     # Generic autonomous-system knobs.
@@ -47,21 +43,7 @@ DEFAULT_PARAM_BOUNDS: dict[str, tuple[float, float]] = {
     "momentum_window": (5.0, 60.0),
 }
 
-try:
-    from sim.evolve_kelly import PARAM_BOUNDS as KELLY_PARAM_BOUNDS
-    from sim.evolve_kelly import random_params as kelly_random_params
-
-    if isinstance(KELLY_PARAM_BOUNDS, dict):
-        DEFAULT_PARAM_BOUNDS.update(
-            {
-                str(key): (float(bounds[0]), float(bounds[1]))
-                for key, bounds in KELLY_PARAM_BOUNDS.items()
-                if isinstance(bounds, (tuple, list)) and len(bounds) == 2
-            }
-        )
-except Exception:  # pragma: no cover - optional legacy import
-    kelly_random_params = None
-
+kelly_random_params = None
 
 @dataclass(frozen=True, slots=True)
 class SurpriseEvent:

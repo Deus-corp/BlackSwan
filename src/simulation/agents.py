@@ -20,9 +20,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Final, Mapping, Optional, TypedDict
 
-"""Compatibility wrapper for legacy sim engine imports."""
-
-from src.simulation.agents import *  # noqa: F401,F403
 
 class MarketState(TypedDict, total=False):
     """Market-compatible state accepted by legacy agents."""

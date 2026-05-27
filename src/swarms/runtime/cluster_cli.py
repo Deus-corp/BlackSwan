@@ -136,9 +136,13 @@ def _base_env(args: argparse.Namespace, run_dir: Path) -> Dict[str, str]:
 
     # Core runtime flags.
     env["TOTAL_NODES"] = str(args.trade_nodes)
+    env["TOTAL_TRADE_NODES"] = str(args.trade_nodes)
+    env["TOTAL_MEMORY_NODES"] = str(args.memory_nodes)
+    env["TOTAL_SIMULATION_NODES"] = str(args.simulation_nodes)
     env["LOG_LEVEL"] = args.log_level
     env["GOSSIP_SIGNING_ENABLED"] = _str_bool(args.gossip_signing_enabled)
     env["MEMORY_API_ENABLED"] = _str_bool(args.memory_api_enabled)
+    env["OVERSEER_COORDINATION_INTERVAL_SECONDS"] = str(args.overseer_interval)
 
     # Trading/runtime defaults.
     env["MARKET_MODE"] = args.market_mode
@@ -233,6 +237,22 @@ def _service_env(base: Mapping[str, str], node_id: str) -> Dict[str, str]:
     env["NODE_ID"] = node_id
     return env
 
+def _memory_env(base: Mapping[str, str], args: argparse.Namespace, idx: int) -> Dict[str, str]:
+    env = dict(base)
+    node_id = f"{args.memory_node_prefix}-{idx}"
+    env["NODE_ID"] = node_id
+    env["MEMORY_NODE_ID"] = node_id
+    env["MEMORY_HEARTBEAT_INTERVAL_SECONDS"] = str(args.memory_heartbeat_interval)
+    return env
+
+
+def _simulation_env(base: Mapping[str, str], args: argparse.Namespace, idx: int) -> Dict[str, str]:
+    env = dict(base)
+    node_id = f"{args.simulation_node_prefix}-{idx}"
+    env["NODE_ID"] = node_id
+    env["SIMULATION_NODE_ID"] = node_id
+    env["SIMULATION_HEARTBEAT_INTERVAL_SECONDS"] = str(args.simulation_heartbeat_interval)
+    return env
 
 def _build_services(args: argparse.Namespace, run_dir: Path) -> List[ServiceSpec]:
     base = _base_env(args, run_dir)
@@ -291,6 +311,24 @@ def _build_services(args: argparse.Namespace, run_dir: Path) -> List[ServiceSpec
                 name="explorer-meta",
                 module="src.swarms.explorer.meta_agent",
                 env=_service_env(base, "explorer-meta-local"),
+            )
+        )
+
+    for idx in range(1, args.memory_nodes + 1):
+        services.append(
+            ServiceSpec(
+                name=f"memory-{idx}",
+                module="src.swarms.memory.node",
+                env=_memory_env(base, args, idx),
+            )
+        )
+
+    for idx in range(1, args.simulation_nodes + 1):
+        services.append(
+            ServiceSpec(
+                name=f"simulation-{idx}",
+                module="src.swarms.simulation.node",
+                env=_simulation_env(base, args, idx),
             )
         )
 
@@ -447,6 +485,8 @@ def _write_run_metadata(args: argparse.Namespace, run_dir: Path, services: List[
         f"SAFE={args.safe}",
         f"DURATION={args.duration}",
         f"TRADE_NODES={args.trade_nodes}",
+        f"MEMORY_NODES={args.memory_nodes}",
+        f"SIMULATION_NODES={args.simulation_nodes}",
         f"CRDT_DB_PATH={run_dir / 'ledgers' / args.crdt_db_name}",
         f"EVENT_LEDGER_PATH={run_dir / 'ledgers' / args.event_ledger_name}",
         f"EVENT_SQLITE_PATH={run_dir / 'ledgers' / args.event_sqlite_name}",
@@ -594,6 +634,30 @@ def build_parser() -> argparse.ArgumentParser:
     # Runtime selection.
     up.add_argument("--all", action="store_true", default=True, help="Start the default full safe cluster.")
     up.add_argument("--trade-nodes", type=int, default=1, help="Number of local trade nodes.")
+
+    up.add_argument("--memory-nodes", type=int, default=0, help="Number of local memory swarm nodes.")
+    up.add_argument("--memory-node-prefix", default="memory", help="Prefix for generated memory node ids.")
+    up.add_argument(
+        "--memory-heartbeat-interval",
+        type=float,
+        default=30.0,
+        help="Memory swarm heartbeat interval in seconds.",
+    )
+
+    up.add_argument("--simulation-nodes", type=int, default=0, help="Number of local simulation swarm nodes.")
+    up.add_argument("--simulation-node-prefix", default="simulation", help="Prefix for generated simulation node ids.")
+    up.add_argument(
+        "--simulation-heartbeat-interval",
+        type=float,
+        default=30.0,
+        help="Simulation swarm heartbeat interval in seconds.",
+    )
+    up.add_argument(
+        "--overseer-interval",
+        type=float,
+        default=10,
+        help="Overseer coordination interval in seconds for local cluster runs.",
+    )
     up.add_argument("--trade-node-prefix", default="trade", help="Prefix for generated trade node ids.")
     up.add_argument("--base-port", type=int, default=9777, help="Base gossip port for local trade nodes.")
     up.add_argument("--duration", type=float, default=120.0, help="Run duration in seconds. Use 0 for until Ctrl+C.")

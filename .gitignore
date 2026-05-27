@@ -60,6 +60,12 @@ crdt_state.db
 llama_cpp/
 *.gguf
 
+# Simulation artifacts
+sim/sweep_results.json
+sim/*_results.json
+artifacts/sim/
+data/sim/
+
 # Local test scripts with secrets
 docker-compose.improver.yml
 

@@ -32,9 +32,6 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-"""Compatibility wrapper for legacy sim imports."""
-
-from src.evolution.genetic_engine import *  # noqa: F401,F403
 
 NumericParams = dict[str, float]
 FitnessFn = Callable[[NumericParams], float]

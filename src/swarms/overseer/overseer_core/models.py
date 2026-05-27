@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
 @dataclass(frozen=True, slots=True)
 class SwarmSnapshot:
-    """Point-in-time normalized state of the swarm ecosystem."""
+    """Point-in-time normalized state of the swarm ecosystem.
+
+    Legacy fields are preserved for policy/strategist/executor compatibility.
+    Generic fields are added so all current/future swarms can be represented
+    equally: trade, security, explorer, improver, overseer, memory, simulation.
+    """
 
     # Trade swarm
     trade_nodes: int
@@ -34,10 +39,16 @@ class SwarmSnapshot:
     improver_last_cycle_duration_seconds: float = 0.0
     improver_last_error_count: int = 0
 
+    # Generic swarm view
+    swarm_counts: Dict[str, int] = field(default_factory=dict)
+    swarm_role_counts: Dict[str, Dict[str, int]] = field(default_factory=dict)
+    stale_swarm_nodes: Dict[str, List[str]] = field(default_factory=dict)
+    latest_swarm_heartbeats: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
+
     # Host/resource context
     resources: str = ""
 
-    # Stale nodes by swarm
+    # Legacy stale nodes by swarm
     stale_trade_nodes: List[str] = field(default_factory=list)
     stale_security_nodes: List[str] = field(default_factory=list)
     stale_explorer_nodes: List[str] = field(default_factory=list)
@@ -45,7 +56,10 @@ class SwarmSnapshot:
 
     @property
     def total_nodes(self) -> int:
-        """Total visible worker/maintenance nodes across known swarms."""
+        """Total visible nodes across swarms."""
+        if self.swarm_counts:
+            return int(sum(self.swarm_counts.values()))
+
         return int(
             self.trade_nodes
             + self.security_nodes
@@ -56,12 +70,30 @@ class SwarmSnapshot:
     @property
     def stale_node_count(self) -> int:
         """Total stale nodes across all known swarms."""
+        if self.stale_swarm_nodes:
+            return sum(len(nodes) for nodes in self.stale_swarm_nodes.values())
+
         return (
             len(self.stale_trade_nodes)
             + len(self.stale_security_nodes)
             + len(self.stale_explorer_nodes)
             + len(self.stale_improver_nodes)
         )
+
+    @property
+    def memory_nodes(self) -> int:
+        """Visible memory swarm nodes."""
+        return int(self.swarm_counts.get("memory", 0))
+
+    @property
+    def simulation_nodes(self) -> int:
+        """Visible simulation swarm nodes."""
+        return int(self.swarm_counts.get("simulation", 0))
+
+    @property
+    def overseer_nodes(self) -> int:
+        """Visible overseer nodes."""
+        return int(self.swarm_counts.get("overseer", 0))
 
     @property
     def has_security_pressure(self) -> bool:
@@ -89,12 +121,17 @@ class SwarmSnapshot:
 
     def stale_nodes_by_swarm(self) -> Dict[str, List[str]]:
         """Return stale node ids grouped by swarm."""
-        return {
+        grouped = {
             "trade": list(self.stale_trade_nodes),
             "security": list(self.stale_security_nodes),
             "explorer": list(self.stale_explorer_nodes),
             "improver": list(self.stale_improver_nodes),
         }
+
+        for swarm, nodes in self.stale_swarm_nodes.items():
+            grouped[str(swarm)] = list(nodes)
+
+        return grouped
 
     def compact_summary(self) -> Dict[str, object]:
         """Return compact serializable summary for logs/events."""
@@ -116,6 +153,14 @@ class SwarmSnapshot:
             "improver_files_failed": self.improver_files_failed,
             "improver_last_cycle_duration_seconds": self.improver_last_cycle_duration_seconds,
             "improver_last_error_count": self.improver_last_error_count,
+            "memory_nodes": self.memory_nodes,
+            "simulation_nodes": self.simulation_nodes,
+            "overseer_nodes": self.overseer_nodes,
+            "swarm_counts": dict(self.swarm_counts),
+            "swarm_role_counts": {
+                swarm: dict(counts)
+                for swarm, counts in self.swarm_role_counts.items()
+            },
             "stale_node_count": self.stale_node_count,
             "stale_nodes": self.stale_nodes_by_swarm(),
             "resources": self.resources,
@@ -143,12 +188,7 @@ class OverseerDecision:
 
     @property
     def has_actionable_directives(self) -> bool:
-        """Whether this decision implies at least one currently executable directive.
-
-        Note:
-            spawn_nodes/run_improver_once/pause_improver are not treated as
-            executable yet until executor/topology routing is explicitly enabled.
-        """
+        """Whether this decision implies at least one currently executable directive."""
         return any(
             [
                 self.reduce_risk,

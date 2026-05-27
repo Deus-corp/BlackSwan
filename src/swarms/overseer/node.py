@@ -84,10 +84,10 @@ class OverseerNode(BaseSwarmOverseer):
         coordination_interval_seconds: Optional[int] = None,
     ) -> None:
         interval = coordination_interval_seconds or int(
-            os.environ.get(
+            float(os.environ.get(
                 "OVERSEER_COORDINATION_INTERVAL_SECONDS",
                 DEFAULT_COORDINATION_INTERVAL_SECONDS,
-            )
+            ))
         )
 
         if interval <= 0:
@@ -177,6 +177,11 @@ class OverseerNode(BaseSwarmOverseer):
             snapshot.blocked_ips,
             snapshot.recent_findings,
             snapshot.recent_vulnerability_alerts,
+        )
+
+        self.logger.info(
+            "Overseer generic swarm counts: %s",
+            getattr(snapshot, "swarm_counts", {}),
         )
 
         self.logger.info(

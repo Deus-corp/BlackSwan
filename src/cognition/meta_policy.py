@@ -23,9 +23,6 @@ import math
 import time
 from typing import Any, Final, Literal, Mapping, TypedDict
 
-"""Compatibility wrapper for legacy sim imports."""
-
-from src.cognition.meta_policy import *  # noqa: F401,F403
 
 ScenarioName = Literal[
     "safe_expansion",

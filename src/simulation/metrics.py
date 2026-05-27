@@ -21,9 +21,6 @@ from typing import Any, Final, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
-"""Compatibility wrapper for legacy sim engine imports."""
-
-from src.simulation.metrics import *  # noqa: F401,F403
 
 METRICS_KEYS: Final[list[str]] = [
     "final_capital",

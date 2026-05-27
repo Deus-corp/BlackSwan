@@ -20,9 +20,6 @@ import time
 from collections import deque
 from typing import Any, Literal, Optional, TypedDict
 
-"""Compatibility wrapper for legacy sim engine imports."""
-
-from src.simulation.environment import *  # noqa: F401,F403
 
 class MarketState(TypedDict, total=False):
     """State emitted by MarketEnvironment."""

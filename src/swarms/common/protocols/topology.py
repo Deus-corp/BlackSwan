@@ -93,6 +93,27 @@ OVERSEER_COMMANDS: FrozenSet[str] = frozenset(
     }
 )
 
+MEMORY_COMMANDS: FrozenSet[str] = frozenset(
+    {
+        "PAUSE",
+        "RESUME",
+        "RESTART_NODE",
+        "CONSOLIDATE",
+        "EXPORT_GOLD_SAMPLES",
+        "REINDEX",
+    }
+)
+
+SIMULATION_COMMANDS: FrozenSet[str] = frozenset(
+    {
+        "PAUSE",
+        "RESUME",
+        "RESTART_NODE",
+        "RUN_SCENARIO",
+        "RUN_STRESS_TEST",
+        "EVALUATE_POLICY",
+    }
+)
 
 SWARM_TOPOLOGY: Dict[str, SwarmSpec] = {
     "security": SwarmSpec(
@@ -190,6 +211,56 @@ SWARM_TOPOLOGY: Dict[str, SwarmSpec] = {
                 description="Global orchestrator.",
                 can_receive_commands=True,
                 advisory_only=False,
+            ),
+        },
+    ),
+    "memory": SwarmSpec(
+        swarm_type="memory",
+        description=(
+            "Memory swarm for episodic memory, semantic memory, retrieval, "
+            "consolidation, and experience export."
+        ),
+        managed_by_overseer=True,
+        advisory_only=True,
+        legacy_command_types=("memory_heartbeat",),
+        canonical_command_types=MEMORY_COMMANDS,
+        roles={
+            "node": SwarmRoleSpec(
+                role="node",
+                description="Memory worker node publishing memory health and consolidation status.",
+                can_receive_commands=True,
+                advisory_only=True,
+            ),
+            "meta_agent": SwarmRoleSpec(
+                role="meta_agent",
+                description="Memory coordinator/meta-agent for retrieval and consolidation policy.",
+                can_receive_commands=True,
+                advisory_only=True,
+            ),
+        },
+    ),
+    "simulation": SwarmSpec(
+        swarm_type="simulation",
+        description=(
+            "Simulation swarm for offline worlds, counterfactual tests, stress tests, "
+            "and policy evaluation before live deployment."
+        ),
+        managed_by_overseer=True,
+        advisory_only=True,
+        legacy_command_types=("simulation_heartbeat",),
+        canonical_command_types=SIMULATION_COMMANDS,
+        roles={
+            "node": SwarmRoleSpec(
+                role="node",
+                description="Simulation worker node running scenarios and publishing evaluation results.",
+                can_receive_commands=True,
+                advisory_only=True,
+            ),
+            "meta_agent": SwarmRoleSpec(
+                role="meta_agent",
+                description="Simulation coordinator/meta-agent for experiment scheduling.",
+                can_receive_commands=True,
+                advisory_only=True,
             ),
         },
     ),

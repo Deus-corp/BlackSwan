@@ -1,493 +1,396 @@
 # BlackSwan — Roadmap
 
-**Purpose:** single source of truth for project progress, current architecture, and next milestones.
-
-BlackSwan is moving from a laboratory prototype toward a modular autonomous swarm runtime with guarded testnet execution, CRDT coordination, self-improvement loops, and operator-facing observability.
+**Purpose:** single source of truth for project direction, current maturity, and the path from a laboratory prototype toward an autonomous, self-improving multi-swarm platform.
 
 ---
 
-## 🔭 Vision
+## Vision
 
-Create a distributed AI swarm capable of:
+BlackSwan is an autonomous multi-swarm platform.
 
-- surviving operational failures,
-- coordinating through decentralized state,
-- improving strategies through evolutionary search,
-- using LLMs for bounded mutation and reasoning,
-- executing only through explicit safety gates,
-- exposing transparent runtime state for operators and future dashboards.
+The project is not a trading bot. Trading is one proving ground used to test uncertainty, risk, capital/resource allocation, self-improvement, memory, simulation, and swarm coordination.
 
-The long-term direction is an autonomous, self-improving, self-healing system that preserves hard safety boundaries.
+The long-term goal is a distributed AI system capable of:
 
----
-
-## 📍 Current Status — May 2026
-
-**Overall readiness:** TRL-5 research prototype.
-
-The system now has a modular runtime, CRDT-visible heartbeats and commands, smoke-tested trade swarm behavior, and guarded execution backends.
-
-### Recently validated
-
-- [x] 60+ unit tests passing.
-- [x] `src.testing.swarm_runtime_smoke` passing.
-- [x] Trade heartbeat publishing fixed.
-- [x] Overseer detects trade nodes through CRDT heartbeats.
-- [x] Initial trade heartbeat emitted at startup.
-- [x] Web3/live execution backend refuses unsafe execution when leader check fails.
-- [x] Backend factory supports safe sim fallback before live adapter initialization.
-- [x] `src` cleanup pass completed outside `src/swarms`.
-- [x] Unused prototype modules identified for legacy quarantine.
-- [x] `adapters` cleanup started.
-
-### Current focus
-
-- [ ] Finish `adapters/` hardening.
-- [ ] Inspect and clean `sim/`.
-- [ ] Continue tuning `src/swarms/trade`.
-- [ ] Validate full swarm: trade + overseer + explorer + security + improver.
-- [ ] Add machine-readable runtime status for dashboard.
-- [ ] Build the new dashboard.
+- launching and observing multiple specialized swarms,
+- sharing state through CRDT/gossip/event layers,
+- preserving memory and learning from experience,
+- testing changes in simulation before live use,
+- improving strategies under safety gates,
+- surviving failures and degraded environments,
+- reducing direct human involvement to bootstrapping, high-level policy, and oversight.
 
 ---
 
-## 🧩 Component Map and Readiness
+## Current Status — May 2026
 
-| Subsystem | Status | Readiness | Key artifacts |
-| :--- | :--- | :--- | :--- |
-| Core CRDT | Active | TRL-5 | `src/core/crdt_layer.py`, `src/core/crdt_adapter.py` |
-| Event store | Active | TRL-4/5 | `src/core/event_store.py`, `src/core/events.py` |
-| Gossip layer | Active | TRL-4 | `src/core/gossip_layer.py`, `src/core/gossip_adapter.py`, `src/core/gossip_filter.py` |
-| Trade swarm | Active | TRL-5 | `src/swarms/trade/` |
-| Overseer swarm | Active | TRL-4/5 | `src/swarms/overseer/` |
-| Explorer swarm | Active | TRL-4 | `src/swarms/explorer/` |
-| Security swarm | Active | TRL-3/4 | `src/swarms/security/` |
-| Improver swarm | Experimental | TRL-3 | `src/swarms/improver/` |
-| Trading execution | Active | TRL-4/5 | `src/trading/execution/` |
-| Web3 adapter | Active testnet | TRL-5 | `adapters/web3_testnet.py` |
-| Nonce manager | Active | TRL-5 | `adapters/nonce_manager.py` |
-| Binance spot/futures adapters | Active testnet | TRL-4 | `adapters/live_market.py`, `adapters/futures_adapter.py` |
-| Multi-pair adapter | Active | TRL-4 | `adapters/multi_pair_adapter.py` |
-| TradingView webhook | Active optional | TRL-4 | `adapters/tradingview_webhook.py` |
-| Order book analyzer | Active optional | TRL-4 | `adapters/orderbook_analyzer.py` |
-| Simulation/evolution | Active/runtime + research | TRL-4 | `sim/`, `src/evolution/` |
-| Risk layer | Active | TRL-4 | `src/risk/`, `src/swarms/trade/risk.py` |
-| Memory layer | Active/prototype | TRL-3/4 | `src/memory/`, `src/intelligence/episodic_memory.py`, `src/intelligence/semantic_memory.py` |
-| Formal models | Existing | TRL-4 | `formal/tla/` |
-| Dashboard | Planned rebuild | TRL-2/3 | future `dashboard` runtime UI |
+**Overall readiness level: TRL-4+**
 
----
+Laboratory-validated components now form a working multi-swarm runtime foundation.
 
-## ✅ Completed Milestones
+### Validated
 
-### Core Runtime
-
-- [x] Modular `src/swarms` runtime structure.
-- [x] Trade node decomposed into context, heartbeat, trading flow, risk, maintenance, meta commands, and sync services.
-- [x] CRDT-backed swarm heartbeats.
-- [x] CRDT-backed swarm commands.
-- [x] Shared SQLite ledgers for CRDT state.
-- [x] WAL/busy-timeout database configuration.
-- [x] Runtime smoke tests.
-- [x] Graceful shutdown paths.
-
-### Trade Swarm
-
-- [x] Trade heartbeat publisher fixed.
-- [x] Initial heartbeat on startup.
-- [x] Periodic heartbeat publishing.
-- [x] `trade_heartbeat` recognized by Overseer.
-- [x] Dry-run trade path.
-- [x] Execution-enabled safety gate.
-- [x] Meta command application.
-- [x] `SET_DRY_RUN` and `SET_EXECUTION_ENABLED` command behavior.
-- [x] Deterministic leader election for live execution path.
-- [x] Backend safety tests for not-leader and leader-check-failed cases.
-
-### Trading Domain
-
-- [x] Execution backend abstraction.
-- [x] Sim execution backend.
-- [x] Live/Web3 execution backend.
-- [x] Backend factory with safe sim fallback before adapter initialization.
-- [x] Capital manager.
-- [x] Market snapshot service.
-- [x] Market selector.
-- [x] Swarm sync.
-- [x] Mutation metrics.
-- [x] Risk manager / exposure / circuit breaker pass.
-
-### Adapters
-
-- [x] Adapter base contract cleaned.
-- [x] Futures adapter hardened.
-- [x] Binance spot adapter hardened.
-- [x] Multi-pair adapter hardened.
-- [x] Nonce manager hardened.
-- [x] Order book analyzer hardened.
-- [x] TradingView webhook hardened.
-- [x] Web3 Sepolia adapter hardened with slippage, result normalization, initialization alias, close path, and safer transaction flow.
-
-### Tests
-
-- [x] 60+ unit tests passing.
-- [x] Trade execution safety tests passing.
-- [x] ROI dispatcher tests passing.
-- [x] Swarm runtime smoke test passing.
-
-### Research/Architecture
-
-- [x] Genetic engine prototype.
-- [x] Survival evaluator.
-- [x] Curiosity engine.
-- [x] Meta-POMDP agent.
-- [x] TLA+ formal models.
-- [x] Multi-agent simulation.
-- [x] Gold filter/data export pipeline.
-- [x] Local memory prototype.
+- ✅ 69+ unit/runtime tests passing.
+- ✅ Trade runtime command loop passing.
+- ✅ Swarm runtime smoke test passing.
+- ✅ Canonical swarm contracts:
+  - `SwarmHeartbeat`
+  - `SwarmCommand`
+  - `SwarmEvent`
+  - `SwarmCapability`
+  - `SwarmPolicy`
+- ✅ Canonical topology registry with 7 first-class swarms:
+  - `trade`
+  - `security`
+  - `explorer`
+  - `improver`
+  - `overseer`
+  - `memory`
+  - `simulation`
+- ✅ Overseer reads generic swarm heartbeats and reports topology health.
+- ✅ Memory swarm skeleton publishes canonical `swarm_heartbeat`.
+- ✅ Simulation swarm skeleton publishes canonical `swarm_heartbeat`.
+- ✅ Local cluster launcher supports memory and simulation nodes.
+- ✅ Core engine layers moved into `src/`:
+  - `src/cognition`
+  - `src/evolution`
+  - `src/simulation`
+- ✅ `sim/` converted into experiment/compatibility layer.
+- ✅ Legacy simulation runners still work:
+  - `sim.run`
+  - `sim.sweep`
+  - `sim.multi_agent_sim`
+  - `sim.evolve_kelly`
+- ✅ Industrial CRDT layer: SQLite persistence, deterministic merge, version vectors.
+- ✅ Secure gossip and signed exchange components.
+- ✅ Genetic/evolution engine generalized beyond trading.
+- ✅ Curiosity, survival, and meta-policy components generalized into cognition layer.
 
 ---
 
-## 🧹 Cleanup Status
+## Component Map and Readiness
 
-### Completed / In Progress
-
-- [x] `src` pass completed outside `src/swarms`.
-- [x] Duplicate/legacy candidates identified:
-  - `src/core/crdt_state.py`
-  - `src/core/d2bft.py`
-  - `src/core/decision_pipeline.py`
-  - `src/consensus/proposal.py`
-  - `src/trading/heartbeat_publisher.py`
-- [x] `src/trading/heartbeat_publisher.py` confirmed unused by runtime.
-- [x] `src/core/crdt_state.py`, `d2bft.py`, `decision_pipeline.py`, and `consensus/proposal.py` confirmed unused by direct imports.
-- [x] `adapters` pass started.
-
-### Next cleanup targets
-
-- [ ] Finish `adapters/web3_testnet.py` regression checks.
-- [ ] Run full unit and smoke tests after adapter pass.
-- [ ] Inspect `sim/` and classify:
-  - runtime-critical modules,
-  - reusable domain modules,
-  - research/experiment scripts.
-- [ ] Decide whether to move runtime-critical `sim` modules into `src/`.
-- [ ] Inspect `src/swarms` folder in detail.
+| Subsystem | Status | TRL | Key artifacts |
+| :--- | :--- | :---: | :--- |
+| Formal models | Core verified | 4 | `formal/tla/*.tla` |
+| Core CRDT | Industrial laboratory component | 4 | `src/core/crdt_layer.py`, `src/core/crdt_adapter.py` |
+| Gossip layer | Secure prototype | 4 | `src/core/gossip_layer.py`, `src/core/gossip_adapter.py` |
+| Swarm contracts | Canonical runtime foundation | 4 | `src/swarms/common/contracts.py` |
+| Swarm topology | 7 first-class swarms registered | 4 | `src/swarms/common/protocols/topology.py` |
+| Overseer | Generic topology observer and coordinator | 4 | `src/swarms/overseer/` |
+| Trade swarm | Mature proving-ground swarm | 4 | `src/swarms/trade/`, `src/trading/` |
+| Security swarm | Runtime defensive swarm | 3-4 | `src/swarms/security/` |
+| Explorer swarm | Signal discovery swarm | 3 | `src/swarms/explorer/` |
+| Improver swarm | Controlled improvement/maintenance swarm | 3 | `src/swarms/improver/` |
+| Memory swarm | First-class skeleton, advisory-only | 3 | `src/swarms/memory/`, `src/memory/`, `src/intelligence/*memory*` |
+| Simulation swarm | First-class skeleton, advisory-only | 3 | `src/swarms/simulation/`, `src/simulation/` |
+| Cognition layer | Canonical engine layer | 4 | `src/cognition/` |
+| Evolution layer | Canonical engine layer | 4 | `src/evolution/` |
+| Simulation layer | Canonical engine layer | 4 | `src/simulation/` |
+| Experiment layer | Compatibility and research runners | 4 | `sim/` |
+| D2BFT consensus | Prototype | 3 | `src/core/d2bft.py`, `formal/tla/D2BFT.tla` |
+| Dashboard | Planned | 2 | future `dashboard/` or `src/dashboard/` |
+| Production deployment | Planned | 2 | future Kubernetes/Helm/deployment artifacts |
 
 ---
 
-## 🛣️ Immediate Next Steps
+## First-Class Swarms
 
-### 1. Finish adapters hardening
+### Overseer
 
-Checklist:
+Global coordinator and topology observer.
 
-- [x] `adapters/base.py`
-- [x] `adapters/futures_adapter.py`
-- [x] `adapters/live_market.py`
-- [x] `adapters/multi_pair_adapter.py`
-- [x] `adapters/nonce_manager.py`
-- [x] `adapters/orderbook_analyzer.py`
-- [x] `adapters/tradingview_webhook.py`
-- [x] `adapters/web3_testnet.py`
-- [ ] Run:
+Current role:
 
-  ```bash
-  python -m py_compile $(find adapters -name "*.py")
-  python -m pytest -q tests/unit/core tests/unit --maxfail=1
-  python -m src.testing.swarm_runtime_smoke
-```
+- reads CRDT heartbeats/events/commands,
+- builds generic topology health,
+- emits policy decisions,
+- routes directives through canonical/legacy command paths.
 
-### 2. Inspect `sim/`
+Next:
 
-Current runtime imports from `sim`:
+- stronger policy gates,
+- dashboard integration,
+- safer restart/repair decisions,
+- better distinction between advisory and executable actions.
+
+### Memory
+
+Memory swarm for experience, consolidation, retrieval, and gold sample export.
+
+Current role:
+
+- first-class topology entry,
+- canonical heartbeat skeleton,
+- advisory-only,
+- visible to Overseer.
+
+Next:
+
+- connect to `LocalMemoryAPI`,
+- consolidate episodic to semantic memory,
+- expose retrieval metrics,
+- export high-quality training/evaluation samples,
+- support memory health dashboards.
+
+### Simulation
+
+Simulation swarm for offline worlds, policy evaluation, counterfactuals, and stress tests.
+
+Current role:
+
+- first-class topology entry,
+- canonical heartbeat skeleton,
+- advisory-only,
+- visible to Overseer.
+
+Next:
+
+- run scenario jobs,
+- run policy evaluations,
+- run stress tests before live changes,
+- publish evaluation results to CRDT/events,
+- feed memory and evolution layers.
+
+### Trade
+
+Trade remains a mature proving ground, not the center of the system.
+
+Current role:
+
+- market/risk/evolution runtime,
+- dry-run and execution backend support,
+- generic heartbeat compatibility,
+- canonical imports from `src/cognition` and `src/evolution`.
+
+Next:
+
+- reduce trade-specific assumptions in shared modules,
+- improve safety gates,
+- feed outcomes into memory and simulation swarms.
+
+### Security
+
+Defensive swarm for firewall, incidents, and vulnerability signals.
+
+Next:
+
+- stronger command safety,
+- better event/heartbeat normalization,
+- dashboard visibility.
+
+### Explorer
+
+Signal discovery and external observation swarm.
+
+Next:
+
+- stronger sandboxing,
+- target governance,
+- memory integration.
+
+### Improver
+
+Controlled maintenance and code/project improvement swarm.
+
+Current direction:
+
+- no blind automated file updates,
+- all changes should be patch-reviewed and test-backed,
+- advisory-first behavior.
+
+Next:
+
+- proposal-only mode by default,
+- integration with simulation and memory,
+- human-approved controlled application path.
+
+---
+
+## Architectural Direction
+
+### `src/` is the engine
+
+The core platform should live in `src/`.
+
+Target structure:
 
 ```text
-sim.curiosity_engine
-sim.genetic_engine
-sim.meta_pomdp_agent
-sim.survival_evaluator
-sim.engine.environment
+src/
+├── cognition/
+├── evolution/
+├── simulation/
+├── swarms/
+│   ├── common/
+│   ├── overseer/
+│   ├── trade/
+│   ├── security/
+│   ├── explorer/
+│   ├── improver/
+│   ├── memory/
+│   └── simulation/
+├── core/
+├── memory/
+├── intelligence/
+├── trading/
+├── risk/
+└── observability/
 ```
 
-Plan:
+### `sim/` is experiments and compatibility
 
-* [ ] Review `sim/engine/environment.py`
-* [ ] Review `sim/genetic_engine.py`
-* [ ] Review `sim/survival_evaluator.py`
-* [ ] Review `sim/curiosity_engine.py`
-* [ ] Review `sim/meta_pomdp_agent.py`
-* [ ] Review `sim/evolve_kelly.py`
-* [ ] Review `sim/multi_agent_sim.py`
-* [ ] Move or mark research-only scripts:
+`sim/` should not own core logic.
 
-  * `sim/run.py`
-  * `sim/sweep.py`
-  * `sim/sweep_results.json`
-  * `sim/scenarios/basic_economic.yaml`
+Current role:
 
-### 3. Tune swarms
+* scenario runners,
+* parameter sweeps,
+* compatibility wrappers,
+* legacy experiment scripts.
 
-Trade swarm:
+Future role:
 
-* [ ] Review `src/swarms/trade/trading/flow.py`.
-* [ ] Make hedge execution go through guarded execution backend instead of direct adapter calls.
-* [ ] Review `src/swarms/trade/node.py` for further decomposition.
-* [ ] Confirm executor is rebuilt after live/web3 adapter initialization.
-* [ ] Add tests for heartbeat + overseer detection.
+* research experiments,
+* benchmark scenarios,
+* offline reports,
+* generated artifacts outside source tree.
 
-Security swarm:
-
-* [ ] Validate heartbeat format.
-* [ ] Validate command handling.
-* [ ] Ensure findings/vulnerabilities are visible to Overseer.
-
-Explorer swarm:
-
-* [ ] Validate heartbeat format.
-* [ ] Validate safe fetch limits.
-* [ ] Ensure findings are published consistently.
-
-Improver swarm:
-
-* [ ] Decide operational scope.
-* [ ] Prevent unsafe code mutation without explicit review.
-* [ ] Define dry-run/review-only mode.
-
-Overseer:
-
-* [ ] Normalize heartbeat collection across all swarms.
-* [ ] Support `trade_heartbeat` and generic `swarm_heartbeat`.
-* [ ] Add CRDT summary output for dashboard.
-
-### 4. Add runtime status commands
-
-Add:
-
-```bash
-python -m src.swarms.runtime.cluster_cli status --json
-python -m src.swarms.runtime.cluster_cli doctor
-```
-
-`status --json` should output:
-
-```json
-{
-  "run_dir": "data/cluster_runtime/latest",
-  "services": [],
-  "heartbeats": [],
-  "trade_nodes": 0,
-  "security_nodes": 0,
-  "explorer_nodes": 0,
-  "improver_nodes": 0,
-  "overseer_nodes": 0,
-  "errors": []
-}
-```
-
-`doctor` should check:
-
-* Python import path,
-* writable data dirs,
-* CRDT DB integrity,
-* event DB integrity,
-* stale pycache,
-* required optional env vars,
-* adapter readiness,
-* port conflicts,
-* dry-run/execution safety state.
-
-### 5. Build dashboard
-
-After `status --json` and `doctor` exist:
-
-* [ ] Runtime overview page.
-* [ ] Node cards.
-* [ ] Heartbeat table.
-* [ ] CRDT record browser.
-* [ ] Logs viewer.
-* [ ] Trade capital/fitness chart.
-* [ ] Command console with safety confirmations.
-* [ ] Adapter status panel.
-* [ ] Test/smoke panel.
-* [ ] Web3 safety panel.
-
----
-
-## 🔐 Safety Roadmap
-
-* [x] Default dry-run mode.
-* [x] Explicit execution-enabled flag.
-* [x] Leader-election gate.
-* [x] Nonce manager.
-* [x] Slippage-aware Web3 adapter path.
-* [x] Private keys kept out of logs.
-* [ ] Full execution approval audit trail.
-* [ ] Command signing for high-risk commands.
-* [ ] Per-swarm command permissions.
-* [ ] Dashboard safety confirmation for live/testnet execution.
-* [ ] Safer hedge path through execution backend.
-* [ ] Regression tests for all live-execution blockers.
-
----
-
-## 📊 Dashboard Roadmap
-
-Dashboard should not directly depend on Docker internals. It should read from:
-
-* `cluster_cli status --json`,
-* CRDT SQLite state,
-* event store,
-* logs directory,
-* metrics collectors.
-
-Planned views:
-
-1. **Overview**
-
-   * services,
-   * node status,
-   * latest heartbeats,
-   * errors.
-
-2. **Trade**
-
-   * capital,
-   * fitness,
-   * dry-run/execution-enabled state,
-   * latest trade events.
-
-3. **Swarms**
-
-   * trade,
-   * security,
-   * explorer,
-   * improver,
-   * overseer.
-
-4. **CRDT**
-
-   * record counts,
-   * heartbeat counts,
-   * latest commands,
-   * latest genomes.
-
-5. **Logs**
-
-   * tail by service,
-   * filter errors/warnings,
-   * download logs.
-
-6. **Safety**
-
-   * dry-run state,
-   * execution approval,
-   * private key presence indicator only,
-   * adapter readiness,
-   * nonce DB status.
-
-7. **Commands**
-
-   * safe commands,
-   * TTL,
-   * target selection,
-   * explicit confirmation for risky commands.
-
----
-
-## 🧪 Test Roadmap
-
-Add or maintain tests for:
-
-* [x] Trade execution safety.
-* [x] ROI dispatcher.
-* [x] Swarm runtime smoke.
-* [ ] Adapter contracts.
-* [ ] Nonce manager concurrent reservation.
-* [ ] Web3 adapter dry-run/live safety.
-* [ ] MultiPairAdapter initialization/close.
-* [ ] TradingView webhook auth.
-* [ ] OrderBookAnalyzer calculations.
-* [ ] Overseer heartbeat parsing.
-* [ ] `cluster_cli status --json`.
-* [ ] `cluster_cli doctor`.
-
----
-
-## 📦 Legacy / Experimental Modules
-
-Current candidates for legacy quarantine:
+Generated outputs should go to:
 
 ```text
-src/core/crdt_state.py
-src/core/d2bft.py
-src/core/decision_pipeline.py
-src/consensus/proposal.py
-src/trading/heartbeat_publisher.py
+artifacts/sim/
+data/sim/
+reports/sim/
 ```
 
-Potential future location:
+not into source modules.
+
+---
+
+## Immediate Next Steps
+
+### 1. Dashboard foundation
+
+Build a local dashboard showing:
+
+* topology health,
+* swarm counts,
+* current first-class swarms,
+* CRDT record counts,
+* heartbeats by swarm,
+* stale nodes,
+* command/event streams,
+* memory metrics,
+* simulation metrics,
+* trade/risk metrics.
+
+Candidate stack:
+
+* FastAPI or lightweight HTTP server,
+* simple HTML/React frontend,
+* later Prometheus/Grafana integration.
+
+### 2. Memory swarm maturity
+
+Move from heartbeat skeleton to useful advisory node:
+
+* connect to `LocalMemoryAPI`,
+* expose episodic/semantic counts,
+* expose consolidation queue,
+* publish memory health events,
+* export gold samples under explicit gate.
+
+### 3. Simulation swarm maturity
+
+Move from heartbeat skeleton to scenario executor:
+
+* run configured scenarios,
+* evaluate policy candidates,
+* publish simulation reports to CRDT/events,
+* provide pre-live mutation validation.
+
+### 4. Overseer policy hardening
+
+Improve Overseer so it understands:
+
+* advisory-only swarms,
+* executable vs non-executable directives,
+* explicit gates for memory/simulation/improver,
+* resource-aware spawning,
+* stale-node semantics across all swarms.
+
+### 5. Controlled improver workflow
+
+No more blind bulk model-generated edits.
+
+Required workflow:
+
+1. one file or one small subsystem at a time,
+2. patch review,
+3. unit tests,
+4. runtime smoke,
+5. only then continue.
+
+### 6. Documentation update
+
+Keep README, ROADMAP, and architecture docs aligned with the new concept:
 
 ```text
-src/legacy/
+BlackSwan = autonomous multi-swarm platform
+not
+BlackSwan = trading bot
 ```
 
-Do not delete until:
+---
 
-* imports are checked,
-* tests pass,
-* runtime smoke passes,
-* there is no dashboard/report dependency.
+## Medium-Term Roadmap
+
+### Phase A — Runtime Foundation
+
+* [x] Canonical swarm contracts.
+* [x] Generic swarm topology.
+* [x] Memory and simulation first-class topology entries.
+* [x] Memory and simulation heartbeat skeletons.
+* [x] Overseer sees generic swarm counts.
+* [x] `src/cognition`, `src/evolution`, `src/simulation`.
+* [ ] Dashboard.
+* [ ] Better local cluster profiles.
+
+### Phase B — Advisory Intelligence
+
+* [ ] Memory retrieval and consolidation.
+* [ ] Simulation scenario execution.
+* [ ] Policy evaluation before risky actions.
+* [ ] Improvement proposals stored as reviewable artifacts.
+* [ ] Overseer advisory scoring across all swarms.
+
+### Phase C — Controlled Autonomy
+
+* [ ] Explicit policy gates.
+* [ ] Human-approved upgrade path.
+* [ ] Automated regression/smoke pipeline before applying improvements.
+* [ ] CRDT-backed audit trail for every action.
+* [ ] Safer restart/repair of degraded nodes.
+
+### Phase D — Production Readiness
+
+* [ ] Stronger secrets handling.
+* [ ] More isolation around improver/explorer.
+* [ ] Kubernetes/Helm deployment exploration.
+* [ ] Observability stack.
+* [ ] Long-running stability tests.
+* [ ] Formal specs updated for generic multi-swarm topology.
 
 ---
 
-## 🧠 Long-Term Research Track
+## Safety and Scope Notes
 
-* Formalize command safety invariants.
-* Expand TLA+ coverage for CRDT commands and execution approval.
-* Improve LLM mutation evaluation with offline backtests.
-* Build memory hierarchy:
+BlackSwan is a research system.
 
-  * working,
-  * episodic,
-  * semantic,
-  * policy.
-* Generate gold datasets from successful episodes.
-* Add LoRA/fine-tuning experiments.
-* Add self-improvement review loop for improver swarm.
-* Explore Kubernetes/Helm deployment after local runtime is stable.
+Current public code should be treated as laboratory software. Components may simulate capital/resource dynamics, execution, security responses, and self-improvement behavior. These are research mechanisms and do not constitute financial, legal, investment, security, or operational advice.
+
+All autonomous actions should remain gated, logged, test-backed, and reversible.
 
 ---
 
-## 🗓️ Suggested Short-Term Sequence
-
-1. Finish adapters pass.
-2. Run full tests and smoke.
-3. Inspect `sim`.
-4. Inspect `src/swarms`.
-5. Fix hedge direct execution.
-6. Add `cluster_cli status --json`.
-7. Add `cluster_cli doctor`.
-8. Build dashboard MVP.
-9. Run full swarm long-duration test.
-10. Update documentation and release tag.
-
----
-
-## Definition of Done for Next Internal Milestone
-
-The next milestone is complete when:
-
-* [ ] All unit tests pass.
-* [ ] Smoke test passes.
-* [ ] Full local swarm runs for 10+ minutes without unexpected service exits.
-* [ ] Overseer sees all active swarms.
-* [ ] Trade heartbeats are stable.
-* [ ] Commands can be issued and observed through CRDT.
-* [ ] Adapter pass is complete.
-* [ ] `sim` classification is complete.
-* [ ] Dashboard has a machine-readable status source.
-
----
-
-*BlackSwan © 2026. Experimental research roadmap. Not financial advice and not a call to action.*
+*Black Swan © 2026. Roadmap is hypothetical and subject to change.*

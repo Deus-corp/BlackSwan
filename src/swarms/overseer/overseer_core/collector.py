@@ -59,6 +59,7 @@ TRADE_HEARTBEAT_VALIDITY_SECONDS = 600
 SECURITY_HEARTBEAT_VALIDITY_SECONDS = 600
 EXPLORER_HEARTBEAT_VALIDITY_SECONDS = 600
 IMPROVER_HEARTBEAT_VALIDITY_SECONDS = 1800
+GENERIC_HEARTBEAT_VALIDITY_SECONDS = 600
 
 FINDINGS_VALIDITY_SECONDS = 1800
 VULNERABILITY_VALIDITY_SECONDS = 1800
@@ -94,6 +95,32 @@ class StateCollector:
 
         heartbeats = self._normalize_heartbeats(records)
         events = self._normalize_events(records)
+
+        latest_heartbeats_by_swarm = self._latest_heartbeats_by_swarm(heartbeats)
+
+        recent_heartbeats_by_swarm: Dict[str, List[Dict[str, Any]]] = {}
+        swarm_counts: Dict[str, int] = {}
+        swarm_role_counts: Dict[str, Dict[str, int]] = {}
+        stale_swarm_nodes: Dict[str, List[str]] = {}
+        latest_swarm_heartbeats: Dict[str, List[Dict[str, Any]]] = {}
+
+        for swarm_name, latest_by_node in latest_heartbeats_by_swarm.items():
+            latest_records = list(latest_by_node.values())
+            recent_records = self._recent_records(
+                latest_records,
+                now=now,
+                window_seconds=GENERIC_HEARTBEAT_VALIDITY_SECONDS,
+            )
+
+            recent_heartbeats_by_swarm[swarm_name] = [dict(item) for item in recent_records]
+            swarm_counts[swarm_name] = len(recent_records)
+            swarm_role_counts[swarm_name] = self._role_counts(latest_records)
+            stale_swarm_nodes[swarm_name] = self._stale_nodes(
+                latest_by_node,
+                now,
+                STALE_NODE_THRESHOLD_SECONDS,
+            )
+            latest_swarm_heartbeats[swarm_name] = [dict(item) for item in latest_records]
 
         trade_hbs = self._latest_by_node(
             self._heartbeats_for_swarm(heartbeats, "trade", role="node")
@@ -190,6 +217,11 @@ class StateCollector:
                 for h in improver_recent
                 if str(self._record_metrics(h).get("last_error", "") or "").strip()
             ),
+
+            swarm_counts=swarm_counts,
+            swarm_role_counts=swarm_role_counts,
+            stale_swarm_nodes=stale_swarm_nodes,
+            latest_swarm_heartbeats=latest_swarm_heartbeats,
 
             resources=self._get_resource_context(),
             stale_trade_nodes=self._stale_nodes(
@@ -312,7 +344,10 @@ class StateCollector:
                 "trade_heartbeat",
                 "security_heartbeat",
                 "explorer_heartbeat",
+                "improver_heartbeat",
                 "overseer_heartbeat",
+                "memory_heartbeat",
+                "simulation_heartbeat",
                 "meta_heartbeat",
             }:
                 continue
@@ -342,7 +377,10 @@ class StateCollector:
                 "trade_heartbeat",
                 "security_heartbeat",
                 "explorer_heartbeat",
+                "improver_heartbeat",
                 "overseer_heartbeat",
+                "memory_heartbeat",
+                "simulation_heartbeat",
                 "meta_heartbeat",
                 "swarm_command",
                 "sec_command",
@@ -409,6 +447,29 @@ class StateCollector:
                 latest[node_id] = event
 
         return latest
+    
+    @classmethod
+    def _latest_heartbeats_by_swarm(
+        cls,
+        heartbeats: Iterable[Dict[str, Any]],
+    ) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        """Return latest heartbeat per node grouped by swarm."""
+        grouped_raw: Dict[str, List[Dict[str, Any]]] = {}
+
+        for heartbeat in heartbeats:
+            swarm = cls._record_swarm(heartbeat)
+            if not swarm:
+                swarm = str(heartbeat.get("swarm", "") or "")
+
+            if not swarm:
+                continue
+
+            grouped_raw.setdefault(swarm, []).append(heartbeat)
+
+        return {
+            swarm: cls._latest_by_node(records)
+            for swarm, records in grouped_raw.items()
+        }
 
     def collect_topology_health(self) -> Dict[str, Any]:
         """Build topology-aware ecosystem health view from CRDT state.
@@ -423,13 +484,15 @@ class StateCollector:
         heartbeats = [
             event
             for event in events
-            if event.get("type")
-            in {
+            if event.get("type") in {
                 "swarm_heartbeat",
                 "trade_heartbeat",
                 "security_heartbeat",
                 "explorer_heartbeat",
                 "improver_heartbeat",
+                "overseer_heartbeat",
+                "memory_heartbeat",
+                "simulation_heartbeat",
                 "meta_heartbeat",
             }
         ]
@@ -721,6 +784,18 @@ class StateCollector:
 
         if record_type == "improver_heartbeat":
             return "improver"
+        
+        if record_type == "improver_heartbeat":
+            return "improver"
+
+        if record_type == "overseer_heartbeat":
+            return "overseer"
+
+        if record_type == "memory_heartbeat":
+            return "memory"
+
+        if record_type == "simulation_heartbeat":
+            return "simulation"
 
         if record_type == "meta_heartbeat":
             node_id = str(record.get("node_id") or record.get("agent_id") or "")

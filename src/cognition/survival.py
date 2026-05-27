@@ -26,10 +26,6 @@ import time
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional, TypedDict
 
-"""Compatibility wrapper for legacy sim imports."""
-
-from src.cognition.survival import *  # noqa: F401,F403
-
 
 class SurvivalConfig(TypedDict, total=False):
     """Configuration parameters for SurvivalEvaluator."""

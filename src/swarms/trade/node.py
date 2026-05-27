@@ -15,10 +15,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from adapters.multi_pair_adapter import MultiPairAdapter
 from adapters.orderbook_analyzer import OrderBookAnalyzer
 from adapters.tradingview_webhook import TradingViewWebhook
-from sim.curiosity_engine import CuriosityEngine
-from sim.genetic_engine import GeneticEngine, Genome
-from sim.meta_pomdp_agent import MetaPOMDPAgent
-from sim.survival_evaluator import SurvivalEvaluator
+from src.cognition import CuriosityEngine, MetaPOMDPAgent, SurvivalEvaluator
+from src.evolution import GeneticEngine, Genome
 from src.core.crdt_adapter import CRDTAdapter
 from src.core.event_store import EventStore
 from src.core.events import Event

@@ -7,7 +7,6 @@ import json
 import logging
 import math
 import os
-import random
 import signal
 import time
 from typing import Any, Final, Optional, TypedDict
@@ -16,6 +15,8 @@ try:
     import redis
 except ImportError:  # pragma: no cover - optional dependency
     redis = None  # type: ignore[assignment]
+
+from src.simulation import MarketEnvironment
 
 logger: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -28,36 +29,6 @@ class MarketTick(TypedDict):
     drift: float
     symbol: str
     timestamp: float
-
-
-try:
-    from sim.engine.environment import MarketEnvironment
-
-    logger.info("Successfully imported MarketEnvironment from sim.engine.environment.")
-except ImportError:
-    logger.warning("Could not import MarketEnvironment. Using internal fallback implementation.")
-
-    class MarketEnvironment:
-        """Internal fallback market environment for price simulation."""
-
-        __slots__ = ("_price", "volatility", "drift")
-
-        def __init__(self, volatility: float, drift: float, initial_price: float = 100.0) -> None:
-            if volatility < 0:
-                raise ValueError("volatility must be non-negative")
-            if initial_price <= 0:
-                raise ValueError("initial_price must be positive")
-
-            self._price = float(initial_price)
-            self.volatility = float(volatility)
-            self.drift = float(drift)
-
-        def step(self) -> float:
-            """Return next simulated price."""
-            price_change = self._price * (self.drift + self.volatility * random.uniform(-1.0, 1.0))
-            self._price = max(0.01, self._price + price_change)
-            return self._price
-
 
 DEFAULT_REDIS_URL: Final[str] = "redis://localhost:6379"
 DEFAULT_MARKET_CHANNEL: Final[str] = "market_ticks"
