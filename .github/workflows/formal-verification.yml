@@ -10,19 +10,26 @@ on:
     branches: [main]
     paths:
       - 'formal/tla/**'
+      - '.github/workflows/formal-verification.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   tla-verify:
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     strategy:
+      fail-fast: false
       matrix:
         spec:
           - NodeLifecycle
           - D2BFT
           - GlobalState
           - SporeProtocol
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,12 +37,19 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
 
       - name: Download TLA2Tools
         run: |
           curl -L -o tla2tools.jar https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 
+      - name: Verify spec files exist
+        run: |
+          test -f "formal/tla/${{ matrix.spec }}.tla"
+          test -f "formal/tla/${{ matrix.spec }}.cfg"
+
       - name: Run TLC
         run: |
-          java -cp tla2tools.jar tlc2.TLC formal/tla/${{ matrix.spec }}.tla -config formal/tla/${{ matrix.spec }}.cfg
+          java -cp tla2tools.jar tlc2.TLC \
+            "formal/tla/${{ matrix.spec }}.tla" \
+            -config "formal/tla/${{ matrix.spec }}.cfg"
