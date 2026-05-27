@@ -550,6 +550,55 @@ class GenomeCRDT:
                 self.clock = 0
                 self._next_clock()
 
+    def refresh_from_storage(self) -> int:
+        """Refresh in-memory CRDT state from persistent storage.
+
+        This is useful for local multi-process runtime where several CRDTAdapter
+        instances write to the same SQLite database. It imports operations that
+        were written by other processes after this object was initialized.
+
+        Returns:
+            Number of newly observed operations.
+        """
+        if self.storage is None:
+            return 0
+
+        refreshed = 0
+
+        with self._lock:
+            try:
+                storage_records = self.storage.load_records()
+                storage_vv = self.storage.load_vv()
+                storage_ops = self.storage.load_ops()
+
+                before_seen = len(self._seen_ops)
+
+                for op in storage_ops:
+                    self._seen_ops.add(op.op_id)
+                    self.clock = max(self.clock, int(op.clock))
+                    self.vv.observe(op.node_id, op.clock)
+
+                self._records = storage_records
+                self.vv.merge(storage_vv)
+
+                if self.clock <= 0 or not self.vv.seen(self.node_id, self.clock):
+                    self._next_clock()
+
+                refreshed = max(0, len(self._seen_ops) - before_seen)
+
+                logger.debug(
+                    "CRDT refreshed from storage: records=%s new_ops=%s clock=%s vv=%s",
+                    len(self._records),
+                    refreshed,
+                    self.clock,
+                    self.vv.to_dict(),
+                )
+            except Exception:
+                logger.exception("Failed to refresh CRDT from storage.")
+                return 0
+
+        return refreshed
+
     def _next_clock(self) -> int:
         self.clock += 1
         self.vv.observe(self.node_id, self.clock)

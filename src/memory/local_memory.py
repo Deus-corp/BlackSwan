@@ -11,6 +11,8 @@ from typing import Any, Optional, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from src.memory.contracts import MemoryQuery, MemoryStats
+
 logger = logging.getLogger(__name__)
 
 
@@ -262,6 +264,53 @@ class LocalMemoryAPI:
 
         results.sort(key=lambda item: (item.priority, item.updated_at), reverse=True)
         return results
+    
+    async def recall(self, query: MemoryQuery | dict[str, Any]) -> list[MemoryRecord]:
+        """Recall records using canonical MemoryQuery contract."""
+        if isinstance(query, dict):
+            query = MemoryQuery(**query)
+        elif not isinstance(query, MemoryQuery):
+            query = MemoryQuery()
+
+        safe_limit = max(0, int(query.limit))
+        if safe_limit == 0:
+            return []
+
+        records = await self.query(
+            kind=str(query.kind) if query.kind is not None else None,
+            scope=str(query.scope) if query.scope is not None else None,
+            include_expired=query.include_expired,
+        )
+
+        filtered: list[MemoryRecord] = []
+        text = str(query.text or "").strip().lower()
+        required_tags = {str(tag).strip().lower() for tag in query.tags if str(tag).strip()}
+
+        for record in records:
+            if query.owner_node_id:
+                origin = self._record_origin(record)
+                if origin != query.owner_node_id:
+                    continue
+
+            if query.swarm:
+                swarm = self._record_swarm(record)
+                if swarm != query.swarm:
+                    continue
+
+            if required_tags:
+                record_tags = self._record_tags(record)
+                if not required_tags.issubset(record_tags):
+                    continue
+
+            if text and text not in self._searchable_text(record):
+                continue
+
+            filtered.append(record)
+
+            if len(filtered) >= safe_limit:
+                break
+
+        return filtered
 
     async def recent(self, kind: Optional[str] = None, limit: int = 50) -> list[MemoryRecord]:
         """Return recent non-expired records, optionally filtered by kind."""
@@ -419,12 +468,103 @@ class LocalMemoryAPI:
                 json.dumps(self._dump_state(), ensure_ascii=False, default=str).encode("utf-8")
             ),
         }
+    
+    async def stats(self) -> MemoryStats:
+        """Return canonical memory backend statistics."""
+        now = _now_ms()
+        by_scope: dict[str, int] = {}
+        by_kind: dict[str, int] = {}
+        expired_records = 0
+        verified_records = 0
+
+        for record in self._records.values():
+            by_scope[record.scope] = by_scope.get(record.scope, 0) + 1
+            by_kind[record.kind] = by_kind.get(record.kind, 0) + 1
+
+            if record.verified:
+                verified_records += 1
+
+            if record.valid_until is not None and now > record.valid_until:
+                expired_records += 1
+
+        return MemoryStats(
+            total_records=len(self._records),
+            by_scope=by_scope,
+            by_kind=by_kind,
+            verified_records=verified_records,
+            expired_records=expired_records,
+            backend="local",
+            details={
+                "node_id": self.node_id,
+                "episodic_count": len(self._episodic),
+                "semantic_count": len(self._semantic),
+                "policy_count": len(self._policies),
+                "snapshot_count": len(self._snapshots),
+            },
+        )
 
     async def seal(self) -> None:
         """Create a snapshot and persist state when storage is configured."""
         await self.snapshot()
         if self.storage is not None:
             await self.save_to_db()
+
+    @staticmethod
+    def _record_origin(record: MemoryRecord) -> str:
+        source = record.source if isinstance(record.source, dict) else {}
+        return str(
+            source.get("originNodeId")
+            or source.get("origin_node_id")
+            or source.get("node_id")
+            or source.get("originPeerId")
+            or ""
+        )
+
+    @staticmethod
+    def _record_swarm(record: MemoryRecord) -> str:
+        source = record.source if isinstance(record.source, dict) else {}
+        payload = record.payload if isinstance(record.payload, dict) else {}
+
+        return str(
+            source.get("swarm")
+            or source.get("swarm_type")
+            or payload.get("swarm")
+            or payload.get("swarm_type")
+            or ""
+        )
+
+    @staticmethod
+    def _record_tags(record: MemoryRecord) -> set[str]:
+        payload = record.payload if isinstance(record.payload, dict) else {}
+        raw_tags = payload.get("tags", [])
+
+        if isinstance(raw_tags, str):
+            raw_tags = [raw_tags]
+
+        if not isinstance(raw_tags, list):
+            raw_tags = []
+
+        tags = {str(tag).strip().lower() for tag in raw_tags if str(tag).strip()}
+
+        if record.topic:
+            tags.add(str(record.topic).strip().lower())
+
+        tags.add(str(record.kind).strip().lower())
+        tags.add(str(record.scope).strip().lower())
+
+        return tags
+
+    @staticmethod
+    def _searchable_text(record: MemoryRecord) -> str:
+        parts = [
+            record.id,
+            record.kind,
+            record.scope,
+            record.topic or "",
+            _canonical_json(record.payload),
+            _canonical_json(record.source),
+        ]
+        return " ".join(str(part).lower() for part in parts)
 
     def _index_record(self, record: MemoryRecord) -> None:
         if record.kind == "event":

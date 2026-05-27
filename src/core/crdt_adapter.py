@@ -331,6 +331,13 @@ class CRDTAdapter:
         if to_delete:
             logger.info("Pruned %s old heartbeat record(s) from CRDT.", len(to_delete))
 
+    def refresh_from_storage(self) -> int:
+        """Refresh underlying CRDT state from persistent storage."""
+        refresh = getattr(self.crdt, "refresh_from_storage", None)
+        if not callable(refresh):
+            return 0
+        return int(refresh())
+
     @property
     def state(self) -> dict[str, dict[str, Any]]:
         """Return active CRDT state."""
