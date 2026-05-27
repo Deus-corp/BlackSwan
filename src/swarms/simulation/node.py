@@ -105,8 +105,16 @@ class SimulationSwarmNode:
                 self.last_error = str(exc)
                 logger.exception("SimulationSwarmNode heartbeat loop error: %s", exc)
 
-        await self.publish_memory_event("simulation swarm node stopped", topic="lifecycle")
-        logger.info("SimulationSwarmNode %s stopped.", self.node_id)
+            try:
+                await self.publish_memory_event("simulation swarm node stopped", topic="lifecycle")
+            except Exception as exc:
+                logger.warning(
+                    "[%s] Failed to publish shutdown memory event: %s",
+                    self.node_id,
+                    exc,
+                )
+
+            logger.info("SimulationSwarmNode %s stopped.", self.node_id)
 
     async def stop(self) -> None:
         """Request graceful shutdown."""

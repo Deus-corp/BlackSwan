@@ -1,4 +1,5 @@
 import pytest
+import time
 
 from src.swarms.memory.node import MemorySwarmNode
 from src.swarms.memory.shared_bridge import SharedMemoryBridge
@@ -71,7 +72,7 @@ async def test_shared_memory_bridge_ingests_swarm_event() -> None:
     node = MemorySwarmNode(node_id="memory-test", heartbeat_interval_seconds=1.0)
     node.crdt = crdt
 
-    bridge = SharedMemoryBridge()
+    bridge = SharedMemoryBridge(include_swarm_events=True)
     result = await bridge.ingest_from_crdt(crdt, node)
 
     assert result["accepted"] == 1
@@ -172,6 +173,7 @@ async def test_memory_scan_shared_memory_refreshes_crdt_storage(tmp_path) -> Non
     writer = CRDTAdapter(node_id="simulation-test", db_path=str(db_path))
     memory = MemorySwarmNode(node_id="memory-test", heartbeat_interval_seconds=1.0)
     memory.crdt = CRDTAdapter(node_id="memory-test", db_path=str(db_path))
+    memory.ingest_records_since_start = False
 
     await writer.add_genome(
         {
@@ -205,3 +207,63 @@ async def test_memory_scan_shared_memory_refreshes_crdt_storage(tmp_path) -> Non
 
     assert len(records) == 1
     assert records[0].id == "mem-refresh-1"
+
+@pytest.mark.asyncio
+async def test_shared_memory_bridge_filters_records_before_min_timestamp() -> None:
+    crdt = DummyCRDT()
+    now = time.time()
+
+    crdt.state["old-rec"] = {
+        "type": "memory_record",
+        "kind": "event",
+        "scope": "shared",
+        "payload": {"message": "old"},
+        "source": {"originNodeId": "simulation-1", "swarm": "simulation", "parents": []},
+        "confidence": 0.95,
+        "timestamp": now - 100,
+    }
+    crdt.state["new-rec"] = {
+        "type": "memory_record",
+        "kind": "event",
+        "scope": "shared",
+        "payload": {"message": "new"},
+        "source": {"originNodeId": "simulation-1", "swarm": "simulation", "parents": []},
+        "confidence": 0.95,
+        "timestamp": now + 1,
+    }
+
+    node = MemorySwarmNode(node_id="memory-test", heartbeat_interval_seconds=1.0)
+    node.crdt = crdt
+
+    bridge = SharedMemoryBridge()
+    result = await bridge.ingest_from_crdt(crdt, node, min_timestamp=now)
+
+    assert result["accepted"] == 1
+    assert result["skipped"] == 1
+
+    records = await node.memory.recall({"kind": "event", "scope": "shared", "text": "new"})
+    assert len(records) == 1
+
+@pytest.mark.asyncio
+async def test_shared_memory_bridge_skips_swarm_events_by_default() -> None:
+    crdt = DummyCRDT()
+    crdt.state["event-1"] = {
+        "type": "swarm_event",
+        "swarm": "simulation",
+        "node_id": "simulation-1",
+        "event": "scenario_completed",
+        "payload": {"scenario": "basic"},
+        "severity": "info",
+    }
+
+    node = MemorySwarmNode(node_id="memory-test", heartbeat_interval_seconds=1.0)
+    node.crdt = crdt
+
+    bridge = SharedMemoryBridge()
+    result = await bridge.ingest_from_crdt(crdt, node)
+
+    assert result["accepted"] == 0
+    assert result["skipped"] == 1
+
+    stats = await node.memory.stats()
+    assert stats.total_records == 0

@@ -246,6 +246,8 @@ def _memory_env(base: Mapping[str, str], args: argparse.Namespace, idx: int) -> 
     env["NODE_ID"] = node_id
     env["MEMORY_NODE_ID"] = node_id
     env["MEMORY_HEARTBEAT_INTERVAL_SECONDS"] = str(args.memory_heartbeat_interval)
+    env["MEMORY_INGEST_RECORDS_SINCE_START"] = "true" if args.memory_ingest_since_start else "false"
+    env["MEMORY_INGEST_SWARM_EVENTS"] = "true" if args.memory_ingest_swarm_events else "false"
     return env
 
 
@@ -654,6 +656,18 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Delete local CRDT database files before starting the cluster. Development only.",
     )
+    up.add_argument(
+        "--memory-ingest-since-start",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Memory nodes ingest only CRDT records created after node start. Use --no-memory-ingest-since-start to reindex old records.",
+    )
+    up.add_argument(
+        "--memory-ingest-swarm-events",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Allow memory nodes to ingest generic swarm_event records. Disabled by default.",
+    )
 
     up.add_argument("--simulation-nodes", type=int, default=0, help="Number of local simulation swarm nodes.")
     up.add_argument("--simulation-node-prefix", default="simulation", help="Prefix for generated simulation node ids.")
@@ -768,33 +782,37 @@ def _remove_sqlite_database_files(db_path: str) -> None:
     if not clean_path:
         return
 
-    path = Path(clean_path)
+    path = Path(clean_path).expanduser().resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
 
     for candidate in (
         path,
-        Path(f"{clean_path}-wal"),
-        Path(f"{clean_path}-shm"),
-        Path(f"{clean_path}-journal"),
+        Path(f"{path}-wal"),
+        Path(f"{path}-shm"),
+        Path(f"{path}-journal"),
     ):
         try:
             if candidate.exists() and candidate.is_file():
                 candidate.unlink()
-                print(f"removed CRDT database file: {candidate}")
+                print(f"removed SQLite file: {candidate}")
         except OSError as exc:
-            raise RuntimeError(f"Failed to remove CRDT database file {candidate}: {exc}") from exc
+            raise RuntimeError(f"Failed to remove SQLite file {candidate}: {exc}") from exc
         
 def _fresh_runtime_ledgers(run_dir: Path, base_env: Mapping[str, str]) -> None:
-    """Remove local runtime ledger files for a clean development cluster run."""
+    """Remove local runtime SQLite database files for a clean development run.
+
+    Do not remove the whole ledger directory after it has been prepared; only
+    remove explicit SQLite database files and sidecar files before services
+    start. This avoids SQLite disk I/O errors around WAL/SHM handling.
+    """
     ledger_dir = run_dir / "ledgers"
-
-    # Remove whole runtime ledger directory first.
-    if ledger_dir.exists():
-        shutil.rmtree(ledger_dir)
-        print(f"removed runtime ledger directory: {ledger_dir}")
-
     ledger_dir.mkdir(parents=True, exist_ok=True)
 
-    # Also remove explicit DB paths from env, including sidecar files.
+    print(f"fresh-crdt requested: run_dir={run_dir}")
+    print(f"fresh-crdt requested: ledger_dir={ledger_dir}")
+    print(f"fresh-crdt requested: CRDT_DB_PATH={base_env.get('CRDT_DB_PATH')}")
+    print(f"fresh-crdt requested: EVENT_SQLITE_PATH={base_env.get('EVENT_SQLITE_PATH')}")
+
     for key in ("CRDT_DB_PATH", "EVENT_SQLITE_PATH"):
         db_path = str(base_env.get(key, "") or "").strip()
         if db_path:

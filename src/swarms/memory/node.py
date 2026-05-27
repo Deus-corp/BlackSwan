@@ -18,6 +18,7 @@ import logging
 import os
 import signal
 import uuid
+import time
 from typing import Any, Optional
 
 from src.core.crdt_adapter import CRDTAdapter
@@ -55,6 +56,11 @@ class MemorySwarmNode:
         self.node_id = node_id or os.environ.get("MEMORY_NODE_ID") or f"memory-{uuid.uuid4().hex[:8]}"
         self.heartbeat_interval_seconds = float(heartbeat_interval_seconds)
         self._stop_event = asyncio.Event()
+        self.started_at = time.time()
+        self.ingest_records_since_start = (
+            os.environ.get("MEMORY_INGEST_RECORDS_SINCE_START", "true").lower()
+            not in {"0", "false", "no", "off"}
+        )
 
         self.crdt = CRDTAdapter(
             node_id=self.node_id,
@@ -63,7 +69,11 @@ class MemorySwarmNode:
         self.memory = LocalMemoryAPI(node_id=self.node_id)
         self.reputation = reputation or TrustAllReputation()
         self.quarantine = QuarantineBuffer(self.memory, self.reputation)
-        self.shared_bridge = SharedMemoryBridge()
+        include_swarm_events = (
+            os.environ.get("MEMORY_INGEST_SWARM_EVENTS", "false").lower()
+            in {"1", "true", "yes", "on"}
+        )
+        self.shared_bridge = SharedMemoryBridge(include_swarm_events=include_swarm_events)
         self.heartbeats_published = 0
         self.records_ingested = 0
         self.records_rejected = 0
@@ -215,7 +225,13 @@ class MemorySwarmNode:
         if callable(refresh):
             refresh()
 
-        return await self.shared_bridge.ingest_from_crdt(self.crdt, self, limit=100)
+        min_timestamp = self.started_at if self.ingest_records_since_start else None
+        return await self.shared_bridge.ingest_from_crdt(
+            self.crdt,
+            self,
+            limit=100,
+            min_timestamp=min_timestamp,
+        )
 
 async def main() -> None:
     logging.basicConfig(

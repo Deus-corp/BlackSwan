@@ -20,14 +20,22 @@ MEMORY_COMPATIBLE_TYPES = {
 class SharedMemoryBridge:
     """Bridge from shared CRDT payloads to memory swarm ingestion."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, include_swarm_events: bool = False) -> None:
+        self.include_swarm_events = bool(include_swarm_events)
         self.seen_ids: set[str] = set()
         self.scanned_records = 0
         self.accepted_records = 0
         self.rejected_records = 0
         self.skipped_records = 0
 
-    async def ingest_from_crdt(self, crdt: Any, node: Any, *, limit: int = 100) -> dict[str, int]:
+    async def ingest_from_crdt(
+        self,
+        crdt: Any,
+        node: Any,
+        *,
+        limit: int = 100,
+        min_timestamp: float | None = None,
+    ) -> dict[str, int]:
         """Scan CRDT state and ingest memory-compatible records."""
         accepted = 0
         rejected = 0
@@ -38,10 +46,20 @@ class SharedMemoryBridge:
             if scanned >= limit:
                 break
 
-            memory_record = self._to_memory_record(record_id, payload)
+            memory_record = self._to_memory_record(
+                record_id,
+                payload,
+                include_swarm_events=self.include_swarm_events,
+            )
             if memory_record is None:
                 skipped += 1
                 continue
+
+            if min_timestamp is not None:
+                record_ts = self._safe_float(payload.get("timestamp", payload.get("ts", 0.0)))
+                if record_ts > 0 and record_ts < min_timestamp:
+                    skipped += 1
+                    continue
 
             if record_id in self.seen_ids:
                 continue
@@ -95,13 +113,19 @@ class SharedMemoryBridge:
                     yield str(key), value
 
     @classmethod
-    def _to_memory_record(cls, record_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    def _to_memory_record(
+        cls,
+        record_id: str,
+        payload: dict[str, Any],
+        *,
+        include_swarm_events: bool = False,
+    ) -> dict[str, Any] | None:
         record_type = str(payload.get("type", "") or "")
 
         if record_type == "memory_record":
             return cls._memory_record_from_payload(record_id, payload)
 
-        if record_type == "swarm_event":
+        if record_type == "swarm_event" and include_swarm_events:
             return cls._memory_record_from_event(record_id, payload)
 
         return None
@@ -165,3 +189,10 @@ class SharedMemoryBridge:
             "priority": 0,
             "verified": False,
         }
+    
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
