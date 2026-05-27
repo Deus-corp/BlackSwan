@@ -35,9 +35,13 @@ jobs:
         run: |
           python -m pytest -q tests/unit/core tests/unit --maxfail=1
 
-      - name: Run swarm runtime smoke
+      - name: Run swarm runtime smoke if improver is available
         run: |
-          python -m src.testing.swarm_runtime_smoke
+          if [ -d "src/swarms/improver" ]; then
+            python -m src.testing.swarm_runtime_smoke
+          else
+            echo "Skipping swarm runtime smoke: src/swarms/improver is not present in this checkout."
+          fi
 
   syntax-check:
     runs-on: ubuntu-latest

@@ -7,9 +7,12 @@ import signal
 import sys
 import time
 import sqlite3
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional
+
+from uvicorn import config
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -256,6 +259,9 @@ def _simulation_env(base: Mapping[str, str], args: argparse.Namespace, idx: int)
 
 def _build_services(args: argparse.Namespace, run_dir: Path) -> List[ServiceSpec]:
     base = _base_env(args, run_dir)
+
+    if args.fresh_crdt:
+        _fresh_runtime_ledgers(run_dir, base)
 
     services: List[ServiceSpec] = []
 
@@ -643,6 +649,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=30.0,
         help="Memory swarm heartbeat interval in seconds.",
     )
+    up.add_argument(
+        "--fresh-crdt",
+        action="store_true",
+        help="Delete local CRDT database files before starting the cluster. Development only.",
+    )
 
     up.add_argument("--simulation-nodes", type=int, default=0, help="Number of local simulation swarm nodes.")
     up.add_argument("--simulation-node-prefix", default="simulation", help="Prefix for generated simulation node ids.")
@@ -751,6 +762,43 @@ def build_parser() -> argparse.ArgumentParser:
 
     return parser
 
+def _remove_sqlite_database_files(db_path: str) -> None:
+    """Remove SQLite database and sidecar WAL/SHM files for fresh local runs."""
+    clean_path = str(db_path or "").strip()
+    if not clean_path:
+        return
+
+    path = Path(clean_path)
+
+    for candidate in (
+        path,
+        Path(f"{clean_path}-wal"),
+        Path(f"{clean_path}-shm"),
+        Path(f"{clean_path}-journal"),
+    ):
+        try:
+            if candidate.exists() and candidate.is_file():
+                candidate.unlink()
+                print(f"removed CRDT database file: {candidate}")
+        except OSError as exc:
+            raise RuntimeError(f"Failed to remove CRDT database file {candidate}: {exc}") from exc
+        
+def _fresh_runtime_ledgers(run_dir: Path, base_env: Mapping[str, str]) -> None:
+    """Remove local runtime ledger files for a clean development cluster run."""
+    ledger_dir = run_dir / "ledgers"
+
+    # Remove whole runtime ledger directory first.
+    if ledger_dir.exists():
+        shutil.rmtree(ledger_dir)
+        print(f"removed runtime ledger directory: {ledger_dir}")
+
+    ledger_dir.mkdir(parents=True, exist_ok=True)
+
+    # Also remove explicit DB paths from env, including sidecar files.
+    for key in ("CRDT_DB_PATH", "EVENT_SQLITE_PATH"):
+        db_path = str(base_env.get(key, "") or "").strip()
+        if db_path:
+            _remove_sqlite_database_files(db_path)
 
 def main() -> None:
     parser = build_parser()
