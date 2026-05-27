@@ -30,7 +30,7 @@ Laboratory-validated components now form a working multi-swarm runtime foundatio
 
 ### Validated
 
-- ✅ 69+ unit/runtime tests passing.
+- ✅ 91+ unit/runtime tests passing.
 - ✅ Trade runtime command loop passing.
 - ✅ Swarm runtime smoke test passing.
 - ✅ Canonical swarm contracts:

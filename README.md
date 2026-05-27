@@ -18,7 +18,7 @@ BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime.
 
 Validated in the current architecture:
 
-- ✅ 69+ unit/runtime tests passing.
+- ✅ 91+ unit/runtime tests passing.
 - ✅ Trade runtime command loop passing.
 - ✅ Swarm runtime smoke test passing.
 - ✅ Canonical first-class swarm topology with 7 swarm types:
@@ -42,6 +42,18 @@ Validated in the current architecture:
 - ✅ Secure gossip and signed exchange components.
 - ✅ Local runtime launcher supports trade, memory, simulation, security, explorer, and overseer services.
 - ✅ Simulation and evolution experiments remain runnable through compatibility wrappers.
+
+### Latest Milestone — Memory Swarm Foundation
+
+The current runtime now supports explicit shared memory flow between first-class swarms:
+
+- `SimulationSwarmNode` publishes canonical `memory_record` events into CRDT.
+- `MemorySwarmNode` refreshes CRDT state from shared SQLite storage.
+- `SharedMemoryBridge` ingests explicit memory records through quarantine validation.
+- `LocalMemoryAPI` exposes canonical `recall()` and `stats()` contracts.
+- Memory heartbeat reports real memory metrics: total records, accepted shared records, rejected records, skipped records, verified records, and record distribution by scope/kind.
+- Local cluster runtime supports `--fresh-crdt`, `--memory-ingest-since-start`, and controlled `--memory-ingest-swarm-events`.
+- Runtime-level inter-swarm memory flow is validated with Memory + Simulation + Overseer.
 
 ---
 
