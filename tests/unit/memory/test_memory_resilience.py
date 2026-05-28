@@ -3,8 +3,9 @@ from src.memory.resilience import (
     MemoryHealth,
     MemoryLayer,
     MemoryResiliencePolicy,
+    MemoryResilienceStatus,
+    assess_memory_resilience,
 )
-
 
 def test_memory_policy_normal_write_targets() -> None:
     policy = MemoryResiliencePolicy()
@@ -102,3 +103,80 @@ def test_memory_policy_combined_plan_is_serializable() -> None:
     assert plan["health"]["crdt_available"] is False
     assert plan["write"]["queue_for_later"] is True
     assert plan["read"]["degraded"] is True
+
+def test_memory_resilience_assessment_primary_ok() -> None:
+    assessment = assess_memory_resilience(
+        MemoryHealth(),
+        total_records=3,
+        shared_seen_records=2,
+        shared_accepted_records=2,
+        shared_rejected_records=0,
+        shared_skipped_records=3,
+    )
+
+    assert assessment.status == MemoryResilienceStatus.PRIMARY_OK
+    assert assessment.degraded is False
+    assert assessment.reason == "ok"
+
+
+def test_memory_resilience_assessment_recovery_needed_when_crdt_down() -> None:
+    assessment = assess_memory_resilience(
+        MemoryHealth(crdt_available=False),
+        total_records=3,
+    )
+
+    assert assessment.status == MemoryResilienceStatus.RECOVERY_NEEDED
+    assert assessment.recovery_needed is True
+    assert assessment.degraded is True
+
+
+def test_memory_resilience_assessment_bridge_lagging_when_no_progress() -> None:
+    assessment = assess_memory_resilience(
+        MemoryHealth(),
+        total_records=3,
+        shared_seen_records=3,
+        shared_accepted_records=0,
+        shared_rejected_records=0,
+        shared_skipped_records=50,
+    )
+
+    assert assessment.status == MemoryResilienceStatus.SHARED_BRIDGE_LAGGING
+    assert assessment.shared_bridge_lagging is True
+
+
+def test_memory_resilience_assessment_fallback_active_when_memory_swarm_unseen() -> None:
+    assessment = assess_memory_resilience(
+        MemoryHealth(memory_swarm_seen=False),
+        total_records=3,
+    )
+
+    assert assessment.status in {
+        MemoryResilienceStatus.FALLBACK_ACTIVE,
+        MemoryResilienceStatus.DEGRADED,
+    }
+    assert assessment.fallback_active is True
+
+
+def test_memory_resilience_policy_still_routes_to_local_and_own_when_shared_down() -> None:
+    policy = MemoryResiliencePolicy()
+    health = MemoryHealth(shared=MemoryAvailability.UNAVAILABLE, crdt_available=False)
+
+    plan = policy.choose_write_targets(health)
+
+    assert "local" in plan.to_dict()["write_targets"]
+    assert "own" in plan.to_dict()["write_targets"]
+    assert plan.queue_for_later is True
+    assert plan.degraded is True
+
+def test_memory_resilience_assessment_not_lagging_when_accepting_records() -> None:
+    assessment = assess_memory_resilience(
+        MemoryHealth(),
+        total_records=3,
+        shared_seen_records=4,
+        shared_accepted_records=1,
+        shared_rejected_records=0,
+        shared_skipped_records=100,
+    )
+
+    assert assessment.status == MemoryResilienceStatus.PRIMARY_OK
+    assert assessment.shared_bridge_lagging is False

@@ -35,6 +35,12 @@ from src.memory.exporter import save_jsonl
 from src.memory.summary import build_memory_summary
 from swarm_config import config
 
+from src.memory.resilience import (
+    MemoryAvailability,
+    MemoryHealth,
+    assess_memory_resilience,
+)
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 30.0
@@ -106,6 +112,14 @@ class MemorySwarmNode:
 
         bridge = getattr(self, "shared_bridge", None)
         bridge_stats = bridge.stats() if bridge is not None else {}
+
+        total_records = int(stats_data.get("total_records", 0))
+        shared_seen_records = int(bridge_stats.get("seen_records", 0))
+        shared_scanned_records = int(bridge_stats.get("scanned_records", 0))
+        shared_accepted_records = int(bridge_stats.get("accepted_records", 0))
+        shared_rejected_records = int(bridge_stats.get("rejected_records", 0))
+        shared_skipped_records = int(bridge_stats.get("skipped_records", 0))
+
         try:
             recent_records = await self.memory.recent(limit=200)
         except Exception as exc:
@@ -115,11 +129,30 @@ class MemorySwarmNode:
         gold_samples = select_gold_memory_samples(recent_records)
         memory_summary = build_memory_summary(
             recent_records,
-            total_records=int(stats_data.get("total_records", 0)),
+            total_records=total_records,
             recognition_counts=dict(self.recognition_counts),
             recognition_action_counts=dict(self.recognition_action_counts),
             degraded=bool(self.last_error),
             reason=self.last_error or "ok",
+        )
+
+        memory_health = MemoryHealth(
+            local=MemoryAvailability.AVAILABLE,
+            own=MemoryAvailability.AVAILABLE,
+            shared=MemoryAvailability.AVAILABLE if not self.last_error else MemoryAvailability.DEGRADED,
+            global_memory=MemoryAvailability.AVAILABLE,
+            memory_swarm_seen=True,
+            crdt_available=not bool(self.last_error),
+            last_error=self.last_error,
+        )
+
+        memory_resilience = assess_memory_resilience(
+            memory_health,
+            total_records=total_records,
+            shared_seen_records=shared_seen_records,
+            shared_accepted_records=shared_accepted_records,
+            shared_rejected_records=shared_rejected_records,
+            shared_skipped_records=shared_skipped_records,
         )
 
         payload = build_memory_heartbeat(
@@ -131,7 +164,7 @@ class MemorySwarmNode:
                 "recognition_counts": dict(self.recognition_counts),
                 "recognition_action_counts": dict(self.recognition_action_counts),
                 "records_rejected": self.records_rejected,
-                "total_records": int(stats_data.get("total_records", 0)),
+                "total_records": total_records,
                 "by_scope": dict(stats_data.get("by_scope", {})),
                 "by_kind": dict(stats_data.get("by_kind", {})),
                 "verified_records": int(stats_data.get("verified_records", 0)),
@@ -140,12 +173,18 @@ class MemorySwarmNode:
                 "semantic_records": int(details.get("semantic_count", 0)),
                 "policy_records": int(details.get("policy_count", 0)),
                 "snapshot_count": int(details.get("snapshot_count", 0)),
-                "shared_seen_records": int(bridge_stats.get("seen_records", 0)),
-                "shared_scanned_records": int(bridge_stats.get("scanned_records", 0)),
-                "shared_accepted_records": int(bridge_stats.get("accepted_records", 0)),
-                "shared_rejected_records": int(bridge_stats.get("rejected_records", 0)),
-                "shared_skipped_records": int(bridge_stats.get("skipped_records", 0)),
+                "shared_seen_records": shared_seen_records,
+                "shared_scanned_records": shared_scanned_records,
+                "shared_accepted_records": shared_accepted_records,
+                "shared_rejected_records": shared_rejected_records,
+                "shared_skipped_records": shared_skipped_records,
                 "memory_summary": memory_summary.to_dict(),
+                "memory_resilience": memory_resilience.to_dict(),
+                "resilience_status": memory_resilience.status.value,
+                "resilience_degraded": memory_resilience.degraded,
+                "fallback_active": memory_resilience.fallback_active,
+                "shared_bridge_lagging": memory_resilience.shared_bridge_lagging,
+                "recovery_needed": memory_resilience.recovery_needed,
                 "review_candidates": memory_summary.review_candidates,
                 "alert_candidates": memory_summary.alert_candidates,
                 "dedupe_candidates": memory_summary.dedupe_candidates,
@@ -158,6 +197,9 @@ class MemorySwarmNode:
                 "crdt_db_path": str(config.crdt_db_path),
                 "memory_backend": str(stats_data.get("backend", "local")),
                 "node_id": self.node_id,
+                "memory_health": memory_health.to_dict(),
+                "memory_resilience": memory_resilience.to_dict(),
+                "gold_sample_candidates": len(gold_samples),
             },
             status="running" if not self.last_error else "degraded",
         )
@@ -168,14 +210,15 @@ class MemorySwarmNode:
             "[%s] Published memory swarm heartbeat count=%d total_records=%s "
             "shared_seen=%s shared_accepted=%s shared_rejected=%s shared_skipped=%s "
             "recognized=%s recognition_counts=%s recognition_action_counts=%s "
-            "gold=%s review=%s alert=%s dedupe=%s",
+            "gold=%s review=%s alert=%s dedupe=%s "
+            "resilience=%s fallback=%s bridge_lagging=%s recovery_needed=%s",
             self.node_id,
             self.heartbeats_published,
-            stats_data.get("total_records", 0),
-            bridge_stats.get("seen_records", 0),
-            bridge_stats.get("accepted_records", 0),
-            bridge_stats.get("rejected_records", 0),
-            bridge_stats.get("skipped_records", 0),
+            total_records,
+            shared_seen_records,
+            shared_accepted_records,
+            shared_rejected_records,
+            shared_skipped_records,
             self.records_recognized,
             dict(self.recognition_counts),
             dict(self.recognition_action_counts),
@@ -183,6 +226,10 @@ class MemorySwarmNode:
             memory_summary.review_candidates,
             memory_summary.alert_candidates,
             memory_summary.dedupe_candidates,
+            memory_resilience.status.value,
+            memory_resilience.fallback_active,
+            memory_resilience.shared_bridge_lagging,
+            memory_resilience.recovery_needed,
         )
 
     async def remember_event(

@@ -39,6 +39,7 @@ from src.swarms.overseer.overseer_core.models import OverseerDecision, SwarmSnap
 from src.swarms.overseer.overseer_core.policy import PolicyEngine
 from src.swarms.overseer.overseer_core.strategist import LLMStrategist
 from src.swarms.overseer.overseer_core.collector import find_memory_heartbeats_from_snapshot
+from src.swarms.overseer.overseer_core.memory_policy import decide_memory_directive
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,7 @@ class OverseerNode(BaseSwarmOverseer):
         self._last_final_decision: Optional[OverseerDecision] = None
         self._last_llm_suggestions: Dict[str, Any] = {}
         self.last_memory_intelligence: dict[str, Any] = {}
+        self.last_memory_directive: dict[str, Any] = {}
 
         self.logger.info(
             "🧭 Overseer initialized: %s interval=%ss",
@@ -217,13 +219,18 @@ class OverseerNode(BaseSwarmOverseer):
         self.last_memory_intelligence = memory_intelligence
 
         aggregate = memory_intelligence.get("aggregate", {})
+        memory_directive = decide_memory_directive(aggregate)
+        self.last_memory_directive = memory_directive.to_dict()
+
         self.logger.info(
-            "Overseer memory intelligence: status=%s gold=%s review=%s alert=%s dedupe=%s",
+            "Overseer memory intelligence: status=%s gold=%s review=%s alert=%s dedupe=%s directive=%s severity=%s",
             aggregate.get("status"),
             aggregate.get("gold_candidates"),
             aggregate.get("review_candidates"),
             aggregate.get("alert_candidates"),
             aggregate.get("dedupe_candidates"),
+            self.last_memory_directive.get("action"),
+            self.last_memory_directive.get("severity"),
         )
 
         return snapshot
