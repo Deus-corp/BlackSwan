@@ -30,7 +30,7 @@ Laboratory-validated components now form a working multi-swarm runtime foundatio
 
 ### Validated
 
-- ✅ 91+ unit/runtime tests passing.
+- ✅ 157+ unit/runtime tests passing.
 - ✅ Trade runtime command loop passing.
 - ✅ Swarm runtime smoke test passing.
 - ✅ Canonical swarm contracts:
@@ -48,6 +48,11 @@ Laboratory-validated components now form a working multi-swarm runtime foundatio
   - `memory`
   - `simulation`
 - ✅ Overseer reads generic swarm heartbeats and reports topology health.
+- ✅ Overseer reads memory intelligence from canonical memory heartbeats.
+- ✅ Overseer derives memory policy directives from memory intelligence.
+- ✅ Memory recognition identifies valuable/review/alert/dedupe candidates.
+- ✅ Memory resilience reports primary/fallback/lagging/recovery status.
+- ✅ Local CRDT SQLite storage hardened for multi-process devcontainer runtime.
 - ✅ Memory swarm skeleton publishes canonical `swarm_heartbeat`.
 - ✅ Simulation swarm skeleton publishes canonical `swarm_heartbeat`.
 - ✅ Local cluster launcher supports memory and simulation nodes.
@@ -82,7 +87,7 @@ Laboratory-validated components now form a working multi-swarm runtime foundatio
 | Security swarm | Runtime defensive swarm | 3-4 | `src/swarms/security/` |
 | Explorer swarm | Signal discovery swarm | 3 | `src/swarms/explorer/` |
 | Improver swarm | Controlled improvement/maintenance swarm | 3 | `src/swarms/improver/` |
-| Memory swarm | First-class skeleton, advisory-only | 3 | `src/swarms/memory/`, `src/memory/`, `src/intelligence/*memory*` |
+| Memory swarm | First-class advisory memory intelligence and resilience swarm | 3-4 | `src/swarms/memory/`, `src/memory/`, `src/intelligence/*memory*` |
 | Simulation swarm | First-class skeleton, advisory-only | 3 | `src/swarms/simulation/`, `src/simulation/` |
 | Cognition layer | Canonical engine layer | 4 | `src/cognition/` |
 | Evolution layer | Canonical engine layer | 4 | `src/evolution/` |
@@ -121,17 +126,23 @@ Memory swarm for experience, consolidation, retrieval, and gold sample export.
 Current role:
 
 - first-class topology entry,
-- canonical heartbeat skeleton,
-- advisory-only,
-- visible to Overseer.
+- canonical heartbeat publisher,
+- shared memory ingestion through CRDT,
+- quarantine validation for incoming memory records,
+- local/own/shared/global memory resilience policy,
+- memory recognition and policy actions,
+- gold/review/alert/dedupe candidate reporting,
+- Overseer-visible memory intelligence,
+- advisory-only policy surface.
 
 Next:
 
-- connect to `LocalMemoryAPI`,
-- consolidate episodic to semantic memory,
-- expose retrieval metrics,
-- export high-quality training/evaluation samples,
-- support memory health dashboards.
+- strengthen episodic-to-semantic consolidation,
+- expose retrieval quality metrics,
+- expand gold sample export workflows,
+- add memory dashboards,
+- add recovery/fallback drills,
+- connect memory directives to safe Overseer actions.
 
 ### Simulation
 
@@ -267,38 +278,24 @@ not into source modules.
 
 ---
 
-## Immediate Next Steps
+### 1. Trade swarm restructuring
 
-### 1. Dashboard foundation
+Package trade-specific code behind a cleaner swarm boundary:
 
-Build a local dashboard showing:
-
-* topology health,
-* swarm counts,
-* current first-class swarms,
-* CRDT record counts,
-* heartbeats by swarm,
-* stale nodes,
-* command/event streams,
-* memory metrics,
-* simulation metrics,
-* trade/risk metrics.
-
-Candidate stack:
-
-* FastAPI or lightweight HTTP server,
-* simple HTML/React frontend,
-* later Prometheus/Grafana integration.
+* separate heartbeat, memory events, execution, risk, portfolio, strategy, and telemetry concerns,
+* reduce scattered trade files across `src/trading`, `src/risk`, adapters, and swarm runtime,
+* keep `node.py` as a thin runtime orchestration layer,
+* preserve green unit/runtime tests at each step.
 
 ### 2. Memory swarm maturity
 
-Move from heartbeat skeleton to useful advisory node:
+Move from memory intelligence MVP to durable advisory memory:
 
-* connect to `LocalMemoryAPI`,
-* expose episodic/semantic counts,
-* expose consolidation queue,
-* publish memory health events,
-* export gold samples under explicit gate.
+* consolidate episodic to semantic memory,
+* expose retrieval metrics,
+* export high-quality training/evaluation samples under explicit gate,
+* add memory recovery/fallback drills,
+* connect memory directives to safe Overseer policy surfaces.
 
 ### 3. Simulation swarm maturity
 
@@ -313,13 +310,31 @@ Move from heartbeat skeleton to scenario executor:
 
 Improve Overseer so it understands:
 
+* memory intelligence and memory resilience,
 * advisory-only swarms,
 * executable vs non-executable directives,
 * explicit gates for memory/simulation/improver,
 * resource-aware spawning,
 * stale-node semantics across all swarms.
 
-### 5. Controlled improver workflow
+### 5. Dashboard foundation
+
+Build a local dashboard showing:
+
+* topology health,
+* swarm counts,
+* current first-class swarms,
+* CRDT record counts,
+* heartbeats by swarm,
+* stale nodes,
+* command/event streams,
+* memory intelligence,
+* memory resilience,
+* simulation metrics,
+* trade/risk metrics,
+* Overseer directives.
+
+### 6. Controlled improver workflow
 
 No more blind bulk model-generated edits.
 
@@ -331,7 +346,7 @@ Required workflow:
 4. runtime smoke,
 5. only then continue.
 
-### 6. Documentation update
+### 7. Documentation update
 
 Keep README, ROADMAP, and architecture docs aligned with the new concept:
 
@@ -349,6 +364,12 @@ BlackSwan = trading bot
 
 * [x] Canonical swarm contracts.
 * [x] Generic swarm topology.
+* [x] Shared memory record flow between simulation and memory swarms.
+* [x] Memory recognition and gold candidate reporting.
+* [x] Memory resilience status in heartbeat.
+* [x] Overseer memory intelligence.
+* [x] Overseer memory policy directives.
+* [x] Multi-process local CRDT storage hardening.
 * [x] Memory and simulation first-class topology entries.
 * [x] Memory and simulation heartbeat skeletons.
 * [x] Overseer sees generic swarm counts.
@@ -358,6 +379,8 @@ BlackSwan = trading bot
 
 ### Phase B — Advisory Intelligence
 
+* [x] Memory recognition MVP.
+* [x] Memory resilience MVP.
 * [ ] Memory retrieval and consolidation.
 * [ ] Simulation scenario execution.
 * [ ] Policy evaluation before risky actions.

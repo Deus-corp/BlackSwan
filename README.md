@@ -18,7 +18,7 @@ BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime.
 
 Validated in the current architecture:
 
-- ✅ 91+ unit/runtime tests passing.
+- ✅ 157+ unit/runtime tests passing.
 - ✅ Trade runtime command loop passing.
 - ✅ Swarm runtime smoke test passing.
 - ✅ Canonical first-class swarm topology with 7 swarm types:
@@ -43,16 +43,20 @@ Validated in the current architecture:
 - ✅ Local runtime launcher supports trade, memory, simulation, security, explorer, and overseer services.
 - ✅ Simulation and evolution experiments remain runnable through compatibility wrappers.
 
-### Latest Milestone — Memory Swarm Foundation
+### Latest Milestone — Memory Intelligence & Resilience
 
-The current runtime now supports explicit shared memory flow between first-class swarms:
+The current runtime now supports explicit shared memory flow, recognition, resilience assessment, and Overseer-level memory intelligence:
 
 - `SimulationSwarmNode` publishes canonical `memory_record` events into CRDT.
 - `MemorySwarmNode` refreshes CRDT state from shared SQLite storage.
 - `SharedMemoryBridge` ingests explicit memory records through quarantine validation.
-- `LocalMemoryAPI` exposes canonical `recall()` and `stats()` contracts.
-- Memory heartbeat reports real memory metrics: total records, accepted shared records, rejected records, skipped records, verified records, and record distribution by scope/kind.
-- Local cluster runtime supports `--fresh-crdt`, `--memory-ingest-since-start`, and controlled `--memory-ingest-swarm-events`.
+- `LocalMemoryAPI` exposes canonical `recall()`, `recent()`, and `stats()` contracts.
+- Memory recognition classifies records as new, familiar, duplicate, valuable, risky, or review-worthy.
+- Memory policy marks useful records as gold candidates for export/training/evaluation workflows.
+- Memory heartbeat reports real memory metrics: total records, accepted shared records, rejected records, skipped records, verified records, record distribution by scope/kind, recognition counts, gold candidates, and resilience status.
+- Memory resilience models local, own, shared, and global memory layers with fallback/recovery signals.
+- Overseer reads memory intelligence from canonical heartbeats and derives memory directives such as `observe`, `promote_gold`, `review_memory`, `reduce_risk`, and `restore_memory`.
+- Local CRDT runtime storage is hardened for multi-process devcontainer runs with conservative SQLite journaling, process locking, malformed storage detection, and fresh-run cleanup.
 - Runtime-level inter-swarm memory flow is validated with Memory + Simulation + Overseer.
 
 ---
@@ -87,8 +91,8 @@ src/
 │   ├── security/       # Defensive/security swarm
 │   ├── explorer/       # Signal discovery and exploration swarm
 │   ├── improver/       # Controlled code/project improvement swarm
-│   ├── memory/         # Memory swarm skeleton
-│   └── simulation/     # Simulation swarm skeleton
+│   ├── memory/         # Memory recognition, resilience, consolidation/export swarm
+│   └── simulation/     # Simulation advisory swarm and scenario runtime
 ├── core/               # CRDT, gossip, event store, shared runtime primitives
 ├── memory/             # Memory storage/export/quarantine helpers
 ├── intelligence/       # LLM clients and memory intelligence components
@@ -161,6 +165,50 @@ trade
 
 ---
 
+### Memory intelligence and resilience
+
+Memory is now treated as a first-class runtime subsystem instead of a passive store.
+
+The current memory path is:
+
+```text
+simulation swarm
+  -> canonical memory_record
+  -> CRDT shared storage
+  -> memory quarantine
+  -> LocalMemoryAPI
+  -> recognition policy
+  -> gold/review/alert/dedupe candidates
+  -> memory heartbeat
+  -> Overseer memory intelligence
+  -> Overseer memory directive
+```
+
+Memory resilience uses four logical layers:
+
+local  -> fast process-local memory
+own    -> durable node/swarm-owned memory
+shared -> CRDT/event-backed inter-swarm memory
+global -> consolidated memory managed by the memory swarm
+
+The memory swarm publishes resilience signals such as:
+
+- primary_ok
+- fallback_active
+- shared_bridge_lagging
+- degraded
+- recovery_needed
+
+Overseer consumes memory intelligence and maps it into policy directives:
+
+- observe
+- promote_gold
+- review_memory
+- reduce_risk
+- restore_memory
+
+---
+
 ## Quick Start
 
 ```bash
@@ -215,6 +263,7 @@ Expected Overseer signal:
 
 ```text
 Overseer generic swarm counts: {'memory': 1, 'simulation': 1, 'overseer': 1}
+Overseer memory intelligence: status=valuable_activity gold=1 directive=promote_gold severity=info
 ```
 
 ---
@@ -263,9 +312,10 @@ The current focus is structural hardening:
 1. Keep all changes controlled, incremental, and test-backed.
 2. Continue moving core primitives into `src/`.
 3. Keep `sim/` as experiment and compatibility layer.
-4. Mature `memory` and `simulation` from heartbeat skeletons into active advisory swarms.
-5. Build a dashboard that shows topology, swarm health, memory/simulation status, CRDT state, and runtime events.
-6. Preserve trade as one swarm among equals, not the center of the architecture.
+4. Mature `memory` and `simulation` from advisory swarms into active policy-supporting swarms.
+5. Restructure the trade swarm so trade-specific execution, risk, memory events, telemetry, and strategy code are cleanly packaged under the trade swarm boundary.
+6. Build a dashboard that shows topology, swarm health, memory/simulation status, CRDT state, runtime events, and Overseer directives.
+7. Preserve trade as one swarm among equals, not the center of the architecture.
 
 ---
 
