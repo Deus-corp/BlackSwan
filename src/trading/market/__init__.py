@@ -1,17 +1,21 @@
-"""
-Initializes the market module, exposing key services and selectors.
+"""Backward-compatible trade market package.
 
-This module serves as the primary entry point for market-related functionality,
-including retrieving current market snapshots and executing market selection
-algorithms.
+Canonical location:
+    src.swarms.trade.market
 """
 
-from typing import Final
+from __future__ import annotations
 
-from .selector import select_best_market
-from .snapshot import MarketSnapshotService
+from src.swarms.trade.market import (
+    MarketCollector,
+    MarketSnapshot,
+    MarketSnapshotService,
+    select_best_market,
+)
 
-__all__: Final[list[str]] = [
+__all__ = [
+    "MarketCollector",
+    "MarketSnapshot",
     "MarketSnapshotService",
     "select_best_market",
 ]

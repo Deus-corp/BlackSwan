@@ -37,13 +37,6 @@ from src.risk.risk_manager import RiskManager
 from src.security.crypto_manager import CryptoManager
 from src.security.key_manager import KeyManager
 from src.security.reputation_manager import ReputationManager
-from src.trading.capital_manager import CapitalManager
-from src.trading.execution import build_backend
-from src.swarms.trade.heartbeat import HeartbeatPublisher
-from src.trading.leader import select_leader
-from src.trading.market import MarketSnapshotService
-from src.trading.mutation_metrics import get_llm_stats, note_llm_mutation, update_llm_impact
-from src.trading.swarm_sync import SwarmSync
 from swarm_config import config
 
 from .context import RuntimeContext, TradeNodeConfig
@@ -54,6 +47,18 @@ from .trading.flow import TradeFlowService
 from dataclasses import replace
 
 from collections.abc import Mapping
+
+from src.swarms.trade.domain.capital import CapitalManager
+from src.swarms.trade.domain.leader import select_leader
+from src.swarms.trade.domain.mutation_metrics import (
+    get_llm_stats,
+    note_llm_mutation,
+    update_llm_impact,
+)
+from src.swarms.trade.domain.swarm_sync import SwarmSync
+from src.swarms.trade.heartbeat import HeartbeatPublisher
+from src.swarms.trade.execution import build_backend
+from src.swarms.trade.market import MarketSnapshotService
 
 from src.swarms.common.protocols import (
     command_action,

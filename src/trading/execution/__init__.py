@@ -1,17 +1,21 @@
-"""
-Execution package initialization.
+"""Backward-compatible trade execution package.
 
-Provides a clean entry point for the execution subsystem by exposing the
-base ExecutionBackend class and the factory function used to instantiate
-concrete implementations.
+Canonical location:
+    src.swarms.trade.execution
 """
 
-from typing import Final
+from __future__ import annotations
 
-from .backend import ExecutionBackend
-from .factory import build_backend
+from src.swarms.trade.execution import (
+    ExecutionBackend,
+    LiveExecutionBackend,
+    SimExecutionBackend,
+    build_backend,
+)
 
-__all__: Final[list[str]] = [
+__all__ = [
     "ExecutionBackend",
+    "LiveExecutionBackend",
+    "SimExecutionBackend",
     "build_backend",
 ]
