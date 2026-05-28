@@ -20,6 +20,13 @@ from .models import OverseerDecision, SwarmSnapshot
 from .policy import PolicyEngine
 from .strategist import LLMStrategist
 
+from src.swarms.overseer.overseer_core.memory_intelligence import (
+    MemoryIntelligenceAssessment,
+    MemoryIntelligenceStatus,
+    aggregate_memory_assessments,
+    assess_memory_heartbeat,
+)
+
 __all__ = [
     "ActionExecutor",
     "GenomeSink",
@@ -30,4 +37,8 @@ __all__ = [
     "StateSource",
     "SwarmSnapshot",
     "LLMStrategist",
+    "MemoryIntelligenceAssessment",
+    "MemoryIntelligenceStatus",
+    "aggregate_memory_assessments",
+    "assess_memory_heartbeat",
 ]

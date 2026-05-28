@@ -56,7 +56,10 @@ class SharedMemoryBridge:
                 continue
 
             if min_timestamp is not None:
-                record_ts = self._safe_float(payload.get("timestamp", payload.get("ts", 0.0)))
+                record_ts = self._extract_record_timestamp(payload)
+
+                # Only filter records with a reliable timestamp. Explicit memory records
+                # without timestamp are still allowed through quarantine.
                 if record_ts > 0 and record_ts < min_timestamp:
                     skipped += 1
                     continue
@@ -196,3 +199,39 @@ class SharedMemoryBridge:
             return float(value)
         except (TypeError, ValueError):
             return default
+
+    @classmethod
+    def _extract_record_timestamp(cls, payload: dict[str, Any]) -> float:
+        """Extract best-effort timestamp from CRDT memory payload."""
+        candidates = [
+            payload.get("timestamp"),
+            payload.get("ts"),
+            payload.get("created_at"),
+        ]
+
+        inner_payload = payload.get("payload")
+        if isinstance(inner_payload, dict):
+            candidates.extend(
+                [
+                    inner_payload.get("timestamp"),
+                    inner_payload.get("ts"),
+                    inner_payload.get("created_at"),
+                ]
+            )
+
+        source = payload.get("source")
+        if isinstance(source, dict):
+            candidates.extend(
+                [
+                    source.get("timestamp"),
+                    source.get("ts"),
+                    source.get("created_at"),
+                ]
+            )
+
+        for value in candidates:
+            parsed = cls._safe_float(value, 0.0)
+            if parsed > 0:
+                return parsed
+
+        return 0.0

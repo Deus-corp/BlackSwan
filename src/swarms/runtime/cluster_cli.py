@@ -777,7 +777,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 def _remove_sqlite_database_files(db_path: str) -> None:
-    """Remove SQLite database and sidecar WAL/SHM files for fresh local runs."""
+    """Remove SQLite database and sidecar WAL/SHM/lock files for fresh local runs."""
     clean_path = str(db_path or "").strip()
     if not clean_path:
         return
@@ -790,6 +790,7 @@ def _remove_sqlite_database_files(db_path: str) -> None:
         Path(f"{path}-wal"),
         Path(f"{path}-shm"),
         Path(f"{path}-journal"),
+        Path(f"{path}.lock"),
     ):
         try:
             if candidate.exists() and candidate.is_file():
@@ -799,12 +800,7 @@ def _remove_sqlite_database_files(db_path: str) -> None:
             raise RuntimeError(f"Failed to remove SQLite file {candidate}: {exc}") from exc
         
 def _fresh_runtime_ledgers(run_dir: Path, base_env: Mapping[str, str]) -> None:
-    """Remove local runtime SQLite database files for a clean development run.
-
-    Do not remove the whole ledger directory after it has been prepared; only
-    remove explicit SQLite database files and sidecar files before services
-    start. This avoids SQLite disk I/O errors around WAL/SHM handling.
-    """
+    """Remove local runtime SQLite database files for a clean development run."""
     ledger_dir = run_dir / "ledgers"
     ledger_dir.mkdir(parents=True, exist_ok=True)
 
@@ -816,7 +812,77 @@ def _fresh_runtime_ledgers(run_dir: Path, base_env: Mapping[str, str]) -> None:
     for key in ("CRDT_DB_PATH", "EVENT_SQLITE_PATH"):
         db_path = str(base_env.get(key, "") or "").strip()
         if db_path:
+            if _sqlite_database_is_malformed(db_path):
+                _archive_malformed_sqlite_database(db_path, run_dir)
             _remove_sqlite_database_files(db_path)
+
+def _sqlite_database_is_malformed(db_path: str) -> bool:
+    """Return True if SQLite database exists but integrity_check cannot read it."""
+    import sqlite3
+
+    clean_path = str(db_path or "").strip()
+    if not clean_path:
+        return False
+
+    path = Path(clean_path).expanduser().resolve()
+    if not path.exists() or not path.is_file():
+        return False
+    
+    if not _sqlite_file_has_valid_header(str(path)):
+        return True
+
+    try:
+        with sqlite3.connect(str(path)) as conn:
+            row = conn.execute("PRAGMA integrity_check;").fetchone()
+            return not row or str(row[0]).lower() != "ok"
+    except sqlite3.DatabaseError:
+        return True
+    except OSError:
+        return True
+    
+def _archive_malformed_sqlite_database(db_path: str, run_dir: Path) -> None:
+    """Move malformed SQLite database and sidecars to a quarantine directory."""
+    clean_path = str(db_path or "").strip()
+    if not clean_path:
+        return
+
+    path = Path(clean_path).expanduser().resolve()
+    if not path.exists():
+        return
+
+    quarantine_dir = run_dir / "corrupt_ledgers"
+    quarantine_dir.mkdir(parents=True, exist_ok=True)
+
+    for candidate in (
+        path,
+        Path(f"{path}-wal"),
+        Path(f"{path}-shm"),
+        Path(f"{path}-journal"),
+    ):
+        if candidate.exists() and candidate.is_file():
+            target = quarantine_dir / candidate.name
+            try:
+                candidate.replace(target)
+                print(f"archived malformed SQLite file: {candidate} -> {target}")
+            except OSError:
+                # Fall back to deletion if move fails in dev runtime.
+                candidate.unlink(missing_ok=True)
+                print(f"removed malformed SQLite file: {candidate}")
+
+def _sqlite_file_has_valid_header(db_path: str) -> bool:
+    path = Path(str(db_path or "")).expanduser().resolve()
+
+    if not path.exists() or not path.is_file():
+        return True
+
+    if path.stat().st_size == 0:
+        return True
+
+    try:
+        with path.open("rb") as file:
+            return file.read(16) == b"SQLite format 3\x00"
+    except OSError:
+        return False
 
 def main() -> None:
     parser = build_parser()

@@ -38,6 +38,7 @@ from src.swarms.overseer.overseer_core.executor import ActionExecutor
 from src.swarms.overseer.overseer_core.models import OverseerDecision, SwarmSnapshot
 from src.swarms.overseer.overseer_core.policy import PolicyEngine
 from src.swarms.overseer.overseer_core.strategist import LLMStrategist
+from src.swarms.overseer.overseer_core.collector import find_memory_heartbeats_from_snapshot
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,7 @@ class OverseerNode(BaseSwarmOverseer):
         self._last_hard_rules: Optional[OverseerDecision] = None
         self._last_final_decision: Optional[OverseerDecision] = None
         self._last_llm_suggestions: Dict[str, Any] = {}
+        self.last_memory_intelligence: dict[str, Any] = {}
 
         self.logger.info(
             "🧭 Overseer initialized: %s interval=%ss",
@@ -187,6 +189,41 @@ class OverseerNode(BaseSwarmOverseer):
         self.logger.info(
             "Overseer topology health: %s",
             self.summarize_topology_health(topology_health),
+        )
+
+        recent_heartbeats_by_swarm = getattr(snapshot, "recent_heartbeats_by_swarm", {}) or {}
+        latest_swarm_heartbeats = getattr(snapshot, "latest_swarm_heartbeats", {}) or {}
+
+        memory_heartbeats = list(
+            recent_heartbeats_by_swarm.get("memory", [])
+            or latest_swarm_heartbeats.get("memory", [])
+            or []
+        )
+
+        if not memory_heartbeats:
+            for group in recent_heartbeats_by_swarm.values():
+                for heartbeat in group:
+                    if str(heartbeat.get("swarm") or heartbeat.get("swarm_type") or "").lower() == "memory":
+                        memory_heartbeats.append(dict(heartbeat))
+
+        self.logger.info(
+            "Overseer memory heartbeats passed to intelligence: count=%d latest_keys=%s latest=%s",
+            len(memory_heartbeats),
+            sorted(memory_heartbeats[-1].keys()) if memory_heartbeats else [],
+            memory_heartbeats[-1] if memory_heartbeats else None,
+        )
+
+        memory_intelligence = self.collector.collect_memory_intelligence(memory_heartbeats)
+        self.last_memory_intelligence = memory_intelligence
+
+        aggregate = memory_intelligence.get("aggregate", {})
+        self.logger.info(
+            "Overseer memory intelligence: status=%s gold=%s review=%s alert=%s dedupe=%s",
+            aggregate.get("status"),
+            aggregate.get("gold_candidates"),
+            aggregate.get("review_candidates"),
+            aggregate.get("alert_candidates"),
+            aggregate.get("dedupe_candidates"),
         )
 
         return snapshot

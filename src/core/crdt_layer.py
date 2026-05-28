@@ -21,6 +21,12 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Final, Iterable, Literal, Optional
+from contextlib import contextmanager
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows fallback
+    fcntl = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +39,8 @@ SQLITE_BUSY_TIMEOUT_MS: Final[int] = 30_000
 SQLITE_WRITE_RETRIES: Final[int] = 6
 SQLITE_WRITE_RETRY_DELAY_SECONDS: Final[float] = 0.05
 
+SQLITE_JOURNAL_MODE: Final[str] = "DELETE"
+SQLITE_SYNCHRONOUS: Final[str] = "FULL"
 
 @dataclass(frozen=True, slots=True)
 class CRDTOperation:
@@ -186,24 +194,43 @@ class CRDTStorage:
             raise ValueError("CRDT database path cannot be empty")
 
         self.path: Final[str] = clean_path
+        self.db_path: Final[Path] = Path(clean_path).expanduser().resolve()
+        self.process_lock_path: Final[Path] = self.db_path.with_suffix(self.db_path.suffix + ".lock")
         self._lock = threading.RLock()
 
-        db_parent = Path(self.path).expanduser().resolve().parent
-        db_parent.mkdir(parents=True, exist_ok=True)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         self._init_db()
 
+    def _assert_sqlite_or_empty(self) -> None:
+        """Reject existing non-SQLite files before opening SQLite connection."""
+        path = Path(self.path).expanduser().resolve()
+
+        if not path.exists() or not path.is_file():
+            return
+
+        size = path.stat().st_size
+        if size == 0:
+            return
+
+        with path.open("rb") as file:
+            header = file.read(16)
+
+        if header != b"SQLite format 3\x00":
+            raise sqlite3.DatabaseError(f"CRDT storage path is not a SQLite database: {path}")
+
     def _connect(self) -> sqlite3.Connection:
+        self._assert_sqlite_or_empty()
         conn = sqlite3.connect(
-            self.path,
+            str(self.db_path),
             timeout=SQLITE_TIMEOUT_SECONDS,
             check_same_thread=False,
             isolation_level=None,
         )
         conn.row_factory = sqlite3.Row
         conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS};")
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute(f"PRAGMA journal_mode={SQLITE_JOURNAL_MODE};")
+        conn.execute(f"PRAGMA synchronous={SQLITE_SYNCHRONOUS};")
         conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
 
@@ -211,32 +238,26 @@ class CRDTStorage:
     def _is_locked_error(exc: BaseException) -> bool:
         return isinstance(exc, sqlite3.OperationalError) and "locked" in str(exc).lower()
 
-    def _with_retry(self, label: str, operation: Any) -> Any:
+    def _with_retry(self, description: str, operation):
         last_exc: Optional[BaseException] = None
 
         for attempt in range(SQLITE_WRITE_RETRIES):
             try:
-                return operation()
+                with self._process_lock():
+                    return operation()
             except sqlite3.OperationalError as exc:
                 last_exc = exc
-                if not self._is_locked_error(exc) or attempt >= SQLITE_WRITE_RETRIES - 1:
-                    logger.error("Database error during %s: %s", label, exc)
-                    raise
-
-                delay = SQLITE_WRITE_RETRY_DELAY_SECONDS * (2**attempt)
-                logger.warning(
-                    "SQLite database locked during %s; retrying in %.3fs (%s/%s)",
-                    label,
-                    delay,
-                    attempt + 1,
-                    SQLITE_WRITE_RETRIES,
-                )
-                time.sleep(delay)
+                if self._is_locked_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
+                    time.sleep(SQLITE_WRITE_RETRY_DELAY_SECONDS * (attempt + 1))
+                    continue
+                logger.error("Database error during %s: %s", description, exc)
+                raise
+            except sqlite3.DatabaseError as exc:
+                logger.error("Database error during %s: %s", description, exc)
+                raise
 
         if last_exc is not None:
             raise last_exc
-
-        return None
 
     @staticmethod
     def _dumps(value: dict[str, Any]) -> str:
@@ -305,6 +326,21 @@ class CRDTStorage:
         self._with_retry("initialize CRDT database", op)
 
     def save_op(self, op: CRDTOperation) -> None:
+        if not isinstance(op, CRDTOperation):
+            raise TypeError(f"save_op expected CRDTOperation, got {type(op).__name__}")
+
+        if op.kind not in {OPERATION_KIND_UPSERT, OPERATION_KIND_DELETE}:
+            raise ValueError(f"Invalid CRDT operation kind before save: {op.kind!r}")
+
+        if not isinstance(op.node_id, str) or not op.node_id.strip():
+            raise ValueError(f"Invalid CRDT operation node_id before save: {op.node_id!r}")
+
+        if not isinstance(op.gid, str) or not op.gid.strip():
+            raise ValueError(f"Invalid CRDT operation gid before save: {op.gid!r}")
+
+        if not isinstance(op.payload, dict):
+            raise ValueError(f"Invalid CRDT operation payload before save: {type(op.payload).__name__}")
+
         payload_json = self._dumps(op.payload)
 
         def write() -> None:
@@ -314,17 +350,17 @@ class CRDTStorage:
                     conn.execute(
                         """
                         INSERT OR IGNORE INTO ops(op_id, node_id, clock, kind, gid, payload, ts)
-                        VALUES(?,?,?,?,?,?,?)
+                        VALUES(:op_id, :node_id, :clock, :kind, :gid, :payload, :ts)
                         """,
-                        (
-                            op.op_id,
-                            op.node_id,
-                            int(op.clock),
-                            op.kind,
-                            op.gid,
-                            payload_json,
-                            float(op.ts),
-                        ),
+                        {
+                            "op_id": op.op_id,
+                            "node_id": op.node_id,
+                            "clock": int(op.clock),
+                            "kind": op.kind,
+                            "gid": op.gid,
+                            "payload": payload_json,
+                            "ts": float(op.ts),
+                        },
                     )
                     conn.execute("COMMIT;")
 
@@ -361,6 +397,15 @@ class CRDTStorage:
         return ops
 
     def save_record(self, record: CRDTRecord) -> None:
+        if not isinstance(record, CRDTRecord):
+            raise TypeError(f"save_record expected CRDTRecord, got {type(record).__name__}")
+
+        if not isinstance(record.gid, str) or not record.gid.strip():
+            raise ValueError(f"Invalid CRDT record gid before save: {record.gid!r}")
+
+        if not isinstance(record.payload, dict):
+            raise ValueError(f"Invalid CRDT record payload before save: {type(record.payload).__name__}")
+
         payload_json = self._dumps(record.payload)
 
         def write() -> None:
@@ -370,7 +415,7 @@ class CRDTStorage:
                     conn.execute(
                         """
                         INSERT INTO records(gid, payload, clock, node_id, deleted, ts)
-                        VALUES(?,?,?,?,?,?)
+                        VALUES(:gid, :payload, :clock, :node_id, :deleted, :ts)
                         ON CONFLICT(gid) DO UPDATE SET
                             payload=excluded.payload,
                             clock=excluded.clock,
@@ -378,14 +423,14 @@ class CRDTStorage:
                             deleted=excluded.deleted,
                             ts=excluded.ts
                         """,
-                        (
-                            record.gid,
-                            payload_json,
-                            int(record.clock),
-                            record.node_id,
-                            int(record.deleted),
-                            float(record.ts),
-                        ),
+                        {
+                            "gid": record.gid,
+                            "payload": payload_json,
+                            "clock": int(record.clock),
+                            "node_id": record.node_id,
+                            "deleted": int(record.deleted),
+                            "ts": float(record.ts),
+                        },
                     )
                     conn.execute("COMMIT;")
 
@@ -493,6 +538,20 @@ class CRDTStorage:
                     conn.execute("VACUUM;")
 
         self._with_retry("compact CRDT storage", write)
+
+    @contextmanager
+    def _process_lock(self):
+        """Cross-process file lock for SQLite access in local swarm runtime."""
+        self.process_lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with self.process_lock_path.open("a+b") as lock_file:
+            if fcntl is not None:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                if fcntl is not None:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
 class GenomeCRDT:

@@ -37,6 +37,10 @@ from src.swarms.common import (
     is_lifecycle_event,
     lifecycle_event_status,
 )
+from src.swarms.overseer.overseer_core.memory_intelligence import (
+    aggregate_memory_assessments,
+    assess_memory_heartbeat,
+)
 from src.swarms.overseer.overseer_core.interfaces import StateSource
 from src.swarms.overseer.overseer_core.models import SwarmSnapshot
 from src.swarms.common import SWARM_TOPOLOGY
@@ -80,14 +84,146 @@ LEGACY_COMMAND_TYPES = {
 
 MAX_EVENT_SCAN_DEPTH = 6
 
+def collect_memory_intelligence_from_heartbeats(
+    swarm_heartbeats: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build Overseer memory intelligence assessment from memory heartbeats."""
+    memory_payloads: list[dict[str, Any]] = []
+
+    for payload in swarm_heartbeats:
+        if not isinstance(payload, dict):
+            continue
+
+        swarm = str(payload.get("swarm") or payload.get("swarm_type") or "").lower()
+        payload_type = str(payload.get("type") or "").lower()
+
+        if swarm != "memory":
+            continue
+
+        if payload_type and payload_type not in {
+            "swarm_heartbeat",
+            "memory_heartbeat",
+            "heartbeat",
+        }:
+            continue
+
+        memory_payloads.append(payload)
+
+    latest_memory_payloads = _latest_memory_heartbeats_by_node(memory_payloads)
+    assessments = [assess_memory_heartbeat(payload) for payload in latest_memory_payloads]
+    aggregate = aggregate_memory_assessments(assessments)
+
+    return {
+        "nodes": [assessment.to_dict() for assessment in assessments],
+        "aggregate": aggregate.to_dict(),
+    }
+
+def _latest_memory_heartbeats_by_node(
+    heartbeats: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return latest memory heartbeat per node by timestamp/heartbeat counter."""
+    latest: dict[str, dict[str, Any]] = {}
+
+    for heartbeat in heartbeats:
+        node_id = str(
+            heartbeat.get("node_id")
+            or heartbeat.get("agent_id")
+            or heartbeat.get("sender_id")
+            or "unknown"
+        )
+
+        current = latest.get(node_id)
+        if current is None or _heartbeat_sort_key(heartbeat) > _heartbeat_sort_key(current):
+            latest[node_id] = heartbeat
+
+    return list(latest.values())
+
+
+def _heartbeat_sort_key(heartbeat: dict[str, Any]) -> tuple[float, int]:
+    """Sort heartbeat by timestamp and heartbeats_published metric."""
+    metrics = heartbeat.get("metrics", {})
+    if not isinstance(metrics, dict):
+        metrics = {}
+
+    try:
+        timestamp = float(heartbeat.get("timestamp", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        timestamp = 0.0
+
+    try:
+        count = int(metrics.get("heartbeats_published", 0) or 0)
+    except (TypeError, ValueError):
+        count = 0
+
+    return timestamp, count
+
+def find_memory_heartbeats_from_snapshot(snapshot: Any) -> list[dict[str, Any]]:
+    """Find memory heartbeats from SwarmSnapshot regardless of grouping key."""
+    out: list[dict[str, Any]] = []
+
+    for attr in ("recent_heartbeats_by_swarm", "latest_swarm_heartbeats"):
+        groups = getattr(snapshot, attr, {}) or {}
+        if not isinstance(groups, dict):
+            continue
+
+        direct = groups.get("memory")
+        if isinstance(direct, list):
+            out.extend(dict(item) for item in direct if isinstance(item, dict))
+
+        for group in groups.values():
+            if not isinstance(group, list):
+                continue
+            for heartbeat in group:
+                if not isinstance(heartbeat, dict):
+                    continue
+                swarm = str(heartbeat.get("swarm") or heartbeat.get("swarm_type") or "").lower()
+                if swarm == "memory":
+                    out.append(dict(heartbeat))
+
+    # dedupe by gid/node/timestamp
+    seen: set[tuple[str, str, str]] = set()
+    unique: list[dict[str, Any]] = []
+    for heartbeat in out:
+        key = (
+            str(heartbeat.get("gid") or ""),
+            str(heartbeat.get("node_id") or heartbeat.get("agent_id") or ""),
+            str(heartbeat.get("timestamp") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(heartbeat)
+
+    return unique
+
 class StateCollector:
     """Converts CRDT state into a compact, normalized swarm snapshot."""
 
     def __init__(self, state_source: StateSource) -> None:
         self._state_source = state_source
 
+    def _refresh_state_source(self) -> None:
+        """Best-effort refresh of the underlying CRDT state before collection."""
+        candidates = [
+            self._state_source,
+            getattr(self._state_source, "crdt", None),
+            getattr(getattr(self._state_source, "crdt_adapter", None), "crdt", None),
+            getattr(getattr(self._state_source, "adapter", None), "crdt", None),
+        ]
+
+        for candidate in candidates:
+            refresh = getattr(candidate, "refresh_from_storage", None)
+            if callable(refresh):
+                try:
+                    refresh()
+                except Exception as exc:
+                    logger.debug("State source refresh skipped: %s", exc)
+                return
+
     def collect(self) -> SwarmSnapshot:
         """Aggregate current CRDT state and compute swarm-level metrics."""
+        self._refresh_state_source()
+
         state = self._state_source.state
         now = time.time()
 
@@ -222,6 +358,7 @@ class StateCollector:
             swarm_role_counts=swarm_role_counts,
             stale_swarm_nodes=stale_swarm_nodes,
             latest_swarm_heartbeats=latest_swarm_heartbeats,
+            recent_heartbeats_by_swarm=recent_heartbeats_by_swarm,
 
             resources=self._get_resource_context(),
             stale_trade_nodes=self._stale_nodes(
@@ -454,7 +591,7 @@ class StateCollector:
         heartbeats: Iterable[Dict[str, Any]],
     ) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """Return latest heartbeat per node grouped by swarm."""
-        grouped_raw: Dict[str, List[Dict[str, Any]]] = {}
+        latest: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
         for heartbeat in heartbeats:
             swarm = cls._record_swarm(heartbeat)
@@ -464,12 +601,19 @@ class StateCollector:
             if not swarm:
                 continue
 
-            grouped_raw.setdefault(swarm, []).append(heartbeat)
+            node_id = str(
+                heartbeat.get("node_id")
+                or heartbeat.get("agent_id")
+                or heartbeat.get("sender_id")
+                or heartbeat.get("gid")
+                or "unknown"
+            )
 
-        return {
-            swarm: cls._latest_by_node(records)
-            for swarm, records in grouped_raw.items()
-        }
+            current = latest.setdefault(swarm, {}).get(node_id)
+            if current is None or _heartbeat_sort_key(heartbeat) > _heartbeat_sort_key(current):
+                latest[swarm][node_id] = dict(heartbeat)
+
+        return latest
 
     def collect_topology_health(self) -> Dict[str, Any]:
         """Build topology-aware ecosystem health view from CRDT state.
@@ -477,6 +621,8 @@ class StateCollector:
         This is a generic view driven by SWARM_TOPOLOGY.
         It intentionally lives beside SwarmSnapshot while migration is ongoing.
         """
+        self._refresh_state_source()
+
         state = self._state_source.state
         now = time.time()
         events = list(self._iter_event_dicts(state))
@@ -629,8 +775,11 @@ class StateCollector:
             "legacy_command_window_seconds": COMMAND_EVENT_WINDOW_SECONDS,
             "swarms": swarms,
         }
-
-
+    
+    def collect_memory_intelligence(self, swarm_heartbeats: list[dict[str, Any]]) -> dict[str, Any]:
+        """Build Overseer memory intelligence assessment from memory heartbeats."""
+        return collect_memory_intelligence_from_heartbeats(swarm_heartbeats)
+    
     # ------------------------------------------------------------------
     # Metrics helpers
     # ------------------------------------------------------------------
@@ -782,9 +931,6 @@ class StateCollector:
         if record_type in {"explorer_heartbeat", "explorer_finding", "explorer_command", "explorer_targets"}:
             return "explorer"
 
-        if record_type == "improver_heartbeat":
-            return "improver"
-        
         if record_type == "improver_heartbeat":
             return "improver"
 

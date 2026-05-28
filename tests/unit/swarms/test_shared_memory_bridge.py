@@ -267,3 +267,34 @@ async def test_shared_memory_bridge_skips_swarm_events_by_default() -> None:
 
     stats = await node.memory.stats()
     assert stats.total_records == 0
+
+@pytest.mark.asyncio
+async def test_shared_memory_bridge_allows_memory_record_without_timestamp_when_since_start_enabled() -> None:
+    crdt = DummyCRDT()
+    crdt.state["record-1"] = {
+        "type": "memory_record",
+        "kind": "event",
+        "scope": "shared",
+        "topic": "lifecycle",
+        "payload": {"message": "simulation swarm node started"},
+        "source": {
+            "originNodeId": "simulation-1",
+            "swarm": "simulation",
+            "parents": [],
+        },
+        "confidence": 0.95,
+        "verified": True,
+    }
+
+    node = MemorySwarmNode(node_id="memory-test", heartbeat_interval_seconds=1.0)
+    node.crdt = crdt
+
+    bridge = SharedMemoryBridge()
+    result = await bridge.ingest_from_crdt(
+        crdt,
+        node,
+        min_timestamp=9999999999.0,
+    )
+
+    assert result["accepted"] == 1
+    assert result["rejected"] == 0

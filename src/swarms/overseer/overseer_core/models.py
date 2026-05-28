@@ -44,6 +44,7 @@ class SwarmSnapshot:
     swarm_role_counts: Dict[str, Dict[str, int]] = field(default_factory=dict)
     stale_swarm_nodes: Dict[str, List[str]] = field(default_factory=dict)
     latest_swarm_heartbeats: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
+    recent_heartbeats_by_swarm: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
 
     # Host/resource context
     resources: str = ""

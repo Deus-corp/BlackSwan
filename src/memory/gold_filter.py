@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import json
 from dataclasses import dataclass, field
 from typing import Any, Final, Iterable
 
@@ -49,6 +50,7 @@ SCORING_WEIGHTS: Final[dict[str, float]] = {
 }
 
 DEFAULT_THRESHOLD: Final[float] = 0.8
+GOLD_CANDIDATE_ACTION: Final[str] = "gold_candidate"
 
 
 def calculate_success_score(entry: dict[str, Any]) -> float:
@@ -122,6 +124,118 @@ def filter_gold_samples(
 
     return deduplicate_samples(gold_samples)
 
+def memory_record_to_experience_sample(record: Any) -> ExperienceSample | None:
+    """Convert a recognized memory record into an ExperienceSample if it is gold-worthy."""
+    data = _record_to_dict(record)
+    payload = data.get("payload", {})
+    source = data.get("source", {})
+
+    if not isinstance(payload, dict):
+        payload = {"value": payload}
+    if not isinstance(source, dict):
+        source = {}
+
+    policy = payload.get("recognition_policy", {})
+    recognition = payload.get("recognition", {})
+
+    if not isinstance(policy, dict):
+        policy = {}
+    if not isinstance(recognition, dict):
+        recognition = {}
+
+    actions = policy.get("actions", [])
+    if isinstance(actions, str):
+        actions = [actions]
+    if not isinstance(actions, list):
+        actions = []
+
+    if GOLD_CANDIDATE_ACTION not in {str(action) for action in actions}:
+        return None
+
+    message = str(payload.get("message") or payload.get("value") or "").strip()
+    topic = str(data.get("topic") or payload.get("topic") or "memory").strip()
+    kind = str(data.get("kind") or "memory").strip()
+
+    instruction = str(
+        payload.get("task_description")
+        or payload.get("instruction")
+        or f"Preserve useful {kind} memory from topic '{topic}'."
+    ).strip()
+
+    input_text = str(
+        payload.get("market_context")
+        or payload.get("context")
+        or payload.get("input")
+        or _stable_json(
+            {
+                key: value
+                for key, value in payload.items()
+                if key not in {"recognition", "recognition_policy"}
+            }
+        )
+    ).strip()
+
+    output_text = str(
+        payload.get("successful_action")
+        or payload.get("output")
+        or payload.get("result")
+        or message
+    ).strip()
+
+    if not instruction or not output_text:
+        return None
+
+    score = _safe_float(recognition.get("value_score"), 0.0)
+    if score <= 0:
+        score = _safe_float(data.get("confidence"), 0.0)
+
+    return ExperienceSample(
+        instruction=instruction,
+        input_text=input_text,
+        output_text=output_text,
+        score=_clamp(score, 0.0, 1.0),
+        meta={
+            "record_id": data.get("id"),
+            "kind": kind,
+            "scope": data.get("scope"),
+            "topic": topic,
+            "node_id": source.get("originNodeId") or source.get("node_id"),
+            "swarm": source.get("swarm"),
+            "recognition_label": recognition.get("label"),
+            "recognition_confidence": recognition.get("confidence"),
+            "recognition_policy": policy,
+            "source": "memory_recognition",
+        },
+    )
+
+
+def select_gold_memory_samples(records: Iterable[Any]) -> list[ExperienceSample]:
+    """Select deduplicated gold samples from recognized memory records."""
+    samples: list[ExperienceSample] = []
+
+    for record in records:
+        sample = memory_record_to_experience_sample(record)
+        if sample is not None:
+            samples.append(sample)
+
+    return deduplicate_samples(samples)
+
+
+def _record_to_dict(record: Any) -> dict[str, Any]:
+    if hasattr(record, "model_dump"):
+        data = record.model_dump()
+    elif hasattr(record, "to_dict"):
+        data = record.to_dict()
+    elif isinstance(record, dict):
+        data = dict(record)
+    else:
+        data = {"value": str(record)}
+
+    return data if isinstance(data, dict) else {"value": str(data)}
+
+
+def _stable_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
 
 def sample_fingerprint(sample: ExperienceSample) -> str:
     """Return deterministic SHA256 fingerprint for an experience sample."""

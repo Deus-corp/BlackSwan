@@ -20,12 +20,19 @@ import signal
 import uuid
 import time
 from typing import Any, Optional
+from pathlib import Path
+import argparse
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 from src.swarms.memory.heartbeat import build_memory_heartbeat
 from src.memory.quarantine import QuarantineBuffer, ReputationManagerProtocol
 from src.swarms.memory.shared_bridge import SharedMemoryBridge
+from src.memory.recognition import MemoryRecognizer
+from src.memory.recognition_policy import MemoryRecognitionPolicy
+from src.memory.gold_filter import select_gold_memory_samples
+from src.memory.exporter import save_jsonl
+from src.memory.summary import build_memory_summary
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -69,6 +76,8 @@ class MemorySwarmNode:
         self.memory = LocalMemoryAPI(node_id=self.node_id)
         self.reputation = reputation or TrustAllReputation()
         self.quarantine = QuarantineBuffer(self.memory, self.reputation)
+        self.recognizer = MemoryRecognizer()
+        self.recognition_policy = MemoryRecognitionPolicy()
         include_swarm_events = (
             os.environ.get("MEMORY_INGEST_SWARM_EVENTS", "false").lower()
             in {"1", "true", "yes", "on"}
@@ -77,6 +86,9 @@ class MemorySwarmNode:
         self.heartbeats_published = 0
         self.records_ingested = 0
         self.records_rejected = 0
+        self.records_recognized = 0
+        self.recognition_counts: dict[str, int] = {}
+        self.recognition_action_counts: dict[str, int] = {}
         self.last_error = ""
 
         logger.info(
@@ -94,12 +106,30 @@ class MemorySwarmNode:
 
         bridge = getattr(self, "shared_bridge", None)
         bridge_stats = bridge.stats() if bridge is not None else {}
+        try:
+            recent_records = await self.memory.recent(limit=200)
+        except Exception as exc:
+            logger.debug("[%s] Failed to load recent records for memory summary: %s", self.node_id, exc)
+            recent_records = []
+
+        gold_samples = select_gold_memory_samples(recent_records)
+        memory_summary = build_memory_summary(
+            recent_records,
+            total_records=int(stats_data.get("total_records", 0)),
+            recognition_counts=dict(self.recognition_counts),
+            recognition_action_counts=dict(self.recognition_action_counts),
+            degraded=bool(self.last_error),
+            reason=self.last_error or "ok",
+        )
 
         payload = build_memory_heartbeat(
             self.node_id,
             metrics={
                 "heartbeats_published": self.heartbeats_published,
                 "records_ingested": self.records_ingested,
+                "records_recognized": self.records_recognized,
+                "recognition_counts": dict(self.recognition_counts),
+                "recognition_action_counts": dict(self.recognition_action_counts),
                 "records_rejected": self.records_rejected,
                 "total_records": int(stats_data.get("total_records", 0)),
                 "by_scope": dict(stats_data.get("by_scope", {})),
@@ -115,6 +145,12 @@ class MemorySwarmNode:
                 "shared_accepted_records": int(bridge_stats.get("accepted_records", 0)),
                 "shared_rejected_records": int(bridge_stats.get("rejected_records", 0)),
                 "shared_skipped_records": int(bridge_stats.get("skipped_records", 0)),
+                "memory_summary": memory_summary.to_dict(),
+                "review_candidates": memory_summary.review_candidates,
+                "alert_candidates": memory_summary.alert_candidates,
+                "dedupe_candidates": memory_summary.dedupe_candidates,
+                "quarantine_candidates": memory_summary.quarantine_candidates,
+                "gold_candidates": memory_summary.gold_candidates,
                 "pending_consolidations": 0,
             },
             details={
@@ -130,7 +166,9 @@ class MemorySwarmNode:
         self.heartbeats_published += 1
         logger.info(
             "[%s] Published memory swarm heartbeat count=%d total_records=%s "
-            "shared_seen=%s shared_accepted=%s shared_rejected=%s shared_skipped=%s",
+            "shared_seen=%s shared_accepted=%s shared_rejected=%s shared_skipped=%s "
+            "recognized=%s recognition_counts=%s recognition_action_counts=%s "
+            "gold=%s review=%s alert=%s dedupe=%s",
             self.node_id,
             self.heartbeats_published,
             stats_data.get("total_records", 0),
@@ -138,6 +176,13 @@ class MemorySwarmNode:
             bridge_stats.get("accepted_records", 0),
             bridge_stats.get("rejected_records", 0),
             bridge_stats.get("skipped_records", 0),
+            self.records_recognized,
+            dict(self.recognition_counts),
+            dict(self.recognition_action_counts),
+            memory_summary.gold_candidates,
+            memory_summary.review_candidates,
+            memory_summary.alert_candidates,
+            memory_summary.dedupe_candidates,
         )
 
     async def remember_event(
@@ -168,9 +213,106 @@ class MemorySwarmNode:
         self.records_ingested += 1
         return record_id
     
+    async def export_gold_samples(self, output_path: str | Path) -> Path:
+        """Export current gold candidate memory samples to JSONL.
+
+        This is an explicit/manual operation. It is intentionally not called
+        automatically from the heartbeat loop.
+        """
+        recent_records = await self.memory.recent(limit=1000)
+        gold_samples = select_gold_memory_samples(recent_records)
+        return save_jsonl(gold_samples, output_path)
+    
+    async def _recent_records_for_recognition(self, limit: int = 50) -> list[Any]:
+        """Return recent records used as recognition context."""
+        try:
+            return await self.memory.recent(limit=limit)
+        except Exception as exc:
+            logger.debug("[%s] Failed to load recognition context: %s", self.node_id, exc)
+            return []
+
+    async def _annotate_with_recognition(self, raw: dict[str, Any]) -> dict[str, Any]:
+        """Add deterministic recognition metadata to an incoming record."""
+        record = dict(raw)
+
+        existing = await self._recent_records_for_recognition()
+        result = self.recognizer.recognize(record, existing)
+        decision = self.recognition_policy.decide(result)
+
+        payload = record.get("payload", {})
+        if not isinstance(payload, dict):
+            payload = {"value": payload}
+
+        recognition_data = {
+            "label": result.label.value,
+            "confidence": result.confidence,
+            "novelty_score": result.novelty_score,
+            "familiarity_score": result.familiarity_score,
+            "risk_score": result.risk_score,
+            "value_score": result.value_score,
+            "duplicate_of": result.duplicate_of,
+            "fingerprint": result.fingerprint,
+        }
+
+        recognition_policy_data = decision.to_dict()
+        payload["recognition"] = recognition_data
+        payload["recognition_policy"] = recognition_policy_data
+
+        tags = payload.get("tags", [])
+        if isinstance(tags, str):
+            tags = [tags]
+        if not isinstance(tags, list):
+            tags = []
+
+        tags = [str(tag) for tag in tags if str(tag).strip()]
+        tags.append(f"recognition:{result.label.value}")
+
+        if result.risk_score >= 0.75:
+            tags.append("risk:high")
+        elif result.risk_score >= 0.5:
+            tags.append("risk:medium")
+
+        if result.value_score >= 0.75:
+            tags.append("value:high")
+        elif result.value_score >= 0.5:
+            tags.append("value:medium")
+
+        for label in decision.labels:
+            tags.append(f"policy:{label}")
+
+        for action in decision.actions:
+            tags.append(f"action:{action.value}")
+
+        payload["tags"] = sorted(set(tags))
+        record["payload"] = payload
+
+        source = record.get("source", {})
+        if not isinstance(source, dict):
+            source = {}
+        source["recognition_label"] = result.label.value
+        source["recognition_confidence"] = result.confidence
+        source["recognition_policy_severity"] = decision.severity
+        source["recognition_policy_reason"] = decision.reason
+        record["source"] = source
+
+        self.records_recognized += 1
+        self.recognition_counts[result.label.value] = self.recognition_counts.get(result.label.value, 0) + 1
+        for action in decision.actions:
+            self.recognition_action_counts[action.value] = (
+                self.recognition_action_counts.get(action.value, 0) + 1
+            )
+
+        return record
+    
     async def ingest_record(self, raw: dict[str, Any]) -> bool:
-        """Validate and ingest an external memory record through quarantine."""
-        accepted = await self.quarantine.process(raw)
+        """Recognize, validate, and ingest an external memory record."""
+        try:
+            annotated = await self._annotate_with_recognition(raw)
+        except Exception as exc:
+            logger.warning("[%s] Recognition failed; ingesting raw record: %s", self.node_id, exc)
+            annotated = raw
+
+        accepted = await self.quarantine.process(annotated)
 
         if accepted:
             self.records_ingested += 1
@@ -233,14 +375,74 @@ class MemorySwarmNode:
             min_timestamp=min_timestamp,
         )
 
+def build_parser() -> argparse.ArgumentParser:
+    """Build MemorySwarmNode CLI parser."""
+    parser = argparse.ArgumentParser(description="BlackSwan memory swarm node")
+    sub = parser.add_subparsers(dest="command")
+
+    run = sub.add_parser("run", help="Run memory swarm heartbeat loop.")
+    run.add_argument(
+        "--heartbeat-interval",
+        type=float,
+        default=float(os.environ.get("MEMORY_HEARTBEAT_INTERVAL_SECONDS", DEFAULT_HEARTBEAT_INTERVAL_SECONDS)),
+        help="Heartbeat interval in seconds.",
+    )
+
+    export_gold = sub.add_parser("export-gold", help="Export current gold candidate samples to JSONL.")
+    export_gold.add_argument(
+        "--output",
+        required=True,
+        help="Output JSONL file path.",
+    )
+    export_gold.add_argument(
+        "--heartbeat-interval",
+        type=float,
+        default=float(os.environ.get("MEMORY_HEARTBEAT_INTERVAL_SECONDS", DEFAULT_HEARTBEAT_INTERVAL_SECONDS)),
+        help="Heartbeat interval used only for node initialization.",
+    )
+    export_gold.add_argument(
+        "--no-scan-shared",
+        action="store_true",
+        help="Export only current local memory without scanning shared CRDT records first.",
+    )
+    export_gold.add_argument(
+        "--crdt-db-path",
+        default=os.environ.get("CRDT_DB_PATH", str(config.crdt_db_path)),
+        help="CRDT SQLite database path to scan before export.",
+    )
+
+    return parser
+
+
 async def main() -> None:
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format="%(asctime)s | %(levelname)s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
     )
 
-    interval = float(os.environ.get("MEMORY_HEARTBEAT_INTERVAL_SECONDS", DEFAULT_HEARTBEAT_INTERVAL_SECONDS))
+    parser = build_parser()
+    args = parser.parse_args()
+
+    command = args.command or "run"
+    interval = float(getattr(args, "heartbeat_interval", DEFAULT_HEARTBEAT_INTERVAL_SECONDS))
+
     node = MemorySwarmNode(heartbeat_interval_seconds=interval)
+
+    if command == "export-gold":
+        node.crdt = CRDTAdapter(
+            node_id=node.node_id,
+            db_path=str(args.crdt_db_path),
+        )
+
+        if not args.no_scan_shared:
+            node.ingest_records_since_start = False
+            scan_result = await node.scan_shared_memory()
+            logger.info("Scanned shared memory before gold export: %s", scan_result)
+
+        output_path = await node.export_gold_samples(Path(args.output))
+        logger.info("Exported memory gold samples to %s", output_path)
+        return
+
     await node.start()
 
 
