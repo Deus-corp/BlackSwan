@@ -45,6 +45,7 @@ from src.swarms.trade.maintenance.service import MaintenanceService
 from src.swarms.trade.market.snapshot import MarketCollector, MarketSnapshot
 from src.swarms.trade.meta.commands import apply_meta_commands
 from src.swarms.trade.trading.flow import TradeFlowService
+from src.swarms.trade.node_core.command_processor import process_trade_command
 
 from collections.abc import Mapping
 
@@ -59,6 +60,7 @@ from src.swarms.trade.domain.swarm_sync import SwarmSync
 from src.swarms.trade.heartbeat import HeartbeatPublisher
 from src.swarms.trade.execution import build_backend
 from src.swarms.trade.market import MarketSnapshotService
+from src.swarms.trade.node_core.run_step import run_one_step as runtime_run_one_step
 
 from src.swarms.common.protocols import (
     command_action,
@@ -95,6 +97,21 @@ from src.swarms.trade.node_core.evolution import (
     population_niche_counts as evolution_population_niche_counts,
     recombine as evolution_recombine,
     seed_from_memory as evolution_seed_from_memory,
+)
+
+from src.swarms.trade.node_core.step import (
+    apply_capital_burn_and_check_alive as step_apply_capital_burn_and_check_alive,
+    maybe_trigger_failure_shutdown as step_maybe_trigger_failure_shutdown,
+)
+
+from src.swarms.trade.node_core.market_mode import (
+    handle_market_mode_logic as market_mode_handle_market_mode_logic,
+)
+
+from src.swarms.trade.node_core.runtime import (
+    graceful_shutdown as runtime_graceful_shutdown,
+    run_main_loop as runtime_run_main_loop,
+    shutdown_watcher as runtime_shutdown_watcher,
 )
 
 logger = logging.getLogger("SwarmNode")
@@ -562,128 +579,19 @@ class SwarmNode:
         return {"price": random.uniform(90.0, 110.0), "symbol": symbol, "timestamp": time.time()}
 
     async def _handle_market_mode_logic(self, best_symbol: str, best_market: Dict[str, Any]) -> None:
-        if self.market_mode == "web3":
-            adapter = self.market_adapter.get_adapter(best_symbol)
-            if adapter and hasattr(adapter, "w3"):
-                try:
-                    block_number: int = await adapter.w3.eth.block_number
-                    if self.is_leader(block_number):
-                        await self.trading_controller.check_and_rebalance(adapter)
-                except Exception as e:
-                    logger.warning("Web3 rebalance check failed for %s: %s", best_symbol, e, exc_info=True)
-
-        if self.market_mode == "futures":
-            adapter = self.market_adapter.get_adapter(best_symbol, "futures")
-            if adapter and hasattr(adapter, "exchange") and hasattr(adapter, "check_stop_loss"):
-                try:
-                    positions: List[Dict[str, Any]] = await adapter.exchange.fetch_positions([best_symbol])
-                    if positions:
-                        pos: Dict[str, Any] = positions[0]
-                        contracts_str: Any = pos.get("contracts", "0.0")
-                        contracts: float = float(contracts_str)
-                        if contracts != 0.0:
-                            entry_price: float = float(pos.get("entryPrice", 0.0))
-                            current_price: float = float(best_market["price"])
-                            side: str = "long" if contracts > 0 else "short"
-                            if adapter.check_stop_loss(entry_price, current_price, side):
-                                logger.info("Stop-loss triggered for %s", best_symbol)
-                                await adapter.close_position(best_symbol)
-                                await self.telegram_notifier.send(
-                                    f"🛑 <b>Stop-loss triggered</b>\n"
-                                    f"Node: {self.node_id}\n"
-                                    f"Symbol: {best_symbol}\n"
-                                    f"Capital: {self.capital:.2f}"
-                                )
-                                if self.market_adapter.hedge_enabled:
-                                    spot_adapter = self.market_adapter.get_adapter(best_symbol, "spot")
-                                    if spot_adapter:
-                                        try:
-                                            await spot_adapter.close_position(best_symbol)
-                                            logger.info("Hedge position for %s closed.", best_symbol)
-                                        except Exception as e:
-                                            logger.warning("Hedge position close failed for %s: %s", best_symbol, e)
-                except Exception as e:
-                    logger.warning("Futures stop-loss check failed for %s: %s", best_symbol, e, exc_info=True)
+        await market_mode_handle_market_mode_logic(self, best_symbol, best_market)
 
     async def _maybe_trigger_failure_shutdown(self) -> bool:
-        if self.failure_prob > 0 and random.random() < self.failure_prob:
-            await self.telemetry.spore_failure(
-                step=self.step_count,
-                capital=self.capital,
-                dq=self.survival.dq,
-                fitness=float(self.engine.champion[1]) if self.engine.champion else 0.0,
-                diversity=self.engine.diversity(),
-                crdt_size=len(self.crdt.state),
-                trace_id=self._trace_id,
-            )
-            logger.info("[%s] simulated failure, initiating graceful shutdown.", self.node_id)
-            self.shutdown_event.set()
-            return True
-        return False
+        return await step_maybe_trigger_failure_shutdown(self)
     
     def _apply_capital_burn_and_check_alive(self) -> bool:
-        self.capital_manager.burn()
-        self.capital = self.capital_manager.capital
-        self.ctx.capital = self.capital
-
-        if not self.capital_manager.is_alive():
-            logger.info("[%s] died due to insufficient capital. Initiating graceful shutdown.", self.node_id)
-            self.shutdown_event.set()
-            return False
-
-        return True
+        return step_apply_capital_burn_and_check_alive(self)
     
     async def _run_one_step(self, session: aiohttp.ClientSession) -> bool:
-        self.step_count += 1
-        self._trace_id = str(uuid.uuid4())
-        if self._paused:
-            logger.debug("[%s] Trade node paused; skipping trading step.", self.node_id)
-            await asyncio.sleep(0.5)
-            return True
-
-        if await self._maybe_trigger_failure_shutdown():
-            return False
-
-        snapshot: MarketSnapshot = await self.market_collector.collect(session)
-        best_symbol: str = snapshot.best_symbol
-        best_market: Dict[str, Any] = snapshot.best_market
-
-        self._prev_prev_price = self._prev_price
-        self._prev_price = float(best_market.get("price", 100.0))
-        self._last_market = best_market
-
-        self.sync_context()
-
-        await self._handle_market_mode_logic(best_symbol, best_market)
-
-        if not self._apply_capital_burn_and_check_alive():
-            return False
-
-        await self.trade_flow.process(snapshot)
-        self.pull_context()
-        self._last_market = best_market
-
-        await self._periodic_tasks(snapshot)
-
-        self.telemetry.update_impact(self.capital)
-        alert_threshold: float = float(config.capital_alert_threshold)
-        if self.capital < alert_threshold:
-            await self.telemetry.low_capital_alert(self.capital, alert_threshold)
-
-        return True
+        return await runtime_run_one_step(self, session)
 
     async def main_loop(self) -> None:
-        async with aiohttp.ClientSession() as session:
-            if self.memory_api_enabled:
-                await self.memory_api.load_from_db()
-
-            while not self.shutdown_event.is_set():
-                should_continue = await self._run_one_step(session)
-                if not should_continue:
-                    break
-                await asyncio.sleep(0.5)
-
-            logger.info("[%s] Main loop exited gracefully.", self.node_id)
+        await runtime_run_main_loop(self)
 
     async def _collect_market_snapshot(
         self,
@@ -740,116 +648,7 @@ class SwarmNode:
         return trade_command_action(normalized)
 
     async def process_command(self, command: Mapping[str, Any]) -> None:
-        normalized = normalize_command(command)
-
-        gid = str(normalized.get("gid") or command.get("gid") or "")
-        if gid and gid in self._processed_command_gids:
-            return
-
-        if command_is_expired(normalized):
-            if gid:
-                self._processed_command_gids.add(gid)
-            return
-
-        if not self._command_applies_to_self(normalized):
-            return
-
-        action = self._command_action(normalized)
-        if not action:
-            return
-
-        if gid:
-            self._processed_command_gids.add(gid)
-
-        if action == "PAUSE":
-            self._paused = True
-            await self._emit_trade_event(
-                event_type="command_applied",
-                parent_gid=gid or None,
-                payload={"action": action, "status": "paused"},
-            )
-            logger.info("[%s] Trade node paused by command.", self.node_id)
-            return
-
-        if action == "RESUME":
-            self._paused = False
-            await self._emit_trade_event(
-                event_type="command_applied",
-                parent_gid=gid or None,
-                payload={"action": action, "status": "resumed"},
-            )
-            logger.info("[%s] Trade node resumed by command.", self.node_id)
-            return
-
-        if action == "RESTART_NODE":
-            await self._emit_trade_event(
-                event_type="command_applied",
-                parent_gid=gid or None,
-                payload={"action": action, "status": "shutdown_requested"},
-            )
-            logger.critical("[%s] Received RESTART_NODE. Requesting shutdown.", self.node_id)
-            self.shutdown_event.set()
-            return
-
-        if action == "SET_DRY_RUN":
-            value = self._command_value(normalized, "enabled", self._command_value(normalized, "value", True))
-            dry_run = bool(value)
-            self.trade_config = replace(
-                self.trade_config,
-                dry_run=dry_run,
-                execution_enabled=False if dry_run else self.trade_config.execution_enabled,
-            )
-            self.ctx.config = self.trade_config
-            await self._emit_trade_event(
-                event_type="command_applied",
-                parent_gid=gid or None,
-                payload={
-                    "action": action,
-                    "dry_run": self.trade_config.dry_run,
-                    "execution_enabled": self.trade_config.execution_enabled,
-                },
-            )
-            return
-
-        if action == "SET_EXECUTION_ENABLED":
-            value = bool(self._command_value(normalized, "enabled", self._command_value(normalized, "value", False)))
-
-            if value and not self._command_has_explicit_approval(normalized):
-                await self._emit_trade_event(
-                    event_type="command_blocked",
-                    parent_gid=gid or None,
-                    payload={
-                        "action": action,
-                        "reason": "explicit_approval_required",
-                        "execution_enabled": self.trade_config.execution_enabled,
-                        "dry_run": self.trade_config.dry_run,
-                    },
-                )
-                logger.warning("[%s] Blocked SET_EXECUTION_ENABLED without approval.", self.node_id)
-                return
-
-            self.trade_config = replace(
-                self.trade_config,
-                execution_enabled=value,
-                dry_run=False if value else True,
-            )
-            self.ctx.config = self.trade_config
-            await self._emit_trade_event(
-                event_type="command_applied",
-                parent_gid=gid or None,
-                payload={
-                    "action": action,
-                    "execution_enabled": self.trade_config.execution_enabled,
-                    "dry_run": self.trade_config.dry_run,
-                },
-            )
-            return
-
-        await self._emit_trade_event(
-            event_type="command_unsupported",
-            parent_gid=gid or None,
-            payload={"action": action},
-        )
+        await process_trade_command(self, command)
 
     async def _command_loop(self) -> None:
         while not self.shutdown_event.is_set():
@@ -868,7 +667,7 @@ class SwarmNode:
 
             await asyncio.sleep(1.0)
 
-    async def _graceful_shutdown(self) -> None:
+    async def _graceful_shutdown_impl(self) -> None:
         if self._evolution_task:
             self._evolution_task.cancel()
             try:
@@ -923,6 +722,9 @@ class SwarmNode:
             await self.crdt.close()
             logger.info("[%s] CRDT resources closed.", self.node_id)
 
+    async def _graceful_shutdown(self) -> None:
+        await runtime_graceful_shutdown(self)
+
     async def _initialize_web3_executor(self) -> None:
         if self.market_mode != "web3":
             return
@@ -974,12 +776,7 @@ class SwarmNode:
                 logger.error("Error adding signal handler for %s: %s", signal.Signals(sig).name, e)
 
     async def _shutdown_watcher(self) -> None:
-        await self.shutdown_event.wait()
-        logger.info("[%s] Shutdown signal received, initiating cleanup.", self.node_id)
-
-        await self._graceful_shutdown()
-
-        raise SystemExit(0)
+        await runtime_shutdown_watcher(self)
 
     async def start(self) -> None:
         logger.info("[%s] starting on port=%s, peers=%s", self.node_id, self.port, self.peers)
