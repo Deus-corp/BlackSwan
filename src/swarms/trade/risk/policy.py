@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from .context import RuntimeContext
-from .market.snapshot import MarketSnapshot
+from src.swarms.trade.context import RuntimeContext
+from src.swarms.trade.market.snapshot import MarketSnapshot
 
 
 @dataclass(slots=True, frozen=True)

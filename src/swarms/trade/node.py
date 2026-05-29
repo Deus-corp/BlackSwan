@@ -30,7 +30,6 @@ from src.intelligence.semantic_memory import SemanticMemory
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
 from src.observability.telemetry import Telemetry
 from src.observability.telegram_notifier import TelegramNotifier
-from src.risk.risk_manager import RiskManager
 from src.security.crypto_manager import CryptoManager
 from src.security.key_manager import KeyManager
 from src.security.reputation_manager import ReputationManager
@@ -38,7 +37,7 @@ from swarm_config import config
 from src.swarms.trade.adapters.multi_pair import MultiPairAdapter
 from src.swarms.trade.adapters.orderbook import OrderBookAnalyzer
 from src.swarms.trade.adapters.tradingview import TradingViewWebhook
-
+from src.swarms.trade.risk import PositionSizer, RiskManager, TradePolicy
 from .context import RuntimeContext, TradeNodeConfig
 from .maintenance.service import MaintenanceService
 from .market.snapshot import MarketCollector, MarketSnapshot
