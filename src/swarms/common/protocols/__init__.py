@@ -98,6 +98,24 @@ from src.swarms.common.protocols.briefs import (
     normalize_swarm_brief,
 )
 
+from src.swarms.common.protocols.directives import (
+    Directive,
+    DirectiveResult,
+    DirectiveSeverity,
+    DirectiveStatus,
+    DirectiveTargetType,
+    build_directive,
+    build_directive_result,
+    directive_is_expired,
+    directive_result_to_record,
+    directive_targets_node,
+    directive_targets_swarm,
+    directive_to_record,
+    normalize_directive,
+    normalize_directive_result,
+    normalize_target_type,
+)
+
 __all__ = [
     "EXPLORER_COMMANDS",
     "IMPROVER_COMMANDS",
@@ -166,4 +184,19 @@ __all__ = [
     "normalize_severity",
     "normalize_status",
     "normalize_swarm_brief",
+    "Directive",
+    "DirectiveResult",
+    "DirectiveSeverity",
+    "DirectiveStatus",
+    "DirectiveTargetType",
+    "build_directive",
+    "build_directive_result",
+    "directive_is_expired",
+    "directive_result_to_record",
+    "directive_targets_node",
+    "directive_targets_swarm",
+    "directive_to_record",
+    "normalize_directive",
+    "normalize_directive_result",
+    "normalize_target_type",
 ]
