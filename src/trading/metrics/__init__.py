@@ -1,9 +1,7 @@
-"""Metrics collection module for trading systems.
+"""Backward-compatible trade metrics package.
 
-This module provides centralized access to the MetricsCollector component
-used for tracking and evaluating trading swarm health and performance.
+Canonical location:
+    src.swarms.trade.telemetry
 """
 
-from .collector import MetricsCollector
-
-__all__ = ["MetricsCollector"]
+from __future__ import annotations
