@@ -1,5 +1,5 @@
 import pytest
-from mvp.lab_swarm_demo.leader import select_leader
+from src.swarms.trade.domain.leader import select_leader
 
 def test_leader_deterministic():
     # Одинаковые входные данные → одинаковый лидер

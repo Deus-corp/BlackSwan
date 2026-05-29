@@ -1,5 +1,5 @@
 import pytest
-from mvp.lab_swarm_demo.telemetry import Telemetry
+from src.swarms.trade.telemetry.legacy import Telemetry
 
 class FakeEventStore:
     def __init__(self):

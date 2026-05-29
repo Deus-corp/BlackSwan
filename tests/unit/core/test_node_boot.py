@@ -9,7 +9,7 @@ async def test_node_creation_sim(monkeypatch):
     monkeypatch.setenv("TOTAL_NODES", "4")
     monkeypatch.setenv("PEERS", "")
     swarm_config.config = SwarmConfig()
-    from mvp.lab_swarm_demo.trade_node_agent import SwarmNode
+    from src.swarms.trade.node import SwarmNode
     node = SwarmNode()
     assert node.node_id is not None
     assert node.engine is not None
@@ -21,7 +21,7 @@ async def test_node_creation_web3(monkeypatch):
     monkeypatch.setenv("MARKET_MODE", "web3")
     monkeypatch.setenv("TOTAL_NODES", "4")
     swarm_config.config = SwarmConfig()
-    from mvp.lab_swarm_demo.trade_node_agent import SwarmNode
+    from src.swarms.trade.node import SwarmNode
     node = SwarmNode()
     assert node.node_id is not None
     assert node.market_adapter is not None

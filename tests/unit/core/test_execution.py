@@ -1,7 +1,9 @@
 import pytest
-from mvp.lab_swarm_demo.execution.backend import ExecutionBackend
-from mvp.lab_swarm_demo.execution.sim_backend import SimExecutionBackend
-from mvp.lab_swarm_demo.execution.factory import build_backend
+from src.swarms.trade.execution import (
+    ExecutionBackend,
+    SimExecutionBackend,
+    build_backend,
+)
 
 def test_sim_backend_is_execution_backend():
     backend = SimExecutionBackend()

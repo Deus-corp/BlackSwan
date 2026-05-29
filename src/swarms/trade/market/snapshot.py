@@ -55,7 +55,7 @@ class MarketCollector:
     def _select_best_market(snapshot: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         """Select the best market with a robust fallback mechanism."""
         try:
-            from src.trading.market import select_best_market
+            from src.swarms.trade.market.selector import select_best_market
 
             return select_best_market(snapshot)
         except (ImportError, Exception):

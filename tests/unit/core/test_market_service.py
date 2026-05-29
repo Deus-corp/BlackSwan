@@ -1,6 +1,5 @@
 import pytest
-from mvp.lab_swarm_demo.market.snapshot import MarketSnapshotService
-from mvp.lab_swarm_demo.market.selector import select_best_market
+from src.swarms.trade.market import MarketSnapshotService, select_best_market
 
 def test_select_best_market():
     snapshot = {

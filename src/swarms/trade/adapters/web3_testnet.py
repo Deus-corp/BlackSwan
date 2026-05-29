@@ -15,7 +15,7 @@ from web3.middleware import ExtraDataToPOAMiddleware
 from web3.providers import AsyncHTTPProvider
 from web3.types import TxReceipt, Wei
 
-from adapters.nonce_manager import NonceManager
+from src.swarms.trade.adapters.nonce import NonceManager
 from swarm_config import config
 
 logger = logging.getLogger(__name__)

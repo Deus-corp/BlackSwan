@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.trading.execution.live_backend import LiveExecutionBackend
+from src.swarms.trade.execution.live_backend import LiveExecutionBackend
 from src.swarms.trade.trading.flow import TradeFlowService
 
 

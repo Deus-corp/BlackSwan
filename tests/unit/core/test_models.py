@@ -1,5 +1,5 @@
 import pytest
-from mvp.lab_swarm_demo.models import MarketSnapshot, TradeDecision, ExecutionResult
+from src.swarms.trade.domain.models import ExecutionResult, MarketSnapshot, TradeDecision
 
 def test_market_snapshot():
     snap = MarketSnapshot(symbol="WETH/USDC", price=2000.0)

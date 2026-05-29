@@ -8,9 +8,9 @@ import math
 import os
 from typing import Any, Optional
 
-from adapters.futures_adapter import FuturesAdapter
-from adapters.live_market import BinanceTestnetAdapter
-from adapters.web3_testnet import Web3TestnetAdapter
+from src.swarms.trade.adapters.futures import FuturesAdapter
+from src.swarms.trade.adapters.live_market import BinanceTestnetAdapter
+from src.swarms.trade.adapters.web3_testnet import Web3TestnetAdapter
 
 logger = logging.getLogger(__name__)
 

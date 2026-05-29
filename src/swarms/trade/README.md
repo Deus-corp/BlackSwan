@@ -5,8 +5,7 @@ runtime orchestration, market data, execution, risk, capital, strategy, and
 telemetry components.
 
 The long-term goal is for trade to be self-contained under `src/swarms/trade/`,
-while older `src/trading/*`, `adapters/*`, and `mvp/lab_swarm_demo/*` paths
-remain compatibility wrappers during migration.
+while older compatibility paths are retired during migration.
 
 ## Structure
 
@@ -45,5 +44,4 @@ from src.swarms.trade.execution import build_backend
 from src.swarms.trade.market import MarketSnapshotService
 ```
 
-Legacy paths under `src.trading.*`, `adapters.*`, and `mvp.lab_swarm_demo.*`
-remain available for compatibility.
+Legacy paths under `src.trading.*` remain available for compatibility during migration.

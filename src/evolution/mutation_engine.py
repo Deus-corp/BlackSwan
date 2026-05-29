@@ -18,7 +18,7 @@ from typing import Any, Optional
 from loguru import logger
 
 try:
-    from src.trading.mutation_metrics import note_llm_mutation
+    from src.swarms.trade.domain.mutation_metrics import note_llm_mutation
 except ImportError:
     logger.warning("Could not import note_llm_mutation; mutation metrics disabled.")
 

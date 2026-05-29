@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Tuple
 
 
 class Telemetry:
-    """Legacy compatibility telemetry used by old mvp.lab_swarm_demo tests."""
+    """Legacy compatibility layer for telemetry. This class provides a simple interface for logging heartbeat events"""
 
     def __init__(
         self,

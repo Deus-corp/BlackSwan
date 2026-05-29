@@ -12,7 +12,7 @@ from typing import Any, Callable, Optional, Protocol
 from swarm_config import config
 from src.economy.roi_dispatcher import ROIDispatcher
 from src.security.gossip_envelope import sign_envelope
-from src.trading.mutation_metrics import note_llm_mutation
+from src.swarms.trade.domain.mutation_metrics import note_llm_mutation
 
 logger = logging.getLogger(__name__)
 

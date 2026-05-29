@@ -12,7 +12,7 @@ except ImportError:
     config = None  # type: ignore[assignment]
 
 try:
-    from adapters.web3_testnet import USDC_ADDRESS, WETH_ADDRESS
+    from src.swarms.trade.adapters.web3_testnet import USDC_ADDRESS, WETH_ADDRESS
 except ImportError:
     WETH_ADDRESS = ""
     USDC_ADDRESS = ""

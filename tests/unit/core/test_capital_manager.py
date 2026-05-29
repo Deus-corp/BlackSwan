@@ -1,5 +1,5 @@
 import pytest
-from mvp.lab_swarm_demo.capital_manager import CapitalManager
+from src.swarms.trade.domain.legacy_capital import CapitalManager
 
 def test_burn_reduces_capital():
     mgr = CapitalManager(capital=1000.0)

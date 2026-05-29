@@ -12,9 +12,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import aiohttp
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from adapters.multi_pair_adapter import MultiPairAdapter
-from adapters.orderbook_analyzer import OrderBookAnalyzer
-from adapters.tradingview_webhook import TradingViewWebhook
 from src.cognition import CuriosityEngine, MetaPOMDPAgent, SurvivalEvaluator
 from src.evolution import GeneticEngine, Genome
 from src.core.crdt_adapter import CRDTAdapter
@@ -22,7 +19,7 @@ from src.core.event_store import EventStore
 from src.core.events import Event
 from src.core.global_state import GlobalState
 from src.core.gossip_adapter import SafeGossipAdapter
-from src.core.trading_controller import TradingController
+from src.swarms.trade.execution.controller import TradingController
 from src.economy.roi_dispatcher import ROIDispatcher
 from src.evolution.engine import EvolutionEngine
 from src.evolution.mutation_engine import MutationEngine
@@ -38,6 +35,9 @@ from src.security.crypto_manager import CryptoManager
 from src.security.key_manager import KeyManager
 from src.security.reputation_manager import ReputationManager
 from swarm_config import config
+from src.swarms.trade.adapters.multi_pair import MultiPairAdapter
+from src.swarms.trade.adapters.orderbook import OrderBookAnalyzer
+from src.swarms.trade.adapters.tradingview import TradingViewWebhook
 
 from .context import RuntimeContext, TradeNodeConfig
 from .maintenance.service import MaintenanceService
