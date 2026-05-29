@@ -84,6 +84,20 @@ from .lifecycle import (
     lifecycle_event_status,
 )
 
+from src.swarms.common.protocols.briefs import (
+    BriefScope,
+    BriefSeverity,
+    BriefStatus,
+    SwarmBrief,
+    brief_to_record,
+    build_brief_item,
+    build_swarm_brief,
+    normalize_scope,
+    normalize_severity,
+    normalize_status,
+    normalize_swarm_brief,
+)
+
 __all__ = [
     "EXPLORER_COMMANDS",
     "IMPROVER_COMMANDS",
@@ -141,4 +155,15 @@ __all__ = [
     "lifecycle_event_payload",
     "lifecycle_event_reason",
     "lifecycle_event_status",
+    "BriefScope",
+    "BriefSeverity",
+    "BriefStatus",
+    "SwarmBrief",
+    "brief_to_record",
+    "build_brief_item",
+    "build_swarm_brief",
+    "normalize_scope",
+    "normalize_severity",
+    "normalize_status",
+    "normalize_swarm_brief",
 ]
