@@ -121,6 +121,7 @@ from src.swarms.trade.node_core.step import (
 from src.swarms.trade.node_core.web3_executor import (
     initialize_web3_executor as web3_initialize_web3_executor,
 )
+from src.swarms.trade.node_core.directive_consumer import apply_trade_directive
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
@@ -317,6 +318,7 @@ class SwarmNode:
         self._command_task: Optional[asyncio.Task[Any]] = None
         self._paused: bool = False
         self._processed_command_gids: set[str] = set()
+        self._processed_directive_ids: set[str] = set()
 
         # -----------------------------
         # Shared runtime context
@@ -577,6 +579,9 @@ class SwarmNode:
     
     def is_leader(self, block_number: int) -> bool:
         return leadership_is_leader(self, block_number)
+    
+    async def process_directive(self, directive: Mapping[str, Any]) -> dict[str, Any]:
+        return await apply_trade_directive(self, directive)
 
     async def _get_market_tick_impl(self, session: aiohttp.ClientSession, symbol: str = "BTC/USDT") -> Dict[str, Any]:
         if self.market_mode == "live" and self.market_adapter:
@@ -690,9 +695,37 @@ class SwarmNode:
                 for value in list(state.values()):
                     if not isinstance(value, Mapping):
                         continue
-                    if value.get("type") not in {"swarm_command", "trade_command"}:
+
+                    record_type = str(value.get("type") or "")
+
+                    if record_type in {"swarm_command", "trade_command"}:
+                        await self.process_command(value)
                         continue
-                    await self.process_command(value)
+
+                    if record_type == "swarm_directive":
+                        directive_id = str(value.get("directive_id") or "")
+                        if directive_id and directive_id in self._processed_directive_ids:
+                            continue
+
+                        result = await self.process_directive(value)
+
+                        try:
+                            await self.crdt.add_genome(result)
+                            logger.info(
+                                "[%s] Published directive result: directive_id=%s status=%s",
+                                self.node_id,
+                                result.get("directive_id"),
+                                result.get("status"),
+                            )
+                        except Exception:
+                            logger.exception(
+                                "[%s] Failed to publish directive result: directive_id=%s",
+                                self.node_id,
+                                result.get("directive_id"),
+                            )
+
+                        continue
+
             except asyncio.CancelledError:
                 raise
             except Exception:

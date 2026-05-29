@@ -42,6 +42,7 @@ from src.swarms.overseer.overseer_core.collector import find_memory_heartbeats_f
 from src.swarms.overseer.overseer_core.memory_policy import decide_memory_directive
 from src.swarms.common.protocols.briefs import brief_to_record
 from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
+from src.swarms.overseer.overseer_core.directive_emitter import build_directives_from_brief
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -142,6 +143,7 @@ class OverseerNode(BaseSwarmOverseer):
         self.last_memory_intelligence: dict[str, Any] = {}
         self.last_memory_directive: dict[str, Any] = {}
         self.last_swarm_brief: dict[str, Any] = {}
+        self.last_directives: list[dict[str, Any]] = []
 
         self.logger.info(
             "🧭 Overseer initialized: %s interval=%ss",
@@ -251,6 +253,34 @@ class OverseerNode(BaseSwarmOverseer):
             len(swarm_brief.recommended_actions),
             swarm_brief.summary,
         )
+
+        directives = build_directives_from_brief(swarm_brief, source=self.node_id)
+        self.last_directives = [directive.to_dict() for directive in directives]
+
+        if directives:
+            logger.info(
+                "Overseer proposed directives: count=%d actions=%s targets=%s",
+                len(directives),
+                [directive.action for directive in directives],
+                [f"{directive.target_type}:{directive.target}" for directive in directives],
+            )
+
+        for directive in directives:
+            try:
+                await self.crdt.add_genome(directive.to_dict())
+                logger.info(
+                    "Overseer published directive: id=%s action=%s target=%s:%s",
+                    directive.directive_id,
+                    directive.action,
+                    directive.target_type,
+                    directive.target,
+                )
+            except Exception:
+                logger.exception(
+                    "Overseer failed to publish directive: id=%s action=%s",
+                    directive.directive_id,
+                    directive.action,
+                )
 
         return snapshot
 
