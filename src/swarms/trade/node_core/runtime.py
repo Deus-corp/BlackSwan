@@ -41,9 +41,18 @@ async def shutdown_watcher(node: Any) -> None:
     await node.shutdown_event.wait()
     await node._graceful_shutdown()
 
+async def run_node_start(node: Any) -> None:
+    """Start the trade node runtime."""
+    await node._start_impl()
+
+def register_signal_handlers(node: Any, loop: Any) -> None:
+    """Register shutdown signal handlers for the trade node."""
+    node._register_signal_handlers_impl(loop)
 
 __all__ = [
     "graceful_shutdown",
+    "register_signal_handlers",
     "run_main_loop",
+    "run_node_start",
     "shutdown_watcher",
 ]

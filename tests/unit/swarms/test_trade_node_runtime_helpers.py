@@ -2,8 +2,13 @@ import asyncio
 
 import pytest
 
-from src.swarms.trade.node_core.runtime import graceful_shutdown, run_main_loop, shutdown_watcher
-
+from src.swarms.trade.node_core.runtime import (
+    graceful_shutdown,
+    run_main_loop,
+    run_node_start,
+    shutdown_watcher,
+    register_signal_handlers,
+)
 
 class DummyMemoryAPI:
     def __init__(self) -> None:
@@ -21,6 +26,8 @@ class DummyNode:
         self.shutdown_event = asyncio.Event()
         self.steps = 0
         self.shutdown_called = False
+        self.started = False
+        self.registered_loop = None
 
     async def _run_one_step(self, session) -> bool:
         self.steps += 1
@@ -29,6 +36,12 @@ class DummyNode:
 
     async def _graceful_shutdown(self) -> None:
         self.shutdown_called = True
+
+    async def _start_impl(self) -> None:
+        self.started = True
+
+    def _register_signal_handlers_impl(self, loop) -> None:
+        self.registered_loop = loop
 
 
 @pytest.mark.asyncio
@@ -62,3 +75,19 @@ async def test_graceful_shutdown_delegates_to_impl() -> None:
     await graceful_shutdown(node)
 
     assert node.shutdown_called is True
+
+@pytest.mark.asyncio
+async def test_run_node_start_delegates_to_impl() -> None:
+    node = DummyNode()
+
+    await run_node_start(node)
+
+    assert node.started is True
+
+def test_register_signal_handlers_delegates_to_impl() -> None:
+    node = DummyNode()
+    loop = object()
+
+    register_signal_handlers(node, loop)
+
+    assert node.registered_loop is loop

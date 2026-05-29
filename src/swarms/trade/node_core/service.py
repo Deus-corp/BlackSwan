@@ -110,7 +110,9 @@ from src.swarms.trade.node_core.market_mode import (
 
 from src.swarms.trade.node_core.runtime import (
     graceful_shutdown as runtime_graceful_shutdown,
+    register_signal_handlers as runtime_register_signal_handlers,
     run_main_loop as runtime_run_main_loop,
+    run_node_start as runtime_run_node_start,
     shutdown_watcher as runtime_shutdown_watcher,
 )
 
@@ -754,7 +756,7 @@ class SwarmNode:
             type(first_adapter_for_executor).__name__ if first_adapter_for_executor else "None",
         )
 
-    def _register_signal_handlers(self, loop: asyncio.AbstractEventLoop) -> None:
+    def _register_signal_handlers_impl(self, loop: asyncio.AbstractEventLoop) -> None:
         def _shutdown_handler(*args: Any) -> None:
             logger.info(
                 "[%s] received signal %s (%s), initiating graceful shutdown.",
@@ -775,10 +777,13 @@ class SwarmNode:
             except Exception as e:
                 logger.error("Error adding signal handler for %s: %s", signal.Signals(sig).name, e)
 
+    def _register_signal_handlers(self, loop: asyncio.AbstractEventLoop) -> None:
+        runtime_register_signal_handlers(self, loop)
+
     async def _shutdown_watcher(self) -> None:
         await runtime_shutdown_watcher(self)
 
-    async def start(self) -> None:
+    async def _start_impl(self) -> None:
         logger.info("[%s] starting on port=%s, peers=%s", self.node_id, self.port, self.peers)
 
         loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
@@ -808,6 +813,9 @@ class SwarmNode:
         finally:
             self.shutdown_event.set()
             await self._graceful_shutdown()
+
+    async def start(self) -> None:
+        await runtime_run_node_start(self)
 
 async def main() -> None:
     """Run the trade swarm node service."""
