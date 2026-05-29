@@ -1,91 +1,85 @@
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import logging
-import math
 import random
 import signal
 import socket
 import time
-import uuid
+from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from swarm_config import config
+
 from src.cognition import CuriosityEngine, MetaPOMDPAgent, SurvivalEvaluator
-from src.evolution import GeneticEngine, Genome
 from src.core.crdt_adapter import CRDTAdapter
 from src.core.event_store import EventStore
 from src.core.events import Event
 from src.core.global_state import GlobalState
 from src.core.gossip_adapter import SafeGossipAdapter
-from src.swarms.trade.execution.controller import TradingController
 from src.economy.roi_dispatcher import ROIDispatcher
+from src.evolution import GeneticEngine, Genome
 from src.evolution.engine import EvolutionEngine
 from src.evolution.mutation_engine import MutationEngine
 from src.intelligence.episodic_memory import EpisodicMemory
 from src.intelligence.internet_researcher import InternetResearcher
 from src.intelligence.llm_client import LLMClient
 from src.intelligence.semantic_memory import SemanticMemory
-from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
-from src.observability.telemetry import Telemetry
+from src.memory.local_memory import LocalMemoryAPI
 from src.observability.telegram_notifier import TelegramNotifier
+from src.observability.telemetry import Telemetry
 from src.security.crypto_manager import CryptoManager
 from src.security.key_manager import KeyManager
 from src.security.reputation_manager import ReputationManager
-from swarm_config import config
+
 from src.swarms.trade.adapters.multi_pair import MultiPairAdapter
 from src.swarms.trade.adapters.orderbook import OrderBookAnalyzer
 from src.swarms.trade.adapters.tradingview import TradingViewWebhook
-from src.swarms.trade.risk import PositionSizer, RiskManager, TradePolicy
-from dataclasses import replace
-
 from src.swarms.trade.context import RuntimeContext, TradeNodeConfig
-from src.swarms.trade.maintenance.service import MaintenanceService
-from src.swarms.trade.market.snapshot import MarketCollector, MarketSnapshot
-from src.swarms.trade.meta.commands import apply_meta_commands
-from src.swarms.trade.trading.flow import TradeFlowService
-from src.swarms.trade.node_core.command_processor import process_trade_command
-
-from collections.abc import Mapping
-
 from src.swarms.trade.domain.capital import CapitalManager
 from src.swarms.trade.domain.leader import select_leader
 from src.swarms.trade.domain.mutation_metrics import (
     get_llm_stats,
-    note_llm_mutation,
     update_llm_impact,
 )
 from src.swarms.trade.domain.swarm_sync import SwarmSync
-from src.swarms.trade.heartbeat import HeartbeatPublisher
 from src.swarms.trade.execution import build_backend
+from src.swarms.trade.execution.controller import TradingController
+from src.swarms.trade.heartbeat import HeartbeatPublisher
+from src.swarms.trade.maintenance.service import MaintenanceService
 from src.swarms.trade.market import MarketSnapshotService
-from src.swarms.trade.node_core.run_step import run_one_step as runtime_run_one_step
+from src.swarms.trade.market.snapshot import MarketCollector, MarketSnapshot
+from src.swarms.trade.meta.commands import apply_meta_commands
+from src.swarms.trade.risk import RiskManager
+from src.swarms.trade.trading.flow import TradeFlowService
 
-from src.swarms.common.protocols import (
-    command_action,
-    command_targets,
-    normalize_command,
-    command_is_expired,
+from src.swarms.trade.node_core.command_loop import (
+    run_command_loop as command_loop_run_command_loop,
 )
-from src.swarms.common.utils import is_expired
-
+from src.swarms.trade.node_core.command_processor import process_trade_command
 from src.swarms.trade.node_core.commands import (
     command_action as trade_command_action,
     command_applies_to_node,
     command_has_explicit_approval,
     command_value as trade_command_value,
 )
-from src.swarms.trade.node_core.events import emit_trade_event
-
-from src.swarms.trade.node_core.loop import (
-    collect_market_snapshot as loop_collect_market_snapshot,
-    evaluate_survival_and_trade as loop_evaluate_survival_and_trade,
-    periodic_tasks as loop_periodic_tasks,
-    sync_swarm as loop_sync_swarm,
-    tick_evolution as loop_tick_evolution,
+from src.swarms.trade.node_core.configuration import (
+    build_runtime_context as config_build_runtime_context,
+    build_trade_config as config_build_trade_config,
+    pull_context as config_pull_context,
+    sync_context as config_sync_context,
 )
-
+from src.swarms.trade.node_core.cycles import (
+    apply_meta_commands as cycle_apply_meta_commands,
+    evolution_cycle as cycle_evolution_cycle,
+    sync_cycle as cycle_sync_cycle,
+)
+from src.swarms.trade.node_core.events import emit_trade_event
 from src.swarms.trade.node_core.evolution import (
     accept_genome as evolution_accept_genome,
     current_volatility as evolution_current_volatility,
@@ -98,22 +92,34 @@ from src.swarms.trade.node_core.evolution import (
     recombine as evolution_recombine,
     seed_from_memory as evolution_seed_from_memory,
 )
-
-from src.swarms.trade.node_core.step import (
-    apply_capital_burn_and_check_alive as step_apply_capital_burn_and_check_alive,
-    maybe_trigger_failure_shutdown as step_maybe_trigger_failure_shutdown,
+from src.swarms.trade.node_core.leadership import is_leader as leadership_is_leader
+from src.swarms.trade.node_core.loop import (
+    collect_market_snapshot as loop_collect_market_snapshot,
+    evaluate_survival_and_trade as loop_evaluate_survival_and_trade,
+    periodic_tasks as loop_periodic_tasks,
+    sync_swarm as loop_sync_swarm,
+    tick_evolution as loop_tick_evolution,
 )
-
 from src.swarms.trade.node_core.market_mode import (
     handle_market_mode_logic as market_mode_handle_market_mode_logic,
 )
-
+from src.swarms.trade.node_core.market_tick import (
+    get_market_tick as market_tick_get_market_tick,
+)
+from src.swarms.trade.node_core.run_step import run_one_step as runtime_run_one_step
 from src.swarms.trade.node_core.runtime import (
     graceful_shutdown as runtime_graceful_shutdown,
     register_signal_handlers as runtime_register_signal_handlers,
     run_main_loop as runtime_run_main_loop,
     run_node_start as runtime_run_node_start,
     shutdown_watcher as runtime_shutdown_watcher,
+)
+from src.swarms.trade.node_core.step import (
+    apply_capital_burn_and_check_alive as step_apply_capital_burn_and_check_alive,
+    maybe_trigger_failure_shutdown as step_maybe_trigger_failure_shutdown,
+)
+from src.swarms.trade.node_core.web3_executor import (
+    initialize_web3_executor as web3_initialize_web3_executor,
 )
 
 logger = logging.getLogger("SwarmNode")
@@ -324,14 +330,6 @@ class SwarmNode:
         self.trade_flow: TradeFlowService = TradeFlowService(self.ctx)
         self.maintenance_service: MaintenanceService = MaintenanceService(self.ctx)
         self.heartbeat_publisher: HeartbeatPublisher = HeartbeatPublisher(self.ctx)
-        import inspect
-        logger.info(
-            "[%s] HeartbeatPublisher runtime class: module=%s file=%s signature=%s",
-            self.node_id,
-            self.heartbeat_publisher.__class__.__module__,
-            inspect.getfile(self.heartbeat_publisher.__class__),
-            inspect.signature(self.heartbeat_publisher.publish),
-        )
 
         # Keep the shared context aligned with the node-owned service instances.
         self.ctx.market_collector = self.market_collector
@@ -342,7 +340,7 @@ class SwarmNode:
 
         self._seed_from_memory()
 
-    def _build_trade_config(self) -> TradeNodeConfig:
+    def _build_trade_config_impl(self) -> TradeNodeConfig:
         trading_symbols_raw = str(getattr(config, "trading_symbols", ""))
         trading_symbols = [s.strip() for s in trading_symbols_raw.split(",") if s.strip()]
 
@@ -377,7 +375,7 @@ class SwarmNode:
             dry_run=bool(getattr(config, "dry_run", not bool(getattr(config, "execution_enabled", False)))),
         )
 
-    def _build_runtime_context(self) -> RuntimeContext:
+    def _build_runtime_context_impl(self) -> RuntimeContext:
         return RuntimeContext(
             config=self.trade_config,
             crdt=self.crdt,
@@ -430,7 +428,7 @@ class SwarmNode:
             current_params=self.current_params,
         )
 
-    def sync_context(self) -> None:
+    def _sync_context_impl(self) -> None:
         self.ctx.capital = self.capital
         self.ctx.step_count = self.step_count
         self.ctx.last_import_step = self.last_import_step
@@ -458,7 +456,7 @@ class SwarmNode:
         self.ctx.market_collector = self.market_collector
         self.ctx.swarm_sync = self.swarm_sync
 
-    def pull_context(self) -> None:
+    def _pull_context_impl(self) -> None:
         self.capital = float(getattr(self.ctx, "capital", self.capital))
         self.step_count = int(getattr(self.ctx, "step_count", self.step_count))
         self.last_import_step = int(getattr(self.ctx, "last_import_step", self.last_import_step))
@@ -473,11 +471,11 @@ class SwarmNode:
 
         self.capital_manager.capital = self.capital
 
-    def is_leader(self, block_number: int) -> bool:
+    def _is_leader_impl(self, block_number: int) -> bool:
         leader_index: int = select_leader(self.node_id, block_number, int(config.total_nodes))
         return self.node_index == leader_index
 
-    async def _apply_meta_commands(self) -> None:
+    async def _apply_meta_commands_impl(self) -> None:
         commands: List[Dict[str, Any]] = []
 
         try:
@@ -504,7 +502,7 @@ class SwarmNode:
         except Exception:
             logger.exception("[%s] Failed to apply trade meta commands.", self.node_id)
 
-    async def _evolution_cycle(self) -> None:
+    async def _evolution_cycle_impl(self) -> None:
         while True:
             try:
                 await self._tick_evolution()
@@ -515,7 +513,7 @@ class SwarmNode:
                 logger.error("Evolution cycle error: %s", e, exc_info=True)
             await asyncio.sleep(0.5)
 
-    async def _sync_cycle(self) -> None:
+    async def _sync_cycle_impl(self) -> None:
         while True:
             try:
                 await self._sync_swarm()
@@ -525,6 +523,27 @@ class SwarmNode:
             except Exception as e:
                 logger.error("Sync cycle error: %s", e, exc_info=True)
             await asyncio.sleep(0.5)
+
+    def _build_trade_config(self) -> TradeNodeConfig:
+        return config_build_trade_config(self)
+
+    def _build_runtime_context(self) -> RuntimeContext:
+        return config_build_runtime_context(self)
+
+    def sync_context(self) -> None:
+        config_sync_context(self)
+
+    def pull_context(self) -> None:
+        config_pull_context(self)
+
+    async def _apply_meta_commands(self) -> None:
+        await cycle_apply_meta_commands(self)
+
+    async def _evolution_cycle(self) -> None:
+        await cycle_evolution_cycle(self)
+
+    async def _sync_cycle(self) -> None:
+        await cycle_sync_cycle(self)
 
     def node_niche(self) -> str:
         return evolution_node_niche(self)
@@ -554,6 +573,12 @@ class SwarmNode:
         evolution_seed_from_memory(self)
 
     async def get_market_tick(self, session: aiohttp.ClientSession, symbol: str = "BTC/USDT") -> Dict[str, Any]:
+        return await market_tick_get_market_tick(self, session, symbol)
+    
+    def is_leader(self, block_number: int) -> bool:
+        return leadership_is_leader(self, block_number)
+
+    async def _get_market_tick_impl(self, session: aiohttp.ClientSession, symbol: str = "BTC/USDT") -> Dict[str, Any]:
         if self.market_mode == "live" and self.market_adapter:
             adapter = self.market_adapter.get_adapter(symbol)
             if adapter:
@@ -652,7 +677,13 @@ class SwarmNode:
     async def process_command(self, command: Mapping[str, Any]) -> None:
         await process_trade_command(self, command)
 
+    async def _initialize_web3_executor(self) -> None:
+        await web3_initialize_web3_executor(self)
+
     async def _command_loop(self) -> None:
+        await command_loop_run_command_loop(self)
+
+    async def _command_loop_impl(self) -> None:
         while not self.shutdown_event.is_set():
             try:
                 state = getattr(self.crdt, "state", {})
@@ -727,7 +758,7 @@ class SwarmNode:
     async def _graceful_shutdown(self) -> None:
         await runtime_graceful_shutdown(self)
 
-    async def _initialize_web3_executor(self) -> None:
+    async def _initialize_web3_executor_impl(self) -> None:
         if self.market_mode != "web3":
             return
 
@@ -816,6 +847,7 @@ class SwarmNode:
 
     async def start(self) -> None:
         await runtime_run_node_start(self)
+
 
 async def main() -> None:
     """Run the trade swarm node service."""
