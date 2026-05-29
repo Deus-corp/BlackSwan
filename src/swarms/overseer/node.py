@@ -40,6 +40,8 @@ from src.swarms.overseer.overseer_core.policy import PolicyEngine
 from src.swarms.overseer.overseer_core.strategist import LLMStrategist
 from src.swarms.overseer.overseer_core.collector import find_memory_heartbeats_from_snapshot
 from src.swarms.overseer.overseer_core.memory_policy import decide_memory_directive
+from src.swarms.common.protocols.briefs import brief_to_record
+from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -139,6 +141,7 @@ class OverseerNode(BaseSwarmOverseer):
         self._last_llm_suggestions: Dict[str, Any] = {}
         self.last_memory_intelligence: dict[str, Any] = {}
         self.last_memory_directive: dict[str, Any] = {}
+        self.last_swarm_brief: dict[str, Any] = {}
 
         self.logger.info(
             "🧭 Overseer initialized: %s interval=%ss",
@@ -231,6 +234,22 @@ class OverseerNode(BaseSwarmOverseer):
             aggregate.get("dedupe_candidates"),
             self.last_memory_directive.get("action"),
             self.last_memory_directive.get("severity"),
+        )
+
+        swarm_brief = build_global_swarm_brief(
+            snapshot=snapshot,
+            topology_health=topology_health,
+            memory_intelligence=memory_intelligence,
+        )
+        self.last_swarm_brief = swarm_brief.to_dict()
+
+        logger.info(
+            "Overseer global brief: status=%s risks=%d opportunities=%d recommended=%d summary=%s",
+            swarm_brief.status,
+            len(swarm_brief.risks),
+            len(swarm_brief.opportunities),
+            len(swarm_brief.recommended_actions),
+            swarm_brief.summary,
         )
 
         return snapshot
