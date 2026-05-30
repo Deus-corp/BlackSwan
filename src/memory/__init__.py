@@ -45,6 +45,13 @@ from src.memory.gold_filter import (
     select_gold_memory_samples,
 )
 
+from src.memory.runtime_evidence import (
+    RUNTIME_EVIDENCE_KIND,
+    classify_runtime_evidence_record,
+    enrich_runtime_evidence_record,
+    is_runtime_evidence_record,
+)
+
 __all__ = [
     "MemoryBackendProtocol",
     "MemoryEnvelope",
@@ -77,4 +84,8 @@ __all__ = [
     "select_gold_memory_samples",
     "MemorySummary",
     "build_memory_summary",
+    "RUNTIME_EVIDENCE_KIND",
+    "classify_runtime_evidence_record",
+    "enrich_runtime_evidence_record",
+    "is_runtime_evidence_record",
 ]
