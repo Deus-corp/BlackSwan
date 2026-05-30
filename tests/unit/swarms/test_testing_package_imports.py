@@ -11,3 +11,9 @@ def test_seed_directive_import_does_not_load_runtime_smoke() -> None:
 
     assert "REDUCE_RISK" in SAFE_SEED_ACTIONS
     assert "src.testing.swarm_runtime_smoke" not in sys.modules
+
+def test_publish_directive_evidence_import_does_not_load_runtime_smoke() -> None:
+    from src.testing.publish_directive_evidence import publish_directive_evidence
+
+    assert callable(publish_directive_evidence)
+    assert "src.testing.swarm_runtime_smoke" not in sys.modules
