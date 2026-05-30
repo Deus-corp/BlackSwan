@@ -37,25 +37,46 @@ class DummyMaintenance:
         self.snapshots.append(snapshot)
 
 
+class DummyEvolutionEngine:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def _safe_genetic_step(self) -> None:
+        self.calls += 1
+
+
+class DummySwarmSync:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def reconcile(self) -> dict[str, Any]:
+        self.calls += 1
+        return {"pushed": False, "imported": 0}
+
+
 class DummyNode:
     def __init__(self) -> None:
         self.market_collector = DummyMarketCollector()
         self.trade_flow = DummyTradeFlow()
         self.heartbeat_publisher = DummyHeartbeatPublisher()
         self.maintenance = DummyMaintenance()
-        self.synced = False
-        self.evolved = False
+        self.evolution_engine = DummyEvolutionEngine()
+        self.swarm_sync = DummySwarmSync()
         self.context_synced = False
 
     def sync_context(self) -> None:
         self.context_synced = True
 
     async def _evolution_cycle(self) -> None:
-        self.evolved = True
+        raise AssertionError("tick_evolution must not call _evolution_cycle")
 
     async def _sync_cycle(self) -> None:
-        self.synced = True
+        raise AssertionError("sync_swarm must not call _sync_cycle")
 
+class DummyTradeFlowProcess:
+    async def process(self, snapshot):
+        return {"snapshot": snapshot, "executed": False, "via": "process"}
+    
 
 @pytest.mark.asyncio
 async def test_collect_market_snapshot_delegates_to_collector() -> None:
@@ -82,14 +103,14 @@ async def test_evaluate_survival_and_trade_delegates_to_trade_flow() -> None:
 
 
 @pytest.mark.asyncio
-async def test_tick_evolution_and_sync_swarm_delegate() -> None:
+async def test_tick_evolution_and_sync_swarm_delegate_without_cycle_recursion() -> None:
     node = DummyNode()
 
     await tick_evolution(node)
     await sync_swarm(node)
 
-    assert node.evolved is True
-    assert node.synced is True
+    assert node.evolution_engine.calls == 1
+    assert node.swarm_sync.calls == 1
 
 
 @pytest.mark.asyncio
@@ -102,3 +123,24 @@ async def test_periodic_tasks_runs_context_heartbeat_and_maintenance() -> None:
     assert node.context_synced is True
     assert node.heartbeat_publisher.snapshots == [snapshot]
     assert node.maintenance.snapshots == [snapshot]
+
+@pytest.mark.asyncio
+async def test_evaluate_survival_and_trade_uses_process_when_snapshot_available() -> None:
+    node = DummyNode()
+    node.trade_flow = DummyTradeFlowProcess()
+    snapshot = object()
+
+    result = await evaluate_survival_and_trade(node, {"price": 100.0}, "BTC/USDT", snapshot=snapshot)
+
+    assert result == {"snapshot": snapshot, "executed": False, "via": "process"}
+
+@pytest.mark.asyncio
+async def test_periodic_tasks_tolerates_missing_maintenance() -> None:
+    node = DummyNode()
+    delattr(node, "maintenance")
+    snapshot = object()
+
+    await periodic_tasks(node, snapshot)
+
+    assert node.context_synced is True
+    assert node.heartbeat_publisher.snapshots == [snapshot]

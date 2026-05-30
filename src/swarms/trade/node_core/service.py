@@ -122,6 +122,7 @@ from src.swarms.trade.node_core.web3_executor import (
     initialize_web3_executor as web3_initialize_web3_executor,
 )
 from src.swarms.trade.node_core.directive_consumer import apply_trade_directive
+from src.swarms.trade.node_core.crdt_refresh import refresh_crdt_state
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
@@ -331,6 +332,7 @@ class SwarmNode:
         self.market_collector: MarketCollector = MarketCollector(self.ctx)
         self.trade_flow: TradeFlowService = TradeFlowService(self.ctx)
         self.maintenance_service: MaintenanceService = MaintenanceService(self.ctx)
+        self.maintenance: MaintenanceService = self.maintenance_service
         self.heartbeat_publisher: HeartbeatPublisher = HeartbeatPublisher(self.ctx)
 
         # Keep the shared context aligned with the node-owned service instances.
@@ -635,8 +637,9 @@ class SwarmNode:
         self,
         market: Dict[str, Any],
         symbol: str,
+        snapshot: Any = None,
     ) -> Optional[Dict[str, Any]]:
-        return await loop_evaluate_survival_and_trade(self, market, symbol)
+        return await loop_evaluate_survival_and_trade(self, market, symbol, snapshot=snapshot)
 
     def _recombine(self, g1: Dict[str, Any], g2: Dict[str, Any]) -> Dict[str, Any]:
         return evolution_recombine(self, g1, g2)
@@ -691,6 +694,7 @@ class SwarmNode:
     async def _command_loop_impl(self) -> None:
         while not self.shutdown_event.is_set():
             try:
+                refresh_crdt_state(self)
                 state = getattr(self.crdt, "state", {})
                 for value in list(state.values()):
                     if not isinstance(value, Mapping):
