@@ -225,6 +225,25 @@ memory_record runtime-reduce-risk-1 runtime_evidence passed evidence-memory-brid
 
 ---
 
+## Scenario regression
+
+The end-to-end advisory loop is covered by:
+
+```text
+tests/unit/swarms/test_runtime_evidence_directive_scenario.py
+```
+
+This scenario validates:
+
+```text
+memory heartbeat runtime_evidence metrics
+  -> Overseer memory intelligence
+  -> global brief
+  -> proposed directive
+```
+
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:

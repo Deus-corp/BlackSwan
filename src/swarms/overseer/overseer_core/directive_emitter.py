@@ -102,12 +102,17 @@ def build_directives_from_brief(
                 build_directive(
                     action="OBSERVE",
                     target=payload.get("target_swarm") or "memory",
-                    target_type="swarm",
+                    target_type=DirectiveTargetType.SWARM.value,
                     source=source,
                     payload={
+                        "brief_id": normalized.brief_id,
                         "reason": "runtime_evidence_alert_candidates_detected",
                         "runtime_evidence_alert_candidates": runtime_evidence_alert_candidates,
+                        "reason_item": dict(item),
                     },
+                    reason="Global brief recommends observing runtime evidence alerts.",
+                    severity=DirectiveSeverity.INFO.value,
+                    ttl_ms=120_000,
                 )
             )
             continue

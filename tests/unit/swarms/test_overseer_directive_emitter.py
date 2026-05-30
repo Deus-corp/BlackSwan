@@ -129,3 +129,5 @@ def test_build_directives_from_brief_emits_runtime_evidence_alert_observe() -> N
     assert directive.source == "overseer-1"
     assert directive.payload["reason"] == "runtime_evidence_alert_candidates_detected"
     assert directive.payload["runtime_evidence_alert_candidates"] == 1
+    assert directive.payload["brief_id"] == brief.brief_id
+    assert "reason_item" in directive.payload
