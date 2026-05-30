@@ -137,3 +137,114 @@ def test_assess_memory_heartbeat_with_wrapped_metrics_payload() -> None:
 
     assert assessment.status == MemoryIntelligenceStatus.VALUABLE_ACTIVITY
     assert assessment.gold_candidates == 2
+
+def test_assess_memory_heartbeat_with_runtime_evidence_gold_candidates() -> None:
+    from src.swarms.overseer.overseer_core.memory_intelligence import assess_memory_heartbeat
+
+    heartbeat = {
+        "type": "swarm_heartbeat",
+        "swarm": "memory",
+        "node_id": "memory-1",
+        "metrics": {
+            "runtime_evidence_records": 1,
+            "runtime_evidence_gold_candidates": 1,
+            "runtime_evidence_review_candidates": 0,
+            "runtime_evidence_alert_candidates": 0,
+            "gold_candidates": 0,
+        },
+    }
+
+    assessment = assess_memory_heartbeat(heartbeat)
+
+    assert assessment.runtime_evidence_records == 1
+    assert assessment.runtime_evidence_gold_candidates == 1
+    assert assessment.status == "valuable_activity"
+    assert assessment.directive == "promote_gold"
+    assert assessment.reason == "runtime_evidence_gold_candidates_detected"
+
+def test_assess_memory_heartbeat_with_runtime_evidence_alert_candidates() -> None:
+    from src.swarms.overseer.overseer_core.memory_intelligence import assess_memory_heartbeat
+
+    heartbeat = {
+        "type": "swarm_heartbeat",
+        "swarm": "memory",
+        "node_id": "memory-1",
+        "metrics": {
+            "runtime_evidence_records": 1,
+            "runtime_evidence_gold_candidates": 0,
+            "runtime_evidence_review_candidates": 0,
+            "runtime_evidence_alert_candidates": 1,
+            "gold_candidates": 0,
+        },
+    }
+
+    assessment = assess_memory_heartbeat(heartbeat)
+
+    assert assessment.runtime_evidence_alert_candidates == 1
+    assert assessment.status in {"degraded", "needs_review"}
+    assert assessment.directive == "review_memory"
+    assert assessment.reason == "runtime_evidence_alert_candidates_detected"
+
+def test_assess_memory_heartbeat_with_runtime_evidence_gold_candidates() -> None:
+    from src.swarms.overseer.overseer_core.memory_intelligence import (
+        MemoryIntelligenceStatus,
+        assess_memory_heartbeat,
+    )
+
+    payload = {
+        "type": "swarm_heartbeat",
+        "swarm": "memory",
+        "node_id": "memory-1",
+        "status": "running",
+        "metrics": {
+            "memory_summary": {
+                "total_records": 1,
+                "runtime_evidence_records": 1,
+                "runtime_evidence_gold_candidates": 1,
+                "runtime_evidence_review_candidates": 0,
+                "runtime_evidence_alert_candidates": 0,
+                "gold_candidates": 0,
+                "review_candidates": 0,
+                "alert_candidates": 0,
+            }
+        },
+    }
+
+    assessment = assess_memory_heartbeat(payload)
+
+    assert assessment.status == MemoryIntelligenceStatus.VALUABLE_ACTIVITY
+    assert assessment.reason == "runtime_evidence_gold_candidates_detected"
+    assert assessment.runtime_evidence_records == 1
+    assert assessment.runtime_evidence_gold_candidates == 1
+
+def test_assess_memory_heartbeat_with_runtime_evidence_alert_candidates() -> None:
+    from src.swarms.overseer.overseer_core.memory_intelligence import (
+        MemoryIntelligenceStatus,
+        assess_memory_heartbeat,
+    )
+
+    payload = {
+        "type": "swarm_heartbeat",
+        "swarm": "memory",
+        "node_id": "memory-1",
+        "status": "running",
+        "metrics": {
+            "memory_summary": {
+                "total_records": 1,
+                "runtime_evidence_records": 1,
+                "runtime_evidence_gold_candidates": 0,
+                "runtime_evidence_review_candidates": 0,
+                "runtime_evidence_alert_candidates": 1,
+                "gold_candidates": 0,
+                "review_candidates": 0,
+                "alert_candidates": 0,
+            }
+        },
+    }
+
+    assessment = assess_memory_heartbeat(payload)
+
+    assert assessment.status == MemoryIntelligenceStatus.DANGER_DETECTED
+    assert assessment.reason == "runtime_evidence_alert_candidates_detected"
+    assert assessment.runtime_evidence_records == 1
+    assert assessment.runtime_evidence_alert_candidates == 1

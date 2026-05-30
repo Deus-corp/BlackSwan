@@ -94,3 +94,66 @@ def test_build_global_swarm_brief_reports_degraded_swarms_and_memory_alerts() ->
     assert any(item["title"] == "memory alert candidates detected" for item in brief.risks)
     assert any(item["title"] == "review memory candidates" for item in brief.recommended_actions)
     assert "Degraded swarms" in brief.summary
+
+def test_build_global_swarm_brief_reports_runtime_evidence_opportunity() -> None:
+    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
+
+    snapshot = {
+        "active_swarm_counts": {"memory": 1, "overseer": 1},
+        "memory_intelligence": {
+            "aggregate": {
+                "status": "valuable_activity",
+                "gold_candidates": 0,
+                "runtime_evidence_records": 1,
+                "runtime_evidence_gold_candidates": 1,
+                "runtime_evidence_review_candidates": 0,
+                "runtime_evidence_alert_candidates": 0,
+            }
+        },
+    }
+
+    brief = build_global_swarm_brief(
+        snapshot=snapshot,
+        memory_intelligence=snapshot["memory_intelligence"],
+    )
+
+    assert brief.key_metrics["memory_runtime_evidence_records"] == 1
+    assert brief.key_metrics["memory_runtime_evidence_gold_candidates"] == 1
+    assert any("Runtime evidence" in item.get("title", "") for item in brief.opportunities)
+    assert any(
+        "runtime evidence" in item.get("detail", "").lower()
+        for item in brief.recommended_actions
+    )
+    assert "verified runtime evidence" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_reports_runtime_evidence_alert_risk() -> None:
+    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
+
+    snapshot = {
+        "active_swarm_counts": {"memory": 1, "overseer": 1},
+        "memory_intelligence": {
+            "aggregate": {
+                "status": "danger_detected",
+                "gold_candidates": 0,
+                "runtime_evidence_records": 1,
+                "runtime_evidence_gold_candidates": 0,
+                "runtime_evidence_review_candidates": 0,
+                "runtime_evidence_alert_candidates": 1,
+            }
+        },
+    }
+
+    brief = build_global_swarm_brief(
+        snapshot=snapshot,
+        memory_intelligence=snapshot["memory_intelligence"],
+    )
+
+    assert brief.status == "degraded"
+    assert brief.key_metrics["memory_runtime_evidence_alert_candidates"] == 1
+    assert any("Runtime evidence alerts" in item.get("title", "") for item in brief.risks)
+    assert any(
+        "review" in item.get("title", "").lower()
+        for item in brief.recommended_actions
+    )
+    assert "runtime evidence alert" in brief.summary.lower()

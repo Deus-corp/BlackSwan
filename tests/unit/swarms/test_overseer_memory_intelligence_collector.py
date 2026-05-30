@@ -116,3 +116,74 @@ def test_find_memory_heartbeats_from_snapshot_by_payload_swarm() -> None:
 
     assert len(heartbeats) == 1
     assert heartbeats[0]["swarm"] == "memory"
+
+def test_collector_aggregates_runtime_evidence_metrics_from_memory_heartbeats() -> None:
+    result = collect_memory_intelligence_from_heartbeats(
+        [
+            {
+                "type": "swarm_heartbeat",
+                "swarm": "memory",
+                "node_id": "memory-1",
+                "timestamp": 1.0,
+                "status": "running",
+                "metrics": {
+                    "memory_summary": {
+                        "total_records": 1,
+                        "recognized_records": 1,
+                        "gold_candidates": 0,
+                        "review_candidates": 0,
+                        "alert_candidates": 0,
+                        "dedupe_candidates": 0,
+                        "runtime_evidence_records": 1,
+                        "runtime_evidence_gold_candidates": 1,
+                        "runtime_evidence_review_candidates": 0,
+                        "runtime_evidence_alert_candidates": 0,
+                    }
+                },
+            }
+        ]
+    )
+
+    assert result["aggregate"]["status"] == "valuable_activity"
+    assert result["aggregate"]["reason"] == "runtime_evidence_gold_candidates_detected"
+    assert result["aggregate"]["runtime_evidence_records"] == 1
+    assert result["aggregate"]["runtime_evidence_gold_candidates"] == 1
+    assert result["aggregate"]["runtime_evidence_review_candidates"] == 0
+    assert result["aggregate"]["runtime_evidence_alert_candidates"] == 0
+
+    assert result["nodes"][0]["runtime_evidence_records"] == 1
+    assert result["nodes"][0]["runtime_evidence_gold_candidates"] == 1
+
+def test_collector_aggregates_runtime_evidence_alert_candidates_from_memory_heartbeats() -> None:
+    result = collect_memory_intelligence_from_heartbeats(
+        [
+            {
+                "type": "swarm_heartbeat",
+                "swarm": "memory",
+                "node_id": "memory-1",
+                "timestamp": 1.0,
+                "status": "running",
+                "metrics": {
+                    "memory_summary": {
+                        "total_records": 1,
+                        "recognized_records": 1,
+                        "gold_candidates": 0,
+                        "review_candidates": 0,
+                        "alert_candidates": 0,
+                        "dedupe_candidates": 0,
+                        "runtime_evidence_records": 1,
+                        "runtime_evidence_gold_candidates": 0,
+                        "runtime_evidence_review_candidates": 0,
+                        "runtime_evidence_alert_candidates": 1,
+                    }
+                },
+            }
+        ]
+    )
+
+    assert result["aggregate"]["status"] == "danger_detected"
+    assert result["aggregate"]["reason"] == "runtime_evidence_alert_candidates_detected"
+    assert result["aggregate"]["runtime_evidence_records"] == 1
+    assert result["aggregate"]["runtime_evidence_alert_candidates"] == 1
+
+    

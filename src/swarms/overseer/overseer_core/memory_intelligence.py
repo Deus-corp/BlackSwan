@@ -35,6 +35,10 @@ class MemoryIntelligenceAssessment:
     dedupe_candidates: int = 0
     degraded: bool = False
     reason: str = "ok"
+    runtime_evidence_records: int = 0
+    runtime_evidence_gold_candidates: int = 0
+    runtime_evidence_review_candidates: int = 0
+    runtime_evidence_alert_candidates: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -91,6 +95,10 @@ def assess_memory_heartbeat(payload: dict[str, Any]) -> MemoryIntelligenceAssess
     review_candidates = _safe_int(summary.get("review_candidates", metrics.get("review_candidates", 0)))
     alert_candidates = _safe_int(summary.get("alert_candidates", metrics.get("alert_candidates", 0)))
     dedupe_candidates = _safe_int(summary.get("dedupe_candidates", metrics.get("dedupe_candidates", 0)))
+    runtime_evidence_records = _metric(metrics, summary, "runtime_evidence_records")
+    runtime_evidence_gold_candidates = _metric(metrics, summary, "runtime_evidence_gold_candidates")
+    runtime_evidence_review_candidates = _metric(metrics, summary, "runtime_evidence_review_candidates")
+    runtime_evidence_alert_candidates = _metric(metrics, summary, "runtime_evidence_alert_candidates")
 
     degraded = bool(summary.get("degraded", False)) or str(payload.get("status", "")).lower() == "degraded"
     reason = str(summary.get("reason") or metrics.get("last_error") or "ok")
@@ -100,13 +108,22 @@ def assess_memory_heartbeat(payload: dict[str, Any]) -> MemoryIntelligenceAssess
     elif alert_candidates > 0:
         status = MemoryIntelligenceStatus.DANGER_DETECTED
         reason = "memory_alert_candidates_detected"
+    elif runtime_evidence_alert_candidates > 0:
+        status = MemoryIntelligenceStatus.DANGER_DETECTED
+        reason = "runtime_evidence_alert_candidates_detected"
     elif review_candidates > 0:
         status = MemoryIntelligenceStatus.NEEDS_REVIEW
         reason = "memory_review_candidates_detected"
+    elif runtime_evidence_review_candidates > 0:
+        status = MemoryIntelligenceStatus.NEEDS_REVIEW
+        reason = "runtime_evidence_review_candidates_detected"
     elif gold_candidates > 0:
         status = MemoryIntelligenceStatus.VALUABLE_ACTIVITY
         reason = "memory_gold_candidates_detected"
-    elif total_records > 0:
+    elif runtime_evidence_gold_candidates > 0:
+        status = MemoryIntelligenceStatus.VALUABLE_ACTIVITY
+        reason = "runtime_evidence_gold_candidates_detected"
+    elif total_records > 0 or runtime_evidence_records > 0:
         status = MemoryIntelligenceStatus.HEALTHY
     else:
         status = MemoryIntelligenceStatus.UNKNOWN
@@ -122,8 +139,14 @@ def assess_memory_heartbeat(payload: dict[str, Any]) -> MemoryIntelligenceAssess
         dedupe_candidates=dedupe_candidates,
         degraded=degraded,
         reason=reason,
+        runtime_evidence_records=runtime_evidence_records,
+        runtime_evidence_gold_candidates=runtime_evidence_gold_candidates,
+        runtime_evidence_review_candidates=runtime_evidence_review_candidates,
+        runtime_evidence_alert_candidates=runtime_evidence_alert_candidates,
     )
 
+def _metric(metrics: dict, summary: dict, key: str) -> int:
+    return int(metrics.get(key, summary.get(key, 0)) or 0)
 
 def aggregate_memory_assessments(
     assessments: list[MemoryIntelligenceAssessment],
@@ -142,6 +165,10 @@ def aggregate_memory_assessments(
     review_candidates = sum(item.review_candidates for item in assessments)
     alert_candidates = sum(item.alert_candidates for item in assessments)
     dedupe_candidates = sum(item.dedupe_candidates for item in assessments)
+    runtime_evidence_records = sum(item.runtime_evidence_records for item in assessments)
+    runtime_evidence_gold_candidates = sum(item.runtime_evidence_gold_candidates for item in assessments)
+    runtime_evidence_review_candidates = sum(item.runtime_evidence_review_candidates for item in assessments)
+    runtime_evidence_alert_candidates = sum(item.runtime_evidence_alert_candidates for item in assessments)
 
     degraded = any(item.degraded for item in assessments)
 
@@ -151,12 +178,21 @@ def aggregate_memory_assessments(
     elif alert_candidates > 0:
         status = MemoryIntelligenceStatus.DANGER_DETECTED
         reason = "memory_alert_candidates_detected"
+    elif runtime_evidence_alert_candidates > 0:
+        status = MemoryIntelligenceStatus.DANGER_DETECTED
+        reason = "runtime_evidence_alert_candidates_detected"
     elif review_candidates > 0:
         status = MemoryIntelligenceStatus.NEEDS_REVIEW
         reason = "memory_review_candidates_detected"
+    elif runtime_evidence_review_candidates > 0:
+        status = MemoryIntelligenceStatus.NEEDS_REVIEW
+        reason = "runtime_evidence_review_candidates_detected"
     elif gold_candidates > 0:
         status = MemoryIntelligenceStatus.VALUABLE_ACTIVITY
         reason = "memory_gold_candidates_detected"
+    elif runtime_evidence_gold_candidates > 0:
+        status = MemoryIntelligenceStatus.VALUABLE_ACTIVITY
+        reason = "runtime_evidence_gold_candidates_detected"
     else:
         status = MemoryIntelligenceStatus.HEALTHY
         reason = "ok"
@@ -171,6 +207,10 @@ def aggregate_memory_assessments(
         dedupe_candidates=dedupe_candidates,
         degraded=degraded,
         reason=reason,
+        runtime_evidence_records=runtime_evidence_records,
+        runtime_evidence_gold_candidates=runtime_evidence_gold_candidates,
+        runtime_evidence_review_candidates=runtime_evidence_review_candidates,
+        runtime_evidence_alert_candidates=runtime_evidence_alert_candidates,
     )
 
 
