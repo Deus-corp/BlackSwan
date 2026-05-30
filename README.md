@@ -82,6 +82,9 @@ The runtime now includes the first pieces of a structured LLM-friendly synchroni
   * `MarketSnapshot` normalization,
   * `TradeFlowService.process()` compatibility,
   * periodic maintenance compatibility.
+* Runtime directive evidence can be published back into CRDT as `evidence_record`.
+* Verified runtime evidence can be bridged into explicit `memory_record` payloads.
+* The full controlled experience loop is documented in `docs/runtime_directive_experience_loop.md`.
 
 ---
 
@@ -396,6 +399,7 @@ swarm_directive_result runtime-reduce-risk-1 None applied trade-1 trade
 
 * [Documentation site](https://deus-corp.github.io/BlackSwan/)
 * [Roadmap](ROADMAP.md)
+* [Runtime directive experience loop](docs/runtime_directive_experience_loop.md)
 * [TRL-4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
 * [Architecture decisions](docs/architecture/)
 * [Formal verification](formal/tla/)

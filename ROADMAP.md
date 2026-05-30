@@ -303,11 +303,14 @@ SwarmBrief
 
 Current status:
 
-- SwarmBrief exists as a shared protocol.
-- Overseer builds global briefs.
-- Directive and DirectiveResult exist as shared protocols.
-- Trade consumes safe directives from CRDT.
-- A controlled runtime seed check validates REDUCE_RISK end to end.
+* `SwarmBrief` exists as a shared protocol.
+* Overseer builds global briefs.
+* `Directive` and `DirectiveResult` exist as shared protocols.
+* Trade consumes safe directives from CRDT.
+* `EvidenceRecord` exists as a shared protocol.
+* Controlled helpers publish directive evidence to CRDT.
+* Controlled helpers bridge passed evidence into `memory_record`.
+* A controlled runtime check validates `REDUCE_RISK` end to end through memory.
 
 Next:
 
@@ -416,6 +419,9 @@ BlackSwan = trading bot
 * [x] Overseer global brief builder.
 * [x] Cross-swarm `Directive` and `DirectiveResult` protocols.
 * [x] Controlled runtime directive seed/check through CRDT and trade node.
+* [x] Runtime directive evidence publishing into CRDT.
+* [x] Evidence-to-memory bridge for controlled runtime experience records.
+* [x] Runtime directive experience loop documentation.
 * [ ] Dashboard.
 * [ ] Better local cluster profiles.
 
@@ -431,6 +437,8 @@ BlackSwan = trading bot
 * [ ] Evidence protocol for test/runtime/grep validation records.
 * [ ] Brief-driven Overseer directive selection under safety gates.
 * [ ] Directive outcome memory records.
+* [ ] Memory swarm classification of `runtime_evidence` memory records.
+* [ ] Overseer brief enrichment from evidence and runtime memory records.
 
 ### Phase C — Controlled Autonomy
 
