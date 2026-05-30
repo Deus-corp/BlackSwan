@@ -17,3 +17,9 @@ def test_publish_directive_evidence_import_does_not_load_runtime_smoke() -> None
 
     assert callable(publish_directive_evidence)
     assert "src.testing.swarm_runtime_smoke" not in sys.modules
+
+def test_evidence_memory_bridge_import_does_not_load_runtime_smoke() -> None:
+    from src.testing.evidence_memory_bridge import build_memory_record_from_evidence
+
+    assert callable(build_memory_record_from_evidence)
+    assert "src.testing.swarm_runtime_smoke" not in sys.modules
