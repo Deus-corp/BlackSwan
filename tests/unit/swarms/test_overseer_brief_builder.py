@@ -157,3 +157,75 @@ def test_build_global_swarm_brief_reports_runtime_evidence_alert_risk() -> None:
         for item in brief.recommended_actions
     )
     assert "runtime evidence alert" in brief.summary.lower()
+
+def test_build_global_swarm_brief_reports_security_validation_critical_risk() -> None:
+    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
+
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation={
+            "security_validation_records": 2,
+            "security_validation_invalid_records": 1,
+            "security_validation_critical_records": 1,
+        },
+    )
+
+    assert brief.status == "critical"
+    assert brief.key_metrics["security_validation_records"] == 2
+    assert brief.key_metrics["security_validation_invalid_records"] == 1
+    assert brief.key_metrics["security_validation_critical_records"] == 1
+    assert any("Critical security validation" in item.get("title", "") for item in brief.risks)
+    assert any("Review security validation" in item.get("title", "") for item in brief.recommended_actions)
+    assert "critical validation failure" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_reports_security_validation_warning_risk() -> None:
+    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
+
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation={
+            "security_validation_records": 2,
+            "security_validation_invalid_records": 1,
+            "security_validation_critical_records": 0,
+        },
+    )
+
+    assert brief.status == "healthy"
+    assert brief.key_metrics["security_validation_invalid_records"] == 1
+    assert any("Security validation warnings" in item.get("title", "") for item in brief.risks)
+    assert "validation warning" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_heartbeats() -> None:
+    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
+
+    snapshot = {
+        "active_swarm_counts": {"security": 1, "overseer": 1},
+        "latest_swarm_heartbeats": {
+            "security": [
+                {
+                    "type": "swarm_heartbeat",
+                    "swarm": "security",
+                    "node_id": "security-1",
+                    "metrics": {
+                        "security_validation_records": 2,
+                        "security_validation_valid_records": 1,
+                        "security_validation_invalid_records": 1,
+                        "security_validation_critical_records": 1,
+                        "security_validation_invalid_reasons": {
+                            "unsafe_or_unknown_action": 1,
+                        },
+                    },
+                }
+            ]
+        },
+    }
+
+    brief = build_global_swarm_brief(snapshot=snapshot)
+
+    assert brief.status == "critical"
+    assert brief.key_metrics["security_validation_records"] == 2
+    assert brief.key_metrics["security_validation_invalid_records"] == 1
+    assert brief.key_metrics["security_validation_critical_records"] == 1
+    assert any("Critical security validation" in item.get("title", "") for item in brief.risks)

@@ -19,11 +19,17 @@ def build_global_swarm_brief(
     snapshot: Any,
     topology_health: Mapping[str, Any] | None = None,
     memory_intelligence: Mapping[str, Any] | None = None,
+    security_validation: Mapping[str, Any] | None = None,
     evidence_ids: list[str] | None = None,
 ) -> SwarmBrief:
     """Build a compact global brief from Overseer snapshot and health data."""
     topology_health = dict(topology_health or {})
     memory_intelligence = dict(memory_intelligence or {})
+    security_validation = dict(
+        security_validation
+        if security_validation is not None
+        else _extract_security_validation(snapshot)
+    )
 
     if isinstance(snapshot, Mapping):
         swarm_counts = _safe_dict(
@@ -80,6 +86,9 @@ def build_global_swarm_brief(
     runtime_evidence_gold_candidates = _safe_int(aggregate.get("runtime_evidence_gold_candidates"), 0)
     runtime_evidence_review_candidates = _safe_int(aggregate.get("runtime_evidence_review_candidates"), 0)
     runtime_evidence_alert_candidates = _safe_int(aggregate.get("runtime_evidence_alert_candidates"), 0)
+    security_validation_records = _safe_int(security_validation.get("security_validation_records"), 0)
+    security_validation_invalid_records = _safe_int(security_validation.get("security_validation_invalid_records"), 0)
+    security_validation_critical_records = _safe_int(security_validation.get("security_validation_critical_records"), 0)
 
     if gold_candidates > 0:
         opportunities.append(
@@ -95,7 +104,11 @@ def build_global_swarm_brief(
                 title="promote memory gold candidates",
                 severity=BriefSeverity.INFO.value,
                 detail="Consider exporting or replaying high-value memory samples.",
-                payload={"directive": "PROMOTE_GOLD_CANDIDATES"},
+                payload={
+                    "directive": "PROMOTE_GOLD_CANDIDATES",
+                    "target_swarm": "memory",
+                    "gold_candidates": gold_candidates,
+                },
             )
         )
 
@@ -166,6 +179,53 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_validation_critical_records > 0:
+        risks.append(
+            build_brief_item(
+                title="Critical security validation failures",
+                severity=BriefSeverity.CRITICAL.value,
+                detail=(
+                    f"Security reports {security_validation_critical_records} critical "
+                    "runtime validation failure(s)."
+                ),
+                payload={
+                    "security_validation_records": security_validation_records,
+                    "security_validation_critical_records": security_validation_critical_records,
+                    "security_validation_invalid_records": security_validation_invalid_records,
+                    "recommendation": "review_security_validation_failures",
+                },
+            )
+        )
+        recommended_actions.append(
+            build_brief_item(
+                title="Review security validation failures",
+                severity=BriefSeverity.CRITICAL.value,
+                detail="Review invalid directive/evidence/memory runtime records before further automation.",
+                payload={
+                    "recommendation": "review_security_validation_failures",
+                    "target_swarm": "security",
+                    "security_validation_critical_records": security_validation_critical_records,
+                    "security_validation_invalid_records": security_validation_invalid_records,
+                },
+            )
+        )
+    elif security_validation_invalid_records > 0:
+        risks.append(
+            build_brief_item(
+                title="Security validation warnings",
+                severity=BriefSeverity.WARNING.value,
+                detail=(
+                    f"Security reports {security_validation_invalid_records} invalid "
+                    "runtime validation record(s)."
+                ),
+                payload={
+                    "security_validation_records": security_validation_records,
+                    "security_validation_invalid_records": security_validation_invalid_records,
+                    "recommendation": "review_security_validation_warnings",
+                },
+            )
+        )
+
     if review_candidates > 0 or dedupe_candidates > 0:
         recommended_actions.append(
             build_brief_item(
@@ -183,6 +243,7 @@ def build_global_swarm_brief(
         degraded_swarms=degraded_swarms,
         alert_candidates=alert_candidates,
         runtime_evidence_alert_candidates=runtime_evidence_alert_candidates,
+        security_validation_critical_records=security_validation_critical_records,
         memory_status=memory_status,
     )
 
@@ -203,6 +264,9 @@ def build_global_swarm_brief(
         "memory_runtime_evidence_gold_candidates": runtime_evidence_gold_candidates,
         "memory_runtime_evidence_review_candidates": runtime_evidence_review_candidates,
         "memory_runtime_evidence_alert_candidates": runtime_evidence_alert_candidates,
+        "security_validation_records": security_validation_records,
+        "security_validation_invalid_records": security_validation_invalid_records,
+        "security_validation_critical_records": security_validation_critical_records,
     }
 
     summary = _build_summary(
@@ -213,6 +277,8 @@ def build_global_swarm_brief(
         alert_candidates=alert_candidates,
         runtime_evidence_gold_candidates=runtime_evidence_gold_candidates,
         runtime_evidence_alert_candidates=runtime_evidence_alert_candidates,
+        security_validation_critical_records=security_validation_critical_records,
+        security_validation_invalid_records=security_validation_invalid_records,
     )
 
     return build_swarm_brief(
@@ -233,13 +299,14 @@ def _global_status(
     degraded_swarms: list[str],
     alert_candidates: int,
     runtime_evidence_alert_candidates: int,
+    security_validation_critical_records: int,
     memory_status: str,
 ) -> str:
+    if security_validation_critical_records > 0:
+        return BriefStatus.CRITICAL.value
+
     if degraded_swarms or alert_candidates > 0 or runtime_evidence_alert_candidates > 0:
         return BriefStatus.DEGRADED.value
-
-    if memory_status in {"critical", "failed"}:
-        return BriefStatus.CRITICAL.value
 
     return BriefStatus.HEALTHY.value
 
@@ -253,6 +320,8 @@ def _build_summary(
     alert_candidates: int,
     runtime_evidence_gold_candidates: int,
     runtime_evidence_alert_candidates: int,
+    security_validation_critical_records: int,
+    security_validation_invalid_records: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -280,6 +349,15 @@ def _build_summary(
             f"Memory has {runtime_evidence_alert_candidates} runtime evidence alert candidate(s)."
         )
 
+    if security_validation_critical_records > 0:
+        parts.append(
+            f"Security has {security_validation_critical_records} critical validation failure(s)."
+        )
+    elif security_validation_invalid_records > 0:
+        parts.append(
+            f"Security has {security_validation_invalid_records} validation warning(s)."
+        )
+
     return " ".join(parts)
 
 
@@ -298,6 +376,109 @@ def _degraded_swarms(topology_health: Mapping[str, Any]) -> list[str]:
 
     return sorted(degraded)
 
+def _snapshot_mapping_value(snapshot: Any, key: str) -> Mapping[str, Any]:
+    if isinstance(snapshot, Mapping):
+        value = snapshot.get(key)
+    else:
+        value = getattr(snapshot, key, None)
+    return value if isinstance(value, Mapping) else {}
+
+
+def _extract_security_validation(snapshot: Any) -> dict[str, Any]:
+    explicit = _snapshot_mapping_value(snapshot, "security_validation")
+    if explicit:
+        return dict(explicit)
+
+    heartbeats = _security_heartbeats_from_snapshot(snapshot)
+    if not heartbeats:
+        return {}
+
+    return _aggregate_security_validation_from_heartbeats(heartbeats)
+
+
+def _security_heartbeats_from_snapshot(snapshot: Any) -> list[Mapping[str, Any]]:
+    groups: list[Any] = []
+
+    recent = _snapshot_mapping_value(snapshot, "recent_heartbeats_by_swarm")
+    latest = _snapshot_mapping_value(snapshot, "latest_swarm_heartbeats")
+
+    groups.append(recent.get("security", []))
+    groups.append(latest.get("security", []))
+
+    # Some legacy records may use the direct security_heartbeat type and may be
+    # grouped under non-security keys.
+    groups.extend(recent.values())
+    groups.extend(latest.values())
+
+    heartbeats: list[Mapping[str, Any]] = []
+    seen: set[int] = set()
+
+    for group in groups:
+        if not isinstance(group, list):
+            continue
+        for item in group:
+            if not isinstance(item, Mapping):
+                continue
+            if id(item) in seen:
+                continue
+            seen.add(id(item))
+
+            item_type = str(item.get("type") or "")
+            swarm = str(item.get("swarm") or "")
+            if swarm == "security" or item_type in {"security_heartbeat", "swarm_heartbeat"}:
+                metrics = item.get("metrics")
+                if isinstance(metrics, Mapping) and any(
+                    str(key).startswith("security_validation") for key in metrics
+                ):
+                    heartbeats.append(item)
+
+    return heartbeats
+
+
+def _aggregate_security_validation_from_heartbeats(
+    heartbeats: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    aggregate = {
+        "security_validation_records": 0,
+        "security_validation_valid_records": 0,
+        "security_validation_invalid_records": 0,
+        "security_validation_critical_records": 0,
+    }
+
+    invalid_reasons: dict[str, int] = {}
+    severity_counts: dict[str, int] = {}
+    record_type_counts: dict[str, int] = {}
+
+    for heartbeat in heartbeats:
+        metrics = heartbeat.get("metrics")
+        if not isinstance(metrics, Mapping):
+            continue
+
+        aggregate["security_validation_records"] += _safe_int(metrics.get("security_validation_records"), 0)
+        aggregate["security_validation_valid_records"] += _safe_int(metrics.get("security_validation_valid_records"), 0)
+        aggregate["security_validation_invalid_records"] += _safe_int(metrics.get("security_validation_invalid_records"), 0)
+        aggregate["security_validation_critical_records"] += _safe_int(metrics.get("security_validation_critical_records"), 0)
+
+        _merge_int_counts(invalid_reasons, metrics.get("security_validation_invalid_reasons"))
+        _merge_int_counts(severity_counts, metrics.get("security_validation_severity_counts"))
+        _merge_int_counts(record_type_counts, metrics.get("security_validation_record_type_counts"))
+
+    aggregate["security_validation_invalid_reasons"] = invalid_reasons
+    aggregate["security_validation_severity_counts"] = severity_counts
+    aggregate["security_validation_record_type_counts"] = record_type_counts
+
+    return aggregate
+
+
+def _merge_int_counts(target: dict[str, int], value: Any) -> None:
+    if not isinstance(value, Mapping):
+        return
+
+    for key, count in value.items():
+        clean_key = str(key or "").strip()
+        if not clean_key:
+            continue
+        target[clean_key] = target.get(clean_key, 0) + _safe_int(count, 0)
 
 def _safe_dict(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, Mapping) else {}
