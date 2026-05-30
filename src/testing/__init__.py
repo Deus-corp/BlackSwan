@@ -1,12 +1,14 @@
-"""Testing utilities module for the BlackSwan swarm ecosystem.
+"""Testing helpers package.
 
-This module provides shared fixtures, runtime smoke test utilities, and
-common testing helper functions to ensure consistency across the test suite.
+Keep this package initializer lightweight. Unit tests may import small helper
+modules such as ``src.testing.seed_directive``; importing this package must not
+eagerly import heavyweight runtime smoke modules or optional swarms.
 """
 
-from src.testing import fixtures, swarm_runtime_smoke
+from __future__ import annotations
 
 __all__ = [
     "fixtures",
+    "seed_directive",
     "swarm_runtime_smoke",
 ]

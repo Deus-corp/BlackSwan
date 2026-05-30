@@ -18,7 +18,7 @@ BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime.
 
 Validated in the current architecture:
 
-- ✅ 157+ unit/runtime tests passing.
+- ✅ 230+ unit/runtime tests passing.
 - ✅ Trade runtime command loop passing.
 - ✅ Swarm runtime smoke test passing.
 - ✅ Canonical first-class swarm topology with 7 swarm types:
@@ -59,6 +59,30 @@ The current runtime now supports explicit shared memory flow, recognition, resil
 - Local CRDT runtime storage is hardened for multi-process devcontainer runs with conservative SQLite journaling, process locking, malformed storage detection, and fresh-run cleanup.
 - Runtime-level inter-swarm memory flow is validated with Memory + Simulation + Overseer.
 
+### Latest Milestone — LLM-Friendly Briefs & Runtime Directive Lifecycle
+
+The runtime now includes the first pieces of a structured LLM-friendly synchronization layer:
+
+* `SwarmBrief` provides compact global/swarm/node context for agents instead of raw noisy logs.
+* Overseer builds and logs global swarm briefs from topology and memory intelligence.
+* `Directive` and `DirectiveResult` provide a lifecycle-aware cross-swarm instruction protocol.
+* Overseer can derive safe proposed directives from global briefs.
+* Trade nodes can consume safe `swarm_directive` records from CRDT and publish `swarm_directive_result` records.
+* A controlled runtime seed check validates the full path:
+
+  * seed `REDUCE_RISK` directive into CRDT,
+  * trade command loop refreshes shared CRDT state,
+  * trade applies the directive safely,
+  * trade publishes an `applied` directive result back to CRDT.
+* The trade runtime was stabilized after refactor with regression coverage for:
+
+  * CRDT refresh from shared storage,
+  * directive command-loop consumption,
+  * evolution/sync no-recursion helpers,
+  * `MarketSnapshot` normalization,
+  * `TradeFlowService.process()` compatibility,
+  * periodic maintenance compatibility.
+
 ---
 
 ## Vision
@@ -96,9 +120,9 @@ src/
 ├── core/               # CRDT, gossip, event store, shared runtime primitives
 ├── memory/             # Memory storage/export/quarantine helpers
 ├── intelligence/       # LLM clients and memory intelligence components
-├── trading/            # Trade-specific adapters, execution, market service
-├── risk/               # Circuit breakers and exposure/risk management
-└── observability/      # Metrics, telemetry, notification utilities
+├── observability/      # Metrics, telemetry, notification utilities
+├── testing/            # Runtime smoke and controlled seed/check helpers
+└── utils/              # Shared utilities
 
 sim/
 ├── engine/             # Compatibility wrappers for src.simulation
@@ -124,6 +148,30 @@ All swarms are moving toward common envelopes:
 * `SwarmPolicy`
 
 This lets Overseer, dashboards, CRDT storage, and future orchestration tools treat each swarm as a first-class participant instead of special-casing only the trade swarm.
+
+### LLM-friendly runtime synchronization
+
+BlackSwan is adding a structured synchronization layer so LLM agents and swarm coordinators do not need to reason from noisy logs alone.
+
+Current protocol pieces:
+
+* `SwarmBrief` — compact operational context for global, swarm, or node state.
+* `Directive` — lifecycle-aware cross-swarm instruction.
+* `DirectiveResult` — acknowledgement, application, rejection, expiration, or failure result.
+* Runtime seed/check helpers — controlled development tools for validating directive flow through CRDT.
+
+Validated development flow:
+
+```text
+manual/Overseer directive
+  -> CRDT shared storage
+  -> trade command loop refresh
+  -> safe directive application
+  -> swarm_directive_result
+  -> CRDT audit trail
+```
+
+The first validated safe directive is `REDUCE_RISK`, which forces the trade node into a safer dry-run state without enabling live execution.
 
 ### Canonical engine layers
 
@@ -291,6 +339,57 @@ grep -R "Overseer generic swarm counts\|Published memory swarm heartbeat\|Publis
   | tail -100
 ```
 
+### Controlled runtime directive seed check
+
+Start a local cluster:
+
+```bash
+rm -f data/cluster_runtime/latest/ledgers/swarm_crdt.local.db*
+rm -f data/cluster_runtime/latest/ledgers/events.local.db*
+
+python -m src.swarms.runtime.cluster_cli up --duration 0 --no-strict
+```
+
+In another terminal, seed a safe directive:
+
+```bash
+python -m src.testing.seed_directive \
+  --action REDUCE_RISK \
+  --target trade \
+  --target-type swarm \
+  --source overseer-seed \
+  --directive-id runtime-reduce-risk-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+Expected log:
+
+```text
+Published directive result: directive_id=runtime-reduce-risk-1 status=applied
+```
+
+Inspect CRDT records:
+
+```bash
+python - <<'PY'
+from src.core.crdt_adapter import CRDTAdapter
+
+path = "data/cluster_runtime/latest/ledgers/swarm_crdt.local.db"
+crdt = CRDTAdapter(node_id="debug-reader", db_path=path)
+state = getattr(crdt, "state", {}) or {}
+
+for item in state.values():
+    if isinstance(item, dict) and item.get("type") in {"swarm_directive", "swarm_directive_result"}:
+        print(item.get("type"), item.get("directive_id"), item.get("action"), item.get("status"), item.get("source"), item.get("swarm"))
+PY
+```
+
+Expected CRDT output:
+
+```text
+swarm_directive runtime-reduce-risk-1 REDUCE_RISK issued overseer-seed None
+swarm_directive_result runtime-reduce-risk-1 None applied trade-1 trade
+```
 ---
 
 ## Documentation
@@ -310,12 +409,14 @@ grep -R "Overseer generic swarm counts\|Published memory swarm heartbeat\|Publis
 The current focus is structural hardening:
 
 1. Keep all changes controlled, incremental, and test-backed.
-2. Continue moving core primitives into `src/`.
-3. Keep `sim/` as experiment and compatibility layer.
-4. Mature `memory` and `simulation` from advisory swarms into active policy-supporting swarms.
-5. Restructure the trade swarm so trade-specific execution, risk, memory events, telemetry, and strategy code are cleanly packaged under the trade swarm boundary.
-6. Build a dashboard that shows topology, swarm health, memory/simulation status, CRDT state, runtime events, and Overseer directives.
-7. Preserve trade as one swarm among equals, not the center of the architecture.
+2. Preserve `src/` as the shared platform layer.
+3. Keep each swarm self-contained under `src/swarms/<swarm>/`.
+4. Continue hardening the LLM-friendly synchronization loop:
+   `SwarmBrief -> Directive -> DirectiveResult -> Evidence -> Memory`.
+5. Mature `memory` and `simulation` from advisory swarms into active policy-supporting swarms.
+6. Keep trade as the proving ground for safe directives, risk controls, runtime evidence, and outcome memory.
+7. Build a dashboard that shows topology, swarm health, memory/simulation status, CRDT state, runtime events, Overseer briefs, and directives.
+8. Preserve trade as one swarm among equals, not the center of the architecture.
 
 ---
 

@@ -30,7 +30,7 @@ Laboratory-validated components now form a working multi-swarm runtime foundatio
 
 ### Validated
 
-- ✅ 157+ unit/runtime tests passing.
+- ✅ 230+ unit/runtime tests passing.
 - ✅ Trade runtime command loop passing.
 - ✅ Swarm runtime smoke test passing.
 - ✅ Canonical swarm contracts:
@@ -53,6 +53,13 @@ Laboratory-validated components now form a working multi-swarm runtime foundatio
 - ✅ Memory recognition identifies valuable/review/alert/dedupe candidates.
 - ✅ Memory resilience reports primary/fallback/lagging/recovery status.
 - ✅ Local CRDT SQLite storage hardened for multi-process devcontainer runtime.
+- ✅ `SwarmBrief` protocol for compact LLM-friendly runtime context.
+- ✅ Overseer global brief builder from topology and memory intelligence.
+- ✅ Cross-swarm `Directive` and `DirectiveResult` protocol.
+- ✅ Controlled runtime directive lifecycle validated through CRDT:
+  `swarm_directive -> trade command loop -> swarm_directive_result`.
+- ✅ Safe trade directive consumer supports `REDUCE_RISK`, `SET_DRY_RUN`, and `OBSERVE`.
+- ✅ Runtime directive seed/check helper for development validation.
 - ✅ Memory swarm skeleton publishes canonical `swarm_heartbeat`.
 - ✅ Simulation swarm skeleton publishes canonical `swarm_heartbeat`.
 - ✅ Local cluster launcher supports memory and simulation nodes.
@@ -80,10 +87,10 @@ Laboratory-validated components now form a working multi-swarm runtime foundatio
 | Formal models | Core verified | 4 | `formal/tla/*.tla` |
 | Core CRDT | Industrial laboratory component | 4 | `src/core/crdt_layer.py`, `src/core/crdt_adapter.py` |
 | Gossip layer | Secure prototype | 4 | `src/core/gossip_layer.py`, `src/core/gossip_adapter.py` |
-| Swarm contracts | Canonical runtime foundation | 4 | `src/swarms/common/contracts.py` |
+| Swarm contracts/protocols | Canonical runtime foundation | 4 | `src/swarms/common/contracts.py`, `src/swarms/common/protocols/` |
 | Swarm topology | 7 first-class swarms registered | 4 | `src/swarms/common/protocols/topology.py` |
-| Overseer | Generic topology observer and coordinator | 4 | `src/swarms/overseer/` |
-| Trade swarm | Mature proving-ground swarm | 4 | `src/swarms/trade/`, `src/trading/` |
+| Overseer | Generic topology observer, brief builder, and directive coordinator | 4 | `src/swarms/overseer/` |
+| Trade swarm | Mature proving-ground swarm with safe directive consumer | 4 | `src/swarms/trade/` |
 | Security swarm | Runtime defensive swarm | 3-4 | `src/swarms/security/` |
 | Explorer swarm | Signal discovery swarm | 3 | `src/swarms/explorer/` |
 | Improver swarm | Controlled improvement/maintenance swarm | 3 | `src/swarms/improver/` |
@@ -111,6 +118,9 @@ Current role:
 - builds generic topology health,
 - emits policy decisions,
 - routes directives through canonical/legacy command paths.
+- builds LLM-friendly global swarm briefs,
+- derives safe proposed directives from briefs,
+- records directive lifecycle signals through CRDT,
 
 Next:
 
@@ -173,6 +183,9 @@ Current role:
 - dry-run and execution backend support,
 - generic heartbeat compatibility,
 - canonical imports from `src/cognition` and `src/evolution`.
+- consumes safe CRDT-backed directives such as `REDUCE_RISK`,
+- publishes `swarm_directive_result` records after directive application,
+- acts as the first runtime proving ground for directive lifecycle validation.
 
 Next:
 
@@ -243,8 +256,6 @@ src/
 ├── core/
 ├── memory/
 ├── intelligence/
-├── trading/
-├── risk/
 └── observability/
 ```
 
@@ -277,6 +288,33 @@ reports/sim/
 not into source modules.
 
 ---
+
+### LLM-friendly synchronization layer
+
+The next architecture layer reduces noisy log-driven coordination by introducing explicit context and action records:
+
+```text
+SwarmBrief
+  -> Directive
+  -> DirectiveResult
+  -> EvidenceRecord
+  -> Memory/Lesson
+```
+
+Current status:
+
+- SwarmBrief exists as a shared protocol.
+- Overseer builds global briefs.
+- Directive and DirectiveResult exist as shared protocols.
+- Trade consumes safe directives from CRDT.
+- A controlled runtime seed check validates REDUCE_RISK end to end.
+
+Next:
+
+- add EvidenceRecord,
+- make Overseer publish selected directives automatically under policy gates,
+- add memory-side directive results,
+- feed directive outcomes into memory and dashboard views.
 
 ### 1. Trade swarm restructuring
 
@@ -374,6 +412,10 @@ BlackSwan = trading bot
 * [x] Memory and simulation heartbeat skeletons.
 * [x] Overseer sees generic swarm counts.
 * [x] `src/cognition`, `src/evolution`, `src/simulation`.
+* [x] LLM-friendly `SwarmBrief` protocol.
+* [x] Overseer global brief builder.
+* [x] Cross-swarm `Directive` and `DirectiveResult` protocols.
+* [x] Controlled runtime directive seed/check through CRDT and trade node.
 * [ ] Dashboard.
 * [ ] Better local cluster profiles.
 
@@ -386,6 +428,9 @@ BlackSwan = trading bot
 * [ ] Policy evaluation before risky actions.
 * [ ] Improvement proposals stored as reviewable artifacts.
 * [ ] Overseer advisory scoring across all swarms.
+* [ ] Evidence protocol for test/runtime/grep validation records.
+* [ ] Brief-driven Overseer directive selection under safety gates.
+* [ ] Directive outcome memory records.
 
 ### Phase C — Controlled Autonomy
 
@@ -394,6 +439,8 @@ BlackSwan = trading bot
 * [ ] Automated regression/smoke pipeline before applying improvements.
 * [ ] CRDT-backed audit trail for every action.
 * [ ] Safer restart/repair of degraded nodes.
+* [ ] Security validation for directives and directive results.
+* [ ] Dashboard view for briefs, directives, results, and evidence.
 
 ### Phase D — Production Readiness
 
