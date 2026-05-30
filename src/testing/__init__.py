@@ -1,8 +1,10 @@
 """Testing helpers package.
 
-Keep this package initializer lightweight. Unit tests may import small helper
-modules such as ``src.testing.seed_directive``; importing this package must not
-eagerly import heavyweight runtime smoke modules or optional swarms.
+Keep this package initializer lightweight.
+
+Unit tests may import small helper modules such as ``src.testing.seed_directive``.
+Importing ``src.testing`` must not eagerly import runtime smoke modules or
+optional swarm implementations.
 """
 
 from __future__ import annotations
