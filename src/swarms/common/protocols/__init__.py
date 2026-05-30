@@ -116,6 +116,17 @@ from src.swarms.common.protocols.directives import (
     normalize_target_type,
 )
 
+from src.swarms.common.protocols.evidence import (
+    EvidenceCheck,
+    EvidenceRecord,
+    EvidenceSeverity,
+    EvidenceStatus,
+    build_evidence_check,
+    build_evidence_record,
+    evidence_to_record,
+    normalize_evidence_record,
+)
+
 __all__ = [
     "EXPLORER_COMMANDS",
     "IMPROVER_COMMANDS",
@@ -199,4 +210,12 @@ __all__ = [
     "normalize_directive",
     "normalize_directive_result",
     "normalize_target_type",
+    "EvidenceCheck",
+    "EvidenceRecord",
+    "EvidenceSeverity",
+    "EvidenceStatus",
+    "build_evidence_check",
+    "build_evidence_record",
+    "evidence_to_record",
+    "normalize_evidence_record",
 ]
