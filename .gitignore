@@ -55,6 +55,7 @@ formal/tla/*.out
 *.key
 secrets/states/
 crdt_state.db
+crdt_state.db.lock
 
 # LLM models
 llama_cpp/
