@@ -191,6 +191,10 @@ class MemorySwarmNode:
                 "quarantine_candidates": memory_summary.quarantine_candidates,
                 "gold_candidates": memory_summary.gold_candidates,
                 "pending_consolidations": 0,
+                "runtime_evidence_records": memory_summary.runtime_evidence_records,
+                "runtime_evidence_gold_candidates": memory_summary.runtime_evidence_gold_candidates,
+                "runtime_evidence_review_candidates": memory_summary.runtime_evidence_review_candidates,
+                "runtime_evidence_alert_candidates": memory_summary.runtime_evidence_alert_candidates,
             },
             details={
                 "last_error": self.last_error,

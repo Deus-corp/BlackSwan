@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Iterable
 
 from src.memory.gold_filter import select_gold_memory_samples
+from src.memory.runtime_evidence import classify_runtime_evidence_record
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +32,10 @@ class MemorySummary:
     by_scope: dict[str, int] = field(default_factory=dict)
     degraded: bool = False
     reason: str = "ok"
+    runtime_evidence_records: int = 0
+    runtime_evidence_gold_candidates: int = 0
+    runtime_evidence_review_candidates: int = 0
+    runtime_evidence_alert_candidates: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -47,6 +52,11 @@ def build_memory_summary(
 ) -> MemorySummary:
     """Build MemorySummary from records and optional runtime counters."""
     record_list = list(records or [])
+
+    runtime_evidence_records = 0
+    runtime_evidence_gold_candidates = 0
+    runtime_evidence_review_candidates = 0
+    runtime_evidence_alert_candidates = 0
 
     by_kind: dict[str, int] = {}
     by_scope: dict[str, int] = {}
@@ -84,6 +94,16 @@ def build_memory_summary(
                     if clean_action:
                         inferred_action_counts[clean_action] = inferred_action_counts.get(clean_action, 0) + 1
 
+        runtime_evidence = classify_runtime_evidence_record(record)
+        if runtime_evidence.get("is_runtime_evidence"):
+            runtime_evidence_records += 1
+            if runtime_evidence.get("gold_candidate"):
+                runtime_evidence_gold_candidates += 1
+            if runtime_evidence.get("review_candidate"):
+                runtime_evidence_review_candidates += 1
+            if runtime_evidence.get("alert_candidate"):
+                runtime_evidence_alert_candidates += 1
+
     final_recognition_counts = dict(inferred_recognition_counts)
     final_recognition_counts.update(recognition_counts or {})
 
@@ -110,6 +130,10 @@ def build_memory_summary(
         by_scope=by_scope,
         degraded=bool(degraded),
         reason=str(reason or "ok"),
+        runtime_evidence_records=runtime_evidence_records,
+        runtime_evidence_gold_candidates=runtime_evidence_gold_candidates,
+        runtime_evidence_review_candidates=runtime_evidence_review_candidates,
+        runtime_evidence_alert_candidates=runtime_evidence_alert_candidates,
     )
 
 

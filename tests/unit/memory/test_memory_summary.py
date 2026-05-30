@@ -69,3 +69,53 @@ def test_memory_summary_serializes_to_dict() -> None:
     assert data["degraded"] is True
     assert data["reason"] == "memory_swarm_reindexing"
     assert data["total_records"] == 0
+
+def test_build_memory_summary_counts_runtime_evidence_records() -> None:
+    from src.memory.summary import build_memory_summary
+
+    records = [
+        {
+            "type": "memory_record",
+            "kind": "runtime_evidence",
+            "status": "passed",
+            "payload": {
+                "directive_id": "dir-pass",
+                "checks": [
+                    {"name": "directive_seeded", "status": "passed"},
+                    {"name": "directive_result_published", "status": "passed"},
+                    {"name": "directive_applied", "status": "passed"},
+                ],
+            },
+        },
+        {
+            "type": "memory_record",
+            "kind": "runtime_evidence",
+            "status": "failed",
+            "payload": {
+                "directive_id": "dir-fail",
+                "checks": [
+                    {"name": "directive_seeded", "status": "passed"},
+                    {"name": "directive_result_published", "status": "failed"},
+                ],
+            },
+        },
+        {
+            "type": "memory_record",
+            "kind": "runtime_evidence",
+            "status": "partial",
+            "payload": {
+                "directive_id": "dir-review",
+                "checks": [
+                    {"name": "directive_seeded", "status": "passed"},
+                    {"name": "directive_applied", "status": "failed"},
+                ],
+            },
+        },
+    ]
+
+    summary = build_memory_summary(records)
+
+    assert summary.runtime_evidence_records == 3
+    assert summary.runtime_evidence_gold_candidates == 1
+    assert summary.runtime_evidence_alert_candidates == 1
+    assert summary.runtime_evidence_review_candidates == 1
