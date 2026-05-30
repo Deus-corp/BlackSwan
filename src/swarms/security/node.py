@@ -45,6 +45,7 @@ from src.swarms.security.node_core import (
     command_exists,
     new_gid,
 )
+from src.swarms.security.runtime_validation import build_security_validation_heartbeat_metrics
 from swarm_config import config
 
 logging.basicConfig(
@@ -276,8 +277,25 @@ class SecurityNode(BaseSwarmNode):
             }
         )
 
-        return heartbeat
+        try:
+            state = getattr(self.crdt, "state", {}) or {}
+            runtime_records = list(state.values()) if isinstance(state, dict) else []
+            validation_metrics = build_security_validation_heartbeat_metrics(runtime_records)
+            validation_metrics["security_validation_enabled"] = True
+        except Exception as exc:
+            validation_metrics = {
+                "security_validation_enabled": False,
+                "security_validation_error": str(exc),
+                "security_validation_records": 0,
+                "security_validation_valid_records": 0,
+                "security_validation_invalid_records": 0,
+                "security_validation_critical_records": 0,
+            }
 
+        metrics.update(validation_metrics)
+
+        return heartbeat
+    
     async def reconcile(self) -> None:
         """Reconcile in-memory blocked IP cache with persisted memory."""
         try:
