@@ -50,6 +50,12 @@ async def publish_replay_scenarios(args: argparse.Namespace) -> list[dict[str, A
             and (not directive_id or _directive_id(item) == directive_id)
         ]
 
+        logger.info(
+            "Found runtime evidence memory records: count=%d directive_id=%s",
+            len(records),
+            directive_id or "*",
+        )
+
         scenarios = build_replay_scenarios_from_memory_records(records, source=source)
 
         for scenario in scenarios:
@@ -85,6 +91,13 @@ async def async_main() -> None:
             scenario.get("action"),
             scenario.get("directive_id"),
             scenario.get("status"),
+        )
+
+    if not scenarios:
+        logger.warning(
+            "No replay scenarios were published. Ensure CRDT contains passed "
+            "memory_record kind=runtime_evidence for directive_id=%s.",
+            args.directive_id or "*",
         )
 
 
