@@ -19,6 +19,7 @@ from typing import Optional
 from src.core.crdt_adapter import CRDTAdapter
 from src.swarms.simulation.heartbeat import build_simulation_heartbeat
 from src.memory.publisher import publish_memory_record
+from src.swarms.simulation.replay_metrics import build_simulation_replay_heartbeat_metrics
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -59,15 +60,34 @@ class SimulationSwarmNode:
 
     async def publish_heartbeat(self) -> None:
         """Publish canonical simulation swarm heartbeat."""
+        try:
+            state = getattr(self.crdt, "state", {}) or {}
+            replay_metrics = build_simulation_replay_heartbeat_metrics(
+                list(state.values()) if isinstance(state, dict) else []
+            )
+            replay_metrics["simulation_replay_metrics_enabled"] = True
+        except Exception as exc:
+            replay_metrics = {
+                "simulation_replay_metrics_enabled": False,
+                "simulation_replay_metrics_error": str(exc),
+                "simulation_replay_scenarios": 0,
+                "simulation_replay_pending": 0,
+                "simulation_replay_completed": 0,
+                "simulation_replay_failed": 0,
+            }
+
+        metrics = {
+            "heartbeats_published": self.heartbeats_published,
+            "scenarios_run": self.scenarios_run,
+            "policy_evaluations": 0,
+            "stress_tests": 0,
+            "memory_records_published": self.memory_records_published,
+        }
+        metrics.update(replay_metrics)
+
         payload = build_simulation_heartbeat(
             self.node_id,
-            metrics={
-                "heartbeats_published": self.heartbeats_published,
-                "scenarios_run": self.scenarios_run,
-                "policy_evaluations": 0,
-                "stress_tests": 0,
-                "memory_records_published": self.memory_records_published,
-            },
+            metrics=metrics,
             details={
                 "last_error": self.last_error,
                 "crdt_db_path": str(config.crdt_db_path),

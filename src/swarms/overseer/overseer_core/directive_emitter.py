@@ -149,6 +149,33 @@ def build_directives_from_brief(
             )
             continue
 
+        if recommendation == "observe_simulation_replay":
+            simulation_replay_pending = _safe_int(
+                payload.get("simulation_replay_pending"),
+                0,
+            )
+            if simulation_replay_pending <= 0:
+                continue
+
+            directives.append(
+                build_directive(
+                    action="OBSERVE",
+                    target=payload.get("target_swarm") or "simulation",
+                    target_type=DirectiveTargetType.SWARM.value,
+                    source=source,
+                    payload={
+                        "brief_id": normalized.brief_id,
+                        "reason": "simulation_replay_pending_detected",
+                        "simulation_replay_pending": simulation_replay_pending,
+                        "reason_item": dict(item),
+                    },
+                    reason="Global brief recommends observing simulation replay queue.",
+                    severity=DirectiveSeverity.INFO.value,
+                    ttl_ms=120_000,
+                )
+            )
+            continue
+
     return directives
 
 def _safe_int(value: Any, default: int = 0) -> int:

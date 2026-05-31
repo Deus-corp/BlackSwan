@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Any
 
 from src.swarms.common.protocols.briefs import BriefScope, BriefStatus
 from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
@@ -96,8 +95,6 @@ def test_build_global_swarm_brief_reports_degraded_swarms_and_memory_alerts() ->
     assert "Degraded swarms" in brief.summary
 
 def test_build_global_swarm_brief_reports_runtime_evidence_opportunity() -> None:
-    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
-
     snapshot = {
         "active_swarm_counts": {"memory": 1, "overseer": 1},
         "memory_intelligence": {
@@ -128,8 +125,6 @@ def test_build_global_swarm_brief_reports_runtime_evidence_opportunity() -> None
 
 
 def test_build_global_swarm_brief_reports_runtime_evidence_alert_risk() -> None:
-    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
-
     snapshot = {
         "active_swarm_counts": {"memory": 1, "overseer": 1},
         "memory_intelligence": {
@@ -159,8 +154,6 @@ def test_build_global_swarm_brief_reports_runtime_evidence_alert_risk() -> None:
     assert "runtime evidence alert" in brief.summary.lower()
 
 def test_build_global_swarm_brief_reports_security_validation_critical_risk() -> None:
-    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
-
     brief = build_global_swarm_brief(
         snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
         security_validation={
@@ -180,8 +173,6 @@ def test_build_global_swarm_brief_reports_security_validation_critical_risk() ->
 
 
 def test_build_global_swarm_brief_reports_security_validation_warning_risk() -> None:
-    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
-
     brief = build_global_swarm_brief(
         snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
         security_validation={
@@ -198,8 +189,6 @@ def test_build_global_swarm_brief_reports_security_validation_warning_risk() -> 
 
 
 def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_heartbeats() -> None:
-    from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
-
     snapshot = {
         "active_swarm_counts": {"security": 1, "overseer": 1},
         "latest_swarm_heartbeats": {
@@ -229,3 +218,63 @@ def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_hea
     assert brief.key_metrics["security_validation_invalid_records"] == 1
     assert brief.key_metrics["security_validation_critical_records"] == 1
     assert any("Critical security validation" in item.get("title", "") for item in brief.risks)
+
+def test_build_global_swarm_brief_reports_simulation_replay_opportunity() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"simulation": 1, "overseer": 1}},
+        simulation_replay={
+            "simulation_replay_scenarios": 1,
+            "simulation_replay_pending": 1,
+            "simulation_replay_completed": 0,
+            "simulation_replay_failed": 0,
+        },
+    )
+
+    assert brief.key_metrics["simulation_replay_scenarios"] == 1
+    assert brief.key_metrics["simulation_replay_pending"] == 1
+    assert any("Simulation replay" in item.get("title", "") for item in brief.opportunities)
+    assert any("simulation replay" in item.get("detail", "").lower() for item in brief.recommended_actions)
+    assert "pending replay" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_reports_simulation_replay_failure_risk() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"simulation": 1, "overseer": 1}},
+        simulation_replay={
+            "simulation_replay_scenarios": 1,
+            "simulation_replay_pending": 0,
+            "simulation_replay_completed": 0,
+            "simulation_replay_failed": 1,
+        },
+    )
+
+    assert brief.key_metrics["simulation_replay_failed"] == 1
+    assert any("Simulation replay failures" in item.get("title", "") for item in brief.risks)
+    assert "failed replay" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_extracts_simulation_replay_from_snapshot_heartbeats() -> None:
+    snapshot = {
+        "active_swarm_counts": {"simulation": 1, "overseer": 1},
+        "latest_swarm_heartbeats": {
+            "simulation": [
+                {
+                    "type": "swarm_heartbeat",
+                    "swarm": "simulation",
+                    "node_id": "simulation-1",
+                    "metrics": {
+                        "simulation_replay_scenarios": 1,
+                        "simulation_replay_pending": 1,
+                        "simulation_replay_completed": 0,
+                        "simulation_replay_failed": 0,
+                    },
+                }
+            ]
+        },
+    }
+
+    brief = build_global_swarm_brief(snapshot=snapshot)
+
+    assert brief.key_metrics["simulation_replay_scenarios"] == 1
+    assert brief.key_metrics["simulation_replay_pending"] == 1
+    assert any("Simulation replay" in item.get("title", "") for item in brief.opportunities)

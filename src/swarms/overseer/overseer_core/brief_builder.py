@@ -20,6 +20,7 @@ def build_global_swarm_brief(
     topology_health: Mapping[str, Any] | None = None,
     memory_intelligence: Mapping[str, Any] | None = None,
     security_validation: Mapping[str, Any] | None = None,
+    simulation_replay: Mapping[str, Any] | None = None,
     evidence_ids: list[str] | None = None,
 ) -> SwarmBrief:
     """Build a compact global brief from Overseer snapshot and health data."""
@@ -29,6 +30,11 @@ def build_global_swarm_brief(
         security_validation
         if security_validation is not None
         else _extract_security_validation(snapshot)
+    )
+    simulation_replay = dict(
+        simulation_replay
+        if simulation_replay is not None
+        else _extract_simulation_replay(snapshot)
     )
 
     if isinstance(snapshot, Mapping):
@@ -89,6 +95,10 @@ def build_global_swarm_brief(
     security_validation_records = _safe_int(security_validation.get("security_validation_records"), 0)
     security_validation_invalid_records = _safe_int(security_validation.get("security_validation_invalid_records"), 0)
     security_validation_critical_records = _safe_int(security_validation.get("security_validation_critical_records"), 0)
+    simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
+    simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
+    simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
+    simulation_replay_failed = _safe_int(simulation_replay.get("simulation_replay_failed"), 0)
 
     if gold_candidates > 0:
         opportunities.append(
@@ -226,6 +236,51 @@ def build_global_swarm_brief(
             )
         )
 
+    if simulation_replay_pending > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Simulation replay scenarios pending",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Simulation reports {simulation_replay_pending} pending "
+                    "replay scenario(s)."
+                ),
+                payload={
+                    "simulation_replay_scenarios": simulation_replay_scenarios,
+                    "simulation_replay_pending": simulation_replay_pending,
+                    "recommendation": "observe_simulation_replay",
+                },
+            )
+        )
+        recommended_actions.append(
+            build_brief_item(
+                title="Observe simulation replay queue",
+                severity=BriefSeverity.INFO.value,
+                detail="Observe pending simulation replay scenarios before enabling replay execution.",
+                payload={
+                    "recommendation": "observe_simulation_replay",
+                    "target_swarm": "simulation",
+                    "simulation_replay_pending": simulation_replay_pending,
+                },
+            )
+        )
+
+    if simulation_replay_failed > 0:
+        risks.append(
+            build_brief_item(
+                title="Simulation replay failures detected",
+                severity=BriefSeverity.WARNING.value,
+                detail=(
+                    f"Simulation reports {simulation_replay_failed} failed "
+                    "replay scenario(s)."
+                ),
+                payload={
+                    "simulation_replay_failed": simulation_replay_failed,
+                    "recommendation": "review_simulation_replay_failures",
+                },
+            )
+        )
+
     if review_candidates > 0 or dedupe_candidates > 0:
         recommended_actions.append(
             build_brief_item(
@@ -267,6 +322,10 @@ def build_global_swarm_brief(
         "security_validation_records": security_validation_records,
         "security_validation_invalid_records": security_validation_invalid_records,
         "security_validation_critical_records": security_validation_critical_records,
+        "simulation_replay_scenarios": simulation_replay_scenarios,
+        "simulation_replay_pending": simulation_replay_pending,
+        "simulation_replay_completed": simulation_replay_completed,
+        "simulation_replay_failed": simulation_replay_failed,
     }
 
     summary = _build_summary(
@@ -279,6 +338,8 @@ def build_global_swarm_brief(
         runtime_evidence_alert_candidates=runtime_evidence_alert_candidates,
         security_validation_critical_records=security_validation_critical_records,
         security_validation_invalid_records=security_validation_invalid_records,
+        simulation_replay_pending=simulation_replay_pending,
+        simulation_replay_failed=simulation_replay_failed,
     )
 
     return build_swarm_brief(
@@ -322,6 +383,8 @@ def _build_summary(
     runtime_evidence_alert_candidates: int,
     security_validation_critical_records: int,
     security_validation_invalid_records: int,
+    simulation_replay_pending: int,
+    simulation_replay_failed: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -358,6 +421,16 @@ def _build_summary(
             f"Security has {security_validation_invalid_records} validation warning(s)."
         )
 
+    if simulation_replay_pending > 0:
+        parts.append(
+            f"Simulation has {simulation_replay_pending} pending replay scenario(s)."
+        )
+
+    if simulation_replay_failed > 0:
+        parts.append(
+            f"Simulation has {simulation_replay_failed} failed replay scenario(s)."
+        )
+
     return " ".join(parts)
 
 
@@ -375,6 +448,7 @@ def _degraded_swarms(topology_health: Mapping[str, Any]) -> list[str]:
             degraded.append(str(swarm_name))
 
     return sorted(degraded)
+
 
 def _snapshot_mapping_value(snapshot: Any, key: str) -> Mapping[str, Any]:
     if isinstance(snapshot, Mapping):
@@ -394,6 +468,89 @@ def _extract_security_validation(snapshot: Any) -> dict[str, Any]:
         return {}
 
     return _aggregate_security_validation_from_heartbeats(heartbeats)
+
+
+def _extract_simulation_replay(snapshot: Any) -> dict[str, Any]:
+    explicit = _snapshot_mapping_value(snapshot, "simulation_replay")
+    if explicit:
+        return dict(explicit)
+
+    heartbeats = _simulation_heartbeats_from_snapshot(snapshot)
+    if not heartbeats:
+        return {}
+
+    return _aggregate_simulation_replay_from_heartbeats(heartbeats)
+
+
+def _simulation_heartbeats_from_snapshot(snapshot: Any) -> list[Mapping[str, Any]]:
+    groups: list[Any] = []
+
+    recent = _snapshot_mapping_value(snapshot, "recent_heartbeats_by_swarm")
+    latest = _snapshot_mapping_value(snapshot, "latest_swarm_heartbeats")
+
+    groups.append(recent.get("simulation", []))
+    groups.append(latest.get("simulation", []))
+    groups.extend(recent.values())
+    groups.extend(latest.values())
+
+    heartbeats: list[Mapping[str, Any]] = []
+    seen: set[int] = set()
+
+    for group in groups:
+        if not isinstance(group, list):
+            continue
+        for item in group:
+            if not isinstance(item, Mapping):
+                continue
+            if id(item) in seen:
+                continue
+            seen.add(id(item))
+
+            swarm = str(item.get("swarm") or "")
+            item_type = str(item.get("type") or "")
+            if swarm == "simulation" or item_type in {"simulation_heartbeat", "swarm_heartbeat"}:
+                metrics = item.get("metrics")
+                if isinstance(metrics, Mapping) and any(
+                    str(key).startswith("simulation_replay") for key in metrics
+                ):
+                    heartbeats.append(item)
+
+    return heartbeats
+
+
+def _aggregate_simulation_replay_from_heartbeats(
+    heartbeats: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    aggregate = {
+        "simulation_replay_scenarios": 0,
+        "simulation_replay_pending": 0,
+        "simulation_replay_completed": 0,
+        "simulation_replay_failed": 0,
+    }
+
+    status_counts: dict[str, int] = {}
+    kind_counts: dict[str, int] = {}
+    action_counts: dict[str, int] = {}
+
+    for heartbeat in heartbeats:
+        metrics = heartbeat.get("metrics")
+        if not isinstance(metrics, Mapping):
+            continue
+
+        aggregate["simulation_replay_scenarios"] += _safe_int(metrics.get("simulation_replay_scenarios"), 0)
+        aggregate["simulation_replay_pending"] += _safe_int(metrics.get("simulation_replay_pending"), 0)
+        aggregate["simulation_replay_completed"] += _safe_int(metrics.get("simulation_replay_completed"), 0)
+        aggregate["simulation_replay_failed"] += _safe_int(metrics.get("simulation_replay_failed"), 0)
+
+        _merge_int_counts(status_counts, metrics.get("simulation_replay_status_counts"))
+        _merge_int_counts(kind_counts, metrics.get("simulation_replay_kind_counts"))
+        _merge_int_counts(action_counts, metrics.get("simulation_replay_action_counts"))
+
+    aggregate["simulation_replay_status_counts"] = status_counts
+    aggregate["simulation_replay_kind_counts"] = kind_counts
+    aggregate["simulation_replay_action_counts"] = action_counts
+
+    return aggregate
 
 
 def _security_heartbeats_from_snapshot(snapshot: Any) -> list[Mapping[str, Any]]:
@@ -479,6 +636,7 @@ def _merge_int_counts(target: dict[str, int], value: Any) -> None:
         if not clean_key:
             continue
         target[clean_key] = target.get(clean_key, 0) + _safe_int(count, 0)
+
 
 def _safe_dict(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, Mapping) else {}

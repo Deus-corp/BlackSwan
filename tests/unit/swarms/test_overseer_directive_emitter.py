@@ -166,3 +166,36 @@ def test_build_directives_from_brief_emits_security_validation_observe() -> None
     assert directive.payload["security_validation_critical_records"] == 1
     assert directive.payload["security_validation_invalid_records"] == 2
     assert "reason_item" in directive.payload
+
+def test_build_directives_from_brief_emits_simulation_replay_observe() -> None:
+    from src.swarms.common.protocols.briefs import build_swarm_brief
+
+    brief = build_swarm_brief(
+        scope="global",
+        status="healthy",
+        swarm="overseer",
+        summary="Simulation has pending replay scenarios.",
+        recommended_actions=[
+            {
+                "title": "Observe simulation replay queue",
+                "payload": {
+                    "recommendation": "observe_simulation_replay",
+                    "target_swarm": "simulation",
+                    "simulation_replay_pending": 2,
+                },
+            }
+        ],
+    )
+
+    directives = build_directives_from_brief(brief, source="overseer-1")
+
+    assert len(directives) == 1
+    directive = directives[0]
+    assert directive.action == "OBSERVE"
+    assert directive.target == "simulation"
+    assert directive.target_type == "swarm"
+    assert directive.source == "overseer-1"
+    assert directive.payload["brief_id"] == brief.brief_id
+    assert directive.payload["reason"] == "simulation_replay_pending_detected"
+    assert directive.payload["simulation_replay_pending"] == 2
+    assert "reason_item" in directive.payload
