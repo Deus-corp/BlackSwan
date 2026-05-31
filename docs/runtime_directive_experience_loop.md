@@ -397,7 +397,9 @@ grep -R "runtime-run-replay-cli-live-1\|run_replay_dry_run_completed" \
   data/cluster_runtime/latest/logs \
   | tail -120
 ```
-
+```bash
+tail -200 data/cluster_runtime/latest/logs/simulation-1.log
+```
 ---
 
 ## Next steps

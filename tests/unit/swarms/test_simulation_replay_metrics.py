@@ -31,6 +31,18 @@ def test_summarize_replay_scenarios_counts_status_kind_and_action() -> None:
             "type": "memory_record",
             "kind": "runtime_evidence",
         },
+        {
+            "type": "simulation_replay_execution",
+            "execution_id": "exec-replay-1",
+            "scenario_id": "replay-1",
+            "status": "completed",
+         },
+        {
+            "type": "simulation_replay_execution",
+            "execution_id": "exec-replay-2",
+            "scenario_id": "replay-2",
+            "status": "failed",
+        },
     ]
 
     summary = summarize_replay_scenarios(records)
@@ -48,6 +60,13 @@ def test_summarize_replay_scenarios_counts_status_kind_and_action() -> None:
     assert summary["simulation_replay_kind_counts"]["manual"] == 1
     assert summary["simulation_replay_action_counts"]["REDUCE_RISK"] == 2
     assert summary["simulation_replay_action_counts"]["OBSERVE"] == 1
+    assert summary["simulation_replay_executions"] == 2
+    assert summary["simulation_replay_execution_completed"] == 1
+    assert summary["simulation_replay_execution_failed"] == 1
+    assert summary["simulation_replay_execution_status_counts"] == {
+        "completed": 1,
+        "failed": 1,
+    }
 
 
 def test_build_simulation_replay_heartbeat_metrics_returns_zero_counts_for_empty_records() -> None:
@@ -58,3 +77,7 @@ def test_build_simulation_replay_heartbeat_metrics_returns_zero_counts_for_empty
     assert metrics["simulation_replay_completed"] == 0
     assert metrics["simulation_replay_failed"] == 0
     assert metrics["simulation_replay_status_counts"] == {}
+    assert metrics["simulation_replay_executions"] == 0
+    assert metrics["simulation_replay_execution_completed"] == 0
+    assert metrics["simulation_replay_execution_failed"] == 0
+    assert metrics["simulation_replay_execution_status_counts"] == {}

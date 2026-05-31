@@ -65,6 +65,10 @@ class SimulationSwarmNode:
     async def publish_heartbeat(self) -> None:
         """Publish canonical simulation swarm heartbeat."""
         try:
+            refresh = getattr(self.crdt, "refresh_from_storage", None)
+            if callable(refresh):
+                refresh()
+
             state = getattr(self.crdt, "state", {}) or {}
             replay_metrics = build_simulation_replay_heartbeat_metrics(
                 list(state.values()) if isinstance(state, dict) else []
@@ -78,6 +82,10 @@ class SimulationSwarmNode:
                 "simulation_replay_pending": 0,
                 "simulation_replay_completed": 0,
                 "simulation_replay_failed": 0,
+                "simulation_replay_executions": 0,
+                "simulation_replay_execution_completed": 0,
+                "simulation_replay_execution_failed": 0,
+                "simulation_replay_execution_status_counts": {},
             }
 
         metrics = {
@@ -109,26 +117,28 @@ class SimulationSwarmNode:
         )
 
     async def start(self) -> None:
-        """Run heartbeat loop until stopped."""
+        """Run simulation node loops until stopped."""
         logger.info("SimulationSwarmNode %s starting.", self.node_id)
 
         self._install_signal_handlers()
-        await self._command_loop()
-        await self.publish_memory_event("simulation swarm node started", topic="lifecycle")
-        await self.publish_heartbeat()
 
-        while not self._stop_event.is_set():
+        try:
+            await self.publish_memory_event("simulation swarm node started", topic="lifecycle")
+
+            command_task = asyncio.create_task(self._command_loop())
+            heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
             try:
-                await asyncio.wait_for(
-                    self._stop_event.wait(),
-                    timeout=self.heartbeat_interval_seconds,
-                )
-            except asyncio.TimeoutError:
-                await self.publish_heartbeat()
-            except Exception as exc:
-                self.last_error = str(exc)
-                logger.exception("SimulationSwarmNode heartbeat loop error: %s", exc)
+                await self._stop_event.wait()
+            finally:
+                self.shutdown_event.set()
 
+                for task in (command_task, heartbeat_task):
+                    task.cancel()
+
+                await asyncio.gather(command_task, heartbeat_task, return_exceptions=True)
+
+        finally:
             try:
                 await self.publish_memory_event("simulation swarm node stopped", topic="lifecycle")
             except Exception as exc:
@@ -143,6 +153,7 @@ class SimulationSwarmNode:
     async def stop(self) -> None:
         """Request graceful shutdown."""
         self._stop_event.set()
+        self.shutdown_event.set()
 
     def _install_signal_handlers(self) -> None:
         loop = asyncio.get_running_loop()
@@ -256,6 +267,19 @@ class SimulationSwarmNode:
         while not self.shutdown_event.is_set():
             await self._command_loop_once()
             await asyncio.sleep(1.0)
+
+    async def _heartbeat_loop(self) -> None:
+        """Continuously publish simulation heartbeat."""
+        while not self.shutdown_event.is_set():
+            try:
+                await self.publish_heartbeat()
+                await asyncio.sleep(self.heartbeat_interval_seconds)
+
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self.last_error = str(exc)
+                logger.exception("[%s] simulation heartbeat loop failed", self.node_id)
 
 
 async def main() -> None:
