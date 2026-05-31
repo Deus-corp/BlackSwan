@@ -213,6 +213,23 @@ class SimulationSwarmNode:
 
                 result = await apply_simulation_directive(self, value)
 
+                execution = result.get("payload", {}).get("execution")
+                if isinstance(execution, dict):
+                    try:
+                        await self.crdt.add_genome(execution)
+                        logger.info(
+                            "[%s] Published simulation replay execution: scenario_id=%s status=%s",
+                            self.node_id,
+                            execution.get("scenario_id"),
+                            execution.get("status"),
+                        )
+                    except Exception:
+                        logger.exception(
+                            "[%s] Failed to publish simulation replay execution: scenario_id=%s",
+                            self.node_id,
+                            execution.get("scenario_id"),
+                        )
+
                 if directive_id:
                     self._processed_directive_ids.add(directive_id)
 

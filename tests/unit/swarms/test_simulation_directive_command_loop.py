@@ -67,20 +67,31 @@ def run_replay_directive(directive_id: str = "run-replay-1") -> dict:
 
 
 @pytest.mark.asyncio
-async def test_command_loop_once_consumes_run_replay_and_publishes_dry_run_result() -> None:
+async def test_command_loop_once_consumes_run_replay_and_publishes_dry_run_records() -> None:
     node = make_node(run_replay_directive())
 
     processed = await node._command_loop_once()
 
     assert processed == 1
-    assert node.crdt.published[0]["type"] == "swarm_directive_result"
-    assert node.crdt.published[0]["directive_id"] == "run-replay-1"
-    assert node.crdt.published[0]["status"] == "applied"
-    assert node.crdt.published[0]["payload"]["reason"] == "run_replay_dry_run_completed"
-    assert node.crdt.published[0]["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
-    assert node.crdt.published[0]["payload"]["dry_run"] is True
-    assert node.crdt.published[0]["payload"]["execution"]["type"] == "simulation_replay_execution"
-    assert node.crdt.published[0]["payload"]["execution"]["status"] == "completed"
+    assert len(node.crdt.published) == 2
+
+    execution = node.crdt.published[0]
+    result = node.crdt.published[1]
+
+    assert execution["type"] == "simulation_replay_execution"
+    assert execution["scenario_id"] == "replay-runtime-reduce-risk-1"
+    assert execution["directive_id"] == "run-replay-1"
+    assert execution["status"] == "completed"
+    assert execution["source"] == "simulation-test"
+
+    assert result["type"] == "swarm_directive_result"
+    assert result["directive_id"] == "run-replay-1"
+    assert result["status"] == "applied"
+    assert result["payload"]["reason"] == "run_replay_dry_run_completed"
+    assert result["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
+    assert result["payload"]["dry_run"] is True
+    assert result["payload"]["execution"]["type"] == "simulation_replay_execution"
+    assert result["payload"]["execution"]["status"] == "completed"
 
 
 @pytest.mark.asyncio
@@ -90,12 +101,16 @@ async def test_command_loop_once_rejects_run_replay_when_scenario_missing() -> N
     processed = await node._command_loop_once()
 
     assert processed == 1
-    assert node.crdt.published[0]["type"] == "swarm_directive_result"
-    assert node.crdt.published[0]["directive_id"] == "run-replay-1"
-    assert node.crdt.published[0]["status"] == "rejected"
-    assert node.crdt.published[0]["payload"]["reason"] == "run_replay_dry_run_failed"
-    assert node.crdt.published[0]["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
-    assert "not found" in node.crdt.published[0]["payload"]["error"]
+    assert len(node.crdt.published) == 1
+
+    result = node.crdt.published[0]
+
+    assert result["type"] == "swarm_directive_result"
+    assert result["directive_id"] == "run-replay-1"
+    assert result["status"] == "rejected"
+    assert result["payload"]["reason"] == "run_replay_dry_run_failed"
+    assert result["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
+    assert "not found" in result["payload"]["error"]
 
 
 @pytest.mark.asyncio

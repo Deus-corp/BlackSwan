@@ -382,6 +382,20 @@ python -m src.testing.seed_replay_scenario \
   --action REDUCE_RISK \
   --expected-result-status applied \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.seed_directive \
+  --action RUN_REPLAY \
+  --target simulation \
+  --target-type swarm \
+  --source overseer-seed \
+  --directive-id runtime-run-replay-cli-live-1 \
+  --payload-json '{"scenario_id":"replay-runtime-reduce-risk-1","dry_run":true}' \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+```bash
+grep -R "runtime-run-replay-cli-live-1\|run_replay_dry_run_completed" \
+  data/cluster_runtime/latest/logs \
+  | tail -120
 ```
 
 ---
