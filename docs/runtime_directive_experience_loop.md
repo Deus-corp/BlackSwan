@@ -241,6 +241,43 @@ memory heartbeat runtime_evidence metrics
   -> global brief
   -> proposed directive
 ```
+---
+
+## Replay advisory extension
+
+Verified runtime evidence can be converted into simulation replay scenarios.
+
+```text
+memory_record kind=runtime_evidence status=passed
+  -> simulation_replay_scenario status=pending
+  -> simulation heartbeat replay metrics
+  -> Overseer global brief opportunity
+  -> OBSERVE simulation proposed directive
+```
+
+The current replay loop is advisory-only. It does not execute replay scenarios automatically.
+
+Replay scenarios are published with:
+
+```bash
+python -m src.testing.publish_replay_scenarios \
+  --source simulation-replay-builder \
+  --directive-id runtime-reduce-risk-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+Simulation heartbeat reports:
+
+- simulation_replay_scenarios
+- simulation_replay_pending
+- simulation_replay_completed
+- simulation_replay_failed
+
+Overseer global brief can then recommend:
+```text
+OBSERVE target=simulation
+```
+Actual replay execution remains a future gated step.
 
 ---
 

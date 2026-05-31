@@ -58,6 +58,9 @@ The current runtime now supports explicit shared memory flow, recognition, resil
 - Overseer reads memory intelligence from canonical heartbeats and derives memory directives such as `observe`, `promote_gold`, `review_memory`, `reduce_risk`, and `restore_memory`.
 - Local CRDT runtime storage is hardened for multi-process devcontainer runs with conservative SQLite journaling, process locking, malformed storage detection, and fresh-run cleanup.
 - Runtime-level inter-swarm memory flow is validated with Memory + Simulation + Overseer.
+- Verified runtime evidence can be converted into `simulation_replay_scenario` records.
+- Simulation heartbeat reports replay queue metrics.
+- Overseer global briefs surface replay opportunities and propose safe `OBSERVE` directives.
 
 ### Latest Milestone — LLM-Friendly Briefs & Runtime Directive Lifecycle
 

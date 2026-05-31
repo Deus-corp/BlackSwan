@@ -422,8 +422,14 @@ BlackSwan = trading bot
 * [x] Runtime directive evidence publishing into CRDT.
 * [x] Evidence-to-memory bridge for controlled runtime experience records.
 * [x] Runtime directive experience loop documentation.
+* [x] Build simulation replay scenarios from runtime evidence memory records.
+* [x] Publish replay scenarios into CRDT through a controlled helper.
+* [x] Simulation heartbeat reports replay scenario metrics.
+* [x] Overseer global brief surfaces simulation replay opportunities.
+* [x] Overseer proposes safe `OBSERVE` directives for simulation replay queues.
 * [ ] Dashboard.
 * [ ] Better local cluster profiles.
+* [ ] Gated `RUN_REPLAY` directive under security validation and policy approval.
 
 ### Phase B — Advisory Intelligence
 

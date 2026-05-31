@@ -17,3 +17,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "src.testing.publish_directive_evidence" in text
     assert "src.testing.evidence_memory_bridge" in text
     assert "runtime-reduce-risk-1" in text
+    assert "simulation_replay_scenario" in text
+    assert "src.testing.publish_replay_scenarios" in text
+    assert "simulation_replay_pending" in text
+    assert "OBSERVE target=simulation" in text
+    assert "advisory-only" in text
