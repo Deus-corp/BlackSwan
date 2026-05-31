@@ -43,3 +43,41 @@ async def test_seed_directive_writes_safe_directive(tmp_path) -> None:
     assert directive["payload"]["dry_run"] is True
     assert directive["payload"]["execution_enabled"] is False
     assert "REDUCE_RISK" in SAFE_SEED_ACTIONS
+
+@pytest.mark.asyncio
+async def test_seed_directive_accepts_payload_json(tmp_path) -> None:
+    args = argparse.Namespace(
+        action="RUN_REPLAY",
+        target="simulation",
+        target_type=DirectiveTargetType.SWARM.value,
+        source="overseer-seed",
+        ttl_ms=120_000,
+        directive_id="run-replay-seed-test",
+        db_path=str(tmp_path / "crdt.db"),
+        payload_json='{"scenario_id":"replay-runtime-reduce-risk-1","dry_run":true}',
+    )
+
+    directive = await seed_directive(args)
+
+    assert directive["type"] == "swarm_directive"
+    assert directive["directive_id"] == "run-replay-seed-test"
+    assert directive["action"] == "RUN_REPLAY"
+    assert directive["target"] == "simulation"
+    assert directive["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
+    assert directive["payload"]["dry_run"] is True
+
+@pytest.mark.asyncio
+async def test_seed_directive_rejects_invalid_payload_json(tmp_path) -> None:
+    args = argparse.Namespace(
+        action="RUN_REPLAY",
+        target="simulation",
+        target_type=DirectiveTargetType.SWARM.value,
+        source="overseer-seed",
+        ttl_ms=120_000,
+        directive_id="run-replay-bad-json",
+        db_path=str(tmp_path / "crdt.db"),
+        payload_json="{bad-json",
+    )
+
+    with pytest.raises(ValueError, match="payload-json"):
+        await seed_directive(args)

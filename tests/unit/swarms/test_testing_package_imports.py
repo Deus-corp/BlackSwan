@@ -29,3 +29,9 @@ def test_publish_replay_scenarios_import_does_not_load_runtime_smoke() -> None:
 
     assert callable(publish_replay_scenarios)
     assert "src.testing.swarm_runtime_smoke" not in sys.modules
+
+def test_seed_directive_import_still_lightweight() -> None:
+    from src.testing.seed_directive import SAFE_SEED_ACTIONS
+
+    assert "RUN_REPLAY" in SAFE_SEED_ACTIONS
+    assert "src.testing.swarm_runtime_smoke" not in sys.modules

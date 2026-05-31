@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import json
 from typing import Any
 
 from swarm_config import config
@@ -28,6 +29,7 @@ SAFE_SEED_ACTIONS = {
     "REDUCE_RISK",
     "SET_DRY_RUN",
     "PROMOTE_GOLD_CANDIDATES",
+    "RUN_REPLAY",
 }
 
 
@@ -45,6 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ttl-ms", type=int, default=300_000, help="Directive TTL in milliseconds.")
     parser.add_argument("--directive-id", default="", help="Optional deterministic directive id.")
     parser.add_argument("--db-path", default="", help="Override CRDT DB path.")
+    parser.add_argument(
+        "--payload-json",
+        default="",
+        help="Optional JSON object payload to merge into the generated directive payload.",
+    )
     return parser
 
 
@@ -57,14 +64,8 @@ async def seed_directive(args: argparse.Namespace) -> dict[str, Any]:
         "seeded": True,
         "runtime_check": True,
     }
-
-    if action in {"REDUCE_RISK", "SET_DRY_RUN"}:
-        payload.update(
-            {
-                "dry_run": True,
-                "execution_enabled": False,
-            }
-        )
+    payload.update(_default_payload_for_action(action))
+    payload.update(_parse_payload_json(getattr(args, "payload_json", "")))
 
     directive = build_directive(
         directive_id=str(args.directive_id or "") or None,
@@ -93,6 +94,36 @@ async def seed_directive(args: argparse.Namespace) -> dict[str, Any]:
                 await result
 
     return directive.to_dict()
+
+
+def _parse_payload_json(value: str) -> dict[str, Any]:
+    clean = str(value or "").strip()
+    if not clean:
+        return {}
+
+    try:
+        parsed = json.loads(clean)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"--payload-json must be valid JSON: {exc}") from exc
+
+    if not isinstance(parsed, dict):
+        raise ValueError("--payload-json must decode to a JSON object")
+
+    return parsed
+
+
+def _default_payload_for_action(action: str) -> dict[str, Any]:
+    normalized = str(action or "").strip().upper()
+
+    if normalized == "RUN_REPLAY":
+        return {
+            "dry_run": True,
+        }
+
+    return {
+        "dry_run": True,
+        "execution_enabled": False,
+    }
 
 
 async def async_main() -> None:
