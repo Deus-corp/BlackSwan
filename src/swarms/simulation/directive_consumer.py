@@ -10,6 +10,7 @@ import time
 from typing import Any, Mapping
 
 from src.swarms.common.protocols.directives import build_directive_result
+from src.swarms.simulation.replay_executor import execute_replay_dry_run_from_records
 
 
 def directive_applies_to_simulation(directive: Mapping[str, Any]) -> bool:
@@ -64,12 +65,37 @@ async def apply_simulation_directive(node: Any, directive: Mapping[str, Any]) ->
                 reason="run_replay_requires_dry_run",
             )
 
+        try:
+            state = getattr(getattr(node, "crdt", None), "state", {}) or {}
+            records = list(state.values()) if isinstance(state, dict) else []
+            execution = execute_replay_dry_run_from_records(
+                records=records,
+                directive=directive,
+                source=str(getattr(node, "node_id", "simulation")),
+            )
+        except Exception as exc:
+            return _result(
+                node=node,
+                directive=directive,
+                status="rejected",
+                reason="run_replay_dry_run_failed",
+                extra={
+                    "scenario_id": scenario_id,
+                    "dry_run": True,
+                    "error": str(exc),
+                },
+            )
+
         return _result(
             node=node,
             directive=directive,
-            status="rejected",
-            reason="run_replay_execution_not_implemented",
-            extra={"scenario_id": scenario_id, "dry_run": True},
+            status="applied",
+            reason="run_replay_dry_run_completed",
+            extra={
+                "scenario_id": scenario_id,
+                "dry_run": True,
+                "execution": execution,
+            },
         )
 
     return _result(

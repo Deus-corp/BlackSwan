@@ -6,9 +6,24 @@ from src.swarms.common.protocols.directives import build_directive
 from src.swarms.simulation.node import SimulationSwarmNode
 
 
+def replay_scenario() -> dict:
+    return {
+        "type": "simulation_replay_scenario",
+        "scenario_id": "replay-runtime-reduce-risk-1",
+        "status": "pending",
+        "replay_kind": "runtime_evidence",
+        "directive_id": "runtime-reduce-risk-1",
+        "action": "REDUCE_RISK",
+        "expected_result_status": "applied",
+        "payload": {},
+    }
+
+
 class DummyCRDT:
-    def __init__(self, directive: dict) -> None:
+    def __init__(self, directive: dict, *, include_scenario: bool = True) -> None:
         self.state = {"directive": directive}
+        if include_scenario:
+            self.state["scenario"] = replay_scenario()
         self.published = []
 
     def refresh_from_storage(self) -> int:
@@ -18,14 +33,18 @@ class DummyCRDT:
         self.published.append(payload)
 
 
-def make_node(directive: dict) -> SimulationSwarmNode:
+def make_node(
+    directive: dict,
+    *,
+    include_scenario: bool = True,
+) -> SimulationSwarmNode:
     try:
         node = SimulationSwarmNode(node_id="simulation-test")
     except TypeError:
         node = SimulationSwarmNode()
         node.node_id = "simulation-test"
 
-    node.crdt = DummyCRDT(directive)
+    node.crdt = DummyCRDT(directive, include_scenario=include_scenario)
     if not hasattr(node, "shutdown_event"):
         node.shutdown_event = asyncio.Event()
     if not hasattr(node, "_processed_directive_ids"):
@@ -33,10 +52,9 @@ def make_node(directive: dict) -> SimulationSwarmNode:
     return node
 
 
-@pytest.mark.asyncio
-async def test_command_loop_once_consumes_run_replay_and_publishes_rejection() -> None:
-    directive = build_directive(
-        directive_id="run-replay-1",
+def run_replay_directive(directive_id: str = "run-replay-1") -> dict:
+    return build_directive(
+        directive_id=directive_id,
         action="RUN_REPLAY",
         source="overseer",
         target_type="swarm",
@@ -47,7 +65,27 @@ async def test_command_loop_once_consumes_run_replay_and_publishes_rejection() -
         },
     ).to_dict()
 
-    node = make_node(directive)
+
+@pytest.mark.asyncio
+async def test_command_loop_once_consumes_run_replay_and_publishes_dry_run_result() -> None:
+    node = make_node(run_replay_directive())
+
+    processed = await node._command_loop_once()
+
+    assert processed == 1
+    assert node.crdt.published[0]["type"] == "swarm_directive_result"
+    assert node.crdt.published[0]["directive_id"] == "run-replay-1"
+    assert node.crdt.published[0]["status"] == "applied"
+    assert node.crdt.published[0]["payload"]["reason"] == "run_replay_dry_run_completed"
+    assert node.crdt.published[0]["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
+    assert node.crdt.published[0]["payload"]["dry_run"] is True
+    assert node.crdt.published[0]["payload"]["execution"]["type"] == "simulation_replay_execution"
+    assert node.crdt.published[0]["payload"]["execution"]["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_command_loop_once_rejects_run_replay_when_scenario_missing() -> None:
+    node = make_node(run_replay_directive(), include_scenario=False)
 
     processed = await node._command_loop_once()
 
@@ -55,23 +93,14 @@ async def test_command_loop_once_consumes_run_replay_and_publishes_rejection() -
     assert node.crdt.published[0]["type"] == "swarm_directive_result"
     assert node.crdt.published[0]["directive_id"] == "run-replay-1"
     assert node.crdt.published[0]["status"] == "rejected"
-    assert node.crdt.published[0]["payload"]["reason"] == "run_replay_execution_not_implemented"
+    assert node.crdt.published[0]["payload"]["reason"] == "run_replay_dry_run_failed"
+    assert node.crdt.published[0]["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
+    assert "not found" in node.crdt.published[0]["payload"]["error"]
 
 
 @pytest.mark.asyncio
 async def test_command_loop_once_skips_already_processed_directive() -> None:
-    directive = build_directive(
-        directive_id="run-replay-processed",
-        action="RUN_REPLAY",
-        source="overseer",
-        target_type="swarm",
-        target="simulation",
-        payload={
-            "scenario_id": "replay-runtime-reduce-risk-1",
-            "dry_run": True,
-        },
-    ).to_dict()
-
+    directive = run_replay_directive("run-replay-processed")
     node = make_node(directive)
     node._processed_directive_ids.add("run-replay-processed")
 

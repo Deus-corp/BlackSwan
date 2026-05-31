@@ -6,9 +6,27 @@ from src.swarms.simulation.directive_consumer import (
     directive_applies_to_simulation,
 )
 
-
 class DummyNode:
     node_id = "simulation-test"
+
+
+class DummyCRDT:
+    state = {
+        "scenario": {
+            "type": "simulation_replay_scenario",
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "status": "pending",
+            "replay_kind": "runtime_evidence",
+            "action": "REDUCE_RISK",
+            "expected_result_status": "applied",
+            "payload": {},
+        }
+    }
+
+
+class DummyNodeWithScenario:
+    node_id = "simulation-test"
+    crdt = DummyCRDT()
 
 
 def test_directive_applies_to_simulation_swarm_target() -> None:
@@ -56,7 +74,7 @@ async def test_apply_simulation_observe_directive_acknowledges() -> None:
 
 
 @pytest.mark.asyncio
-async def test_apply_simulation_run_replay_rejects_until_implemented() -> None:
+async def test_apply_simulation_run_replay_rejects_when_scenario_missing() -> None:
     directive = build_directive(
         directive_id="run-replay-1",
         action="RUN_REPLAY",
@@ -72,9 +90,8 @@ async def test_apply_simulation_run_replay_rejects_until_implemented() -> None:
     result = await apply_simulation_directive(DummyNode(), directive)
 
     assert result["status"] == "rejected"
-    assert result["payload"]["reason"] == "run_replay_execution_not_implemented"
+    assert result["payload"]["reason"] == "run_replay_dry_run_failed"
     assert result["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
-    assert result["payload"]["dry_run"] is True
 
 
 @pytest.mark.asyncio
@@ -129,3 +146,24 @@ async def test_apply_simulation_unsupported_directive_is_ignored() -> None:
 
     assert result["status"] == "ignored"
     assert result["payload"]["reason"] == "unsupported_simulation_directive"
+
+@pytest.mark.asyncio
+async def test_apply_simulation_run_replay_dry_run_completes_when_scenario_exists() -> None:
+    directive = build_directive(
+        directive_id="run-replay-1",
+        action="RUN_REPLAY",
+        source="overseer",
+        target_type="swarm",
+        target="simulation",
+        payload={
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "dry_run": True,
+        },
+    ).to_dict()
+
+    result = await apply_simulation_directive(DummyNodeWithScenario(), directive)
+
+    assert result["status"] == "applied"
+    assert result["payload"]["reason"] == "run_replay_dry_run_completed"
+    assert result["payload"]["execution"]["type"] == "simulation_replay_execution"
+    assert result["payload"]["execution"]["status"] == "completed"

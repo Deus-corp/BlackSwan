@@ -355,6 +355,15 @@ src/swarms/trade/node_core/crdt_refresh.py
 
 ---
 
+RUN_REPLAY currently executes a dry-run replay skeleton:
+- loads simulation_replay_scenario by scenario_id
+- validates dry_run=True
+- returns simulation_replay_execution receipt
+- no live/external side effects
+
+---
+
+
 ## Next steps
 
 Planned follow-up work:
