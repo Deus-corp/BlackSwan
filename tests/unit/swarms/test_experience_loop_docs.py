@@ -27,3 +27,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "src.testing.seed_directive" in text
     assert "--payload-json" in text
     assert '"dry_run":true' in text or "dry_run=true" in text
+    assert "src.testing.seed_replay_scenario" in text
+    assert "--scenario-id" in text

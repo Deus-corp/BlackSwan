@@ -374,6 +374,16 @@ python -m src.swarms.runtime.cluster_cli up \
   --simulation-heartbeat-interval 5
 ```
 
+CLI:
+
+```bash
+python -m src.testing.seed_replay_scenario \
+  --scenario-id replay-runtime-reduce-risk-1 \
+  --action REDUCE_RISK \
+  --expected-result-status applied \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
 ---
 
 ## Next steps

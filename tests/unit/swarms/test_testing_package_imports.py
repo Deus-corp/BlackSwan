@@ -35,3 +35,9 @@ def test_seed_directive_import_still_lightweight() -> None:
 
     assert "RUN_REPLAY" in SAFE_SEED_ACTIONS
     assert "src.testing.swarm_runtime_smoke" not in sys.modules
+
+def test_seed_replay_scenario_import_does_not_load_runtime_smoke() -> None:
+    from src.testing.seed_replay_scenario import SAFE_REPLAY_ACTIONS
+
+    assert "REDUCE_RISK" in SAFE_REPLAY_ACTIONS
+    assert "src.testing.swarm_runtime_smoke" not in sys.modules
