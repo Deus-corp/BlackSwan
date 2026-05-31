@@ -23,3 +23,9 @@ def test_evidence_memory_bridge_import_does_not_load_runtime_smoke() -> None:
 
     assert callable(build_memory_record_from_evidence)
     assert "src.testing.swarm_runtime_smoke" not in sys.modules
+
+def test_publish_replay_scenarios_import_does_not_load_runtime_smoke() -> None:
+    from src.testing.publish_replay_scenarios import publish_replay_scenarios
+
+    assert callable(publish_replay_scenarios)
+    assert "src.testing.swarm_runtime_smoke" not in sys.modules
