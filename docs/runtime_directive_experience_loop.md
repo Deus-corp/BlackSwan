@@ -363,6 +363,18 @@ RUN_REPLAY currently executes a dry-run replay skeleton:
 
 ---
 
+```bash
+rm -f data/cluster_runtime/latest/ledgers/swarm_crdt.local.db*
+rm -f data/cluster_runtime/latest/ledgers/events.local.db*
+
+python -m src.swarms.runtime.cluster_cli up \
+  --duration 0 \
+  --no-strict \
+  --simulation-nodes 1 \
+  --simulation-heartbeat-interval 5
+```
+
+---
 
 ## Next steps
 
