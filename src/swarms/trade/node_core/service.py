@@ -123,6 +123,7 @@ from src.swarms.trade.node_core.web3_executor import (
 )
 from src.swarms.trade.node_core.directive_consumer import apply_trade_directive
 from src.swarms.trade.node_core.crdt_refresh import refresh_crdt_state
+from src.swarms.common.protocols.directives import directive_targets_swarm
 
 logger = logging.getLogger("SwarmNode")
 trade_logger = logging.getLogger("SwarmNode.Trade")
@@ -707,6 +708,18 @@ class SwarmNode:
                         continue
 
                     if record_type == "swarm_directive":
+                        try:
+                            if not directive_targets_swarm(value, swarm="trade"):
+                                continue
+                        except Exception:
+                            logger.debug(
+                                "[%s] Skipping malformed directive target check: %r",
+                                self.node_id,
+                                value,
+                                exc_info=True,
+                            )
+                            continue
+
                         directive_id = str(value.get("directive_id") or "")
                         if directive_id and directive_id in self._processed_directive_ids:
                             continue

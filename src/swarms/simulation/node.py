@@ -14,12 +14,13 @@ import logging
 import os
 import signal
 import uuid
-from typing import Optional
+from typing import Optional, Mapping
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.swarms.simulation.heartbeat import build_simulation_heartbeat
 from src.memory.publisher import publish_memory_record
 from src.swarms.simulation.replay_metrics import build_simulation_replay_heartbeat_metrics
+from src.swarms.simulation.directive_consumer import apply_simulation_directive
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,9 @@ class SimulationSwarmNode:
         self.scenarios_run = 0
         self.memory_records_published = 0
         self.last_error = ""
+
+        self._processed_directive_ids: set[str] = set()
+        self.shutdown_event = asyncio.Event()
 
         logger.info(
             "SimulationSwarmNode initialized node_id=%s heartbeat_interval=%.1fs",
@@ -109,7 +113,7 @@ class SimulationSwarmNode:
         logger.info("SimulationSwarmNode %s starting.", self.node_id)
 
         self._install_signal_handlers()
-        
+        await self._command_loop()
         await self.publish_memory_event("simulation swarm node started", topic="lifecycle")
         await self.publish_heartbeat()
 
@@ -184,6 +188,57 @@ class SimulationSwarmNode:
             self.memory_records_published,
         )
         return record_id
+    
+    async def _command_loop_once(self) -> int:
+        """Consume one batch of simulation directives from CRDT."""
+        processed = 0
+
+        try:
+            refresh = getattr(self.crdt, "refresh_from_storage", None)
+            if callable(refresh):
+                refresh()
+
+            state = getattr(self.crdt, "state", {}) or {}
+            values = list(state.values()) if isinstance(state, dict) else []
+
+            for value in values:
+                if not isinstance(value, Mapping):
+                    continue
+                if str(value.get("type") or "") != "swarm_directive":
+                    continue
+
+                directive_id = str(value.get("directive_id") or "").strip()
+                if directive_id and directive_id in self._processed_directive_ids:
+                    continue
+
+                result = await apply_simulation_directive(self, value)
+
+                if directive_id:
+                    self._processed_directive_ids.add(directive_id)
+
+                await self.crdt.add_genome(result)
+                processed += 1
+
+                logger.info(
+                    "[%s] Published simulation directive result: directive_id=%s status=%s reason=%s",
+                    self.node_id,
+                    result.get("directive_id"),
+                    result.get("status"),
+                    result.get("payload", {}).get("reason"),
+                )
+
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("[%s] simulation command loop batch failed", self.node_id)
+
+        return processed
+    
+    async def _command_loop(self) -> None:
+        """Continuously consume simulation directives."""
+        while not self.shutdown_event.is_set():
+            await self._command_loop_once()
+            await asyncio.sleep(1.0)
 
 
 async def main() -> None:

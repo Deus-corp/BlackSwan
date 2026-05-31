@@ -62,6 +62,7 @@ async def test_command_loop_consumes_swarm_directive_and_publishes_result() -> N
     assert node.crdt.published[0]["directive_id"] == "dir-loop-1"
     assert node.crdt.published[0]["status"] == DirectiveStatus.APPLIED.value
 
+
 @pytest.mark.asyncio
 async def test_command_loop_skips_already_processed_directive(monkeypatch) -> None:
     from src.swarms.trade.node_core.service import SwarmNode
@@ -85,3 +86,32 @@ async def test_command_loop_skips_already_processed_directive(monkeypatch) -> No
     await SwarmNode._command_loop_impl(node)
 
     assert node.crdt.published == []
+
+
+@pytest.mark.asyncio
+async def test_command_loop_skips_directive_targeted_to_other_swarm(monkeypatch) -> None:
+    from src.swarms.trade.node_core.service import SwarmNode
+
+    directive = build_directive(
+        directive_id="dir-simulation-only",
+        action="RUN_REPLAY",
+        source="overseer",
+        target_type="swarm",
+        target="simulation",
+        payload={
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "dry_run": True,
+        },
+    ).to_dict()
+
+    node = DummyNode(directive)
+
+    async def fake_sleep(_seconds: float) -> None:
+        node.shutdown_event.set()
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    await SwarmNode._command_loop_impl(node)
+
+    assert node.crdt.published == []
+    assert "dir-simulation-only" not in node._processed_directive_ids
