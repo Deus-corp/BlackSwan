@@ -427,6 +427,10 @@ BlackSwan = trading bot
 * [x] Simulation heartbeat reports replay scenario metrics.
 * [x] Overseer global brief surfaces simulation replay opportunities.
 * [x] Overseer proposes safe `OBSERVE` directives for simulation replay queues.
+* [x] Add gated `RUN_REPLAY` directive validation.
+* [x] Simulation consumes `RUN_REPLAY` and publishes an explicit rejected result until execution exists.
+* [x] `seed_directive` supports JSON payloads for controlled runtime checks.
+* [ ] Implement dry-run replay executor for `simulation_replay_scenario`.
 * [ ] Dashboard.
 * [ ] Better local cluster profiles.
 * [ ] Gated `RUN_REPLAY` directive under security validation and policy approval.

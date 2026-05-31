@@ -42,6 +42,12 @@ Validated in the current architecture:
 - ✅ Secure gossip and signed exchange components.
 - ✅ Local runtime launcher supports trade, memory, simulation, security, explorer, and overseer services.
 - ✅ Simulation and evolution experiments remain runnable through compatibility wrappers.
+- Local CRDT runtime storage is hardened for multi-process devcontainer runs with conservative SQLite journaling, process locking, malformed storage detection, and fresh-run cleanup.
+- Runtime-level inter-swarm memory flow is validated with Memory + Simulation + Overseer.
+- Verified runtime evidence can be converted into `simulation_replay_scenario` records.
+- Simulation heartbeat reports replay queue metrics.
+- Overseer global briefs surface replay opportunities and propose safe `OBSERVE` directives.
+- `RUN_REPLAY` is available as a gated directive: security validates it, simulation consumes it, and execution is rejected until a dry-run executor is implemented.
 
 ### Latest Milestone — Memory Intelligence & Resilience
 
@@ -56,11 +62,6 @@ The current runtime now supports explicit shared memory flow, recognition, resil
 - Memory heartbeat reports real memory metrics: total records, accepted shared records, rejected records, skipped records, verified records, record distribution by scope/kind, recognition counts, gold candidates, and resilience status.
 - Memory resilience models local, own, shared, and global memory layers with fallback/recovery signals.
 - Overseer reads memory intelligence from canonical heartbeats and derives memory directives such as `observe`, `promote_gold`, `review_memory`, `reduce_risk`, and `restore_memory`.
-- Local CRDT runtime storage is hardened for multi-process devcontainer runs with conservative SQLite journaling, process locking, malformed storage detection, and fresh-run cleanup.
-- Runtime-level inter-swarm memory flow is validated with Memory + Simulation + Overseer.
-- Verified runtime evidence can be converted into `simulation_replay_scenario` records.
-- Simulation heartbeat reports replay queue metrics.
-- Overseer global briefs surface replay opportunities and propose safe `OBSERVE` directives.
 
 ### Latest Milestone — LLM-Friendly Briefs & Runtime Directive Lifecycle
 

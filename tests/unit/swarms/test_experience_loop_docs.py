@@ -22,3 +22,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "simulation_replay_pending" in text
     assert "OBSERVE target=simulation" in text
     assert "advisory-only" in text
+    assert "RUN_REPLAY" in text
+    assert "run_replay_execution_not_implemented" in text
+    assert "src.testing.seed_directive" in text
+    assert "--payload-json" in text
+    assert '"dry_run":true' in text or "dry_run=true" in text

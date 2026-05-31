@@ -281,6 +281,49 @@ Actual replay execution remains a future gated step.
 
 ---
 
+## Gated replay directive
+
+`RUN_REPLAY` is recognized as a gated directive action.
+
+Current behavior:
+
+```text
+swarm_directive action=RUN_REPLAY target=simulation
+  -> security validation requires:
+     - target=simulation
+     - payload.scenario_id
+     - payload.dry_run=true
+  -> simulation consumes directive
+  -> simulation publishes swarm_directive_result status=rejected
+     reason=run_replay_execution_not_implemented
+```
+
+This intentionally does not execute replay scenarios yet.
+
+Manual runtime check:
+
+```bash
+python -m src.testing.seed_directive \
+  --action RUN_REPLAY \
+  --target simulation \
+  --target-type swarm \
+  --source overseer-seed \
+  --directive-id runtime-run-replay-json-1 \
+  --payload-json '{"scenario_id":"replay-runtime-reduce-risk-1","dry_run":true}' \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+Expected result:
+
+```text
+swarm_directive RUN_REPLAY issued overseer-seed
+swarm_directive_result rejected simulation reason=run_replay_execution_not_implemented
+```
+
+RUN_REPLAY execution is reserved for a future dry-run replay executor.
+
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:
