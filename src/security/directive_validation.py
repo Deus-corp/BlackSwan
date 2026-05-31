@@ -11,6 +11,7 @@ SAFE_DIRECTIVE_ACTIONS = {
     "REDUCE_RISK",
     "SET_DRY_RUN",
     "PROMOTE_GOLD_CANDIDATES",
+    "RUN_REPLAY",
 }
 
 ALLOWED_TARGET_SWARMS = {
@@ -124,6 +125,18 @@ def validate_swarm_directive(record: Mapping[str, Any]) -> ValidationResult:
     if action in {"REDUCE_RISK", "SET_DRY_RUN"}:
         if bool(payload.get("execution_enabled")) is True:
             reasons.append("safe_action_attempts_live_execution")
+
+    if action == "RUN_REPLAY":
+        if target not in {"simulation"}:
+            reasons.append("run_replay_requires_simulation_target")
+
+        scenario_id = str(payload.get("scenario_id") or "").strip()
+        dry_run = bool(payload.get("dry_run", True))
+
+        if not scenario_id:
+            reasons.append("run_replay_missing_scenario_id")
+        if dry_run is not True:
+            reasons.append("run_replay_requires_dry_run")
 
     valid = not reasons
     return ValidationResult(

@@ -227,3 +227,22 @@ def test_normalizers_fallback_to_safe_defaults() -> None:
     assert normalize_status("bad") == DirectiveStatus.ISSUED.value
     assert normalize_severity("bad") == DirectiveSeverity.INFO.value
     assert normalize_target_type("bad") == DirectiveTargetType.GLOBAL.value
+
+
+def test_build_directive_supports_run_replay_action_payload() -> None:
+    directive = build_directive(
+        directive_id="run-replay-1",
+        action="RUN_REPLAY",
+        source="overseer",
+        target_type="swarm",
+        target="simulation",
+        payload={
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "dry_run": True,
+        },
+    )
+
+    assert directive.action == "RUN_REPLAY"
+    assert directive.target == "simulation"
+    assert directive.payload["scenario_id"] == "replay-runtime-reduce-risk-1"
+    assert directive.payload["dry_run"] is True

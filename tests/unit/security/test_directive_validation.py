@@ -138,3 +138,62 @@ def test_validate_runtime_record_rejects_unsupported_type() -> None:
     assert result.valid is False
     assert result.severity == "warning"
     assert "unsupported_record_type" in result.reasons
+
+
+def test_validate_run_replay_directive_requires_simulation_dry_run_and_scenario_id() -> None:
+    result = validate_swarm_directive(
+        {
+            "type": "swarm_directive",
+            "directive_id": "run-replay-1",
+            "action": "RUN_REPLAY",
+            "source": "overseer",
+            "target_type": "swarm",
+            "target": "simulation",
+            "payload": {
+                "scenario_id": "replay-runtime-reduce-risk-1",
+                "dry_run": True,
+            },
+        }
+    )
+
+    assert result.valid is True
+
+
+def test_validate_run_replay_directive_rejects_non_dry_run() -> None:
+    result = validate_swarm_directive(
+        {
+            "type": "swarm_directive",
+            "directive_id": "run-replay-unsafe",
+            "action": "RUN_REPLAY",
+            "source": "overseer",
+            "target_type": "swarm",
+            "target": "simulation",
+            "payload": {
+                "scenario_id": "replay-runtime-reduce-risk-1",
+                "dry_run": False,
+            },
+        }
+    )
+
+    assert result.valid is False
+    assert "run_replay_requires_dry_run" in result.reasons
+
+
+def test_validate_run_replay_directive_rejects_wrong_target() -> None:
+    result = validate_swarm_directive(
+        {
+            "type": "swarm_directive",
+            "directive_id": "run-replay-wrong-target",
+            "action": "RUN_REPLAY",
+            "source": "overseer",
+            "target_type": "swarm",
+            "target": "trade",
+            "payload": {
+                "scenario_id": "replay-runtime-reduce-risk-1",
+                "dry_run": True,
+            },
+        }
+    )
+
+    assert result.valid is False
+    assert "run_replay_requires_simulation_target" in result.reasons
