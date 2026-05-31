@@ -117,6 +117,38 @@ def build_directives_from_brief(
             )
             continue
 
+        if recommendation == "review_security_validation_failures":
+            security_validation_critical_records = _safe_int(
+                payload.get("security_validation_critical_records"),
+                0,
+            )
+            security_validation_invalid_records = _safe_int(
+                payload.get("security_validation_invalid_records"),
+                0,
+            )
+            if security_validation_critical_records <= 0 and security_validation_invalid_records <= 0:
+                continue
+
+            directives.append(
+                build_directive(
+                    action="OBSERVE",
+                    target=payload.get("target_swarm") or "security",
+                    target_type=DirectiveTargetType.SWARM.value,
+                    source=source,
+                    payload={
+                        "brief_id": normalized.brief_id,
+                        "reason": "security_validation_failures_detected",
+                        "security_validation_critical_records": security_validation_critical_records,
+                        "security_validation_invalid_records": security_validation_invalid_records,
+                        "reason_item": dict(item),
+                    },
+                    reason="Global brief recommends observing security validation failures.",
+                    severity=DirectiveSeverity.WARNING.value,
+                    ttl_ms=120_000,
+                )
+            )
+            continue
+
     return directives
 
 def _safe_int(value: Any, default: int = 0) -> int:

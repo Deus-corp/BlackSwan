@@ -131,3 +131,38 @@ def test_build_directives_from_brief_emits_runtime_evidence_alert_observe() -> N
     assert directive.payload["runtime_evidence_alert_candidates"] == 1
     assert directive.payload["brief_id"] == brief.brief_id
     assert "reason_item" in directive.payload
+
+def test_build_directives_from_brief_emits_security_validation_observe() -> None:
+    from src.swarms.common.protocols.briefs import build_swarm_brief
+
+    brief = build_swarm_brief(
+        scope="global",
+        status="critical",
+        swarm="overseer",
+        summary="Security validation failure.",
+        recommended_actions=[
+            {
+                "title": "Review security validation failures",
+                "payload": {
+                    "recommendation": "review_security_validation_failures",
+                    "target_swarm": "security",
+                    "security_validation_critical_records": 1,
+                    "security_validation_invalid_records": 2,
+                },
+            }
+        ],
+    )
+
+    directives = build_directives_from_brief(brief, source="overseer-1")
+
+    assert len(directives) == 1
+    directive = directives[0]
+    assert directive.action == "OBSERVE"
+    assert directive.target == "security"
+    assert directive.target_type == "swarm"
+    assert directive.source == "overseer-1"
+    assert directive.payload["brief_id"] == brief.brief_id
+    assert directive.payload["reason"] == "security_validation_failures_detected"
+    assert directive.payload["security_validation_critical_records"] == 1
+    assert directive.payload["security_validation_invalid_records"] == 2
+    assert "reason_item" in directive.payload
