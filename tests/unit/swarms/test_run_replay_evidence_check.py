@@ -2,6 +2,7 @@ import argparse
 
 import pytest
 
+from src.core.crdt_adapter import CRDTAdapter
 from src.testing.run_replay_evidence_check import _build_checks, run_replay_evidence_check
 
 
@@ -38,6 +39,8 @@ def test_build_checks_passes_for_complete_chain() -> None:
 
 @pytest.mark.asyncio
 async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+
     result = await run_replay_evidence_check(
         argparse.Namespace(
             scenario_id="replay-test-missing-execution",
@@ -47,7 +50,7 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
             expected_result_status="applied",
             wait_seconds=0.01,
             poll_interval=0.01,
-            db_path=str(tmp_path / "crdt.db"),
+            db_path=db_path,
         )
     )
 
@@ -55,7 +58,37 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
     assert result["scenario"]["type"] == "simulation_replay_scenario"
     assert result["directive"]["type"] == "swarm_directive"
     assert result["execution"] is None
+
     assert any(
         check["name"] == "execution_published" and check["status"] == "failed"
         for check in result["checks"]
     )
+
+    assert result["result_record"]["type"] == "replay_evidence_lifecycle_result"
+    assert result["result_record"]["status"] == "failed"
+    assert result["result_record"]["payload"]["evidence_count"] == 0
+    assert result["result_record"]["payload"]["memory_record_count"] == 0
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    try:
+        refresh = getattr(reader, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
+
+        state = getattr(reader, "state", {}) or {}
+        results = [
+            item
+            for item in state.values()
+            if isinstance(item, dict)
+            and item.get("type") == "replay_evidence_lifecycle_result"
+            and item.get("directive_id") == "runtime-run-replay-missing-execution"
+        ]
+    finally:
+        close = getattr(reader, "close", None)
+        if callable(close):
+            close()
+
+    assert len(results) == 1
+    assert results[0]["status"] == "failed"
+    assert results[0]["payload"]["evidence_count"] == 0
+    assert results[0]["payload"]["memory_record_count"] == 0

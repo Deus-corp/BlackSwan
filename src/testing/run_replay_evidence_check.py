@@ -129,6 +129,29 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
 
     status = "passed" if all(item["status"] == "passed" for item in checks) else "failed"
 
+    result_record = {
+        "type": "replay_evidence_lifecycle_result",
+        "scenario_id": scenario_id,
+        "directive_id": directive_id,
+        "status": status,
+        "source": str(args.source or "replay-evidence-check"),
+        "checks": checks,
+        "payload": {
+            "scenario_id": scenario_id,
+            "directive_id": directive_id,
+            "execution_id": execution.get("execution_id") if isinstance(execution, dict) else None,
+            "evidence_count": len(evidence_records),
+            "memory_record_count": len(memory_records),
+        },
+        "created_at": time.time(),
+    }
+
+    await _publish_result_record(
+        db_path=db_path,
+        source=str(args.source or "replay-evidence-check"),
+        result_record=result_record,
+    )
+
     return {
         "status": status,
         "scenario_id": scenario_id,
@@ -139,6 +162,7 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
         "evidence_records": evidence_records,
         "memory_records": memory_records,
         "checks": checks,
+        "result_record": result_record,
     }
 
 
@@ -246,6 +270,22 @@ async def async_main() -> None:
             check["status"],
             check.get("value"),
         )
+
+async def _publish_result_record(
+    *,
+    db_path: str,
+    source: str,
+    result_record: dict[str, Any],
+) -> None:
+    crdt = CRDTAdapter(node_id=source, db_path=db_path)
+    try:
+        await crdt.add_genome(result_record)
+    finally:
+        close = getattr(crdt, "close", None)
+        if callable(close):
+            result = close()
+            if asyncio.iscoroutine(result):
+                await result
 
 
 def main() -> None:
