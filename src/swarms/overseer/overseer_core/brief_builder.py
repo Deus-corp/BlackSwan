@@ -99,6 +99,18 @@ def build_global_swarm_brief(
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
     simulation_replay_failed = _safe_int(simulation_replay.get("simulation_replay_failed"), 0)
+    simulation_replay_executions = _safe_int(
+        simulation_replay.get("simulation_replay_executions"),
+        0,
+    )
+    simulation_replay_execution_completed = _safe_int(
+        simulation_replay.get("simulation_replay_execution_completed"),
+        0,
+    )
+    simulation_replay_execution_failed = _safe_int(
+        simulation_replay.get("simulation_replay_execution_failed"),
+        0,
+    )
 
     if gold_candidates > 0:
         opportunities.append(
@@ -293,6 +305,40 @@ def build_global_swarm_brief(
                 },
             )
         )
+    
+    if simulation_replay_execution_completed > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Simulation replay dry-runs completed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Simulation reports {simulation_replay_execution_completed} "
+                    "completed replay dry-run execution(s)."
+                ),
+                payload={
+                    "simulation_replay_executions": simulation_replay_executions,
+                    "simulation_replay_execution_completed": simulation_replay_execution_completed,
+                    "recommendation": "review_simulation_replay_executions",
+                },
+            )
+        )
+
+    if simulation_replay_execution_failed > 0:
+        risks.append(
+            build_brief_item(
+                title="Simulation replay dry-run failures detected",
+                severity=BriefSeverity.WARNING.value,
+                detail=(
+                    f"Simulation reports {simulation_replay_execution_failed} "
+                    "failed replay dry-run execution(s)."
+                ),
+                payload={
+                    "simulation_replay_executions": simulation_replay_executions,
+                    "simulation_replay_execution_failed": simulation_replay_execution_failed,
+                    "recommendation": "review_simulation_replay_failures",
+                },
+            )
+        )
 
     status = _global_status(
         degraded_swarms=degraded_swarms,
@@ -326,6 +372,9 @@ def build_global_swarm_brief(
         "simulation_replay_pending": simulation_replay_pending,
         "simulation_replay_completed": simulation_replay_completed,
         "simulation_replay_failed": simulation_replay_failed,
+        "simulation_replay_executions": simulation_replay_executions,
+        "simulation_replay_execution_completed": simulation_replay_execution_completed,
+        "simulation_replay_execution_failed": simulation_replay_execution_failed,
     }
 
     summary = _build_summary(
@@ -340,6 +389,8 @@ def build_global_swarm_brief(
         security_validation_invalid_records=security_validation_invalid_records,
         simulation_replay_pending=simulation_replay_pending,
         simulation_replay_failed=simulation_replay_failed,
+        simulation_replay_execution_completed=simulation_replay_execution_completed,
+        simulation_replay_execution_failed=simulation_replay_execution_failed,
     )
 
     return build_swarm_brief(
@@ -385,6 +436,8 @@ def _build_summary(
     security_validation_invalid_records: int,
     simulation_replay_pending: int,
     simulation_replay_failed: int,
+    simulation_replay_execution_completed: int,
+    simulation_replay_execution_failed: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -429,6 +482,16 @@ def _build_summary(
     if simulation_replay_failed > 0:
         parts.append(
             f"Simulation has {simulation_replay_failed} failed replay scenario(s)."
+        )
+
+    if simulation_replay_execution_completed > 0:
+        parts.append(
+            f"Simulation completed {simulation_replay_execution_completed} replay dry-run execution(s)."
+        )
+
+    if simulation_replay_execution_failed > 0:
+        parts.append(
+            f"Simulation has {simulation_replay_execution_failed} failed replay dry-run execution(s)."
         )
 
     return " ".join(parts)
@@ -526,11 +589,15 @@ def _aggregate_simulation_replay_from_heartbeats(
         "simulation_replay_pending": 0,
         "simulation_replay_completed": 0,
         "simulation_replay_failed": 0,
+        "simulation_replay_executions": 0,
+        "simulation_replay_execution_completed": 0,
+        "simulation_replay_execution_failed": 0,
     }
 
     status_counts: dict[str, int] = {}
     kind_counts: dict[str, int] = {}
     action_counts: dict[str, int] = {}
+    execution_status_counts: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -541,14 +608,31 @@ def _aggregate_simulation_replay_from_heartbeats(
         aggregate["simulation_replay_pending"] += _safe_int(metrics.get("simulation_replay_pending"), 0)
         aggregate["simulation_replay_completed"] += _safe_int(metrics.get("simulation_replay_completed"), 0)
         aggregate["simulation_replay_failed"] += _safe_int(metrics.get("simulation_replay_failed"), 0)
+        aggregate["simulation_replay_executions"] += _safe_int(
+            metrics.get("simulation_replay_executions"),
+            0,
+        )
+        aggregate["simulation_replay_execution_completed"] += _safe_int(
+            metrics.get("simulation_replay_execution_completed"),
+            0,
+        )
+        aggregate["simulation_replay_execution_failed"] += _safe_int(
+            metrics.get("simulation_replay_execution_failed"),
+            0,
+        )
 
         _merge_int_counts(status_counts, metrics.get("simulation_replay_status_counts"))
         _merge_int_counts(kind_counts, metrics.get("simulation_replay_kind_counts"))
         _merge_int_counts(action_counts, metrics.get("simulation_replay_action_counts"))
+        _merge_int_counts(
+            execution_status_counts,
+            metrics.get("simulation_replay_execution_status_counts"),
+        )
 
     aggregate["simulation_replay_status_counts"] = status_counts
     aggregate["simulation_replay_kind_counts"] = kind_counts
     aggregate["simulation_replay_action_counts"] = action_counts
+    aggregate["simulation_replay_execution_status_counts"] = execution_status_counts
 
     return aggregate
 

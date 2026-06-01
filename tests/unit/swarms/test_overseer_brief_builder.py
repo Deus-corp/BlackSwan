@@ -205,6 +205,10 @@ def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_hea
                         "security_validation_invalid_reasons": {
                             "unsafe_or_unknown_action": 1,
                         },
+                        "simulation_replay_executions": 1,
+                        "simulation_replay_execution_completed": 1,
+                        "simulation_replay_execution_failed": 0,
+                        "simulation_replay_execution_status_counts": {"completed": 1},
                     },
                 }
             ]
@@ -218,6 +222,8 @@ def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_hea
     assert brief.key_metrics["security_validation_invalid_records"] == 1
     assert brief.key_metrics["security_validation_critical_records"] == 1
     assert any("Critical security validation" in item.get("title", "") for item in brief.risks)
+    assert brief.key_metrics["simulation_replay_executions"] == 1
+    assert brief.key_metrics["simulation_replay_execution_completed"] == 1
 
 def test_build_global_swarm_brief_reports_simulation_replay_opportunity() -> None:
     brief = build_global_swarm_brief(
@@ -278,3 +284,47 @@ def test_build_global_swarm_brief_extracts_simulation_replay_from_snapshot_heart
     assert brief.key_metrics["simulation_replay_scenarios"] == 1
     assert brief.key_metrics["simulation_replay_pending"] == 1
     assert any("Simulation replay" in item.get("title", "") for item in brief.opportunities)
+
+def test_build_global_swarm_brief_reports_simulation_replay_execution_opportunity() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"simulation": 1, "overseer": 1}},
+        simulation_replay={
+            "simulation_replay_scenarios": 1,
+            "simulation_replay_pending": 0,
+            "simulation_replay_completed": 0,
+            "simulation_replay_failed": 0,
+            "simulation_replay_executions": 1,
+            "simulation_replay_execution_completed": 1,
+            "simulation_replay_execution_failed": 0,
+        },
+    )
+
+    assert brief.key_metrics["simulation_replay_executions"] == 1
+    assert brief.key_metrics["simulation_replay_execution_completed"] == 1
+    assert any(
+        "Simulation replay dry-runs completed" in item.get("title", "")
+        for item in brief.opportunities
+    )
+    assert "completed 1 replay dry-run" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_reports_simulation_replay_execution_failure_risk() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"simulation": 1, "overseer": 1}},
+        simulation_replay={
+            "simulation_replay_scenarios": 1,
+            "simulation_replay_pending": 0,
+            "simulation_replay_completed": 0,
+            "simulation_replay_failed": 0,
+            "simulation_replay_executions": 1,
+            "simulation_replay_execution_completed": 0,
+            "simulation_replay_execution_failed": 1,
+        },
+    )
+
+    assert brief.key_metrics["simulation_replay_execution_failed"] == 1
+    assert any(
+        "Simulation replay dry-run failures" in item.get("title", "")
+        for item in brief.risks
+    )
+    assert "failed replay dry-run" in brief.summary.lower()
