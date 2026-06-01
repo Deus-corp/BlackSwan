@@ -433,7 +433,11 @@ The helper seeds the replay scenario, seeds the RUN_REPLAY directive, waits for
 simulation_replay_execution, publishes replay evidence, bridges evidence into
 memory, and reports explicit checks.
 
+---
 The helper also publishes replay_evidence_lifecycle_result with explicit checks.
+
+Security validation now recognizes `replay_evidence_lifecycle_result` records.
+A passed lifecycle result is valid only when all checks are passed.
 
 ---
 

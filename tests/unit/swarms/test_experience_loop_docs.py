@@ -43,3 +43,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "run_replay_evidence_check" in text
     assert "One-command replay evidence check" in text
     assert "replay_evidence_lifecycle_result" in text
+    assert "replay_evidence_lifecycle_result" in text
+    assert "all checks are passed" in text
