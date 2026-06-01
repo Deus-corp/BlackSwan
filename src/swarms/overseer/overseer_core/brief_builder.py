@@ -111,6 +111,18 @@ def build_global_swarm_brief(
         simulation_replay.get("simulation_replay_execution_failed"),
         0,
     )
+    memory_replay_execution_evidence_records = _safe_int(
+        aggregate.get("replay_execution_evidence_records"),
+        0,
+    )
+    memory_replay_execution_evidence_passed = _safe_int(
+        aggregate.get("replay_execution_evidence_passed"),
+        0,
+    )
+    memory_replay_execution_evidence_failed = _safe_int(
+        aggregate.get("replay_execution_evidence_failed"),
+        0,
+    )
 
     if gold_candidates > 0:
         opportunities.append(
@@ -305,6 +317,38 @@ def build_global_swarm_brief(
                 },
             )
         )
+
+    if memory_replay_execution_evidence_passed > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Replay execution evidence captured in memory",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Memory contains {memory_replay_execution_evidence_passed} "
+                    "passed replay execution evidence record(s)."
+                ),
+                payload={
+                    "replay_execution_evidence_passed": memory_replay_execution_evidence_passed,
+                    "recommendation": "review_replay_execution_memory",
+                },
+            )
+        )
+
+    if memory_replay_execution_evidence_failed > 0:
+        risks.append(
+            build_brief_item(
+                title="Replay execution evidence failures in memory",
+                severity=BriefSeverity.WARNING.value,
+                detail=(
+                    f"Memory contains {memory_replay_execution_evidence_failed} "
+                    "failed replay execution evidence record(s)."
+                ),
+                payload={
+                    "replay_execution_evidence_failed": memory_replay_execution_evidence_failed,
+                    "recommendation": "review_failed_replay_execution_memory",
+                },
+            )
+        )
     
     if simulation_replay_execution_completed > 0:
         opportunities.append(
@@ -375,6 +419,9 @@ def build_global_swarm_brief(
         "simulation_replay_executions": simulation_replay_executions,
         "simulation_replay_execution_completed": simulation_replay_execution_completed,
         "simulation_replay_execution_failed": simulation_replay_execution_failed,
+        "memory_replay_execution_evidence_records": memory_replay_execution_evidence_records,
+        "memory_replay_execution_evidence_passed": memory_replay_execution_evidence_passed,
+        "memory_replay_execution_evidence_failed": memory_replay_execution_evidence_failed,
     }
 
     summary = _build_summary(
@@ -391,6 +438,8 @@ def build_global_swarm_brief(
         simulation_replay_failed=simulation_replay_failed,
         simulation_replay_execution_completed=simulation_replay_execution_completed,
         simulation_replay_execution_failed=simulation_replay_execution_failed,
+        memory_replay_execution_evidence_passed=memory_replay_execution_evidence_passed,
+        memory_replay_execution_evidence_failed=memory_replay_execution_evidence_failed,
     )
 
     return build_swarm_brief(
@@ -438,6 +487,8 @@ def _build_summary(
     simulation_replay_failed: int,
     simulation_replay_execution_completed: int,
     simulation_replay_execution_failed: int,
+    memory_replay_execution_evidence_passed: int,
+    memory_replay_execution_evidence_failed: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -492,6 +543,16 @@ def _build_summary(
     if simulation_replay_execution_failed > 0:
         parts.append(
             f"Simulation has {simulation_replay_execution_failed} failed replay dry-run execution(s)."
+        )
+
+    if memory_replay_execution_evidence_passed > 0:
+        parts.append(
+            f"Memory captured {memory_replay_execution_evidence_passed} passed replay execution evidence record(s)."
+        )
+
+    if memory_replay_execution_evidence_failed > 0:
+        parts.append(
+            f"Memory has {memory_replay_execution_evidence_failed} failed replay execution evidence record(s)."
         )
 
     return " ".join(parts)

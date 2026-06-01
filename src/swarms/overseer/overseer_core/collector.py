@@ -84,6 +84,12 @@ LEGACY_COMMAND_TYPES = {
 
 MAX_EVENT_SCAN_DEPTH = 6
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
 def collect_memory_intelligence_from_heartbeats(
     swarm_heartbeats: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -113,9 +119,57 @@ def collect_memory_intelligence_from_heartbeats(
     assessments = [assess_memory_heartbeat(payload) for payload in latest_memory_payloads]
     aggregate = aggregate_memory_assessments(assessments)
 
+    node_dicts = [assessment.to_dict() for assessment in assessments]
+    aggregate_dict = aggregate.to_dict()
+
+    replay_execution_evidence_records = 0
+    replay_execution_evidence_passed = 0
+    replay_execution_evidence_failed = 0
+
+    for index, payload in enumerate(latest_memory_payloads):
+        metrics = payload.get("metrics", {})
+        if not isinstance(metrics, dict):
+            metrics = {}
+
+        summary = metrics.get("memory_summary", {})
+        if not isinstance(summary, dict):
+            summary = {}
+
+        node_replay_records = _safe_int(
+            summary.get("replay_execution_evidence_records"),
+            0,
+        )
+        node_replay_passed = _safe_int(
+            summary.get("replay_execution_evidence_passed"),
+            0,
+        )
+        node_replay_failed = _safe_int(
+            summary.get("replay_execution_evidence_failed"),
+            0,
+        )
+
+        replay_execution_evidence_records += node_replay_records
+        replay_execution_evidence_passed += node_replay_passed
+        replay_execution_evidence_failed += node_replay_failed
+
+        if index < len(node_dicts):
+            node_dicts[index]["replay_execution_evidence_records"] = node_replay_records
+            node_dicts[index]["replay_execution_evidence_passed"] = node_replay_passed
+            node_dicts[index]["replay_execution_evidence_failed"] = node_replay_failed
+
+    aggregate_dict["replay_execution_evidence_records"] = replay_execution_evidence_records
+    aggregate_dict["replay_execution_evidence_passed"] = replay_execution_evidence_passed
+    aggregate_dict["replay_execution_evidence_failed"] = replay_execution_evidence_failed
+
+    if replay_execution_evidence_records > 0:
+        current_status = str(aggregate_dict.get("status") or "").strip().lower()
+        if current_status not in {"danger_detected", "degraded", "critical"}:
+            aggregate_dict["status"] = "valuable_activity"
+            aggregate_dict["reason"] = "replay_execution_evidence_detected"
+
     return {
-        "nodes": [assessment.to_dict() for assessment in assessments],
-        "aggregate": aggregate.to_dict(),
+        "nodes": node_dicts,
+        "aggregate": aggregate_dict,
     }
 
 def _latest_memory_heartbeats_by_node(

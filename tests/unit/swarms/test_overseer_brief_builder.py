@@ -328,3 +328,27 @@ def test_build_global_swarm_brief_reports_simulation_replay_execution_failure_ri
         for item in brief.risks
     )
     assert "failed replay dry-run" in brief.summary.lower()
+
+def test_build_global_swarm_brief_reports_memory_replay_execution_evidence() -> None:
+    memory_intelligence = {
+        "aggregate": {
+            "status": "valuable_activity",
+            "replay_execution_evidence_records": 1,
+            "replay_execution_evidence_passed": 1,
+            "replay_execution_evidence_failed": 0,
+        },
+        "nodes": [],
+    }
+
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"memory": 1, "overseer": 1}},
+        memory_intelligence=memory_intelligence,
+    )
+
+    assert brief.key_metrics["memory_replay_execution_evidence_records"] == 1
+    assert brief.key_metrics["memory_replay_execution_evidence_passed"] == 1
+    assert any(
+        "Replay execution evidence" in item.get("title", "")
+        for item in brief.opportunities
+    )
+    assert "replay execution evidence" in brief.summary.lower()

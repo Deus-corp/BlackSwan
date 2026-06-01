@@ -186,4 +186,34 @@ def test_collector_aggregates_runtime_evidence_alert_candidates_from_memory_hear
     assert result["aggregate"]["runtime_evidence_records"] == 1
     assert result["aggregate"]["runtime_evidence_alert_candidates"] == 1
 
-    
+def test_collector_reports_replay_execution_evidence_from_memory_summary() -> None:
+    result = collect_memory_intelligence_from_heartbeats(
+        [
+            {
+                "type": "swarm_heartbeat",
+                "swarm": "memory",
+                "node_id": "memory-1",
+                "status": "running",
+                "metrics": {
+                    "memory_summary": {
+                        "total_records": 1,
+                        "recognized_records": 1,
+                        "gold_candidates": 0,
+                        "review_candidates": 0,
+                        "alert_candidates": 0,
+                        "dedupe_candidates": 0,
+                        "replay_execution_evidence_records": 1,
+                        "replay_execution_evidence_passed": 1,
+                        "replay_execution_evidence_failed": 0,
+                    }
+                },
+            }
+        ]
+    )
+
+    assert result["aggregate"]["status"] == "valuable_activity"
+    assert result["aggregate"]["reason"] == "replay_execution_evidence_detected"
+    assert result["aggregate"]["replay_execution_evidence_records"] == 1
+    assert result["aggregate"]["replay_execution_evidence_passed"] == 1
+    assert result["aggregate"]["replay_execution_evidence_failed"] == 0
+    assert result["nodes"][0]["replay_execution_evidence_records"] == 1
