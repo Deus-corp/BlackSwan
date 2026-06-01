@@ -342,6 +342,22 @@ simulation_replay_execution status=completed
 
 ---
 
+Replay execution evidence can be bridged into memory:
+
+```bash
+python -m src.testing.evidence_memory_bridge \
+  --subject simulation_replay_execution_check \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+This produces:
+
+```text
+evidence_record subject=simulation_replay_execution_check status=passed
+  -> memory_record kind=runtime_evidence subject=simulation_replay_execution_check
+```
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:

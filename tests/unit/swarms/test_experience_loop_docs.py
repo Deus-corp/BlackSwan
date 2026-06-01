@@ -31,3 +31,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "--scenario-id" in text
     assert "publish_replay_execution_evidence" in text
     assert "simulation_replay_execution_check" in text
+    assert "simulation_replay_execution_check" in text
+    assert "src.testing.evidence_memory_bridge" in text
+    assert "memory_record kind=runtime_evidence" in text

@@ -8,6 +8,7 @@ from src.testing.evidence_memory_bridge import (
     build_memory_record_from_evidence,
     find_directive_evidence,
     publish_memory_record_for_directive_evidence,
+    publish_evidence_memory_records,
 )
 
 
@@ -117,3 +118,71 @@ async def test_publish_memory_record_for_directive_evidence(tmp_path) -> None:
     assert len(records) == 1
     assert records[0]["kind"] == "runtime_evidence"
     assert records[0]["payload"]["evidence_id"] == "ev-1"
+
+def _replay_execution_evidence() -> dict:
+    return {
+        "type": "evidence_record",
+        "evidence_id": "evidence-exec-replay-runtime-reduce-risk-1",
+        "subject": "simulation_replay_execution_check",
+        "status": "passed",
+        "confidence": 1.0,
+        "source": "replay-evidence-publisher",
+        "scenario_id": "replay-runtime-reduce-risk-1",
+        "directive_id": "runtime-run-replay-evidence-1",
+        "execution_id": "exec-replay-runtime-reduce-risk-1",
+        "payload": {
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "directive_id": "runtime-run-replay-evidence-1",
+            "execution_id": "exec-replay-runtime-reduce-risk-1",
+            "checks": [
+                {
+                    "name": "replay_execution_completed",
+                    "status": "passed",
+                    "value": "completed",
+                }
+            ],
+        },
+    }
+
+def test_build_memory_record_from_replay_execution_evidence_preserves_replay_fields() -> None:
+    record = build_memory_record_from_evidence(
+        _replay_execution_evidence(),
+        source="evidence-memory-bridge",
+    )
+
+    assert record["type"] == "memory_record"
+    assert record["kind"] == "runtime_evidence"
+    assert record["subject"] == "simulation_replay_execution_check"
+    assert record["status"] == "passed"
+    assert record["source"] == "evidence-memory-bridge"
+
+    payload = record["payload"]
+    assert payload["subject"] == "simulation_replay_execution_check"
+    assert payload["scenario_id"] == "replay-runtime-reduce-risk-1"
+    assert payload["directive_id"] == "runtime-run-replay-evidence-1"
+    assert payload["execution_id"] == "exec-replay-runtime-reduce-risk-1"
+    assert payload["checks"][0]["name"] == "replay_execution_completed"
+
+    assert "subject:simulation_replay_execution_check" in record["tags"]
+    assert "status:passed" in record["tags"]
+
+@pytest.mark.asyncio
+async def test_evidence_memory_bridge_publishes_replay_execution_memory_record(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(_replay_execution_evidence())
+
+    args = argparse.Namespace(
+        source="evidence-memory-bridge",
+        db_path=db_path,
+        directive_id="",
+        evidence_id="",
+        subject="simulation_replay_execution_check",
+    )
+
+    records = await publish_evidence_memory_records(args)
+
+    assert len(records) == 1
+    assert records[0]["subject"] == "simulation_replay_execution_check"
+    assert records[0]["payload"]["scenario_id"] == "replay-runtime-reduce-risk-1"
