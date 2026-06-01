@@ -95,6 +95,13 @@ def build_global_swarm_brief(
     security_validation_records = _safe_int(security_validation.get("security_validation_records"), 0)
     security_validation_invalid_records = _safe_int(security_validation.get("security_validation_invalid_records"), 0)
     security_validation_critical_records = _safe_int(security_validation.get("security_validation_critical_records"), 0)
+    security_validation_record_type_counts = _safe_dict(
+        security_validation.get("security_validation_record_type_counts")
+    )
+    security_replay_lifecycle_results = _safe_int(
+        security_validation_record_type_counts.get("replay_evidence_lifecycle_result"),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -260,6 +267,22 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_replay_lifecycle_results > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Replay evidence lifecycle validation observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Security validated {security_replay_lifecycle_results} "
+                    "replay evidence lifecycle result record(s)."
+                ),
+                payload={
+                    "security_replay_lifecycle_results": security_replay_lifecycle_results,
+                    "recommendation": "review_replay_lifecycle_validation",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -412,6 +435,7 @@ def build_global_swarm_brief(
         "security_validation_records": security_validation_records,
         "security_validation_invalid_records": security_validation_invalid_records,
         "security_validation_critical_records": security_validation_critical_records,
+        "security_replay_lifecycle_results": security_replay_lifecycle_results,
         "simulation_replay_scenarios": simulation_replay_scenarios,
         "simulation_replay_pending": simulation_replay_pending,
         "simulation_replay_completed": simulation_replay_completed,
@@ -434,6 +458,7 @@ def build_global_swarm_brief(
         runtime_evidence_alert_candidates=runtime_evidence_alert_candidates,
         security_validation_critical_records=security_validation_critical_records,
         security_validation_invalid_records=security_validation_invalid_records,
+        security_replay_lifecycle_results=security_replay_lifecycle_results,
         simulation_replay_pending=simulation_replay_pending,
         simulation_replay_failed=simulation_replay_failed,
         simulation_replay_execution_completed=simulation_replay_execution_completed,
@@ -489,6 +514,7 @@ def _build_summary(
     simulation_replay_execution_failed: int,
     memory_replay_execution_evidence_passed: int,
     memory_replay_execution_evidence_failed: int,
+    security_replay_lifecycle_results: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -523,6 +549,11 @@ def _build_summary(
     elif security_validation_invalid_records > 0:
         parts.append(
             f"Security has {security_validation_invalid_records} validation warning(s)."
+        )
+
+    if security_replay_lifecycle_results > 0:
+        parts.append(
+            f"Security validated {security_replay_lifecycle_results} replay evidence lifecycle result record(s)."
         )
 
     if simulation_replay_pending > 0:
