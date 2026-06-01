@@ -47,3 +47,9 @@ def test_publish_replay_execution_evidence_import_does_not_load_runtime_smoke() 
 
     assert callable(publish_replay_execution_evidence)
     assert "src.testing.swarm_runtime_smoke" not in sys.modules
+
+def test_run_replay_evidence_check_import_does_not_load_runtime_smoke() -> None:
+    from src.testing.run_replay_evidence_check import run_replay_evidence_check
+
+    assert callable(run_replay_evidence_check)
+    assert "src.testing.swarm_runtime_smoke" not in sys.modules

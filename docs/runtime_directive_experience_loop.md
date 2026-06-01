@@ -414,6 +414,25 @@ MemorySummary.replay_execution_evidence_passed >= 1
 memory_intelligence.aggregate.replay_execution_evidence_records >= 1
 global_brief.key_metrics.memory_replay_execution_evidence_records >= 1
 ```
+
+---
+
+## One-command replay evidence check
+
+The full controlled replay evidence lifecycle can be exercised with:
+
+```bash
+python -m src.testing.run_replay_evidence_check \
+  --scenario-id replay-runtime-reduce-risk-1 \
+  --action REDUCE_RISK \
+  --directive-id runtime-run-replay-e2e-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+The helper seeds the replay scenario, seeds the RUN_REPLAY directive, waits for
+simulation_replay_execution, publishes replay evidence, bridges evidence into
+memory, and reports explicit checks.
+
 ---
 
 ## Safety guarantees
