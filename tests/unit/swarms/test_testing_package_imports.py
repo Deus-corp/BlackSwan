@@ -41,3 +41,9 @@ def test_seed_replay_scenario_import_does_not_load_runtime_smoke() -> None:
 
     assert "REDUCE_RISK" in SAFE_REPLAY_ACTIONS
     assert "src.testing.swarm_runtime_smoke" not in sys.modules
+
+def test_publish_replay_execution_evidence_import_does_not_load_runtime_smoke() -> None:
+    from src.testing.publish_replay_execution_evidence import publish_replay_execution_evidence
+
+    assert callable(publish_replay_execution_evidence)
+    assert "src.testing.swarm_runtime_smoke" not in sys.modules

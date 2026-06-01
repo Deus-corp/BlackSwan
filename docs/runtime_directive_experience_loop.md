@@ -324,6 +324,24 @@ RUN_REPLAY execution is reserved for a future dry-run replay executor.
 
 ---
 
+## Replay execution evidence
+
+Completed dry-run replay executions can be converted into evidence records:
+
+```bash
+python -m src.testing.publish_replay_execution_evidence \
+  --scenario-id replay-runtime-reduce-risk-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+This publishes:
+```text
+simulation_replay_execution status=completed
+  -> evidence_record subject=simulation_replay_execution_check status=passed
+```
+
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:
