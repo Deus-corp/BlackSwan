@@ -384,3 +384,32 @@ async def test_memory_swarm_node_heartbeat_includes_memory_summary() -> None:
     assert summary["recognition_counts"]["valuable"] == 1
     assert summary["recognition_action_counts"]["gold_candidate"] == 1
     assert metrics["gold_candidates"] == 1
+
+@pytest.mark.asyncio
+async def test_memory_swarm_node_heartbeat_reports_replay_execution_evidence_summary(monkeypatch) -> None:
+    from src.memory.summary import MemorySummary
+    import src.swarms.memory.node as memory_node_module
+
+    node = MemorySwarmNode(node_id="memory-test", heartbeat_interval_seconds=1.0)
+    node.crdt = DummyCRDT()
+
+    def fake_build_memory_summary(*args, **kwargs):
+        return MemorySummary(
+            total_records=1,
+            runtime_evidence_records=1,
+            replay_execution_evidence_records=1,
+            replay_execution_evidence_passed=1,
+            replay_execution_evidence_failed=0,
+        )
+
+    monkeypatch.setattr(memory_node_module, "build_memory_summary", fake_build_memory_summary)
+
+    await node.publish_heartbeat()
+
+    metrics = node.crdt.payloads[-1]["metrics"]
+    summary = metrics["memory_summary"]
+
+    assert summary["runtime_evidence_records"] == 1
+    assert summary["replay_execution_evidence_records"] == 1
+    assert summary["replay_execution_evidence_passed"] == 1
+    assert summary["replay_execution_evidence_failed"] == 0

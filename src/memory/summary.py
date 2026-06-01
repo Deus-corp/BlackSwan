@@ -32,10 +32,13 @@ class MemorySummary:
     by_scope: dict[str, int] = field(default_factory=dict)
     degraded: bool = False
     reason: str = "ok"
-    runtime_evidence_records: int = 0
     runtime_evidence_gold_candidates: int = 0
     runtime_evidence_review_candidates: int = 0
     runtime_evidence_alert_candidates: int = 0
+    runtime_evidence_records: int = 0
+    replay_execution_evidence_records: int = 0
+    replay_execution_evidence_passed: int = 0
+    replay_execution_evidence_failed: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -57,6 +60,9 @@ def build_memory_summary(
     runtime_evidence_gold_candidates = 0
     runtime_evidence_review_candidates = 0
     runtime_evidence_alert_candidates = 0
+    replay_execution_evidence_records = 0
+    replay_execution_evidence_passed = 0
+    replay_execution_evidence_failed = 0
 
     by_kind: dict[str, int] = {}
     by_scope: dict[str, int] = {}
@@ -67,15 +73,19 @@ def build_memory_summary(
     for record in record_list:
         data = _record_to_dict(record)
 
-        kind = str(data.get("kind") or "unknown")
-        scope = str(data.get("scope") or "unknown")
-
-        by_kind[kind] = by_kind.get(kind, 0) + 1
-        by_scope[scope] = by_scope.get(scope, 0) + 1
-
         payload = data.get("payload", {})
         if not isinstance(payload, dict):
-            continue
+            payload = {}
+
+        effective_kind = str(data.get("kind") or payload.get("kind") or "unknown")
+        effective_scope = str(data.get("scope") or payload.get("scope") or "unknown")
+        effective_status = str(data.get("status") or payload.get("status") or "").strip().lower()
+        effective_subject = str(data.get("subject") or payload.get("subject") or "").strip()
+
+        by_kind[effective_kind] = by_kind.get(effective_kind, 0) + 1
+        by_scope[effective_scope] = by_scope.get(effective_scope, 0) + 1
+
+        evidence_subject = effective_subject
 
         recognition = payload.get("recognition", {})
         if isinstance(recognition, dict):
@@ -94,7 +104,14 @@ def build_memory_summary(
                     if clean_action:
                         inferred_action_counts[clean_action] = inferred_action_counts.get(clean_action, 0) + 1
 
-        runtime_evidence = classify_runtime_evidence_record(record)
+        classifier_record = dict(data)
+        classifier_record["kind"] = effective_kind
+        classifier_record["status"] = effective_status
+        if effective_subject:
+            classifier_record["subject"] = effective_subject
+        classifier_record["payload"] = payload
+
+        runtime_evidence = classify_runtime_evidence_record(classifier_record)
         if runtime_evidence.get("is_runtime_evidence"):
             runtime_evidence_records += 1
             if runtime_evidence.get("gold_candidate"):
@@ -103,6 +120,13 @@ def build_memory_summary(
                 runtime_evidence_review_candidates += 1
             if runtime_evidence.get("alert_candidate"):
                 runtime_evidence_alert_candidates += 1
+
+            if evidence_subject == "simulation_replay_execution_check":
+                replay_execution_evidence_records += 1
+                if effective_status == "passed":
+                    replay_execution_evidence_passed += 1
+                elif effective_status == "failed":
+                    replay_execution_evidence_failed += 1
 
     final_recognition_counts = dict(inferred_recognition_counts)
     final_recognition_counts.update(recognition_counts or {})
@@ -134,6 +158,9 @@ def build_memory_summary(
         runtime_evidence_gold_candidates=runtime_evidence_gold_candidates,
         runtime_evidence_review_candidates=runtime_evidence_review_candidates,
         runtime_evidence_alert_candidates=runtime_evidence_alert_candidates,
+        replay_execution_evidence_records=replay_execution_evidence_records,
+        replay_execution_evidence_passed=replay_execution_evidence_passed,
+        replay_execution_evidence_failed=replay_execution_evidence_failed,
     )
 
 

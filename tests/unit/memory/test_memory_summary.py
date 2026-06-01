@@ -119,3 +119,43 @@ def test_build_memory_summary_counts_runtime_evidence_records() -> None:
     assert summary.runtime_evidence_gold_candidates == 1
     assert summary.runtime_evidence_alert_candidates == 1
     assert summary.runtime_evidence_review_candidates == 1
+
+def test_build_memory_summary_counts_replay_execution_evidence() -> None:
+    summary = build_memory_summary(
+        [
+            {
+                "type": "memory_record",
+                "kind": "runtime_evidence",
+                "status": "passed",
+                "subject": "simulation_replay_execution_check",
+                "payload": {
+                    "subject": "simulation_replay_execution_check",
+                    "scenario_id": "replay-runtime-reduce-risk-1",
+                },
+            },
+            {
+                "type": "memory_record",
+                "kind": "runtime_evidence",
+                "status": "failed",
+                "payload": {
+                    "subject": "simulation_replay_execution_check",
+                },
+            },
+            {
+                "type": "memory_record",
+                "kind": "runtime_evidence",
+                "status": "passed",
+                "payload": {
+                    "subject": "runtime_directive_seed_check",
+                },
+            },
+        ]
+    )
+
+    assert summary.runtime_evidence_records == 3
+    assert summary.replay_execution_evidence_records == 2
+    assert summary.replay_execution_evidence_passed == 1
+    assert summary.replay_execution_evidence_failed == 1
+
+    data = summary.to_dict()
+    assert data["replay_execution_evidence_records"] == 2
