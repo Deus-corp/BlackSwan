@@ -20,6 +20,7 @@ VALIDATED_RECORD_TYPES = {
     "swarm_directive_result",
     "evidence_record",
     "memory_record",
+    "replay_evidence_lifecycle_result",
 }
 
 
@@ -36,6 +37,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             continue
 
         if record_type == "memory_record" and str(record.get("kind") or "") != "runtime_evidence":
+            continue
+
+        if record_type == "replay_evidence_lifecycle_result":
+            result = validate_replay_evidence_lifecycle_result(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
             continue
 
         validation = validate_runtime_record(record)
@@ -107,13 +120,13 @@ def _reason_counts(records: Iterable[Mapping[str, Any]]) -> dict[str, int]:
 
 
 def _record_id(record: Mapping[str, Any]) -> str:
-    for key in ("directive_id", "evidence_id", "memory_id", "id", "event_id"):
+    for key in ("directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id"):
         value = str(record.get(key) or "").strip()
         if value:
             return value
     payload = record.get("payload")
     if isinstance(payload, Mapping):
-        for key in ("directive_id", "evidence_id", "memory_id", "id", "event_id"):
+        for key in ("directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id"):
             value = str(payload.get(key) or "").strip()
             if value:
                 return value
@@ -131,10 +144,67 @@ def _directive_id(record: Mapping[str, Any]) -> str | None:
             return value
     return None
 
+def validate_replay_evidence_lifecycle_result(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate replay evidence lifecycle result records."""
+    reasons: list[str] = []
+
+    status = str(record.get("status") or "").strip().lower()
+    scenario_id = str(record.get("scenario_id") or "").strip()
+    directive_id = str(record.get("directive_id") or "").strip()
+    checks = record.get("checks")
+
+    if status not in {"passed", "failed"}:
+        reasons.append("invalid_status")
+
+    if not scenario_id:
+        reasons.append("missing_scenario_id")
+
+    if not directive_id:
+        reasons.append("missing_directive_id")
+
+    if not isinstance(checks, list) or not checks:
+        reasons.append("missing_checks")
+    else:
+        for check in checks:
+            if not isinstance(check, Mapping):
+                reasons.append("invalid_check")
+                continue
+
+            check_name = str(check.get("name") or "").strip()
+            check_status = str(check.get("status") or "").strip().lower()
+
+            if not check_name:
+                reasons.append("missing_check_name")
+
+            if check_status not in {"passed", "failed"}:
+                reasons.append("invalid_check_status")
+
+        if status == "passed":
+            failed_checks = [
+                check
+                for check in checks
+                if isinstance(check, Mapping)
+                and str(check.get("status") or "").strip().lower() != "passed"
+            ]
+            if failed_checks:
+                reasons.append("passed_result_contains_failed_checks")
+
+    valid = not reasons
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_evidence_lifecycle_result",
+        "valid": valid,
+        "severity": "info" if valid else "critical",
+        "reasons": reasons,
+        "subject": directive_id or scenario_id or "unknown",
+    }
+
 
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
     "summarize_runtime_validations",
+    "validate_replay_evidence_lifecycle_result",
     "validate_runtime_records",
 ]

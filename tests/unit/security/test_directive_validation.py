@@ -6,6 +6,8 @@ from src.security.directive_validation import (
     validate_swarm_directive_result,
 )
 
+from src.swarms.security.runtime_validation import validate_replay_evidence_lifecycle_result
+
 
 def test_validate_safe_swarm_directive() -> None:
     result = validate_swarm_directive(
@@ -197,3 +199,57 @@ def test_validate_run_replay_directive_rejects_wrong_target() -> None:
 
     assert result.valid is False
     assert "run_replay_requires_simulation_target" in result.reasons
+
+
+def test_validate_replay_evidence_lifecycle_result_accepts_passed_result() -> None:
+    result = validate_replay_evidence_lifecycle_result(
+        {
+            "type": "replay_evidence_lifecycle_result",
+            "status": "passed",
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "directive_id": "runtime-run-replay-e2e-result-1",
+            "checks": [
+                {"name": "scenario_seeded", "status": "passed", "value": True},
+                {"name": "memory_record_published", "status": "passed", "value": 1},
+            ],
+        }
+    )
+
+    assert result["valid"] is True
+    assert result["record_type"] == "replay_evidence_lifecycle_result"
+    assert result["severity"] == "info"
+
+
+def test_validate_replay_evidence_lifecycle_result_rejects_passed_result_with_failed_check() -> None:
+    result = validate_replay_evidence_lifecycle_result(
+        {
+            "type": "replay_evidence_lifecycle_result",
+            "status": "passed",
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "directive_id": "runtime-run-replay-e2e-result-1",
+            "checks": [
+                {"name": "execution_published", "status": "failed", "value": None},
+            ],
+        }
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "passed_result_contains_failed_checks" in result["reasons"]
+
+
+def test_validate_replay_evidence_lifecycle_result_accepts_failed_result_with_failed_check() -> None:
+    result = validate_replay_evidence_lifecycle_result(
+        {
+            "type": "replay_evidence_lifecycle_result",
+            "status": "failed",
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "directive_id": "runtime-run-replay-e2e-result-1",
+            "checks": [
+                {"name": "execution_published", "status": "failed", "value": None},
+            ],
+        }
+    )
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
