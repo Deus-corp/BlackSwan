@@ -34,3 +34,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "simulation_replay_execution_check" in text
     assert "src.testing.evidence_memory_bridge" in text
     assert "memory_record kind=runtime_evidence" in text
+    assert "Replay evidence memory lifecycle" in text
+    assert "publish_replay_execution_evidence" in text
+    assert "--subject simulation_replay_execution_check" in text
+    assert "MemorySummary.replay_execution_evidence_records" in text
+    assert "memory_intelligence.aggregate.replay_execution_evidence_records" in text
+    assert "global_brief.key_metrics.memory_replay_execution_evidence_records" in text

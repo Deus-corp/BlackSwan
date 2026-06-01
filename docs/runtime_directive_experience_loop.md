@@ -358,6 +358,64 @@ evidence_record subject=simulation_replay_execution_check status=passed
 ```
 ---
 
+## Replay evidence memory lifecycle
+
+The replay evidence lifecycle closes the dry-run replay loop:
+
+```text
+simulation_replay_scenario
+  -> RUN_REPLAY directive
+  -> simulation_replay_execution
+  -> evidence_record subject=simulation_replay_execution_check
+  -> memory_record kind=runtime_evidence
+  -> MemorySummary replay_execution_evidence_* counters
+  -> Memory swarm heartbeat memory_summary
+  -> Overseer memory intelligence
+  -> Global swarm brief
+```
+
+Manual runtime sequence:
+
+```bash
+python -m src.testing.seed_replay_scenario \
+  --scenario-id replay-runtime-reduce-risk-1 \
+  --action REDUCE_RISK \
+  --expected-result-status applied \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.seed_directive \
+  --action RUN_REPLAY \
+  --target simulation \
+  --target-type swarm \
+  --source overseer-seed \
+  --directive-id runtime-run-replay-memory-1 \
+  --payload-json '{"scenario_id":"replay-runtime-reduce-risk-1","dry_run":true}' \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.publish_replay_execution_evidence \
+  --scenario-id replay-runtime-reduce-risk-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.evidence_memory_bridge \
+  --subject simulation_replay_execution_check \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+Expected CRDT trail:
+```text
+simulation_replay_execution completed
+evidence_record simulation_replay_execution_check passed
+memory_record runtime_evidence simulation_replay_execution_check passed
+```
+Expected summary/brief trail:
+```text
+MemorySummary.replay_execution_evidence_records >= 1
+MemorySummary.replay_execution_evidence_passed >= 1
+memory_intelligence.aggregate.replay_execution_evidence_records >= 1
+global_brief.key_metrics.memory_replay_execution_evidence_records >= 1
+```
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:

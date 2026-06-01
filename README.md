@@ -48,6 +48,7 @@ Validated in the current architecture:
 - Simulation heartbeat reports replay queue metrics.
 - Overseer global briefs surface replay opportunities and propose safe `OBSERVE` directives.
 - `RUN_REPLAY` is available as a gated directive: security validates it, simulation consumes it, and execution is rejected until a dry-run executor is implemented.
+- Dry-run replay executions can now be converted into evidence and memory, surfaced through MemorySummary, memory heartbeat, Overseer memory intelligence, and global briefs.
 
 ### Latest Milestone — Memory Intelligence & Resilience
 

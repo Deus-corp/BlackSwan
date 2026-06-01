@@ -430,6 +430,7 @@ BlackSwan = trading bot
 * [x] Add gated `RUN_REPLAY` directive validation.
 * [x] Simulation consumes `RUN_REPLAY` and publishes an explicit rejected result until execution exists.
 * [x] `seed_directive` supports JSON payloads for controlled runtime checks.
+* [x] Close replay evidence loop from simulation execution to evidence, memory, MemorySummary, Overseer intelligence, and global brief visibility.
 * [ ] Implement dry-run replay executor for `simulation_replay_scenario`.
 * [ ] Dashboard.
 * [ ] Better local cluster profiles.
