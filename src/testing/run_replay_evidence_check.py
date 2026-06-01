@@ -6,7 +6,7 @@ import argparse
 import asyncio
 import logging
 import time
-from typing import Any
+from typing import Any, Mapping
 
 from swarm_config import config
 
@@ -15,6 +15,8 @@ from src.testing.evidence_memory_bridge import publish_evidence_memory_records
 from src.testing.publish_replay_execution_evidence import publish_replay_execution_evidence
 from src.testing.seed_directive import seed_directive
 from src.testing.seed_replay_scenario import seed_replay_scenario
+from src.memory.summary import build_memory_summary
+from src.swarms.security.runtime_validation import build_security_validation_heartbeat_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -119,12 +121,19 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
         )
     )
 
+    visibility = await _collect_visibility(
+        db_path=db_path,
+        scenario_id=scenario_id,
+        directive_id=directive_id,
+    )
+
     checks = _build_checks(
         scenario=scenario,
         directive=directive,
         execution=execution,
         evidence_records=evidence_records,
         memory_records=memory_records,
+        visibility=visibility,
     )
 
     status = "passed" if all(item["status"] == "passed" for item in checks) else "failed"
@@ -142,6 +151,7 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
             "execution_id": execution.get("execution_id") if isinstance(execution, dict) else None,
             "evidence_count": len(evidence_records),
             "memory_record_count": len(memory_records),
+            "visibility": visibility,
         },
         "created_at": time.time(),
     }
@@ -163,6 +173,7 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
         "memory_records": memory_records,
         "checks": checks,
         "result_record": result_record,
+        "visibility": visibility,
     }
 
 
@@ -206,6 +217,57 @@ async def _wait_for_execution(
     return None
 
 
+async def _collect_visibility(
+    *,
+    db_path: str,
+    scenario_id: str,
+    directive_id: str,
+) -> dict[str, Any]:
+    """Collect replay lifecycle visibility from CRDT-derived summaries."""
+    crdt = CRDTAdapter(node_id="replay-evidence-visibility-reader", db_path=db_path)
+
+    try:
+        refresh = getattr(crdt, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
+
+        state = getattr(crdt, "state", {}) or {}
+        records = [item for item in state.values() if isinstance(item, dict)]
+
+        replay_memory_records = [
+            item
+            for item in records
+            if item.get("type") == "memory_record"
+            and _record_scenario_id(item) == scenario_id
+            and _record_directive_id(item) == directive_id
+        ]
+
+        lifecycle_results = [
+            item
+            for item in records
+            if item.get("type") == "replay_evidence_lifecycle_result"
+            and item.get("scenario_id") == scenario_id
+            and item.get("directive_id") == directive_id
+        ]
+
+        memory_summary = build_memory_summary(replay_memory_records).to_dict()
+        security_metrics = build_security_validation_heartbeat_metrics(records)
+
+        return {
+            "memory_records": len(replay_memory_records),
+            "lifecycle_results": len(lifecycle_results),
+            "memory_summary": memory_summary,
+            "security_validation": security_metrics,
+        }
+
+    finally:
+        close = getattr(crdt, "close", None)
+        if callable(close):
+            result = close()
+            if asyncio.iscoroutine(result):
+                await result
+
+
 def _build_checks(
     *,
     scenario: dict[str, Any],
@@ -213,6 +275,7 @@ def _build_checks(
     execution: dict[str, Any] | None,
     evidence_records: list[dict[str, Any]],
     memory_records: list[dict[str, Any]],
+    visibility: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     checks = [
         {
@@ -247,7 +310,57 @@ def _build_checks(
         },
     ]
 
+    visibility = visibility or {}
+    memory_summary = visibility.get("memory_summary")
+    if not isinstance(memory_summary, dict):
+        memory_summary = {}
+
+    security_validation = visibility.get("security_validation")
+    if not isinstance(security_validation, dict):
+        security_validation = {}
+
+    record_type_counts = security_validation.get("security_validation_record_type_counts")
+    if not isinstance(record_type_counts, dict):
+        record_type_counts = {}
+
+    checks.extend(
+        [
+            {
+                "name": "visibility_memory_summary_replay_evidence",
+                "status": (
+                    "passed"
+                    if int(memory_summary.get("replay_execution_evidence_records") or 0) > 0
+                    else "failed"
+                ),
+                "value": memory_summary.get("replay_execution_evidence_records"),
+            },
+            {
+                "name": "visibility_security_lifecycle_validation",
+                "status": (
+                    "passed"
+                    if int(record_type_counts.get("replay_evidence_lifecycle_result") or 0) > 0
+                    else "failed"
+                ),
+                "value": record_type_counts.get("replay_evidence_lifecycle_result"),
+            },
+        ]
+    )
+
     return checks
+
+def _record_payload(record: Mapping[str, Any]) -> Mapping[str, Any]:
+    payload = record.get("payload")
+    return payload if isinstance(payload, Mapping) else {}
+
+
+def _record_scenario_id(record: Mapping[str, Any]) -> str:
+    payload = _record_payload(record)
+    return str(record.get("scenario_id") or payload.get("scenario_id") or "").strip()
+
+
+def _record_directive_id(record: Mapping[str, Any]) -> str:
+    payload = _record_payload(record)
+    return str(record.get("directive_id") or payload.get("directive_id") or "").strip()
 
 
 async def async_main() -> None:

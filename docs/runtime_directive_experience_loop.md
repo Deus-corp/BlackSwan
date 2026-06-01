@@ -439,6 +439,8 @@ The helper also publishes replay_evidence_lifecycle_result with explicit checks.
 Security validation now recognizes `replay_evidence_lifecycle_result` records.
 A passed lifecycle result is valid only when all checks are passed.
 
+The helper also verifies Overseer-ready visibility by checking MemorySummary replay evidence counters and Security validation record-type counts.
+
 ---
 
 ## Safety guarantees

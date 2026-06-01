@@ -32,9 +32,29 @@ def test_build_checks_passes_for_complete_chain() -> None:
                 "kind": "runtime_evidence",
             }
         ],
+        visibility={
+            "memory_summary": {
+                "replay_execution_evidence_records": 1,
+            },
+            "security_validation": {
+                "security_validation_record_type_counts": {
+                    "replay_evidence_lifecycle_result": 1,
+                }
+            },
+        },
     )
 
     assert all(check["status"] == "passed" for check in checks)
+    assert any(
+        check["name"] == "visibility_memory_summary_replay_evidence"
+        and check["status"] == "passed"
+        for check in checks
+    )
+    assert any(
+        check["name"] == "visibility_security_lifecycle_validation"
+        and check["status"] == "passed"
+        for check in checks
+    )
 
 
 @pytest.mark.asyncio
@@ -68,6 +88,8 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
     assert result["result_record"]["status"] == "failed"
     assert result["result_record"]["payload"]["evidence_count"] == 0
     assert result["result_record"]["payload"]["memory_record_count"] == 0
+    assert "visibility" in result
+    assert result["result_record"]["payload"]["visibility"]["memory_summary"]["replay_execution_evidence_records"] == 0
 
     reader = CRDTAdapter(node_id="reader", db_path=db_path)
     try:
@@ -92,3 +114,4 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
     assert results[0]["status"] == "failed"
     assert results[0]["payload"]["evidence_count"] == 0
     assert results[0]["payload"]["memory_record_count"] == 0
+    assert "visibility" in results[0]["payload"]

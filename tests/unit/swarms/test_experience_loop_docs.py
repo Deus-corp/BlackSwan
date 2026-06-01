@@ -45,3 +45,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "replay_evidence_lifecycle_result" in text
     assert "replay_evidence_lifecycle_result" in text
     assert "all checks are passed" in text
+    assert "Overseer-ready visibility" in text
+    assert "MemorySummary replay evidence counters" in text
+    assert "Security validation record-type counts" in text
