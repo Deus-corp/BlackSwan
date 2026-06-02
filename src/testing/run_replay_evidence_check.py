@@ -96,12 +96,21 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
         )
     )
 
+    wait_seconds = float(args.wait_seconds)
+    poll_interval = float(args.poll_interval)
+
     execution = await _wait_for_execution(
         db_path=db_path,
         scenario_id=scenario_id,
         directive_id=directive_id,
-        wait_seconds=float(args.wait_seconds),
-        poll_interval=float(args.poll_interval),
+        wait_seconds=wait_seconds,
+        poll_interval=poll_interval,
+    )
+
+    failure_reason = (
+        "execution_not_observed_before_timeout"
+        if execution is None
+        else None
     )
 
     if isinstance(execution, dict):
@@ -150,6 +159,9 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
             "execution_id": execution.get("execution_id") if isinstance(execution, dict) else None,
             "evidence_count": len(evidence_records),
             "memory_record_count": len(memory_records),
+            "failure_reason": failure_reason,
+            "wait_seconds": wait_seconds,
+            "poll_interval": poll_interval,
         },
         "created_at": time.time(),
     }
@@ -185,6 +197,9 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
             "execution_id": execution.get("execution_id") if isinstance(execution, dict) else None,
             "evidence_count": len(evidence_records),
             "memory_record_count": len(memory_records),
+            "failure_reason": failure_reason,
+            "wait_seconds": wait_seconds,
+            "poll_interval": poll_interval,
             "visibility": visibility,
         },
         "created_at": time.time(),

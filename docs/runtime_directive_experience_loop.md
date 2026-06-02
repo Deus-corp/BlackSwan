@@ -451,6 +451,10 @@ and directive.
 
 The command exits with code `0` when the lifecycle check passes and `1` when any check fails.
 
+When execution is not observed before the configured wait timeout, the lifecycle
+result payload includes `failure_reason=execution_not_observed_before_timeout`
+plus `wait_seconds` and `poll_interval`.
+
 ---
 
 ## Safety guarantees

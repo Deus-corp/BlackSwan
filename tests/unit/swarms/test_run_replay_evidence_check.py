@@ -120,6 +120,12 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
         ]
         == 0
     )
+    assert (
+        result["result_record"]["payload"]["failure_reason"]
+        == "execution_not_observed_before_timeout"
+    )
+    assert result["result_record"]["payload"]["wait_seconds"] == 0.01
+    assert result["result_record"]["payload"]["poll_interval"] == 0.01
 
     reader = CRDTAdapter(node_id="reader", db_path=db_path)
     try:
@@ -152,6 +158,12 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
         ]
         == 0
     )
+    assert (
+        results[0]["payload"]["failure_reason"]
+        == "execution_not_observed_before_timeout"
+    )
+    assert results[0]["payload"]["wait_seconds"] == 0.01
+    assert results[0]["payload"]["poll_interval"] == 0.01
 
 
 @pytest.mark.asyncio

@@ -53,3 +53,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "replay_evidence_lifecycle_result" in text
     assert "exits with code `0`" in text
     assert "1` when any check fails" in text
+    assert "execution_not_observed_before_timeout" in text
+    assert "wait_seconds" in text
+    assert "poll_interval" in text
