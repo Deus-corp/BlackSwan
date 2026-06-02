@@ -104,24 +104,28 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
         poll_interval=float(args.poll_interval),
     )
 
-    evidence_records = await publish_replay_execution_evidence(
-        argparse.Namespace(
-            source="replay-evidence-publisher",
-            db_path=db_path,
-            scenario_id=scenario_id,
-            directive_id=directive_id,
+    if isinstance(execution, dict):
+        evidence_records = await publish_replay_execution_evidence(
+            argparse.Namespace(
+                source="replay-evidence-publisher",
+                db_path=db_path,
+                scenario_id=scenario_id,
+                directive_id=directive_id,
+            )
         )
-    )
 
-    memory_records = await publish_evidence_memory_records(
-        argparse.Namespace(
-            source="evidence-memory-bridge",
-            db_path=db_path,
-            directive_id=directive_id,
-            evidence_id="",
-            subject="simulation_replay_execution_check",
+        memory_records = await publish_evidence_memory_records(
+            argparse.Namespace(
+                source="evidence-memory-bridge",
+                db_path=db_path,
+                directive_id=directive_id,
+                evidence_id="",
+                subject="simulation_replay_execution_check",
+            )
         )
-    )
+    else:
+        evidence_records = []
+        memory_records = []
 
     base_checks = _build_checks(
         scenario=scenario,
