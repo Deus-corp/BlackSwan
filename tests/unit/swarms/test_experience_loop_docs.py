@@ -69,3 +69,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "timeout_profile=standard" in text
     assert "wait_seconds=15.0" in text
     assert "poll_interval=0.5" in text
+    assert "command_template" in text
+    assert "<scenario_id>" in text
+    assert "<new_directive_id>" in text

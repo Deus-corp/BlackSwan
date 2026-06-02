@@ -320,6 +320,14 @@ def build_global_swarm_brief(
                     "suggested_poll_interval": 0.5,
                     "reason": "execution_not_observed_before_timeout",
                     "security_replay_lifecycle_timeouts": security_replay_lifecycle_timeouts,
+                    "command_template": (
+                        "python -m src.testing.run_replay_evidence_check "
+                        "--scenario-id <scenario_id> "
+                        "--action REDUCE_RISK "
+                        "--directive-id <new_directive_id> "
+                        "--timeout-profile standard "
+                        "--db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db"
+                    ),
                 },
             )
         )

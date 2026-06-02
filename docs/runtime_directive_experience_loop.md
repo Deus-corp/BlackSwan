@@ -486,6 +486,9 @@ python -m src.testing.run_replay_evidence_check \
 The retry recommendation uses `timeout_profile=standard`, which maps to
 `wait_seconds=15.0` and `poll_interval=0.5`.
 
+The retry recommendation also includes a `command_template` with placeholders for
+`<scenario_id>` and `<new_directive_id>` so an operator or controlled agent can
+construct a retry command safely.
 
 ---
 

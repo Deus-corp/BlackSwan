@@ -414,4 +414,11 @@ def test_build_global_swarm_brief_reports_replay_lifecycle_timeout_warnings() ->
     assert retry_actions[0]["payload"]["suggested_wait_seconds"] == 15.0
     assert retry_actions[0]["payload"]["suggested_poll_interval"] == 0.5
 
+    command_template = retry_actions[0]["payload"]["command_template"]
+
+    assert "--timeout-profile standard" in command_template
+    assert "<scenario_id>" in command_template
+    assert "<new_directive_id>" in command_template
+    assert "python -m src.testing.run_replay_evidence_check" in command_template
+
     assert "replay lifecycle timeout warning" in brief.summary.lower()
