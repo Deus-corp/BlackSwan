@@ -66,3 +66,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "standard" in text
     assert "patient" in text
     assert "retry_replay_lifecycle_check" in text
+    assert "timeout_profile=standard" in text
+    assert "wait_seconds=15.0" in text
+    assert "poll_interval=0.5" in text

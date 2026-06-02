@@ -402,8 +402,16 @@ def test_build_global_swarm_brief_reports_replay_lifecycle_timeout_warnings() ->
         "Replay lifecycle timeout warnings" in item.get("title", "")
         for item in brief.risks
     )
-    assert any(
-        item.get("payload", {}).get("recommendation") == "retry_replay_lifecycle_check"
+
+    retry_actions = [
+        item
         for item in brief.recommended_actions
-    )
+        if item.get("payload", {}).get("recommendation") == "retry_replay_lifecycle_check"
+    ]
+
+    assert retry_actions
+    assert retry_actions[0]["payload"]["timeout_profile"] == "standard"
+    assert retry_actions[0]["payload"]["suggested_wait_seconds"] == 15.0
+    assert retry_actions[0]["payload"]["suggested_poll_interval"] == 0.5
+
     assert "replay lifecycle timeout warning" in brief.summary.lower()

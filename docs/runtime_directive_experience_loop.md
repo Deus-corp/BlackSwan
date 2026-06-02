@@ -482,6 +482,11 @@ python -m src.testing.run_replay_evidence_check \
   --timeout-profile standard \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
+
+The retry recommendation uses `timeout_profile=standard`, which maps to
+`wait_seconds=15.0` and `poll_interval=0.5`.
+
+
 ---
 
 ## Safety guarantees
