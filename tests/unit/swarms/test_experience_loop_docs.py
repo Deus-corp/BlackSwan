@@ -56,3 +56,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "execution_not_observed_before_timeout" in text
     assert "wait_seconds" in text
     assert "poll_interval" in text
+    assert "security_validation_warning_reasons" in text
+    assert "execution_not_observed_before_timeout" in text

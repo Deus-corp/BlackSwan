@@ -455,6 +455,10 @@ When execution is not observed before the configured wait timeout, the lifecycle
 result payload includes `failure_reason=execution_not_observed_before_timeout`
 plus `wait_seconds` and `poll_interval`.
 
+Structured lifecycle failures are valid warnings and are aggregated in
+`security_validation_warning_reasons`, for example
+`execution_not_observed_before_timeout`.
+
 ---
 
 ## Safety guarantees

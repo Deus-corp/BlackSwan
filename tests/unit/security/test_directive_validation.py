@@ -6,7 +6,7 @@ from src.security.directive_validation import (
     validate_swarm_directive_result,
 )
 
-from src.swarms.security.runtime_validation import validate_replay_evidence_lifecycle_result
+from src.swarms.security.runtime_validation import validate_replay_evidence_lifecycle_result, build_security_validation_heartbeat_metrics
 
 
 def test_validate_safe_swarm_directive() -> None:
@@ -303,3 +303,37 @@ def test_validate_replay_evidence_lifecycle_result_rejects_passed_result_with_fa
     assert result["valid"] is False
     assert result["severity"] == "critical"
     assert "passed_result_contains_failure_reason" in result["reasons"]
+
+
+def test_security_validation_metrics_reports_warning_reasons_for_lifecycle_timeout() -> None:
+    metrics = build_security_validation_heartbeat_metrics(
+        [
+            {
+                "type": "replay_evidence_lifecycle_result",
+                "status": "failed",
+                "scenario_id": "replay-runtime-reduce-risk-timeout-2",
+                "directive_id": "runtime-run-replay-timeout-2",
+                "checks": [
+                    {
+                        "name": "execution_published",
+                        "status": "failed",
+                        "value": None,
+                    },
+                ],
+                "payload": {
+                    "failure_reason": "execution_not_observed_before_timeout",
+                },
+            }
+        ]
+    )
+
+    assert metrics["security_validation_records"] == 1
+    assert metrics["security_validation_valid_records"] == 1
+    assert metrics["security_validation_invalid_records"] == 0
+    assert metrics["security_validation_severity_counts"]["warning"] == 1
+    assert (
+        metrics["security_validation_warning_reasons"][
+            "execution_not_observed_before_timeout"
+        ]
+        == 1
+    )

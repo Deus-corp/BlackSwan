@@ -47,6 +47,7 @@ def test_security_node_heartbeat_reports_runtime_validation_metrics() -> None:
     assert metrics["security_validation_invalid_records"] == 1
     assert metrics["security_validation_critical_records"] == 1
     assert metrics["security_validation_invalid_reasons"]["unsafe_or_unknown_action"] == 1
+    assert metrics["security_validation_warning_reasons"] == {}
     assert metrics["security_validation_record_type_counts"]["replay_evidence_lifecycle_result"] == 1
 
 def make_security_node() -> SecurityNode:

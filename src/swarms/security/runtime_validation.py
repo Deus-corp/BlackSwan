@@ -77,6 +77,7 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
 
     invalid = [item for item in validation_list if not bool(item.get("valid"))]
     critical = [item for item in validation_list if str(item.get("severity") or "") == "critical"]
+    warnings = [item for item in validation_list if str(item.get("severity") or "") == "warning"]
 
     return {
         "type": "security_validation_summary",
@@ -87,6 +88,7 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "severity_counts": dict(severity_counts),
         "record_type_counts": dict(record_type_counts),
         "invalid_reasons": _reason_counts(invalid),
+        "warning_reasons": _reason_counts(warnings),
     }
 
 
@@ -103,6 +105,7 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_severity_counts": summary["severity_counts"],
         "security_validation_record_type_counts": summary["record_type_counts"],
         "security_validation_invalid_reasons": summary["invalid_reasons"],
+        "security_validation_warning_reasons": summary["warning_reasons"],
     }
 
 
