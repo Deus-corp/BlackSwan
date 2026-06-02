@@ -459,6 +459,9 @@ Structured lifecycle failures are valid warnings and are aggregated in
 `security_validation_warning_reasons`, for example
 `execution_not_observed_before_timeout`.
 
+Overseer global briefs surface structured Security warning reasons such as
+`execution_not_observed_before_timeout` as replay lifecycle timeout warnings.
+
 ---
 
 ## Safety guarantees
@@ -536,6 +539,17 @@ grep -R "runtime-run-replay-cli-live-1\|run_replay_dry_run_completed" \
 ```
 ```bash
 tail -200 data/cluster_runtime/latest/logs/simulation-1.log
+```
+```bash
+python -m src.testing.run_replay_evidence_check \
+  --scenario-id replay-runtime-reduce-risk-timeout-2 \
+  --action REDUCE_RISK \
+  --directive-id runtime-run-replay-timeout-2 \
+  --wait-seconds 0.01 \
+  --poll-interval 0.01 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+echo $?
 ```
 ---
 

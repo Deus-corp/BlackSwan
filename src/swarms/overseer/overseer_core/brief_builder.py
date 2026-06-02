@@ -102,6 +102,13 @@ def build_global_swarm_brief(
         security_validation_record_type_counts.get("replay_evidence_lifecycle_result"),
         0,
     )
+    security_validation_warning_reasons = _safe_dict(
+        security_validation.get("security_validation_warning_reasons")
+    )
+    security_replay_lifecycle_timeouts = _safe_int(
+        security_validation_warning_reasons.get("execution_not_observed_before_timeout"),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -283,6 +290,22 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_replay_lifecycle_timeouts > 0:
+        risks.append(
+            build_brief_item(
+                title="Replay lifecycle timeout warnings observed",
+                severity=BriefSeverity.WARNING.value,
+                detail=(
+                    f"Security observed {security_replay_lifecycle_timeouts} "
+                    "replay lifecycle timeout warning(s)."
+                ),
+                payload={
+                    "security_replay_lifecycle_timeouts": security_replay_lifecycle_timeouts,
+                    "recommendation": "review_replay_lifecycle_timeouts",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -446,6 +469,7 @@ def build_global_swarm_brief(
         "memory_replay_execution_evidence_records": memory_replay_execution_evidence_records,
         "memory_replay_execution_evidence_passed": memory_replay_execution_evidence_passed,
         "memory_replay_execution_evidence_failed": memory_replay_execution_evidence_failed,
+        "security_replay_lifecycle_timeouts": security_replay_lifecycle_timeouts,
     }
 
     summary = _build_summary(
@@ -465,6 +489,7 @@ def build_global_swarm_brief(
         simulation_replay_execution_failed=simulation_replay_execution_failed,
         memory_replay_execution_evidence_passed=memory_replay_execution_evidence_passed,
         memory_replay_execution_evidence_failed=memory_replay_execution_evidence_failed,
+        security_replay_lifecycle_timeouts=security_replay_lifecycle_timeouts,
     )
 
     return build_swarm_brief(
@@ -515,6 +540,7 @@ def _build_summary(
     memory_replay_execution_evidence_passed: int,
     memory_replay_execution_evidence_failed: int,
     security_replay_lifecycle_results: int,
+    security_replay_lifecycle_timeouts: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -554,6 +580,11 @@ def _build_summary(
     if security_replay_lifecycle_results > 0:
         parts.append(
             f"Security validated {security_replay_lifecycle_results} replay evidence lifecycle result record(s)."
+        )
+
+    if security_replay_lifecycle_timeouts > 0:
+        parts.append(
+            f"Security observed {security_replay_lifecycle_timeouts} replay lifecycle timeout warning(s)."
         )
 
     if simulation_replay_pending > 0:
@@ -779,6 +810,7 @@ def _aggregate_security_validation_from_heartbeats(
     }
 
     invalid_reasons: dict[str, int] = {}
+    warning_reasons: dict[str, int] = {}
     severity_counts: dict[str, int] = {}
     record_type_counts: dict[str, int] = {}
 
@@ -793,10 +825,12 @@ def _aggregate_security_validation_from_heartbeats(
         aggregate["security_validation_critical_records"] += _safe_int(metrics.get("security_validation_critical_records"), 0)
 
         _merge_int_counts(invalid_reasons, metrics.get("security_validation_invalid_reasons"))
+        _merge_int_counts(warning_reasons, metrics.get("security_validation_warning_reasons"))
         _merge_int_counts(severity_counts, metrics.get("security_validation_severity_counts"))
         _merge_int_counts(record_type_counts, metrics.get("security_validation_record_type_counts"))
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
+    aggregate["security_validation_warning_reasons"] = warning_reasons
     aggregate["security_validation_severity_counts"] = severity_counts
     aggregate["security_validation_record_type_counts"] = record_type_counts
 

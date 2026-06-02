@@ -208,6 +208,9 @@ def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_hea
                         "security_validation_record_type_counts": {
                             "replay_evidence_lifecycle_result": 1,
                         },
+                        "security_validation_warning_reasons": {
+                            "execution_not_observed_before_timeout": 1,
+                        },
                         "simulation_replay_executions": 1,
                         "simulation_replay_execution_completed": 1,
                         "simulation_replay_execution_failed": 0,
@@ -228,6 +231,7 @@ def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_hea
     assert brief.key_metrics["simulation_replay_executions"] == 1
     assert brief.key_metrics["simulation_replay_execution_completed"] == 1
     assert brief.key_metrics["security_replay_lifecycle_results"] == 1
+    assert brief.key_metrics["security_replay_lifecycle_timeouts"] == 1
 
 def test_build_global_swarm_brief_reports_simulation_replay_opportunity() -> None:
     brief = build_global_swarm_brief(
@@ -378,3 +382,24 @@ def test_build_global_swarm_brief_reports_replay_lifecycle_security_validation()
         for item in brief.opportunities
     )
     assert "replay evidence lifecycle result" in brief.summary.lower()
+
+def test_build_global_swarm_brief_reports_replay_lifecycle_timeout_warnings() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "security_validation_valid_records": 1,
+            "security_validation_invalid_records": 0,
+            "security_validation_critical_records": 0,
+            "security_validation_warning_reasons": {
+                "execution_not_observed_before_timeout": 1,
+            },
+        },
+    )
+
+    assert brief.key_metrics["security_replay_lifecycle_timeouts"] == 1
+    assert any(
+        "Replay lifecycle timeout warnings" in item.get("title", "")
+        for item in brief.risks
+    )
+    assert "replay lifecycle timeout warning" in brief.summary.lower()
