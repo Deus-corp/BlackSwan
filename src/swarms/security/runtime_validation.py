@@ -105,6 +105,14 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     critical = [item for item in validation_list if str(item.get("severity") or "") == "critical"]
     warnings = [item for item in validation_list if str(item.get("severity") or "") == "warning"]
 
+    retry_approval_decision_modes: dict[str, int] = {}
+    for item in validation_list:
+        if item.get("record_type") != "replay_lifecycle_retry_approval":
+            continue
+
+        mode = str(item.get("decision_mode") or "unknown").strip() or "unknown"
+        retry_approval_decision_modes[mode] = retry_approval_decision_modes.get(mode, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -115,6 +123,7 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "record_type_counts": dict(record_type_counts),
         "invalid_reasons": _reason_counts(invalid),
         "warning_reasons": _reason_counts(warnings),
+        "retry_approval_decision_modes": retry_approval_decision_modes,
     }
 
 
@@ -132,6 +141,7 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_record_type_counts": summary["record_type_counts"],
         "security_validation_invalid_reasons": summary["invalid_reasons"],
         "security_validation_warning_reasons": summary["warning_reasons"],
+        "security_validation_retry_approval_decision_modes": summary["retry_approval_decision_modes"],
     }
 
 
@@ -368,6 +378,7 @@ def validate_replay_lifecycle_retry_approval(record: Mapping[str, Any]) -> dict[
         "severity": "info" if valid else "critical",
         "reasons": reasons,
         "subject": approval_id or proposal_id or "unknown",
+        "decision_mode": decision_mode or "unknown",
     }
 
 

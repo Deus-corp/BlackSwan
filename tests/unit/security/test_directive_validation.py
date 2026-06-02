@@ -451,6 +451,7 @@ def test_validate_replay_lifecycle_retry_approval_accepts_safe_approval() -> Non
     assert result["valid"] is True
     assert result["severity"] == "info"
     assert result["record_type"] == "replay_lifecycle_retry_approval"
+    assert result["decision_mode"] == "manual"
 
 
 def test_validate_replay_lifecycle_retry_approval_rejects_execution_enabled() -> None:
@@ -522,3 +523,20 @@ def test_validate_replay_lifecycle_retry_approval_rejects_payload_decision_mode_
 
     assert result["valid"] is False
     assert "payload_decision_mode_mismatch" in result["reasons"]
+
+
+def test_security_validation_metrics_reports_retry_approval_decision_modes() -> None:
+    manual = _retry_approval(decision_mode="manual")
+    manual["payload"]["decision_mode"] = "manual"
+
+    policy = _retry_approval(
+        approval_id="replay-retry-approval-policy",
+        decision_mode="policy",
+        approved_by="policy-engine",
+    )
+    policy["payload"]["decision_mode"] = "policy"
+
+    metrics = build_security_validation_heartbeat_metrics([manual, policy])
+
+    assert metrics["security_validation_retry_approval_decision_modes"]["manual"] == 1
+    assert metrics["security_validation_retry_approval_decision_modes"]["policy"] == 1

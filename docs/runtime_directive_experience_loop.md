@@ -522,8 +522,11 @@ runner/approval policy explicitly supports execution.
 Overseer global briefs also surface validated `replay_lifecycle_retry_approval`
 records as retry approval opportunities.
 
-Retry approvals include `decision_mode=manual|policy`. Autonomous approval is not
-valid until a future policy/runner layer explicitly supports it.
+Retry approvals include `decision_mode=manual|policy`. Autonomous approval is not valid until a future policy/runner layer explicitly supports it.
+
+Security heartbeat metrics include
+`security_validation_retry_approval_decision_modes` so manual and policy retry
+approvals can be observed separately.
 
 ---
 

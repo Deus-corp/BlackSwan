@@ -87,3 +87,4 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "retry approval opportunities" in text
     assert "decision_mode=manual|policy" in text
     assert "Autonomous approval is not valid" in text
+    assert "security_validation_retry_approval_decision_modes" in text
