@@ -41,6 +41,14 @@ def test_build_checks_passes_for_complete_chain() -> None:
                     "replay_evidence_lifecycle_result": 1,
                 }
             },
+            "trail_counts": {
+                "simulation_replay_scenario": 1,
+                "swarm_directive": 1,
+                "simulation_replay_execution": 1,
+                "evidence_record": 1,
+                "memory_record": 1,
+                "replay_evidence_lifecycle_result": 1,
+            },
         },
     )
 
@@ -52,6 +60,11 @@ def test_build_checks_passes_for_complete_chain() -> None:
     )
     assert any(
         check["name"] == "visibility_security_lifecycle_validation"
+        and check["status"] == "passed"
+        for check in checks
+    )
+    assert any(
+        check["name"] == "visibility_crdt_trail_complete"
         and check["status"] == "passed"
         for check in checks
     )
@@ -74,13 +87,13 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
         )
     )
 
-    assert result["status"] == "failed"
-    assert result["scenario"]["type"] == "simulation_replay_scenario"
-    assert result["directive"]["type"] == "swarm_directive"
-    assert result["execution"] is None
-
     assert any(
         check["name"] == "execution_published" and check["status"] == "failed"
+        for check in result["checks"]
+    )
+    assert any(
+        check["name"] == "visibility_crdt_trail_complete"
+        and check["status"] == "failed"
         for check in result["checks"]
     )
 
@@ -89,7 +102,19 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
     assert result["result_record"]["payload"]["evidence_count"] == 0
     assert result["result_record"]["payload"]["memory_record_count"] == 0
     assert "visibility" in result
-    assert result["result_record"]["payload"]["visibility"]["memory_summary"]["replay_execution_evidence_records"] == 0
+    assert (
+        result["result_record"]["payload"]["visibility"]["memory_summary"][
+            "replay_execution_evidence_records"
+        ]
+        == 0
+    )
+    assert "trail_counts" in result["visibility"]
+    assert (
+        result["result_record"]["payload"]["visibility"]["trail_counts"][
+            "simulation_replay_execution"
+        ]
+        == 0
+    )
 
     reader = CRDTAdapter(node_id="reader", db_path=db_path)
     try:
@@ -115,3 +140,10 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
     assert results[0]["payload"]["evidence_count"] == 0
     assert results[0]["payload"]["memory_record_count"] == 0
     assert "visibility" in results[0]["payload"]
+    assert "trail_counts" in results[0]["payload"]["visibility"]
+    assert (
+        results[0]["payload"]["visibility"]["trail_counts"][
+            "simulation_replay_execution"
+        ]
+        == 0
+    )

@@ -441,6 +441,10 @@ A passed lifecycle result is valid only when all checks are passed.
 
 The helper also verifies Overseer-ready visibility by checking MemorySummary replay evidence counters and Security validation record-type counts.
 
+It also records `trail_counts` for the expected CRDT trail:
+`simulation_replay_scenario`, `swarm_directive`, `simulation_replay_execution`,
+`evidence_record`, `memory_record`, and `replay_evidence_lifecycle_result`.
+
 ---
 
 ## Safety guarantees

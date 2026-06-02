@@ -284,12 +284,19 @@ async def _collect_visibility(
             and item.get("directive_id") == directive_id
         ]
 
+        trail_counts = _build_trail_counts(
+            records=records,
+            scenario_id=scenario_id,
+            directive_id=directive_id,
+        )
+
         memory_summary = build_memory_summary(replay_memory_records).to_dict()
         security_metrics = build_security_validation_heartbeat_metrics(records)
 
         return {
             "memory_records": len(replay_memory_records),
             "lifecycle_results": len(lifecycle_results),
+            "trail_counts": trail_counts,
             "memory_summary": memory_summary,
             "security_validation": security_metrics,
         }
@@ -357,6 +364,10 @@ def _build_checks(
     if not isinstance(record_type_counts, dict):
         record_type_counts = {}
 
+    trail_counts = visibility.get("trail_counts")
+    if not isinstance(trail_counts, dict):
+        trail_counts = {}
+
     checks.extend(
         [
             {
@@ -377,6 +388,25 @@ def _build_checks(
                 ),
                 "value": record_type_counts.get("replay_evidence_lifecycle_result"),
             },
+            {
+                "name": "visibility_crdt_trail_complete",
+                "status": (
+                    "passed"
+                    if all(
+                        int(trail_counts.get(name) or 0) > 0
+                        for name in (
+                            "simulation_replay_scenario",
+                            "swarm_directive",
+                            "simulation_replay_execution",
+                            "evidence_record",
+                            "memory_record",
+                            "replay_evidence_lifecycle_result",
+                        )
+                    )
+                    else "failed"
+                ),
+                "value": dict(trail_counts),
+            },
         ]
     )
 
@@ -390,6 +420,47 @@ def _record_payload(record: Mapping[str, Any]) -> Mapping[str, Any]:
 def _record_scenario_id(record: Mapping[str, Any]) -> str:
     payload = _record_payload(record)
     return str(record.get("scenario_id") or payload.get("scenario_id") or "").strip()
+
+def _build_trail_counts(
+    *,
+    records: list[dict[str, Any]],
+    scenario_id: str,
+    directive_id: str,
+) -> dict[str, int]:
+    """Count replay lifecycle CRDT trail records for the target scenario/directive."""
+    counts = {
+        "simulation_replay_scenario": 0,
+        "swarm_directive": 0,
+        "simulation_replay_execution": 0,
+        "evidence_record": 0,
+        "memory_record": 0,
+        "replay_evidence_lifecycle_result": 0,
+    }
+
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+
+        record_type = str(record.get("type") or "").strip()
+        if record_type not in counts:
+            continue
+
+        if record_type == "simulation_replay_scenario":
+            if _record_scenario_id(record) == scenario_id:
+                counts[record_type] += 1
+            continue
+
+        if record_type in {
+            "swarm_directive",
+            "simulation_replay_execution",
+            "evidence_record",
+            "memory_record",
+            "replay_evidence_lifecycle_result",
+        }:
+            if _record_directive_id(record) == directive_id:
+                counts[record_type] += 1
+
+    return counts
 
 
 def _record_directive_id(record: Mapping[str, Any]) -> str:
