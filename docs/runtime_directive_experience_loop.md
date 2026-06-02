@@ -445,6 +445,10 @@ It also records `trail_counts` for the expected CRDT trail:
 `simulation_replay_scenario`, `swarm_directive`, `simulation_replay_execution`,
 `evidence_record`, `memory_record`, and `replay_evidence_lifecycle_result`.
 
+The helper reports an explicit `visibility_crdt_trail_complete` check. It passes
+when the CRDT trail contains all expected record types for the target scenario
+and directive.
+
 ---
 
 ## Safety guarantees
