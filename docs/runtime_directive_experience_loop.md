@@ -499,6 +499,10 @@ Replay lifecycle timeout recommendations can be converted into pending
 they contain a retry command template and timeout profile, but they do not execute
 the retry automatically.
 
+Overseer can publish pending `replay_lifecycle_retry_proposal` records from retry
+recommendations. These proposals remain non-executing until a future approval or
+runner consumes them.
+
 ---
 
 ## Safety guarantees

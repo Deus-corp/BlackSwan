@@ -45,6 +45,10 @@ from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_b
 from src.swarms.overseer.overseer_core.directive_emitter import build_directives_from_brief
 from swarm_config import config
 
+from src.swarms.overseer.overseer_core.replay_retry_proposals import (
+    build_replay_lifecycle_retry_proposals_from_brief,
+)
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_COORDINATION_INTERVAL_SECONDS = 150
@@ -254,6 +258,11 @@ class OverseerNode(BaseSwarmOverseer):
             swarm_brief.summary,
         )
 
+        try:
+            await self._publish_replay_lifecycle_retry_proposals(swarm_brief)
+        except Exception:
+            logger.exception("Failed to publish replay lifecycle retry proposals")
+
         directives = build_directives_from_brief(swarm_brief, source=self.node_id)
         self.last_directives = [directive.to_dict() for directive in directives]
 
@@ -283,6 +292,53 @@ class OverseerNode(BaseSwarmOverseer):
                 )
 
         return snapshot
+    
+    async def _publish_replay_lifecycle_retry_proposals(self, brief: Any) -> int:
+        """Publish pending replay lifecycle retry proposals from global brief actions."""
+        source = str(getattr(self, "node_id", None) or self.overseer_id or "overseer")
+
+        retry_proposals = build_replay_lifecycle_retry_proposals_from_brief(
+            brief,
+            source=source,
+        )
+
+        if not retry_proposals:
+            return 0
+        
+        refresh = getattr(self.crdt, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
+
+        state = getattr(self.crdt, "state", {}) or {}
+        existing_proposal_ids = {
+            str(item.get("proposal_id") or "")
+            for item in state.values()
+            if isinstance(item, dict)
+            and item.get("type") == "replay_lifecycle_retry_proposal"
+        }
+
+        published = 0
+
+        for proposal in retry_proposals:
+            proposal_id = str(proposal.get("proposal_id") or "").strip()
+            if proposal_id and proposal_id in existing_proposal_ids:
+                continue
+
+            await self.crdt.add_genome(proposal)
+
+            if proposal_id:
+                existing_proposal_ids.add(proposal_id)
+
+            published += 1
+
+            logger.info(
+                "Published replay lifecycle retry proposal: proposal_id=%s reason=%s timeout_profile=%s",
+                proposal.get("proposal_id"),
+                proposal.get("reason"),
+                proposal.get("timeout_profile"),
+            )
+
+        return published
 
     async def global_decide(self, ecosystem_snapshot: Any) -> OverseerCycleDecision:
         """Evaluate hard rules, query strategist, and merge final decision."""
