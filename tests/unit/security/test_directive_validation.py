@@ -10,6 +10,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_evidence_lifecycle_result,
     build_security_validation_heartbeat_metrics,
     validate_replay_lifecycle_retry_proposal,
+    validate_replay_lifecycle_retry_approval,
 )
 
 
@@ -413,3 +414,80 @@ def test_security_validation_metrics_counts_retry_proposals() -> None:
     assert metrics["security_validation_records"] == 1
     assert metrics["security_validation_valid_records"] == 1
     assert metrics["security_validation_record_type_counts"]["replay_lifecycle_retry_proposal"] == 1
+
+
+def _retry_approval(**overrides):
+    approval = {
+        "type": "replay_lifecycle_retry_approval",
+        "approval_id": "replay-retry-approval-test",
+        "proposal_id": "replay-retry-test",
+        "status": "approved",
+        "approved_by": "operator",
+        "source": "overseer-test",
+        "reason": "retry_with_standard_timeout",
+        "execution_enabled": False,
+        "payload": {
+            "proposal_id": "replay-retry-test",
+            "timeout_profile": "standard",
+            "command_template": (
+                "python -m src.testing.run_replay_evidence_check "
+                "--scenario-id <scenario_id> "
+                "--action REDUCE_RISK "
+                "--directive-id <new_directive_id> "
+                "--timeout-profile standard "
+                "--db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db"
+            ),
+        },
+    }
+    approval.update(overrides)
+    return approval
+
+
+def test_validate_replay_lifecycle_retry_approval_accepts_safe_approval() -> None:
+    result = validate_replay_lifecycle_retry_approval(_retry_approval())
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["record_type"] == "replay_lifecycle_retry_approval"
+
+
+def test_validate_replay_lifecycle_retry_approval_rejects_execution_enabled() -> None:
+    result = validate_replay_lifecycle_retry_approval(
+        _retry_approval(execution_enabled=True)
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "approval_execution_enabled_before_runner" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_approval_rejects_missing_approved_by() -> None:
+    result = validate_replay_lifecycle_retry_approval(
+        _retry_approval(approved_by="")
+    )
+
+    assert result["valid"] is False
+    assert "missing_approved_by" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_approval_rejects_invalid_timeout_profile() -> None:
+    approval = _retry_approval()
+    approval["payload"]["timeout_profile"] = "fast"
+
+    result = validate_replay_lifecycle_retry_approval(approval)
+
+    assert result["valid"] is False
+    assert "invalid_approval_timeout_profile" in result["reasons"]
+
+
+def test_security_validation_metrics_counts_retry_approvals() -> None:
+    metrics = build_security_validation_heartbeat_metrics([_retry_approval()])
+
+    assert metrics["security_validation_records"] == 1
+    assert metrics["security_validation_valid_records"] == 1
+    assert (
+        metrics["security_validation_record_type_counts"][
+            "replay_lifecycle_retry_approval"
+        ]
+        == 1
+    )

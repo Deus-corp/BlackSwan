@@ -80,3 +80,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "pending" in text
     assert "standard" in text
     assert "patient" in text
+    assert "retry proposal opportunities" in text
+    assert "replay_lifecycle_retry_approval" in text
+    assert "execution_enabled=false" in text
+    assert "approve or reject" in text

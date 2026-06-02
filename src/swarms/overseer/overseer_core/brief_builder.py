@@ -102,6 +102,10 @@ def build_global_swarm_brief(
         security_validation_record_type_counts.get("replay_evidence_lifecycle_result"),
         0,
     )
+    security_retry_proposals = _safe_int(
+        security_validation_record_type_counts.get("replay_lifecycle_retry_proposal"),
+        0,
+    )
     security_validation_warning_reasons = _safe_dict(
         security_validation.get("security_validation_warning_reasons")
     )
@@ -286,6 +290,22 @@ def build_global_swarm_brief(
                 payload={
                     "security_replay_lifecycle_results": security_replay_lifecycle_results,
                     "recommendation": "review_replay_lifecycle_validation",
+                },
+            )
+        )
+
+    if security_retry_proposals > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Pending replay lifecycle retry proposals observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Security validated {security_retry_proposals} pending "
+                    "replay lifecycle retry proposal record(s)."
+                ),
+                payload={
+                    "security_retry_proposals": security_retry_proposals,
+                    "recommendation": "review_replay_retry_proposals",
                 },
             )
         )
@@ -496,6 +516,7 @@ def build_global_swarm_brief(
         "memory_replay_execution_evidence_passed": memory_replay_execution_evidence_passed,
         "memory_replay_execution_evidence_failed": memory_replay_execution_evidence_failed,
         "security_replay_lifecycle_timeouts": security_replay_lifecycle_timeouts,
+        "security_retry_proposals": security_retry_proposals,
     }
 
     summary = _build_summary(
@@ -516,6 +537,7 @@ def build_global_swarm_brief(
         memory_replay_execution_evidence_passed=memory_replay_execution_evidence_passed,
         memory_replay_execution_evidence_failed=memory_replay_execution_evidence_failed,
         security_replay_lifecycle_timeouts=security_replay_lifecycle_timeouts,
+        security_retry_proposals=security_retry_proposals,
     )
 
     return build_swarm_brief(
@@ -567,6 +589,7 @@ def _build_summary(
     memory_replay_execution_evidence_failed: int,
     security_replay_lifecycle_results: int,
     security_replay_lifecycle_timeouts: int,
+    security_retry_proposals: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -611,6 +634,11 @@ def _build_summary(
     if security_replay_lifecycle_timeouts > 0:
         parts.append(
             f"Security observed {security_replay_lifecycle_timeouts} replay lifecycle timeout warning(s)."
+        )
+
+    if security_retry_proposals > 0:
+        parts.append(
+            f"Security validated {security_retry_proposals} pending replay lifecycle retry proposal record(s)."
         )
 
     if simulation_replay_pending > 0:

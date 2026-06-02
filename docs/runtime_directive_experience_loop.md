@@ -507,6 +507,18 @@ Security validation recognizes pending `replay_lifecycle_retry_proposal` records
 Only non-executing `pending` retry proposals with safe timeout profiles such as
 `standard` or `patient` are valid.
 
+Overseer global briefs surface validated pending `replay_lifecycle_retry_proposal`
+records as retry proposal opportunities.
+
+---
+
+## Replay lifecycle retry approvals
+
+Retry proposals are not executed directly. A separate
+`replay_lifecycle_retry_approval` record can approve or reject a pending proposal.
+Approvals are auditable and must keep `execution_enabled=false` until a future
+runner/approval policy explicitly supports execution.
+
 ---
 
 ## Safety guarantees

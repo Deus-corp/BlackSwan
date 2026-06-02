@@ -422,3 +422,25 @@ def test_build_global_swarm_brief_reports_replay_lifecycle_timeout_warnings() ->
     assert "python -m src.testing.run_replay_evidence_check" in command_template
 
     assert "replay lifecycle timeout warning" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_reports_retry_proposals_from_security_validation() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "security_validation_valid_records": 1,
+            "security_validation_invalid_records": 0,
+            "security_validation_critical_records": 0,
+            "security_validation_record_type_counts": {
+                "replay_lifecycle_retry_proposal": 1,
+            },
+        },
+    )
+
+    assert brief.key_metrics["security_retry_proposals"] == 1
+    assert any(
+        "Pending replay lifecycle retry proposals" in item.get("title", "")
+        for item in brief.opportunities
+    )
+    assert "pending replay lifecycle retry proposal" in brief.summary.lower()
