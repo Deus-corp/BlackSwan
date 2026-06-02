@@ -3,7 +3,12 @@ import argparse
 import pytest
 
 from src.core.crdt_adapter import CRDTAdapter
-from src.testing.run_replay_evidence_check import _build_checks, run_replay_evidence_check
+from src.testing.run_replay_evidence_check import (
+    _build_checks,
+    async_main,
+    main,
+    run_replay_evidence_check,
+)
 
 
 def test_build_checks_passes_for_complete_chain() -> None:
@@ -147,3 +152,74 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
         ]
         == 0
     )
+
+
+@pytest.mark.asyncio
+async def test_async_main_returns_zero_when_lifecycle_check_passes(monkeypatch) -> None:
+    async def fake_run_replay_evidence_check(_args):
+        return {
+            "status": "passed",
+            "scenario_id": "replay-test",
+            "directive_id": "directive-test",
+            "checks": [
+                {
+                    "name": "scenario_seeded",
+                    "status": "passed",
+                    "value": "replay-test",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        "src.testing.run_replay_evidence_check.run_replay_evidence_check",
+        fake_run_replay_evidence_check,
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["run_replay_evidence_check"],
+    )
+
+    assert await async_main() == 0
+
+
+@pytest.mark.asyncio
+async def test_async_main_returns_nonzero_when_lifecycle_check_fails(monkeypatch) -> None:
+    async def fake_run_replay_evidence_check(_args):
+        return {
+            "status": "failed",
+            "scenario_id": "replay-test",
+            "directive_id": "directive-test",
+            "checks": [
+                {
+                    "name": "execution_published",
+                    "status": "failed",
+                    "value": None,
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        "src.testing.run_replay_evidence_check.run_replay_evidence_check",
+        fake_run_replay_evidence_check,
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["run_replay_evidence_check"],
+    )
+
+    assert await async_main() == 1
+
+
+def test_main_exits_with_async_main_code(monkeypatch) -> None:
+    async def fake_async_main() -> int:
+        return 1
+
+    monkeypatch.setattr(
+        "src.testing.run_replay_evidence_check.async_main",
+        fake_async_main,
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 1

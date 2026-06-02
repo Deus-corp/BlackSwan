@@ -449,6 +449,8 @@ The helper reports an explicit `visibility_crdt_trail_complete` check. It passes
 when the CRDT trail contains all expected record types for the target scenario
 and directive.
 
+The command exits with code `0` when the lifecycle check passes and `1` when any check fails.
+
 ---
 
 ## Safety guarantees

@@ -51,3 +51,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "trail_counts" in text
     assert "visibility_crdt_trail_complete" in text
     assert "replay_evidence_lifecycle_result" in text
+    assert "exits with code `0`" in text
+    assert "1` when any check fails" in text

@@ -468,7 +468,24 @@ def _record_directive_id(record: Mapping[str, Any]) -> str:
     return str(record.get("directive_id") or payload.get("directive_id") or "").strip()
 
 
-async def async_main() -> None:
+async def _publish_result_record(
+    *,
+    db_path: str,
+    source: str,
+    result_record: dict[str, Any],
+) -> None:
+    crdt = CRDTAdapter(node_id=source, db_path=db_path)
+    try:
+        await crdt.add_genome(result_record)
+    finally:
+        close = getattr(crdt, "close", None)
+        if callable(close):
+            result = close()
+            if asyncio.iscoroutine(result):
+                await result
+
+
+async def async_main() -> int:
     args = build_parser().parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s:%(lineno)d - %(message)s")
 
@@ -489,25 +506,11 @@ async def async_main() -> None:
             check.get("value"),
         )
 
-async def _publish_result_record(
-    *,
-    db_path: str,
-    source: str,
-    result_record: dict[str, Any],
-) -> None:
-    crdt = CRDTAdapter(node_id=source, db_path=db_path)
-    try:
-        await crdt.add_genome(result_record)
-    finally:
-        close = getattr(crdt, "close", None)
-        if callable(close):
-            result = close()
-            if asyncio.iscoroutine(result):
-                await result
+    return 0 if result["status"] == "passed" else 1
 
 
 def main() -> None:
-    asyncio.run(async_main())
+    raise SystemExit(asyncio.run(async_main()))
 
 
 if __name__ == "__main__":
