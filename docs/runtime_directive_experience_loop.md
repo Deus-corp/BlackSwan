@@ -492,6 +492,15 @@ construct a retry command safely.
 
 ---
 
+## Replay lifecycle retry proposals
+
+Replay lifecycle timeout recommendations can be converted into pending
+`replay_lifecycle_retry_proposal` records. These proposals are safe by default:
+they contain a retry command template and timeout profile, but they do not execute
+the retry automatically.
+
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:

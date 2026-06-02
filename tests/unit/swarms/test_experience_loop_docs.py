@@ -72,3 +72,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "command_template" in text
     assert "<scenario_id>" in text
     assert "<new_directive_id>" in text
+    assert "replay_lifecycle_retry_proposal" in text
+    assert "do not execute" in text
