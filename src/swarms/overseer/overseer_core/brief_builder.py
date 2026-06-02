@@ -305,6 +305,22 @@ def build_global_swarm_brief(
                 },
             )
         )
+        recommended_actions.append(
+        build_brief_item(
+            title="Retry replay lifecycle check",
+            severity=BriefSeverity.INFO.value,
+            detail=(
+                "Retry the replay lifecycle check with a longer wait window before "
+                "investigating simulation responsiveness."
+            ),
+            payload={
+                "recommendation": "retry_replay_lifecycle_check",
+                "suggested_wait_seconds": 15,
+                "reason": "execution_not_observed_before_timeout",
+                "security_replay_lifecycle_timeouts": security_replay_lifecycle_timeouts,
+            },
+        )
+    )
 
     if simulation_replay_pending > 0:
         opportunities.append(

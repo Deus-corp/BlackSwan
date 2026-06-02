@@ -462,6 +462,10 @@ Structured lifecycle failures are valid warnings and are aggregated in
 Overseer global briefs surface structured Security warning reasons such as
 `execution_not_observed_before_timeout` as replay lifecycle timeout warnings.
 
+When replay lifecycle timeout warnings are observed, the global brief recommends
+`retry_replay_lifecycle_check` with a longer wait window before investigating
+simulation responsiveness.
+
 ---
 
 ## Safety guarantees
