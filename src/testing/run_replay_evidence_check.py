@@ -70,6 +70,8 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
     if not directive_id:
         raise ValueError("directive-id is required")
 
+    source = str(args.source or "replay-evidence-check")
+
     scenario = await seed_replay_scenario(
         argparse.Namespace(
             scenario_id=scenario_id,
@@ -121,10 +123,38 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
         )
     )
 
+    base_checks = _build_checks(
+        scenario=scenario,
+        directive=directive,
+        execution=execution,
+        evidence_records=evidence_records,
+        memory_records=memory_records,
+    )
+
+    base_status = "passed" if all(item["status"] == "passed" for item in base_checks) else "failed"
+
+    provisional_result_record = {
+        "type": "replay_evidence_lifecycle_result",
+        "scenario_id": scenario_id,
+        "directive_id": directive_id,
+        "status": base_status,
+        "source": source,
+        "checks": base_checks,
+        "payload": {
+            "scenario_id": scenario_id,
+            "directive_id": directive_id,
+            "execution_id": execution.get("execution_id") if isinstance(execution, dict) else None,
+            "evidence_count": len(evidence_records),
+            "memory_record_count": len(memory_records),
+        },
+        "created_at": time.time(),
+    }
+
     visibility = await _collect_visibility(
         db_path=db_path,
         scenario_id=scenario_id,
         directive_id=directive_id,
+        lifecycle_result=provisional_result_record,
     )
 
     checks = _build_checks(
@@ -143,7 +173,7 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
         "scenario_id": scenario_id,
         "directive_id": directive_id,
         "status": status,
-        "source": str(args.source or "replay-evidence-check"),
+        "source": source,
         "checks": checks,
         "payload": {
             "scenario_id": scenario_id,
@@ -158,7 +188,7 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
 
     await _publish_result_record(
         db_path=db_path,
-        source=str(args.source or "replay-evidence-check"),
+        source=source,
         result_record=result_record,
     )
 
@@ -222,6 +252,7 @@ async def _collect_visibility(
     db_path: str,
     scenario_id: str,
     directive_id: str,
+    lifecycle_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Collect replay lifecycle visibility from CRDT-derived summaries."""
     crdt = CRDTAdapter(node_id="replay-evidence-visibility-reader", db_path=db_path)
@@ -233,6 +264,9 @@ async def _collect_visibility(
 
         state = getattr(crdt, "state", {}) or {}
         records = [item for item in state.values() if isinstance(item, dict)]
+
+        if isinstance(lifecycle_result, dict):
+            records.append(dict(lifecycle_result))
 
         replay_memory_records = [
             item
