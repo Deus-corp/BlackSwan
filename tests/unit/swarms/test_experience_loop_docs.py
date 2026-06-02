@@ -62,3 +62,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "execution_not_observed_before_timeout" in text
     assert "retry_replay_lifecycle_check" in text
     assert "longer wait window" in text
+    assert "--timeout-profile" in text
+    assert "standard" in text
+    assert "patient" in text
+    assert "retry_replay_lifecycle_check" in text

@@ -19,6 +19,20 @@ from src.memory.summary import build_memory_summary
 from src.swarms.security.runtime_validation import build_security_validation_heartbeat_metrics
 
 logger = logging.getLogger(__name__)
+_TIMEOUT_PROFILES: dict[str, dict[str, float]] = {
+    "fast": {
+        "wait_seconds": 0.05,
+        "poll_interval": 0.01,
+    },
+    "standard": {
+        "wait_seconds": 15.0,
+        "poll_interval": 0.5,
+    },
+    "patient": {
+        "wait_seconds": 60.0,
+        "poll_interval": 1.0,
+    },
+}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -55,6 +69,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.5,
         help="Polling interval while waiting for simulation_replay_execution.",
+    )
+    parser.add_argument(
+        "--timeout-profile",
+        default="",
+        choices=["", "fast", "standard", "patient"],
+        help="Optional timeout profile overriding wait/poll settings.",
     )
     parser.add_argument("--db-path", default="", help="Override CRDT DB path.")
     return parser
@@ -98,6 +118,14 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
 
     wait_seconds = float(args.wait_seconds)
     poll_interval = float(args.poll_interval)
+
+    timeout_profile = str(getattr(args, "timeout_profile", "") or "").strip().lower()
+    if timeout_profile:
+        profile = _TIMEOUT_PROFILES.get(timeout_profile)
+        if profile is None:
+            raise ValueError(f"Unknown timeout profile: {timeout_profile}")
+        wait_seconds = float(profile["wait_seconds"])
+        poll_interval = float(profile["poll_interval"])
 
     execution = await _wait_for_execution(
         db_path=db_path,
@@ -162,6 +190,7 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
             "failure_reason": failure_reason,
             "wait_seconds": wait_seconds,
             "poll_interval": poll_interval,
+            "timeout_profile": timeout_profile or None,
         },
         "created_at": time.time(),
     }
@@ -200,6 +229,7 @@ async def run_replay_evidence_check(args: argparse.Namespace) -> dict[str, Any]:
             "failure_reason": failure_reason,
             "wait_seconds": wait_seconds,
             "poll_interval": poll_interval,
+            "timeout_profile": timeout_profile or None,
             "visibility": visibility,
         },
         "created_at": time.time(),

@@ -89,6 +89,7 @@ async def test_run_replay_evidence_check_fails_when_execution_missing(tmp_path) 
             wait_seconds=0.01,
             poll_interval=0.01,
             db_path=db_path,
+            timeout_profile="",
         )
     )
 
@@ -235,3 +236,46 @@ def test_main_exits_with_async_main_code(monkeypatch) -> None:
         main()
 
     assert exc.value.code == 1
+
+
+@pytest.mark.asyncio
+async def test_run_replay_evidence_check_applies_timeout_profile(tmp_path) -> None:
+    result = await run_replay_evidence_check(
+        argparse.Namespace(
+            scenario_id="replay-test-profile",
+            action="REDUCE_RISK",
+            directive_id="runtime-run-replay-profile",
+            source="replay-evidence-check-test",
+            expected_result_status="applied",
+            wait_seconds=15.0,
+            poll_interval=0.5,
+            timeout_profile="fast",
+            db_path=str(tmp_path / "crdt.db"),
+        )
+    )
+
+    assert result["status"] == "failed"
+
+    payload = result["result_record"]["payload"]
+    assert payload["timeout_profile"] == "fast"
+    assert payload["wait_seconds"] == 0.05
+    assert payload["poll_interval"] == 0.01
+    assert payload["failure_reason"] == "execution_not_observed_before_timeout"
+
+
+@pytest.mark.asyncio
+async def test_run_replay_evidence_check_rejects_unknown_timeout_profile(tmp_path) -> None:
+    with pytest.raises(ValueError, match="Unknown timeout profile"):
+        await run_replay_evidence_check(
+            argparse.Namespace(
+                scenario_id="replay-test-profile-invalid",
+                action="REDUCE_RISK",
+                directive_id="runtime-run-replay-profile-invalid",
+                source="replay-evidence-check-test",
+                expected_result_status="applied",
+                wait_seconds=0.01,
+                poll_interval=0.01,
+                timeout_profile="unknown",
+                db_path=str(tmp_path / "crdt.db"),
+            )
+        )

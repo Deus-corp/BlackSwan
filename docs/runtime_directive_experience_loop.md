@@ -466,6 +466,22 @@ When replay lifecycle timeout warnings are observed, the global brief recommends
 `retry_replay_lifecycle_check` with a longer wait window before investigating
 simulation responsiveness.
 
+The helper supports timeout profiles with `--timeout-profile`:
+
+- `fast`: short smoke/failure timeout.
+- `standard`: recommended retry profile for `retry_replay_lifecycle_check`.
+- `patient`: longer wait for slow runtimes.
+
+A retry recommendation can be executed with:
+
+```bash
+python -m src.testing.run_replay_evidence_check \
+  --scenario-id replay-runtime-reduce-risk-1 \
+  --action REDUCE_RISK \
+  --directive-id runtime-run-replay-retry-1 \
+  --timeout-profile standard \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
 ---
 
 ## Safety guarantees
