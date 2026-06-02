@@ -253,3 +253,53 @@ def test_validate_replay_evidence_lifecycle_result_accepts_failed_result_with_fa
 
     assert result["valid"] is True
     assert result["severity"] == "info"
+
+
+def test_validate_replay_evidence_lifecycle_result_marks_timeout_failure_as_warning() -> None:
+    result = validate_replay_evidence_lifecycle_result(
+        {
+            "type": "replay_evidence_lifecycle_result",
+            "status": "failed",
+            "scenario_id": "replay-runtime-reduce-risk-timeout-1",
+            "directive_id": "runtime-run-replay-timeout-1",
+            "checks": [
+                {
+                    "name": "execution_published",
+                    "status": "failed",
+                    "value": None,
+                },
+            ],
+            "payload": {
+                "failure_reason": "execution_not_observed_before_timeout",
+            },
+        }
+    )
+
+    assert result["valid"] is True
+    assert result["severity"] == "warning"
+    assert "execution_not_observed_before_timeout" in result["reasons"]
+
+
+def test_validate_replay_evidence_lifecycle_result_rejects_passed_result_with_failure_reason() -> None:
+    result = validate_replay_evidence_lifecycle_result(
+        {
+            "type": "replay_evidence_lifecycle_result",
+            "status": "passed",
+            "scenario_id": "replay-runtime-reduce-risk-1",
+            "directive_id": "runtime-run-replay-ok-1",
+            "checks": [
+                {
+                    "name": "execution_published",
+                    "status": "passed",
+                    "value": "completed",
+                },
+            ],
+            "payload": {
+                "failure_reason": "execution_not_observed_before_timeout",
+            },
+        }
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "passed_result_contains_failure_reason" in result["reasons"]

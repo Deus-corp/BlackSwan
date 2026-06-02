@@ -147,14 +147,27 @@ def _directive_id(record: Mapping[str, Any]) -> str | None:
 def validate_replay_evidence_lifecycle_result(record: Mapping[str, Any]) -> dict[str, Any]:
     """Validate replay evidence lifecycle result records."""
     reasons: list[str] = []
+    warning_reasons: list[str] = []
 
     status = str(record.get("status") or "").strip().lower()
     scenario_id = str(record.get("scenario_id") or "").strip()
     directive_id = str(record.get("directive_id") or "").strip()
     checks = record.get("checks")
 
+    payload = record.get("payload")
+    if not isinstance(payload, Mapping):
+        payload = {}
+
+    failure_reason = str(payload.get("failure_reason") or "").strip()
+
     if status not in {"passed", "failed"}:
         reasons.append("invalid_status")
+
+    if status == "passed" and failure_reason:
+        reasons.append("passed_result_contains_failure_reason")
+
+    if status == "failed" and failure_reason:
+        warning_reasons.append(failure_reason)
 
     if not scenario_id:
         reasons.append("missing_scenario_id")
@@ -190,13 +203,14 @@ def validate_replay_evidence_lifecycle_result(record: Mapping[str, Any]) -> dict
                 reasons.append("passed_result_contains_failed_checks")
 
     valid = not reasons
+    severity = "critical" if reasons else ("warning" if warning_reasons else "info")
 
     return {
         "type": "security_validation_result",
         "record_type": "replay_evidence_lifecycle_result",
         "valid": valid,
-        "severity": "info" if valid else "critical",
-        "reasons": reasons,
+        "severity": severity,
+        "reasons": reasons + warning_reasons,
         "subject": directive_id or scenario_id or "unknown",
     }
 
