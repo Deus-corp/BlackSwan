@@ -6,7 +6,11 @@ from src.security.directive_validation import (
     validate_swarm_directive_result,
 )
 
-from src.swarms.security.runtime_validation import validate_replay_evidence_lifecycle_result, build_security_validation_heartbeat_metrics
+from src.swarms.security.runtime_validation import (
+    validate_replay_evidence_lifecycle_result,
+    build_security_validation_heartbeat_metrics,
+    validate_replay_lifecycle_retry_proposal,
+)
 
 
 def test_validate_safe_swarm_directive() -> None:
@@ -337,3 +341,75 @@ def test_security_validation_metrics_reports_warning_reasons_for_lifecycle_timeo
         ]
         == 1
     )
+
+
+def _retry_proposal(**overrides):
+    proposal = {
+        "type": "replay_lifecycle_retry_proposal",
+        "proposal_id": "replay-retry-test",
+        "status": "pending",
+        "source": "overseer-test",
+        "recommendation": "retry_replay_lifecycle_check",
+        "reason": "execution_not_observed_before_timeout",
+        "timeout_profile": "standard",
+        "command_template": (
+            "python -m src.testing.run_replay_evidence_check "
+            "--scenario-id <scenario_id> "
+            "--action REDUCE_RISK "
+            "--directive-id <new_directive_id> "
+            "--timeout-profile standard "
+            "--db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db"
+        ),
+        "payload": {
+            "recommendation": "retry_replay_lifecycle_check",
+            "reason": "execution_not_observed_before_timeout",
+            "timeout_profile": "standard",
+            "suggested_wait_seconds": 15.0,
+            "suggested_poll_interval": 0.5,
+        },
+    }
+    proposal.update(overrides)
+    return proposal
+
+
+def test_validate_replay_lifecycle_retry_proposal_accepts_pending_standard_retry() -> None:
+    result = validate_replay_lifecycle_retry_proposal(_retry_proposal())
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["record_type"] == "replay_lifecycle_retry_proposal"
+
+
+def test_validate_replay_lifecycle_retry_proposal_rejects_non_pending_status() -> None:
+    result = validate_replay_lifecycle_retry_proposal(
+        _retry_proposal(status="approved")
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "non_pending_retry_proposal" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_proposal_rejects_fast_profile() -> None:
+    result = validate_replay_lifecycle_retry_proposal(
+        _retry_proposal(timeout_profile="fast")
+    )
+
+    assert result["valid"] is False
+    assert "invalid_timeout_profile" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_proposal_rejects_missing_command_template() -> None:
+    result = validate_replay_lifecycle_retry_proposal(
+        _retry_proposal(command_template="")
+    )
+
+    assert result["valid"] is False
+    assert "missing_command_template" in result["reasons"]
+
+def test_security_validation_metrics_counts_retry_proposals() -> None:
+    metrics = build_security_validation_heartbeat_metrics([_retry_proposal()])
+
+    assert metrics["security_validation_records"] == 1
+    assert metrics["security_validation_valid_records"] == 1
+    assert metrics["security_validation_record_type_counts"]["replay_lifecycle_retry_proposal"] == 1

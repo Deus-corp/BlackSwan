@@ -503,6 +503,10 @@ Overseer can publish pending `replay_lifecycle_retry_proposal` records from retr
 recommendations. These proposals remain non-executing until a future approval or
 runner consumes them.
 
+Security validation recognizes pending `replay_lifecycle_retry_proposal` records.
+Only non-executing `pending` retry proposals with safe timeout profiles such as
+`standard` or `patient` are valid.
+
 ---
 
 ## Safety guarantees

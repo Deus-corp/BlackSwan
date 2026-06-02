@@ -21,6 +21,7 @@ VALIDATED_RECORD_TYPES = {
     "evidence_record",
     "memory_record",
     "replay_evidence_lifecycle_result",
+    "replay_lifecycle_retry_proposal",
 }
 
 
@@ -37,6 +38,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             continue
 
         if record_type == "memory_record" and str(record.get("kind") or "") != "runtime_evidence":
+            continue
+
+        if record_type == "replay_lifecycle_retry_proposal":
+            result = validate_replay_lifecycle_retry_proposal(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
             continue
 
         if record_type == "replay_evidence_lifecycle_result":
@@ -123,13 +136,13 @@ def _reason_counts(records: Iterable[Mapping[str, Any]]) -> dict[str, int]:
 
 
 def _record_id(record: Mapping[str, Any]) -> str:
-    for key in ("directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id"):
+    for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id"):
         value = str(record.get(key) or "").strip()
         if value:
             return value
     payload = record.get("payload")
     if isinstance(payload, Mapping):
-        for key in ("directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id"):
+        for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id"):
             value = str(payload.get(key) or "").strip()
             if value:
                 return value
@@ -218,10 +231,70 @@ def validate_replay_evidence_lifecycle_result(record: Mapping[str, Any]) -> dict
     }
 
 
+def validate_replay_lifecycle_retry_proposal(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate pending replay lifecycle retry proposal records."""
+    reasons: list[str] = []
+
+    proposal_id = str(record.get("proposal_id") or "").strip()
+    status = str(record.get("status") or "").strip().lower()
+    reason = str(record.get("reason") or "").strip()
+    timeout_profile = str(record.get("timeout_profile") or "").strip()
+    command_template = str(record.get("command_template") or "").strip()
+
+    payload = record.get("payload")
+    if not isinstance(payload, Mapping):
+        payload = {}
+
+    payload_recommendation = str(payload.get("recommendation") or "").strip()
+    payload_reason = str(payload.get("reason") or "").strip()
+    payload_timeout_profile = str(payload.get("timeout_profile") or "").strip()
+
+    if not proposal_id:
+        reasons.append("missing_proposal_id")
+
+    if status != "pending":
+        reasons.append("non_pending_retry_proposal")
+
+    if reason != "execution_not_observed_before_timeout":
+        reasons.append("invalid_retry_reason")
+
+    if timeout_profile not in {"standard", "patient"}:
+        reasons.append("invalid_timeout_profile")
+
+    if not command_template:
+        reasons.append("missing_command_template")
+    else:
+        if "python -m src.testing.run_replay_evidence_check" not in command_template:
+            reasons.append("invalid_command_template")
+        if "--timeout-profile" not in command_template:
+            reasons.append("missing_timeout_profile_argument")
+
+    if payload_recommendation != "retry_replay_lifecycle_check":
+        reasons.append("invalid_payload_recommendation")
+
+    if payload_reason and payload_reason != reason:
+        reasons.append("payload_reason_mismatch")
+
+    if payload_timeout_profile and payload_timeout_profile != timeout_profile:
+        reasons.append("payload_timeout_profile_mismatch")
+
+    valid = not reasons
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_proposal",
+        "valid": valid,
+        "severity": "info" if valid else "critical",
+        "reasons": reasons,
+        "subject": proposal_id or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
     "summarize_runtime_validations",
     "validate_replay_evidence_lifecycle_result",
     "validate_runtime_records",
+    "validate_replay_lifecycle_retry_proposal",
 ]
