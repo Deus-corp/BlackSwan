@@ -312,6 +312,7 @@ def validate_replay_lifecycle_retry_approval(record: Mapping[str, Any]) -> dict[
     status = str(record.get("status") or "").strip().lower()
     approved_by = str(record.get("approved_by") or "").strip()
     execution_enabled = bool(record.get("execution_enabled"))
+    decision_mode = str(record.get("decision_mode") or "").strip().lower()
 
     payload = record.get("payload")
     if not isinstance(payload, Mapping):
@@ -320,6 +321,7 @@ def validate_replay_lifecycle_retry_approval(record: Mapping[str, Any]) -> dict[
     payload_proposal_id = str(payload.get("proposal_id") or "").strip()
     payload_timeout_profile = str(payload.get("timeout_profile") or "").strip()
     payload_command_template = str(payload.get("command_template") or "").strip()
+    payload_decision_mode = str(payload.get("decision_mode") or "").strip().lower()
 
     if not approval_id:
         reasons.append("missing_approval_id")
@@ -350,6 +352,12 @@ def validate_replay_lifecycle_retry_approval(record: Mapping[str, Any]) -> dict[
                 reasons.append("invalid_approval_command_template")
             if "--timeout-profile" not in payload_command_template:
                 reasons.append("missing_approval_timeout_profile_argument")
+
+    if decision_mode not in {"manual", "policy"}:
+        reasons.append("invalid_approval_decision_mode")
+
+    if payload_decision_mode and payload_decision_mode != decision_mode:
+        reasons.append("payload_decision_mode_mismatch")
 
     valid = not reasons
 

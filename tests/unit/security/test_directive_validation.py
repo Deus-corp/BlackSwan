@@ -423,12 +423,14 @@ def _retry_approval(**overrides):
         "proposal_id": "replay-retry-test",
         "status": "approved",
         "approved_by": "operator",
+        "decision_mode": "manual",
         "source": "overseer-test",
         "reason": "retry_with_standard_timeout",
         "execution_enabled": False,
         "payload": {
             "proposal_id": "replay-retry-test",
             "timeout_profile": "standard",
+            "decision_mode": "manual",
             "command_template": (
                 "python -m src.testing.run_replay_evidence_check "
                 "--scenario-id <scenario_id> "
@@ -491,3 +493,32 @@ def test_security_validation_metrics_counts_retry_approvals() -> None:
         ]
         == 1
     )
+
+
+def test_validate_replay_lifecycle_retry_approval_accepts_policy_decision_mode() -> None:
+    approval = _retry_approval(decision_mode="policy")
+    approval["payload"]["decision_mode"] = "policy"
+
+    result = validate_replay_lifecycle_retry_approval(approval)
+
+    assert result["valid"] is True
+
+
+def test_validate_replay_lifecycle_retry_approval_rejects_autonomous_decision_mode() -> None:
+    approval = _retry_approval(decision_mode="autonomous")
+    approval["payload"]["decision_mode"] = "autonomous"
+
+    result = validate_replay_lifecycle_retry_approval(approval)
+
+    assert result["valid"] is False
+    assert "invalid_approval_decision_mode" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_approval_rejects_payload_decision_mode_mismatch() -> None:
+    approval = _retry_approval(decision_mode="manual")
+    approval["payload"]["decision_mode"] = "policy"
+
+    result = validate_replay_lifecycle_retry_approval(approval)
+
+    assert result["valid"] is False
+    assert "payload_decision_mode_mismatch" in result["reasons"]

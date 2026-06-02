@@ -519,6 +519,12 @@ Retry proposals are not executed directly. A separate
 Approvals are auditable and must keep `execution_enabled=false` until a future
 runner/approval policy explicitly supports execution.
 
+Overseer global briefs also surface validated `replay_lifecycle_retry_approval`
+records as retry approval opportunities.
+
+Retry approvals include `decision_mode=manual|policy`. Autonomous approval is not
+valid until a future policy/runner layer explicitly supports it.
+
 ---
 
 ## Safety guarantees

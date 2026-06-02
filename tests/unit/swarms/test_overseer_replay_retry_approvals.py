@@ -38,7 +38,9 @@ def test_build_replay_lifecycle_retry_approval() -> None:
     assert approval["status"] == "approved"
     assert approval["proposal_id"] == "replay-retry-test"
     assert approval["approved_by"] == "operator"
+    assert approval["decision_mode"] == "manual"
     assert approval["execution_enabled"] is False
+    assert approval["payload"]["decision_mode"] == "manual"
     assert approval["payload"]["timeout_profile"] == "standard"
     assert "--timeout-profile standard" in approval["payload"]["command_template"]
 
@@ -78,4 +80,25 @@ def test_build_replay_lifecycle_retry_approval_requires_approved_by() -> None:
         build_replay_lifecycle_retry_approval(
             _proposal(),
             approved_by="",
+        )
+
+
+def test_build_replay_lifecycle_retry_approval_accepts_policy_decision_mode() -> None:
+    approval = build_replay_lifecycle_retry_approval(
+        _proposal(),
+        approved_by="policy-engine",
+        decision_mode="policy",
+        reason="policy_approved_retry",
+    )
+
+    assert approval["decision_mode"] == "policy"
+    assert approval["approved_by"] == "policy-engine"
+
+
+def test_build_replay_lifecycle_retry_approval_rejects_autonomous_decision_mode() -> None:
+    with pytest.raises(ValueError, match="decision_mode"):
+        build_replay_lifecycle_retry_approval(
+            _proposal(),
+            approved_by="agent",
+            decision_mode="autonomous",
         )
