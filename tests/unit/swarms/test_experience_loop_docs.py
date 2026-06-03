@@ -132,3 +132,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "safe proposal-to-result governance path" in text
     assert "--require-clean" in text
     assert "existing_retry_governance_records" in text
+    assert "replay_lifecycle_retry_rendered_command" in text
+    assert "Rendering only replaces" in text
+    assert "does not run shell commands" in text

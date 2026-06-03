@@ -95,3 +95,27 @@ async def test_retry_governance_smoke_require_clean_fails_when_records_exist(tmp
     assert second["records_seeded"] == 0
     assert second["existing_records"] >= 1
     assert _exit_code_for_result(second) == 1
+
+
+@pytest.mark.asyncio
+async def test_retry_governance_smoke_require_clean_passes_on_clean_db(tmp_path) -> None:
+    result = await run_retry_governance_smoke(
+        argparse.Namespace(
+            db_path=str(tmp_path / "crdt.db"),
+            source="retry-governance-smoke-test",
+            proposal_id="proposal-smoke-clean-first",
+            approval_id="approval-smoke-clean-first",
+            plan_id="plan-smoke-clean-first",
+            result_id="result-smoke-clean-first",
+            timeout_profile="standard",
+            decision_mode="manual",
+            require_clean=True,
+            json=False,
+        )
+    )
+
+    assert result["status"] == "passed"
+    assert result["reason"] == "ok"
+    assert result["records_seeded"] == 4
+    assert result["existing_records"] == 0
+    assert result["exit_codes"]["preflight"] == 0

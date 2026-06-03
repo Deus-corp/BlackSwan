@@ -651,6 +651,15 @@ proposal id. existing_retry_governance_records
 
 ---
 
+## Replay retry rendered commands
+
+`replay_lifecycle_retry_rendered_command` records are non-executing rendered
+commands derived from retry execution plans. Rendering only replaces
+`<scenario_id>` and `<new_directive_id>`, keeps `execution_enabled=false`, and
+does not run shell commands.
+
+---
+
 ## Related modules
 
 ```text

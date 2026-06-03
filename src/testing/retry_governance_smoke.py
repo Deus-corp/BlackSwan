@@ -138,6 +138,30 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
     """Seed and verify retry governance trail and observability."""
     db_path = str(args.db_path or config.crdt_db_path)
     proposal_id = str(args.proposal_id or "replay-retry-smoke-proposal-1").strip()
+    require_clean = bool(getattr(args, "require_clean", False))
+
+    existing_records: list[dict[str, Any]] = []
+    if require_clean:
+        existing_records = _existing_retry_governance_records(
+            db_path=db_path,
+            proposal_id=proposal_id,
+        )
+        if existing_records:
+            return {
+                "type": "retry_governance_smoke_result",
+                "status": "failed",
+                "records_seeded": 0,
+                "proposal_id": proposal_id,
+                "reason": "existing_retry_governance_records",
+                "existing_records": len(existing_records),
+                "trail_summary": {},
+                "observability": {},
+                "exit_codes": {
+                    "preflight": 1,
+                    "trail": 1,
+                    "observability": 1,
+                },
+            }
 
     records = await seed_retry_governance_trail(
         argparse.Namespace(
@@ -174,40 +198,17 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
 
     status = "passed" if trail_code == 0 and observability_code == 0 else "failed"
 
-    require_clean = bool(getattr(args, "require_clean", False))
-
-    existing_records: list[dict[str, Any]] = []
-    if require_clean:
-        existing_records = _existing_retry_governance_records(
-            db_path=db_path,
-            proposal_id=proposal_id,
-        )
-        if existing_records:
-            return {
-                "type": "retry_governance_smoke_result",
-                "status": "failed",
-                "records_seeded": 0,
-                "proposal_id": proposal_id,
-                "reason": "existing_retry_governance_records",
-                "existing_records": len(existing_records),
-                "trail_summary": {},
-                "observability": {},
-                "exit_codes": {
-                    "preflight": 1,
-                    "trail": 1,
-                    "observability": 1,
-                },
-            }
-
     return {
         "type": "retry_governance_smoke_result",
         "status": status,
         "records_seeded": len(records),
         "proposal_id": proposal_id,
+        "reason": "ok" if status == "passed" else "retry_governance_smoke_failed",
+        "existing_records": len(existing_records),
         "trail_summary": trail_summary,
         "observability": observability,
-        "existing_records": len(existing_records),
         "exit_codes": {
+            "preflight": 0,
             "trail": trail_code,
             "observability": observability_code,
         },
@@ -228,7 +229,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"plans={counts.get('plans', 0)} "
         f"results={counts.get('results', 0)} "
         f"chain_complete={str(bool(trail.get('chain_complete'))).lower()} "
-        f"observability={observability.get('status')}"
+        f"observability={observability.get('status')} "
         f"existing_records={result.get('existing_records', 0)} "
         f"reason={result.get('reason') or 'ok'} "
     )
