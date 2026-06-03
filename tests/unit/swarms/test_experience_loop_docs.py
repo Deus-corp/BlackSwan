@@ -97,3 +97,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "Security validation recognizes `replay_lifecycle_retry_execution_plan`" in text
     assert "Only non-executing plans" in text
     assert "retry execution plan opportunities" in text
+    assert "src.testing.run_retry_execution_plans" in text
+    assert "replay_lifecycle_retry_execution_result" in text
+    assert "reason=execution_disabled" in text
+    assert "execution_not_supported" in text

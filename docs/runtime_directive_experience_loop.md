@@ -547,6 +547,17 @@ records as retry execution plan opportunities.
 
 ---
 
+## Replay retry plan runner
+
+`src.testing.run_retry_execution_plans` is a dry-run runner for
+`replay_lifecycle_retry_execution_plan` records. It does not execute command
+templates. With `execution_enabled=false`, it publishes
+`replay_lifecycle_retry_execution_result` with `status=skipped` and
+`reason=execution_disabled`. If execution is enabled before runner support, it
+publishes `status=rejected` with `reason=execution_not_supported`.
+
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:
