@@ -90,3 +90,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "security_validation_retry_approval_decision_modes" in text
     assert "security_retry_approval_decision_modes" in text
     assert "manual and policy" in text
+    assert "replay_lifecycle_retry_execution_plan" in text
+    assert "status=planned" in text
+    assert "execution_enabled=false" in text
+    assert "without executing the retry automatically" in text

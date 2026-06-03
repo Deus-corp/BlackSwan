@@ -534,6 +534,12 @@ approval counts.
 
 ---
 
+## Replay lifecycle retry execution plans
+
+Approved retry proposals can be converted into non-executing `replay_lifecycle_retry_execution_plan` records with `status=planned` and `execution_enabled=false`, without executing the retry automatically.
+
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:
