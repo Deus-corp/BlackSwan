@@ -572,6 +572,14 @@ results.
 Overseer global briefs surface retry execution result status and reason
 breakdowns through `security_retry_execution_result_statuses` and
 `security_retry_execution_result_reasons`.
+---
+
+## Retry governance trail inspection
+
+`src.testing.inspect_retry_governance_trail` is a read-only helper for inspecting
+the end-to-end retry governance trail. It reports proposal, approval, execution
+plan, and execution result counts, including skipped and rejected dry-run runner
+results. The helper does not publish records and does not execute retry commands.
 
 ---
 
