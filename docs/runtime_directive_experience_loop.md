@@ -561,6 +561,9 @@ Security validation recognizes `replay_lifecycle_retry_execution_result` records
 Dry-run runner results are valid only when they are non-executing, such as
 `status=skipped`, `reason=execution_disabled`, and `executed=false`.
 
+Overseer global briefs surface validated `replay_lifecycle_retry_execution_result`
+records as retry execution result opportunities.
+
 ---
 
 ## Safety guarantees
