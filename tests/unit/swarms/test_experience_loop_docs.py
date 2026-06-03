@@ -123,3 +123,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "src.testing.check_retry_governance_observability" in text
     assert "Security validation metrics and Overseer global brief" in text
     assert "execution-disabled reason" in text
+    assert "src.testing.retry_governance_smoke" in text
+    assert "One-command retry governance smoke" in text
+    assert "Security/Overseer observability" in text

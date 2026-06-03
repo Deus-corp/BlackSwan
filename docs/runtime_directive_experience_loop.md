@@ -623,6 +623,15 @@ are all visible; otherwise it exits with code `1`.
 
 ---
 
+## One-command retry governance smoke
+
+`src.testing.retry_governance_smoke` seeds a synthetic non-executing retry
+governance trail, verifies `chain_complete=true`, and checks Security/Overseer
+observability in one command.
+The one-command retry governance smoke verifies Security/Overseer observability.
+
+---
+
 ## Related modules
 
 ```text
@@ -658,6 +667,18 @@ python -m src.swarms.runtime.cluster_cli up \
   --no-strict \
   --simulation-nodes 1 \
   --simulation-heartbeat-interval 5
+```
+
+Runtime quick check:
+```bash
+python -m src.testing.retry_governance_smoke \
+  --proposal-id replay-retry-smoke-e2e-1 \
+  --approval-id replay-retry-smoke-e2e-approval-1 \
+  --plan-id replay-retry-smoke-e2e-plan-1 \
+  --result-id replay-retry-smoke-e2e-result-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+echo $?
 ```
 
 CLI:

@@ -1,0 +1,180 @@
+"""One-command smoke check for retry governance trail.
+
+Seeds a synthetic non-executing retry governance trail, verifies chain
+completeness, and checks Security/Overseer observability.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import logging
+from typing import Any, Mapping
+
+from src.testing.check_retry_governance_observability import (
+    _exit_code_for_result as observability_exit_code,
+    check_retry_governance_observability,
+)
+from src.testing.inspect_retry_governance_trail import (
+    _exit_code_for_summary as trail_exit_code,
+    inspect_retry_governance_trail,
+)
+from src.testing.seed_retry_governance_trail import seed_retry_governance_trail
+from swarm_config import config
+
+logger = logging.getLogger(__name__)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Run retry governance smoke check.",
+    )
+    parser.add_argument(
+        "--db-path",
+        default=config.crdt_db_path,
+        help="Path to CRDT sqlite database.",
+    )
+    parser.add_argument(
+        "--source",
+        default="retry-governance-smoke",
+        help="Source node id for seeded records.",
+    )
+    parser.add_argument(
+        "--proposal-id",
+        default="replay-retry-smoke-proposal-1",
+        help="Synthetic proposal id.",
+    )
+    parser.add_argument(
+        "--approval-id",
+        default="replay-retry-smoke-approval-1",
+        help="Synthetic approval id.",
+    )
+    parser.add_argument(
+        "--plan-id",
+        default="replay-retry-smoke-plan-1",
+        help="Synthetic plan id.",
+    )
+    parser.add_argument(
+        "--result-id",
+        default="replay-retry-smoke-result-1",
+        help="Synthetic result id.",
+    )
+    parser.add_argument(
+        "--timeout-profile",
+        default="standard",
+        choices=["standard", "patient"],
+        help="Safe timeout profile.",
+    )
+    parser.add_argument(
+        "--decision-mode",
+        default="manual",
+        choices=["manual", "policy"],
+        help="Approval decision mode.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print machine-readable JSON result.",
+    )
+    return parser
+
+
+async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]:
+    """Seed and verify retry governance trail and observability."""
+    db_path = str(args.db_path or config.crdt_db_path)
+    proposal_id = str(args.proposal_id or "replay-retry-smoke-proposal-1").strip()
+
+    records = await seed_retry_governance_trail(
+        argparse.Namespace(
+            db_path=db_path,
+            source=str(args.source or "retry-governance-smoke"),
+            proposal_id=proposal_id,
+            approval_id=str(args.approval_id or "replay-retry-smoke-approval-1"),
+            plan_id=str(args.plan_id or "replay-retry-smoke-plan-1"),
+            result_id=str(args.result_id or "replay-retry-smoke-result-1"),
+            timeout_profile=str(args.timeout_profile or "standard"),
+            decision_mode=str(args.decision_mode or "manual"),
+        )
+    )
+
+    trail_summary = inspect_retry_governance_trail(
+        argparse.Namespace(
+            db_path=db_path,
+            proposal_id=proposal_id,
+            approval_id="",
+            plan_id="",
+        )
+    )
+
+    observability = check_retry_governance_observability(
+        argparse.Namespace(
+            db_path=db_path,
+            proposal_id=proposal_id,
+            json=False,
+        )
+    )
+
+    trail_code = trail_exit_code(trail_summary, require_complete=True)
+    observability_code = observability_exit_code(observability)
+
+    status = "passed" if trail_code == 0 and observability_code == 0 else "failed"
+
+    return {
+        "type": "retry_governance_smoke_result",
+        "status": status,
+        "records_seeded": len(records),
+        "proposal_id": proposal_id,
+        "trail_summary": trail_summary,
+        "observability": observability,
+        "exit_codes": {
+            "trail": trail_code,
+            "observability": observability_code,
+        },
+    }
+
+
+def _format_result(result: Mapping[str, Any]) -> str:
+    trail = result.get("trail_summary") if isinstance(result.get("trail_summary"), Mapping) else {}
+    observability = result.get("observability") if isinstance(result.get("observability"), Mapping) else {}
+    counts = trail.get("counts") if isinstance(trail.get("counts"), Mapping) else {}
+
+    return (
+        "Retry governance smoke: "
+        f"status={result.get('status')} "
+        f"records_seeded={result.get('records_seeded')} "
+        f"proposals={counts.get('proposals', 0)} "
+        f"approvals={counts.get('approvals', 0)} "
+        f"plans={counts.get('plans', 0)} "
+        f"results={counts.get('results', 0)} "
+        f"chain_complete={str(bool(trail.get('chain_complete'))).lower()} "
+        f"observability={observability.get('status')}"
+    )
+
+
+def _exit_code_for_result(result: Mapping[str, Any]) -> int:
+    return 0 if result.get("status") == "passed" else 1
+
+
+async def async_main() -> int:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s:%(lineno)d - %(message)s",
+    )
+    args = build_parser().parse_args()
+    result = await run_retry_governance_smoke(args)
+
+    if args.json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        print(_format_result(result))
+
+    return _exit_code_for_result(result)
+
+
+def main() -> None:
+    raise SystemExit(asyncio.run(async_main()))
+
+
+if __name__ == "__main__":
+    main()
