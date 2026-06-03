@@ -135,3 +135,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "replay_lifecycle_retry_rendered_command" in text
     assert "Rendering only replaces" in text
     assert "does not run shell commands" in text
+    assert "Security validation recognizes `replay_lifecycle_retry_rendered_command`" in text
+    assert "avoid shell operators" in text

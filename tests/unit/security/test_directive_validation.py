@@ -13,6 +13,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_approval,
     validate_replay_lifecycle_retry_execution_plan,
     validate_replay_lifecycle_retry_execution_result,
+    validate_replay_lifecycle_retry_rendered_command,
 )
 
 
@@ -757,3 +758,149 @@ def test_security_validation_metrics_reports_retry_execution_result_statuses_and
     assert metrics["security_validation_retry_execution_result_statuses"]["rejected"] == 1
     assert metrics["security_validation_retry_execution_result_reasons"]["execution_disabled"] == 1
     assert metrics["security_validation_retry_execution_result_reasons"]["execution_not_supported"] == 1
+
+
+def _retry_rendered_command(**overrides):
+    command = (
+        "python -m src.testing.run_replay_evidence_check "
+        "--scenario-id replay-render-test "
+        "--action REDUCE_RISK "
+        "--directive-id runtime-run-replay-render-test "
+        "--timeout-profile standard "
+        "--db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db"
+    )
+    record = {
+        "type": "replay_lifecycle_retry_rendered_command",
+        "rendered_command_id": "replay-retry-rendered-test",
+        "plan_id": "replay-retry-plan-test",
+        "proposal_id": "replay-retry-proposal-test",
+        "approval_id": "replay-retry-approval-test",
+        "status": "rendered",
+        "source": "overseer-test",
+        "execution_enabled": False,
+        "scenario_id": "replay-render-test",
+        "new_directive_id": "runtime-run-replay-render-test",
+        "timeout_profile": "standard",
+        "decision_mode": "manual",
+        "command": command,
+        "payload": {
+            "plan_id": "replay-retry-plan-test",
+            "proposal_id": "replay-retry-proposal-test",
+            "approval_id": "replay-retry-approval-test",
+            "scenario_id": "replay-render-test",
+            "new_directive_id": "runtime-run-replay-render-test",
+            "timeout_profile": "standard",
+            "decision_mode": "manual",
+            "command": command,
+            "execution_enabled": False,
+            "executed": False,
+        },
+    }
+    record.update(overrides)
+    return record
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_accepts_safe_command() -> None:
+    result = validate_replay_lifecycle_retry_rendered_command(_retry_rendered_command())
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["record_type"] == "replay_lifecycle_retry_rendered_command"
+    assert result["timeout_profile"] == "standard"
+    assert result["decision_mode"] == "manual"
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_rejects_execution_enabled() -> None:
+    result = validate_replay_lifecycle_retry_rendered_command(
+        _retry_rendered_command(execution_enabled=True)
+    )
+
+    assert result["valid"] is False
+    assert "rendered_command_execution_enabled_before_runner" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_rejects_payload_executed() -> None:
+    record = _retry_rendered_command()
+    record["payload"]["executed"] = True
+
+    result = validate_replay_lifecycle_retry_rendered_command(record)
+
+    assert result["valid"] is False
+    assert "rendered_command_executed_before_runner" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_rejects_unsafe_shell_syntax() -> None:
+    result = validate_replay_lifecycle_retry_rendered_command(
+        _retry_rendered_command(
+            command=(
+                "python -m src.testing.run_replay_evidence_check "
+                "--scenario-id replay-render-test "
+                "--directive-id runtime-run-replay-render-test "
+                "--timeout-profile standard && echo bad"
+            )
+        )
+    )
+
+    assert result["valid"] is False
+    assert "rendered_command_contains_unsafe_shell_syntax" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_rejects_wrong_module() -> None:
+    result = validate_replay_lifecycle_retry_rendered_command(
+        _retry_rendered_command(
+            command=(
+                "python -m src.testing.other_helper "
+                "--scenario-id replay-render-test "
+                "--directive-id runtime-run-replay-render-test "
+                "--timeout-profile standard"
+            )
+        )
+    )
+
+    assert result["valid"] is False
+    assert "invalid_rendered_command_module" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_rejects_missing_directive_id() -> None:
+    result = validate_replay_lifecycle_retry_rendered_command(
+        _retry_rendered_command(
+            command=(
+                "python -m src.testing.run_replay_evidence_check "
+                "--scenario-id replay-render-test "
+                "--timeout-profile standard"
+            )
+        )
+    )
+
+    assert result["valid"] is False
+    assert "missing_rendered_command_directive_id" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_rejects_timeout_profile_mismatch() -> None:
+    result = validate_replay_lifecycle_retry_rendered_command(
+        _retry_rendered_command(
+            timeout_profile="patient",
+            command=(
+                "python -m src.testing.run_replay_evidence_check "
+                "--scenario-id replay-render-test "
+                "--directive-id runtime-run-replay-render-test "
+                "--timeout-profile standard"
+            ),
+        )
+    )
+
+    assert result["valid"] is False
+    assert "rendered_command_timeout_profile_mismatch" in result["reasons"]
+
+
+def test_security_validation_metrics_counts_retry_rendered_commands() -> None:
+    metrics = build_security_validation_heartbeat_metrics([_retry_rendered_command()])
+
+    assert metrics["security_validation_records"] == 1
+    assert metrics["security_validation_valid_records"] == 1
+    assert (
+        metrics["security_validation_record_type_counts"][
+            "replay_lifecycle_retry_rendered_command"
+        ]
+        == 1
+    )

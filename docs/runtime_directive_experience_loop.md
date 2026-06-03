@@ -658,6 +658,11 @@ commands derived from retry execution plans. Rendering only replaces
 `<scenario_id>` and `<new_directive_id>`, keeps `execution_enabled=false`, and
 does not run shell commands.
 
+Security validation recognizes `replay_lifecycle_retry_rendered_command` records.
+Rendered retry commands are valid only when they are non-executing, call
+`python -m src.testing.run_replay_evidence_check`, include scenario/directive ids,
+use safe timeout profiles, and avoid shell operators.
+
 ---
 
 ## Related modules

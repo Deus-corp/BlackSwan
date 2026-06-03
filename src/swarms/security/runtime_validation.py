@@ -6,6 +6,8 @@ They are observational by default and do not block execution.
 
 from __future__ import annotations
 
+import shlex
+
 from collections import Counter
 from typing import Any, Iterable, Mapping
 
@@ -25,6 +27,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_approval",
     "replay_lifecycle_retry_execution_plan",
     "replay_lifecycle_retry_execution_result",
+    "replay_lifecycle_retry_rendered_command",
 }
 
 
@@ -93,6 +96,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
 
         if record_type == "replay_lifecycle_retry_execution_result":
             result = validate_replay_lifecycle_retry_execution_result(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
+        if record_type == "replay_lifecycle_retry_rendered_command":
+            result = validate_replay_lifecycle_retry_rendered_command(record)
             results.append(
                 {
                     **result,
@@ -205,13 +220,13 @@ def _reason_counts(records: Iterable[Mapping[str, Any]]) -> dict[str, int]:
 
 
 def _record_id(record: Mapping[str, Any]) -> str:
-    for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "approval_id"):
+    for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "rendered_command_id", "approval_id"):
         value = str(record.get(key) or "").strip()
         if value:
             return value
     payload = record.get("payload")
     if isinstance(payload, Mapping):
-        for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "approval_id"):
+        for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "rendered_command_id", "approval_id"):
             value = str(payload.get(key) or "").strip()
             if value:
                 return value
@@ -567,6 +582,113 @@ def validate_replay_lifecycle_retry_execution_result(record: Mapping[str, Any]) 
     }
 
 
+def validate_replay_lifecycle_retry_rendered_command(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate non-executing rendered retry command records."""
+    reasons: list[str] = []
+
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    plan_id = str(record.get("plan_id") or "").strip()
+    proposal_id = str(record.get("proposal_id") or "").strip()
+    approval_id = str(record.get("approval_id") or "").strip()
+    status = str(record.get("status") or "").strip().lower()
+    execution_enabled = bool(record.get("execution_enabled"))
+    command = str(record.get("command") or "").strip()
+    timeout_profile = str(record.get("timeout_profile") or "").strip()
+    decision_mode = str(record.get("decision_mode") or "").strip().lower()
+
+    payload = record.get("payload")
+    if not isinstance(payload, Mapping):
+        payload = {}
+
+    payload_command = str(payload.get("command") or "").strip()
+    payload_plan_id = str(payload.get("plan_id") or "").strip()
+    payload_executed = bool(payload.get("executed"))
+    payload_execution_enabled = bool(payload.get("execution_enabled"))
+    payload_timeout_profile = str(payload.get("timeout_profile") or "").strip()
+    payload_decision_mode = str(payload.get("decision_mode") or "").strip().lower()
+
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+    if not plan_id:
+        reasons.append("missing_plan_id")
+    if not proposal_id:
+        reasons.append("missing_proposal_id")
+    if not approval_id:
+        reasons.append("missing_approval_id")
+    if status != "rendered":
+        reasons.append("invalid_rendered_command_status")
+    if execution_enabled:
+        reasons.append("rendered_command_execution_enabled_before_runner")
+    if payload_execution_enabled:
+        reasons.append("payload_execution_enabled_before_runner")
+    if payload_executed:
+        reasons.append("rendered_command_executed_before_runner")
+    if timeout_profile not in {"standard", "patient"}:
+        reasons.append("invalid_rendered_command_timeout_profile")
+    if decision_mode not in {"manual", "policy"}:
+        reasons.append("invalid_rendered_command_decision_mode")
+
+    if not command:
+        reasons.append("missing_rendered_command")
+    else:
+        reasons.extend(_validate_rendered_retry_command_text(command, timeout_profile=timeout_profile))
+
+    if payload_command and payload_command != command:
+        reasons.append("payload_command_mismatch")
+    if payload_plan_id and payload_plan_id != plan_id:
+        reasons.append("payload_plan_id_mismatch")
+    if payload_timeout_profile and payload_timeout_profile != timeout_profile:
+        reasons.append("payload_timeout_profile_mismatch")
+    if payload_decision_mode and payload_decision_mode != decision_mode:
+        reasons.append("payload_decision_mode_mismatch")
+
+    valid = not reasons
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_rendered_command",
+        "valid": valid,
+        "severity": "info" if valid else "critical",
+        "reasons": reasons,
+        "subject": rendered_command_id or plan_id or "unknown",
+        "timeout_profile": timeout_profile or "unknown",
+        "decision_mode": decision_mode or "unknown",
+    }
+
+
+def _validate_rendered_retry_command_text(command: str, *, timeout_profile: str) -> list[str]:
+    reasons: list[str] = []
+
+    forbidden = [";", "&&", "|", ">", "<", "`", "$("]
+    if any(token in command for token in forbidden):
+        reasons.append("rendered_command_contains_unsafe_shell_syntax")
+        return reasons
+
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        reasons.append("rendered_command_parse_failed")
+        return reasons
+
+    if parts[:3] != ["python", "-m", "src.testing.run_replay_evidence_check"]:
+        reasons.append("invalid_rendered_command_module")
+
+    if "--scenario-id" not in parts:
+        reasons.append("missing_rendered_command_scenario_id")
+    if "--directive-id" not in parts:
+        reasons.append("missing_rendered_command_directive_id")
+    if "--timeout-profile" not in parts:
+        reasons.append("missing_rendered_command_timeout_profile_argument")
+    else:
+        profile_index = parts.index("--timeout-profile")
+        if profile_index + 1 >= len(parts):
+            reasons.append("missing_rendered_command_timeout_profile_value")
+        elif parts[profile_index + 1] != timeout_profile:
+            reasons.append("rendered_command_timeout_profile_mismatch")
+
+    return reasons
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -577,4 +699,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_approval",
     "validate_replay_lifecycle_retry_execution_plan",
     "validate_replay_lifecycle_retry_execution_result",
+    "validate_replay_lifecycle_retry_rendered_command",
 ]
