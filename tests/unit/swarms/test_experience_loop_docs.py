@@ -127,3 +127,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "One-command retry governance smoke" in text
     assert "Security/Overseer observability" in text
     assert "python -m src.testing.retry_governance_smoke" in text
+    assert "src.testing.swarm_runtime_smoke" in text
+    assert "isolated temporary CRDT database" in text
+    assert "safe proposal-to-result governance path" in text

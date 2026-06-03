@@ -641,6 +641,12 @@ chain_complete=true, and checks Security/Overseer observability.
 
 ---
 
+`src.testing.swarm_runtime_smoke` includes the retry governance smoke on an
+isolated temporary CRDT database, so the main runtime smoke gate verifies the
+safe proposal-to-result governance path without polluting the live ledger.
+
+---
+
 ## Related modules
 
 ```text

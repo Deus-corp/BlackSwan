@@ -6,7 +6,7 @@ from src.core.crdt_adapter import CRDTAdapter
 from src.testing.inspect_retry_governance_trail import (
     inspect_retry_governance_trail_from_records,
 )
-from src.testing.seed_retry_governance_trail import seed_retry_governance_trail
+from src.testing.seed_retry_governance_trail import _record_id, seed_retry_governance_trail
 
 
 @pytest.mark.asyncio
@@ -120,3 +120,39 @@ async def test_seed_retry_governance_trail_rejects_autonomous_decision_mode(tmp_
                 decision_mode="autonomous",
             )
         )
+
+
+def test_seed_retry_governance_trail_record_id_is_type_aware() -> None:
+    assert _record_id(
+        {
+            "type": "replay_lifecycle_retry_proposal",
+            "proposal_id": "proposal-test",
+        }
+    ) == "proposal-test"
+
+    assert _record_id(
+        {
+            "type": "replay_lifecycle_retry_approval",
+            "proposal_id": "proposal-test",
+            "approval_id": "approval-test",
+        }
+    ) == "approval-test"
+
+    assert _record_id(
+        {
+            "type": "replay_lifecycle_retry_execution_plan",
+            "proposal_id": "proposal-test",
+            "approval_id": "approval-test",
+            "plan_id": "plan-test",
+        }
+    ) == "plan-test"
+
+    assert _record_id(
+        {
+            "type": "replay_lifecycle_retry_execution_result",
+            "proposal_id": "proposal-test",
+            "approval_id": "approval-test",
+            "plan_id": "plan-test",
+            "result_id": "result-test",
+        }
+    ) == "result-test"

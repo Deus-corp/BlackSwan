@@ -209,10 +209,25 @@ async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str
 
 
 def _record_id(record: dict[str, Any]) -> str:
-    for key in ("proposal_id", "approval_id", "plan_id", "result_id"):
+    record_type = str(record.get("type") or "").strip()
+
+    preferred_keys_by_type = {
+        "replay_lifecycle_retry_proposal": ("proposal_id",),
+        "replay_lifecycle_retry_approval": ("approval_id", "proposal_id"),
+        "replay_lifecycle_retry_execution_plan": ("plan_id", "approval_id", "proposal_id"),
+        "replay_lifecycle_retry_execution_result": ("result_id", "plan_id", "approval_id", "proposal_id"),
+    }
+
+    keys = preferred_keys_by_type.get(
+        record_type,
+        ("result_id", "plan_id", "approval_id", "proposal_id"),
+    )
+
+    for key in keys:
         value = str(record.get(key) or "").strip()
         if value:
             return value
+
     return ""
 
 

@@ -22,6 +22,8 @@ import asyncio
 import os
 import time
 import uuid
+import argparse
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -65,6 +67,7 @@ from src.swarms.overseer.overseer_core.models import OverseerDecision, SwarmSnap
 from src.swarms.security.meta_agent import SecurityMetaAgent
 from src.swarms.security.node import SecurityNode
 from src.swarms.common.protocols.commands import command_targets
+from src.testing.retry_governance_smoke import run_retry_governance_smoke
 
 from src.swarms.overseer.overseer_core.policy import (
     PolicyEngine,
@@ -3309,6 +3312,43 @@ async def _test_trade_runtime_command_loop() -> None:
     assert_true("command_applied" in event_types, "trade PAUSE command_applied event missing")
     assert_true("command_blocked" in event_types, "trade blocked command event missing")
 
+
+async def _check_retry_governance_smoke() -> dict[str, object]:
+    """Run retry governance smoke on an isolated temporary CRDT database."""
+    with tempfile.TemporaryDirectory(prefix="retry-governance-smoke-") as tmpdir:
+        db_path = str(Path(tmpdir) / "crdt.db")
+
+        result = await run_retry_governance_smoke(
+            argparse.Namespace(
+                db_path=db_path,
+                source="retry-governance-smoke-runtime",
+                proposal_id="replay-retry-runtime-smoke-proposal-1",
+                approval_id="replay-retry-runtime-smoke-approval-1",
+                plan_id="replay-retry-runtime-smoke-plan-1",
+                result_id="replay-retry-runtime-smoke-result-1",
+                timeout_profile="standard",
+                decision_mode="manual",
+                json=False,
+            )
+        )
+
+    return {
+        "name": "retry_governance_smoke",
+        "status": result.get("status"),
+        "passed": result.get("status") == "passed",
+        "records_seeded": result.get("records_seeded"),
+        "chain_complete": (
+            result.get("trail_summary", {}).get("chain_complete")
+            if isinstance(result.get("trail_summary"), dict)
+            else False
+        ),
+        "observability": (
+            result.get("observability", {}).get("status")
+            if isinstance(result.get("observability"), dict)
+            else "unknown"
+        ),
+    }
+
 async def main() -> None:
     checks = [
         ("common runtime", check_common_runtime),
@@ -3365,6 +3405,7 @@ async def main() -> None:
         ("overseer topology restarts enabled canonical only", check_overseer_topology_restarts_enabled_canonical_only),
         ("overseer executor gates", check_overseer_executor_gates),
         ("trade runtime command loop", _test_trade_runtime_command_loop),
+        ("retry governance smoke", _check_retry_governance_smoke),
     ]
 
     for name, check in checks:
