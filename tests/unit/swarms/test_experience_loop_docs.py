@@ -120,3 +120,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "src.testing.seed_retry_governance_trail" in text
     assert "complete synthetic governance" in text
     assert "chain_complete=true" in text
+    assert "src.testing.check_retry_governance_observability" in text
+    assert "Security validation metrics and Overseer global brief" in text
+    assert "execution-disabled reason" in text

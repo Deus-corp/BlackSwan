@@ -613,6 +613,16 @@ The current controlled loop is intentionally conservative:
 
 ---
 
+## Retry governance observability check
+
+`src.testing.check_retry_governance_observability` is a read-only helper that
+checks Security validation metrics and Overseer global brief key metrics for
+retry governance visibility. It exits with code `0` when the proposal, approval,
+execution plan, execution result, skipped status, and execution-disabled reason
+are all visible; otherwise it exits with code `1`.
+
+---
+
 ## Related modules
 
 ```text

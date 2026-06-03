@@ -1,0 +1,234 @@
+"""Check retry governance trail observability through Security and Overseer brief.
+
+This helper is read-only. It verifies that retry governance records are visible
+to Security validation metrics and Overseer global brief key metrics.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+from typing import Any, Mapping
+
+from src.core.crdt_adapter import CRDTAdapter
+from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
+from src.swarms.security.runtime_validation import build_security_validation_heartbeat_metrics
+from swarm_config import config
+
+logger = logging.getLogger(__name__)
+
+REQUIRED_RECORD_TYPES = {
+    "replay_lifecycle_retry_proposal": "security_retry_proposals",
+    "replay_lifecycle_retry_approval": "security_retry_approvals",
+    "replay_lifecycle_retry_execution_plan": "security_retry_execution_plans",
+    "replay_lifecycle_retry_execution_result": "security_retry_execution_results",
+}
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Check retry governance observability through Security and Overseer brief.",
+    )
+    parser.add_argument(
+        "--db-path",
+        default=config.crdt_db_path,
+        help="Path to CRDT sqlite database.",
+    )
+    parser.add_argument(
+        "--proposal-id",
+        default="",
+        help="Optional proposal_id filter for the trail records.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print machine-readable JSON result.",
+    )
+    return parser
+
+
+def check_retry_governance_observability_from_records(
+    records: list[Any],
+    *,
+    proposal_id: str = "",
+) -> dict[str, Any]:
+    """Check retry governance observability from CRDT records."""
+    clean_proposal_id = str(proposal_id or "").strip()
+
+    filtered_records = [
+        item
+        for item in records or []
+        if isinstance(item, Mapping)
+        and (
+            not clean_proposal_id
+            or str(item.get("proposal_id") or "").strip() == clean_proposal_id
+            or (
+                isinstance(item.get("payload"), Mapping)
+                and str(item.get("payload", {}).get("proposal_id") or "").strip()
+                == clean_proposal_id
+            )
+        )
+    ]
+
+    security_metrics = build_security_validation_heartbeat_metrics(filtered_records)
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation=security_metrics,
+    )
+
+    record_type_counts = security_metrics.get("security_validation_record_type_counts")
+    if not isinstance(record_type_counts, Mapping):
+        record_type_counts = {}
+
+    key_metrics = brief.key_metrics if isinstance(brief.key_metrics, Mapping) else {}
+
+    checks = _build_checks(
+        record_type_counts=record_type_counts,
+        key_metrics=key_metrics,
+    )
+
+    status = "passed" if all(item["status"] == "passed" for item in checks) else "failed"
+
+    return {
+        "type": "retry_governance_observability_check",
+        "status": status,
+        "checks": checks,
+        "proposal_id": clean_proposal_id or None,
+        "security_record_type_counts": dict(record_type_counts),
+        "brief_key_metrics": dict(key_metrics),
+        "brief_summary": brief.summary,
+    }
+
+
+def check_retry_governance_observability(args: argparse.Namespace) -> dict[str, Any]:
+    """Read CRDT and check retry governance observability."""
+    db_path = str(args.db_path or config.crdt_db_path)
+
+    crdt = CRDTAdapter(node_id="retry-governance-observability-reader", db_path=db_path)
+    try:
+        refresh = getattr(crdt, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
+
+        state = getattr(crdt, "state", {}) or {}
+        return check_retry_governance_observability_from_records(
+            list(state.values()),
+            proposal_id=str(getattr(args, "proposal_id", "") or ""),
+        )
+    finally:
+        close = getattr(crdt, "close", None)
+        if callable(close):
+            close()
+
+
+def _build_checks(
+    *,
+    record_type_counts: Mapping[str, Any],
+    key_metrics: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    checks: list[dict[str, Any]] = []
+
+    for record_type, metric_name in REQUIRED_RECORD_TYPES.items():
+        security_count = _safe_int(record_type_counts.get(record_type), 0)
+        brief_count = _safe_int(key_metrics.get(metric_name), 0)
+
+        checks.append(
+            {
+                "name": f"security_observes_{record_type}",
+                "status": "passed" if security_count > 0 else "failed",
+                "value": security_count,
+            }
+        )
+        checks.append(
+            {
+                "name": f"brief_surfaces_{metric_name}",
+                "status": "passed" if brief_count > 0 else "failed",
+                "value": brief_count,
+            }
+        )
+
+    skipped = _safe_int(key_metrics.get("security_retry_execution_skipped"), 0)
+    checks.append(
+        {
+            "name": "brief_surfaces_retry_execution_skipped",
+            "status": "passed" if skipped > 0 else "failed",
+            "value": skipped,
+        }
+    )
+
+    result_statuses = key_metrics.get("security_retry_execution_result_statuses")
+    if not isinstance(result_statuses, Mapping):
+        result_statuses = {}
+
+    result_reasons = key_metrics.get("security_retry_execution_result_reasons")
+    if not isinstance(result_reasons, Mapping):
+        result_reasons = {}
+
+    checks.append(
+        {
+            "name": "brief_surfaces_retry_execution_result_status_breakdown",
+            "status": "passed" if _safe_int(result_statuses.get("skipped"), 0) > 0 else "failed",
+            "value": dict(result_statuses),
+        }
+    )
+    checks.append(
+        {
+            "name": "brief_surfaces_retry_execution_result_reason_breakdown",
+            "status": "passed" if _safe_int(result_reasons.get("execution_disabled"), 0) > 0 else "failed",
+            "value": dict(result_reasons),
+        }
+    )
+
+    return checks
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _format_result(result: Mapping[str, Any]) -> str:
+    checks = result.get("checks")
+    if not isinstance(checks, list):
+        checks = []
+
+    failed = [
+        str(item.get("name") or "unknown")
+        for item in checks
+        if isinstance(item, Mapping) and item.get("status") != "passed"
+    ]
+
+    return (
+        "Retry governance observability: "
+        f"status={result.get('status')} "
+        f"checks={len(checks)} "
+        f"failed={len(failed)} "
+        f"failed_checks={','.join(failed) if failed else 'none'}"
+    )
+
+
+def _exit_code_for_result(result: Mapping[str, Any]) -> int:
+    return 0 if result.get("status") == "passed" else 1
+
+
+def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s:%(lineno)d - %(message)s",
+    )
+    args = build_parser().parse_args()
+    result = check_retry_governance_observability(args)
+
+    if args.json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        print(_format_result(result))
+
+    raise SystemExit(_exit_code_for_result(result))
+
+
+if __name__ == "__main__":
+    main()
