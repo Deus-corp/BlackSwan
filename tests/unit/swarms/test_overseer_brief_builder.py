@@ -506,3 +506,25 @@ def test_build_global_swarm_brief_reports_retry_approval_decision_modes() -> Non
     )
     assert "manual=1" in brief.summary
     assert "policy=1" in brief.summary
+
+
+def test_build_global_swarm_brief_reports_retry_execution_plans_from_security_validation() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "security_validation_valid_records": 1,
+            "security_validation_invalid_records": 0,
+            "security_validation_critical_records": 0,
+            "security_validation_record_type_counts": {
+                "replay_lifecycle_retry_execution_plan": 1,
+            },
+        },
+    )
+
+    assert brief.key_metrics["security_retry_execution_plans"] == 1
+    assert any(
+        "Replay lifecycle retry execution plans" in item.get("title", "")
+        for item in brief.opportunities
+    )
+    assert "replay lifecycle retry execution plan" in brief.summary.lower()

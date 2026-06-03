@@ -542,6 +542,9 @@ Security validation recognizes `replay_lifecycle_retry_execution_plan` records.
 Only non-executing plans with `status=planned`, `execution_enabled=false`, safe
 timeout profiles, and manual or policy decision modes are valid.
 
+Overseer global briefs surface validated `replay_lifecycle_retry_execution_plan`
+records as retry execution plan opportunities.
+
 ---
 
 ## Safety guarantees
