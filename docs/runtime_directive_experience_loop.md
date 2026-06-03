@@ -581,6 +581,9 @@ the end-to-end retry governance trail. It reports proposal, approval, execution
 plan, and execution result counts, including skipped and rejected dry-run runner
 results. The helper does not publish records and does not execute retry commands.
 
+The retry governance trail summary includes `chain_complete` and `missing_stages`
+so CI and operators can detect incomplete proposal-to-result chains.
+
 ---
 
 ## Safety guarantees

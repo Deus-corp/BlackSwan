@@ -112,3 +112,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "src.testing.inspect_retry_governance_trail" in text
     assert "read-only helper" in text
     assert "does not publish records" in text
+    assert "chain_complete" in text
+    assert "missing_stages" in text

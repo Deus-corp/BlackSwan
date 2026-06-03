@@ -114,6 +114,13 @@ def inspect_retry_governance_trail_from_records(
         results=results,
     )
 
+    missing_stages = _missing_stages(
+        proposals=proposals,
+        approvals=approvals,
+        plans=plans,
+        results=results,
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -135,7 +142,29 @@ def inspect_retry_governance_trail_from_records(
             "approval_id": clean_approval_id or None,
             "plan_id": clean_plan_id or None,
         },
+        "chain_complete": not missing_stages,
+        "missing_stages": missing_stages,
     }
+
+def _missing_stages(
+    *,
+    proposals: list[Mapping[str, Any]],
+    approvals: list[Mapping[str, Any]],
+    plans: list[Mapping[str, Any]],
+    results: list[Mapping[str, Any]],
+) -> list[str]:
+    missing: list[str] = []
+
+    if not proposals:
+        missing.append("proposal")
+    if not approvals:
+        missing.append("approval")
+    if not plans:
+        missing.append("plan")
+    if not results:
+        missing.append("result")
+
+    return missing
 
 
 def inspect_retry_governance_trail(args: argparse.Namespace) -> dict[str, Any]:
@@ -242,6 +271,13 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         else {}
     )
 
+    chain_complete = bool(summary.get("chain_complete"))
+    missing_stages = summary.get("missing_stages")
+    if isinstance(missing_stages, list):
+        missing_text = ",".join(str(item) for item in missing_stages) or "none"
+    else:
+        missing_text = "unknown"
+
     return (
         "Retry governance trail: "
         f"proposals={counts.get('proposals', 0)} "
@@ -252,6 +288,8 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"rejected={result_statuses.get('rejected', 0)} "
         f"execution_disabled={result_reasons.get('execution_disabled', 0)} "
         f"execution_not_supported={result_reasons.get('execution_not_supported', 0)}"
+        f"chain_complete={str(chain_complete).lower()} "
+        f"missing_stages={missing_text} "
     )
 
 

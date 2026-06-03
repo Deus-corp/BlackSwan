@@ -85,6 +85,8 @@ def test_inspect_retry_governance_trail_from_records_counts_chain() -> None:
     assert summary["chain_ids"]["approval_ids"] == ["approval-1"]
     assert summary["chain_ids"]["plan_ids"] == ["plan-1"]
     assert summary["chain_ids"]["result_ids"] == ["result-1"]
+    assert summary["chain_complete"] is True
+    assert summary["missing_stages"] == []
 
 
 def test_inspect_retry_governance_trail_from_records_filters_by_plan_id() -> None:
@@ -131,3 +133,10 @@ def test_inspect_retry_governance_trail_from_crdt(tmp_path) -> None:
     assert summary["counts"]["approvals"] == 1
     assert summary["counts"]["plans"] == 1
     assert summary["counts"]["results"] == 1
+
+
+def test_inspect_retry_governance_trail_reports_missing_stages() -> None:
+    summary = inspect_retry_governance_trail_from_records([_proposal()])
+
+    assert summary["chain_complete"] is False
+    assert summary["missing_stages"] == ["approval", "plan", "result"]
