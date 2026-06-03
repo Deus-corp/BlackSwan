@@ -645,6 +645,10 @@ chain_complete=true, and checks Security/Overseer observability.
 isolated temporary CRDT database, so the main runtime smoke gate verifies the
 safe proposal-to-result governance path without polluting the live ledger.
 
+The smoke command also supports `--require-clean`; when enabled, it exits with
+code `1` before seeding if retry governance records already exist for the selected
+proposal id. existing_retry_governance_records
+
 ---
 
 ## Related modules

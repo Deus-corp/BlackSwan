@@ -21,9 +21,58 @@ from src.testing.inspect_retry_governance_trail import (
     inspect_retry_governance_trail,
 )
 from src.testing.seed_retry_governance_trail import seed_retry_governance_trail
+from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
+
+
+RETRY_GOVERNANCE_RECORD_TYPES = {
+    "replay_lifecycle_retry_proposal",
+    "replay_lifecycle_retry_approval",
+    "replay_lifecycle_retry_execution_plan",
+    "replay_lifecycle_retry_execution_result",
+}
+
+
+def _existing_retry_governance_records(
+    *,
+    db_path: str,
+    proposal_id: str,
+) -> list[dict[str, Any]]:
+    crdt = CRDTAdapter(node_id="retry-governance-smoke-preflight", db_path=db_path)
+    try:
+        refresh = getattr(crdt, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
+
+        state = getattr(crdt, "state", {}) or {}
+        records: list[dict[str, Any]] = []
+
+        for item in state.values():
+            if not isinstance(item, Mapping):
+                continue
+            if item.get("type") not in RETRY_GOVERNANCE_RECORD_TYPES:
+                continue
+            if _record_matches_proposal_id(item, proposal_id):
+                records.append(dict(item))
+
+        return records
+    finally:
+        close = getattr(crdt, "close", None)
+        if callable(close):
+            close()
+
+
+def _record_matches_proposal_id(record: Mapping[str, Any], proposal_id: str) -> bool:
+    if str(record.get("proposal_id") or "").strip() == proposal_id:
+        return True
+
+    payload = record.get("payload")
+    if isinstance(payload, Mapping):
+        return str(payload.get("proposal_id") or "").strip() == proposal_id
+
+    return False
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -77,6 +126,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print machine-readable JSON result.",
     )
+    parser.add_argument(
+        "--require-clean",
+        action="store_true",
+        help="Fail before seeding if retry governance records already exist for the proposal id.",
+    )
     return parser
 
 
@@ -120,6 +174,31 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
 
     status = "passed" if trail_code == 0 and observability_code == 0 else "failed"
 
+    require_clean = bool(getattr(args, "require_clean", False))
+
+    existing_records: list[dict[str, Any]] = []
+    if require_clean:
+        existing_records = _existing_retry_governance_records(
+            db_path=db_path,
+            proposal_id=proposal_id,
+        )
+        if existing_records:
+            return {
+                "type": "retry_governance_smoke_result",
+                "status": "failed",
+                "records_seeded": 0,
+                "proposal_id": proposal_id,
+                "reason": "existing_retry_governance_records",
+                "existing_records": len(existing_records),
+                "trail_summary": {},
+                "observability": {},
+                "exit_codes": {
+                    "preflight": 1,
+                    "trail": 1,
+                    "observability": 1,
+                },
+            }
+
     return {
         "type": "retry_governance_smoke_result",
         "status": status,
@@ -127,6 +206,7 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
         "proposal_id": proposal_id,
         "trail_summary": trail_summary,
         "observability": observability,
+        "existing_records": len(existing_records),
         "exit_codes": {
             "trail": trail_code,
             "observability": observability_code,
@@ -149,6 +229,8 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"results={counts.get('results', 0)} "
         f"chain_complete={str(bool(trail.get('chain_complete'))).lower()} "
         f"observability={observability.get('status')}"
+        f"existing_records={result.get('existing_records', 0)} "
+        f"reason={result.get('reason') or 'ok'} "
     )
 
 

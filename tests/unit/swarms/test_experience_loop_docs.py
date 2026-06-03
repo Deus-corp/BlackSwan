@@ -130,3 +130,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "src.testing.swarm_runtime_smoke" in text
     assert "isolated temporary CRDT database" in text
     assert "safe proposal-to-result governance path" in text
+    assert "--require-clean" in text
+    assert "existing_retry_governance_records" in text
