@@ -105,3 +105,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "reason=execution_disabled" in text
     assert "executed=false" in text
     assert "retry execution result opportunities" in text
+    assert "security_validation_retry_execution_result_statuses" in text
+    assert "security_validation_retry_execution_result_reasons" in text

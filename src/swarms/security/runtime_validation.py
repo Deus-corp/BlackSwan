@@ -132,12 +132,28 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     warnings = [item for item in validation_list if str(item.get("severity") or "") == "warning"]
 
     retry_approval_decision_modes: dict[str, int] = {}
-    for item in validation_list:
-        if item.get("record_type") != "replay_lifecycle_retry_approval":
-            continue
+    retry_execution_result_statuses: dict[str, int] = {}
+    retry_execution_result_reasons: dict[str, int] = {}
 
-        mode = str(item.get("decision_mode") or "unknown").strip() or "unknown"
-        retry_approval_decision_modes[mode] = retry_approval_decision_modes.get(mode, 0) + 1
+    for item in validation_list:
+        record_type = str(item.get("record_type") or "").strip()
+
+        if record_type == "replay_lifecycle_retry_approval":
+            mode = str(item.get("decision_mode") or "unknown").strip() or "unknown"
+            retry_approval_decision_modes[mode] = (
+                retry_approval_decision_modes.get(mode, 0) + 1
+            )
+
+        if record_type == "replay_lifecycle_retry_execution_result":
+            status = str(item.get("status") or "unknown").strip() or "unknown"
+            reason = str(item.get("reason") or "unknown").strip() or "unknown"
+
+            retry_execution_result_statuses[status] = (
+                retry_execution_result_statuses.get(status, 0) + 1
+            )
+            retry_execution_result_reasons[reason] = (
+                retry_execution_result_reasons.get(reason, 0) + 1
+            )
 
     return {
         "type": "security_validation_summary",
@@ -150,6 +166,8 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "invalid_reasons": _reason_counts(invalid),
         "warning_reasons": _reason_counts(warnings),
         "retry_approval_decision_modes": retry_approval_decision_modes,
+        "retry_execution_result_statuses": retry_execution_result_statuses,
+        "retry_execution_result_reasons": retry_execution_result_reasons,
     }
 
 
@@ -168,6 +186,8 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_invalid_reasons": summary["invalid_reasons"],
         "security_validation_warning_reasons": summary["warning_reasons"],
         "security_validation_retry_approval_decision_modes": summary["retry_approval_decision_modes"],
+        "security_validation_retry_execution_result_statuses": summary["retry_execution_result_statuses"],
+        "security_validation_retry_execution_result_reasons": summary["retry_execution_result_reasons"],
     }
 
 
@@ -542,6 +562,8 @@ def validate_replay_lifecycle_retry_execution_result(record: Mapping[str, Any]) 
         "severity": "info" if valid else "critical",
         "reasons": reasons,
         "subject": result_id or plan_id or "unknown",
+        "status": status or "unknown",
+        "reason": reason or "unknown",
     }
 
 

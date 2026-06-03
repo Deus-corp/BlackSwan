@@ -731,3 +731,29 @@ def test_security_validation_metrics_counts_retry_execution_results() -> None:
         ]
         == 1
     )
+
+
+def test_security_validation_metrics_reports_retry_execution_result_statuses_and_reasons() -> None:
+    skipped = _retry_execution_result(
+        result_id="replay-retry-result-skipped",
+        status="skipped",
+        reason="execution_disabled",
+    )
+    rejected = _retry_execution_result(
+        result_id="replay-retry-result-rejected",
+        status="rejected",
+        reason="execution_not_supported",
+        execution_enabled=True,
+        payload={
+            "plan_id": "replay-retry-plan-test",
+            "execution_enabled": True,
+            "executed": False,
+        },
+    )
+
+    metrics = build_security_validation_heartbeat_metrics([skipped, rejected])
+
+    assert metrics["security_validation_retry_execution_result_statuses"]["skipped"] == 1
+    assert metrics["security_validation_retry_execution_result_statuses"]["rejected"] == 1
+    assert metrics["security_validation_retry_execution_result_reasons"]["execution_disabled"] == 1
+    assert metrics["security_validation_retry_execution_result_reasons"]["execution_not_supported"] == 1

@@ -564,6 +564,11 @@ Dry-run runner results are valid only when they are non-executing, such as
 Overseer global briefs surface validated `replay_lifecycle_retry_execution_result`
 records as retry execution result opportunities.
 
+Security heartbeat metrics include
+`security_validation_retry_execution_result_statuses` and
+`security_validation_retry_execution_result_reasons` for dry-run retry runner
+results.
+
 ---
 
 ## Safety guarantees

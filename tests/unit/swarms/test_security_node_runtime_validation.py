@@ -50,7 +50,11 @@ def test_security_node_heartbeat_reports_runtime_validation_metrics() -> None:
     assert metrics["security_validation_warning_reasons"] == {}
     assert metrics["security_validation_record_type_counts"]["replay_evidence_lifecycle_result"] == 1
     assert "security_validation_retry_approval_decision_modes" in metrics
+    assert "security_validation_retry_execution_result_statuses" in metrics
+    assert "security_validation_retry_execution_result_reasons" in metrics
     assert metrics["security_validation_retry_approval_decision_modes"] == {}
+    assert metrics["security_validation_retry_execution_result_statuses"] == {}
+    assert metrics["security_validation_retry_execution_result_reasons"] == {}
 
 def make_security_node() -> SecurityNode:
     try:
