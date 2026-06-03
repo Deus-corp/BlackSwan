@@ -117,6 +117,17 @@ def build_global_swarm_brief(
         security_validation_warning_reasons.get("execution_not_observed_before_timeout"),
         0,
     )
+    security_retry_approval_decision_modes = _safe_dict(
+        security_validation.get("security_validation_retry_approval_decision_modes")
+    )
+    security_retry_manual_approvals = _safe_int(
+        security_retry_approval_decision_modes.get("manual"),
+        0,
+    )
+    security_retry_policy_approvals = _safe_int(
+        security_retry_approval_decision_modes.get("policy"),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -372,6 +383,25 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_retry_manual_approvals > 0 or security_retry_policy_approvals > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Replay retry approval decision modes observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Security observed replay retry approval decision modes: "
+                    f"manual={security_retry_manual_approvals}, "
+                    f"policy={security_retry_policy_approvals}."
+                ),
+                payload={
+                    "security_retry_approval_decision_modes": security_retry_approval_decision_modes,
+                    "security_retry_manual_approvals": security_retry_manual_approvals,
+                    "security_retry_policy_approvals": security_retry_policy_approvals,
+                    "recommendation": "review_replay_retry_approval_decision_modes",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -538,6 +568,9 @@ def build_global_swarm_brief(
         "security_replay_lifecycle_timeouts": security_replay_lifecycle_timeouts,
         "security_retry_proposals": security_retry_proposals,
         "security_retry_approvals": security_retry_approvals,
+        "security_retry_approval_decision_modes": security_retry_approval_decision_modes,
+        "security_retry_manual_approvals": security_retry_manual_approvals,
+        "security_retry_policy_approvals": security_retry_policy_approvals,
     }
 
     summary = _build_summary(
@@ -560,6 +593,8 @@ def build_global_swarm_brief(
         security_replay_lifecycle_timeouts=security_replay_lifecycle_timeouts,
         security_retry_proposals=security_retry_proposals,
         security_retry_approvals=security_retry_approvals,
+        security_retry_manual_approvals=security_retry_manual_approvals,
+        security_retry_policy_approvals=security_retry_policy_approvals,
     )
 
     return build_swarm_brief(
@@ -613,6 +648,8 @@ def _build_summary(
     security_replay_lifecycle_timeouts: int,
     security_retry_proposals: int,
     security_retry_approvals: int,
+    security_retry_manual_approvals: int,
+    security_retry_policy_approvals: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -667,6 +704,13 @@ def _build_summary(
     if security_retry_approvals > 0:
         parts.append(
             f"Security validated {security_retry_approvals} replay lifecycle retry approval record(s)."
+        )
+
+    if security_retry_manual_approvals > 0 or security_retry_policy_approvals > 0:
+        parts.append(
+            "Security observed replay retry approval decision modes: "
+            f"manual={security_retry_manual_approvals}, "
+            f"policy={security_retry_policy_approvals}."
         )
 
     if simulation_replay_pending > 0:
@@ -895,6 +939,7 @@ def _aggregate_security_validation_from_heartbeats(
     warning_reasons: dict[str, int] = {}
     severity_counts: dict[str, int] = {}
     record_type_counts: dict[str, int] = {}
+    retry_approval_decision_modes: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -910,11 +955,16 @@ def _aggregate_security_validation_from_heartbeats(
         _merge_int_counts(warning_reasons, metrics.get("security_validation_warning_reasons"))
         _merge_int_counts(severity_counts, metrics.get("security_validation_severity_counts"))
         _merge_int_counts(record_type_counts, metrics.get("security_validation_record_type_counts"))
+        _merge_int_counts(
+            retry_approval_decision_modes,
+            metrics.get("security_validation_retry_approval_decision_modes"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
     aggregate["security_validation_severity_counts"] = severity_counts
     aggregate["security_validation_record_type_counts"] = record_type_counts
+    aggregate["security_validation_retry_approval_decision_modes"] = retry_approval_decision_modes
 
     return aggregate
 

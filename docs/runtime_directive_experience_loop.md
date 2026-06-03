@@ -528,6 +528,10 @@ Security heartbeat metrics include
 `security_validation_retry_approval_decision_modes` so manual and policy retry
 approvals can be observed separately.
 
+Overseer global briefs surface retry approval decision modes through
+`security_retry_approval_decision_modes`, including separate manual and policy
+approval counts.
+
 ---
 
 ## Safety guarantees
