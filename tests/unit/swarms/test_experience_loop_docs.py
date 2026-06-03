@@ -117,3 +117,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "--require-complete" in text
     assert "chain_complete=false" in text
     assert "proposal-to-result trail" in text
+    assert "src.testing.seed_retry_governance_trail" in text
+    assert "complete synthetic governance" in text
+    assert "chain_complete=true" in text

@@ -590,6 +590,16 @@ complete.
 
 ---
 
+## Synthetic retry governance trail seeding
+
+`src.testing.seed_retry_governance_trail` seeds a complete synthetic governance
+trail for smoke tests: proposal, approval, execution plan, and skipped execution
+result. It uses safe timeout profiles and non-executing records, so
+`src.testing.inspect_retry_governance_trail --require-complete` can verify
+`chain_complete=true` without running replay commands.
+
+---
+
 ## Safety guarantees
 
 The current controlled loop is intentionally conservative:
