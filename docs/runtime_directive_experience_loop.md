@@ -556,6 +556,11 @@ templates. With `execution_enabled=false`, it publishes
 `reason=execution_disabled`. If execution is enabled before runner support, it
 publishes `status=rejected` with `reason=execution_not_supported`.
 
+
+Security validation recognizes `replay_lifecycle_retry_execution_result` records.
+Dry-run runner results are valid only when they are non-executing, such as
+`status=skipped`, `reason=execution_disabled`, and `executed=false`.
+
 ---
 
 ## Safety guarantees

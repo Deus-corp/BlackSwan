@@ -12,6 +12,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_proposal,
     validate_replay_lifecycle_retry_approval,
     validate_replay_lifecycle_retry_execution_plan,
+    validate_replay_lifecycle_retry_execution_result,
 )
 
 
@@ -635,6 +636,98 @@ def test_security_validation_metrics_counts_retry_execution_plans() -> None:
     assert (
         metrics["security_validation_record_type_counts"][
             "replay_lifecycle_retry_execution_plan"
+        ]
+        == 1
+    )
+
+
+def _retry_execution_result(**overrides):
+    result = {
+        "type": "replay_lifecycle_retry_execution_result",
+        "result_id": "replay-retry-result-test",
+        "plan_id": "replay-retry-plan-test",
+        "proposal_id": "replay-retry-proposal-test",
+        "approval_id": "replay-retry-approval-test",
+        "status": "skipped",
+        "reason": "execution_disabled",
+        "source": "retry-plan-runner-test",
+        "execution_enabled": False,
+        "payload": {
+            "plan_id": "replay-retry-plan-test",
+            "proposal_id": "replay-retry-proposal-test",
+            "approval_id": "replay-retry-approval-test",
+            "timeout_profile": "standard",
+            "decision_mode": "manual",
+            "execution_enabled": False,
+            "executed": False,
+        },
+    }
+    result.update(overrides)
+    return result
+
+
+def test_validate_replay_lifecycle_retry_execution_result_accepts_skipped_disabled() -> None:
+    result = validate_replay_lifecycle_retry_execution_result(_retry_execution_result())
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["record_type"] == "replay_lifecycle_retry_execution_result"
+
+
+def test_validate_replay_lifecycle_retry_execution_result_accepts_rejected_enabled() -> None:
+    result = validate_replay_lifecycle_retry_execution_result(
+        _retry_execution_result(
+            status="rejected",
+            reason="execution_not_supported",
+            execution_enabled=True,
+            payload={
+                "plan_id": "replay-retry-plan-test",
+                "execution_enabled": True,
+                "executed": False,
+            },
+        )
+    )
+
+    assert result["valid"] is True
+
+
+def test_validate_replay_lifecycle_retry_execution_result_rejects_executed_true() -> None:
+    record = _retry_execution_result()
+    record["payload"]["executed"] = True
+
+    result = validate_replay_lifecycle_retry_execution_result(record)
+
+    assert result["valid"] is False
+    assert "retry_execution_result_executed_before_runner_support" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_result_rejects_completed_status() -> None:
+    result = validate_replay_lifecycle_retry_execution_result(
+        _retry_execution_result(status="completed", reason="executed")
+    )
+
+    assert result["valid"] is False
+    assert "invalid_retry_execution_result_status" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_result_rejects_payload_plan_mismatch() -> None:
+    record = _retry_execution_result()
+    record["payload"]["plan_id"] = "other-plan"
+
+    result = validate_replay_lifecycle_retry_execution_result(record)
+
+    assert result["valid"] is False
+    assert "payload_plan_id_mismatch" in result["reasons"]
+
+
+def test_security_validation_metrics_counts_retry_execution_results() -> None:
+    metrics = build_security_validation_heartbeat_metrics([_retry_execution_result()])
+
+    assert metrics["security_validation_records"] == 1
+    assert metrics["security_validation_valid_records"] == 1
+    assert (
+        metrics["security_validation_record_type_counts"][
+            "replay_lifecycle_retry_execution_result"
         ]
         == 1
     )

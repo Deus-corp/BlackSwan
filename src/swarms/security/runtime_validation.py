@@ -24,6 +24,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_proposal",
     "replay_lifecycle_retry_approval",
     "replay_lifecycle_retry_execution_plan",
+    "replay_lifecycle_retry_execution_result",
 }
 
 
@@ -80,6 +81,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
 
         if record_type == "replay_lifecycle_retry_execution_plan":
             result = validate_replay_lifecycle_retry_execution_plan(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
+        if record_type == "replay_lifecycle_retry_execution_result":
+            result = validate_replay_lifecycle_retry_execution_result(record)
             results.append(
                 {
                     **result,
@@ -172,13 +185,13 @@ def _reason_counts(records: Iterable[Mapping[str, Any]]) -> dict[str, int]:
 
 
 def _record_id(record: Mapping[str, Any]) -> str:
-    for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id","plan_id", "approval_id"):
+    for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "approval_id"):
         value = str(record.get(key) or "").strip()
         if value:
             return value
     payload = record.get("payload")
     if isinstance(payload, Mapping):
-        for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "plan_id", "approval_id"):
+        for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "approval_id"):
             value = str(payload.get(key) or "").strip()
             if value:
                 return value
@@ -475,6 +488,63 @@ def validate_replay_lifecycle_retry_execution_plan(record: Mapping[str, Any]) ->
     }
 
 
+def validate_replay_lifecycle_retry_execution_result(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate replay lifecycle retry execution result records."""
+    reasons: list[str] = []
+
+    result_id = str(record.get("result_id") or "").strip()
+    plan_id = str(record.get("plan_id") or "").strip()
+    status = str(record.get("status") or "").strip().lower()
+    reason = str(record.get("reason") or "").strip()
+    execution_enabled = bool(record.get("execution_enabled"))
+
+    payload = record.get("payload")
+    if not isinstance(payload, Mapping):
+        payload = {}
+
+    executed = bool(payload.get("executed"))
+    payload_plan_id = str(payload.get("plan_id") or "").strip()
+    payload_execution_enabled = bool(payload.get("execution_enabled"))
+
+    if not result_id:
+        reasons.append("missing_result_id")
+
+    if not plan_id:
+        reasons.append("missing_plan_id")
+
+    if status not in {"skipped", "rejected"}:
+        reasons.append("invalid_retry_execution_result_status")
+
+    if status == "skipped" and reason != "execution_disabled":
+        reasons.append("invalid_skipped_retry_execution_reason")
+
+    if status == "rejected" and reason != "execution_not_supported":
+        reasons.append("invalid_rejected_retry_execution_reason")
+
+    if executed:
+        reasons.append("retry_execution_result_executed_before_runner_support")
+
+    if execution_enabled and status != "rejected":
+        reasons.append("enabled_retry_execution_result_must_be_rejected")
+
+    if payload_plan_id and payload_plan_id != plan_id:
+        reasons.append("payload_plan_id_mismatch")
+
+    if payload_execution_enabled != execution_enabled:
+        reasons.append("payload_execution_enabled_mismatch")
+
+    valid = not reasons
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_execution_result",
+        "valid": valid,
+        "severity": "info" if valid else "critical",
+        "reasons": reasons,
+        "subject": result_id or plan_id or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -484,4 +554,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_proposal",
     "validate_replay_lifecycle_retry_approval",
     "validate_replay_lifecycle_retry_execution_plan",
+    "validate_replay_lifecycle_retry_execution_result",
 ]
