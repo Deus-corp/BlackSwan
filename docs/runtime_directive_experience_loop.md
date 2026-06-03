@@ -538,6 +538,10 @@ approval counts.
 
 Approved retry proposals can be converted into non-executing `replay_lifecycle_retry_execution_plan` records with `status=planned` and `execution_enabled=false`, without executing the retry automatically.
 
+Security validation recognizes `replay_lifecycle_retry_execution_plan` records.
+Only non-executing plans with `status=planned`, `execution_enabled=false`, safe
+timeout profiles, and manual or policy decision modes are valid.
+
 ---
 
 ## Safety guarantees

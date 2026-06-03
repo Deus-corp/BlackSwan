@@ -11,6 +11,7 @@ from src.swarms.security.runtime_validation import (
     build_security_validation_heartbeat_metrics,
     validate_replay_lifecycle_retry_proposal,
     validate_replay_lifecycle_retry_approval,
+    validate_replay_lifecycle_retry_execution_plan,
 )
 
 
@@ -540,3 +541,100 @@ def test_security_validation_metrics_reports_retry_approval_decision_modes() -> 
 
     assert metrics["security_validation_retry_approval_decision_modes"]["manual"] == 1
     assert metrics["security_validation_retry_approval_decision_modes"]["policy"] == 1
+
+
+def _retry_execution_plan(**overrides):
+    plan = {
+        "type": "replay_lifecycle_retry_execution_plan",
+        "plan_id": "replay-retry-plan-test",
+        "proposal_id": "replay-retry-test",
+        "approval_id": "replay-retry-approval-test",
+        "status": "planned",
+        "source": "overseer-test",
+        "execution_enabled": False,
+        "timeout_profile": "standard",
+        "decision_mode": "manual",
+        "command_template": (
+            "python -m src.testing.run_replay_evidence_check "
+            "--scenario-id <scenario_id> "
+            "--action REDUCE_RISK "
+            "--directive-id <new_directive_id> "
+            "--timeout-profile standard "
+            "--db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db"
+        ),
+        "payload": {
+            "proposal_id": "replay-retry-test",
+            "approval_id": "replay-retry-approval-test",
+            "timeout_profile": "standard",
+            "decision_mode": "manual",
+            "command_template": (
+                "python -m src.testing.run_replay_evidence_check "
+                "--scenario-id <scenario_id> "
+                "--action REDUCE_RISK "
+                "--directive-id <new_directive_id> "
+                "--timeout-profile standard "
+                "--db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db"
+            ),
+        },
+    }
+    plan.update(overrides)
+    return plan
+
+
+def test_validate_replay_lifecycle_retry_execution_plan_accepts_safe_plan() -> None:
+    result = validate_replay_lifecycle_retry_execution_plan(_retry_execution_plan())
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["record_type"] == "replay_lifecycle_retry_execution_plan"
+    assert result["decision_mode"] == "manual"
+
+
+def test_validate_replay_lifecycle_retry_execution_plan_rejects_execution_enabled() -> None:
+    result = validate_replay_lifecycle_retry_execution_plan(
+        _retry_execution_plan(execution_enabled=True)
+    )
+
+    assert result["valid"] is False
+    assert "retry_plan_execution_enabled_before_runner" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_plan_rejects_fast_profile() -> None:
+    result = validate_replay_lifecycle_retry_execution_plan(
+        _retry_execution_plan(timeout_profile="fast")
+    )
+
+    assert result["valid"] is False
+    assert "invalid_retry_plan_timeout_profile" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_plan_rejects_autonomous_decision_mode() -> None:
+    result = validate_replay_lifecycle_retry_execution_plan(
+        _retry_execution_plan(decision_mode="autonomous")
+    )
+
+    assert result["valid"] is False
+    assert "invalid_retry_plan_decision_mode" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_plan_rejects_payload_mismatch() -> None:
+    plan = _retry_execution_plan()
+    plan["payload"]["approval_id"] = "other-approval"
+
+    result = validate_replay_lifecycle_retry_execution_plan(plan)
+
+    assert result["valid"] is False
+    assert "payload_approval_id_mismatch" in result["reasons"]
+
+
+def test_security_validation_metrics_counts_retry_execution_plans() -> None:
+    metrics = build_security_validation_heartbeat_metrics([_retry_execution_plan()])
+
+    assert metrics["security_validation_records"] == 1
+    assert metrics["security_validation_valid_records"] == 1
+    assert (
+        metrics["security_validation_record_type_counts"][
+            "replay_lifecycle_retry_execution_plan"
+        ]
+        == 1
+    )
