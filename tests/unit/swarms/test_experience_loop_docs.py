@@ -114,3 +114,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "does not publish records" in text
     assert "chain_complete" in text
     assert "missing_stages" in text
+    assert "--require-complete" in text
+    assert "chain_complete=false" in text
+    assert "proposal-to-result trail" in text

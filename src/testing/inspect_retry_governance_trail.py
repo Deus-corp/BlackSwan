@@ -54,6 +54,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print machine-readable JSON summary.",
     )
+    parser.add_argument(
+        "--require-complete",
+        action="store_true",
+        help="Exit with code 1 when the retry governance chain is incomplete.",
+    )
     return parser
 
 
@@ -287,10 +292,20 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"skipped={result_statuses.get('skipped', 0)} "
         f"rejected={result_statuses.get('rejected', 0)} "
         f"execution_disabled={result_reasons.get('execution_disabled', 0)} "
-        f"execution_not_supported={result_reasons.get('execution_not_supported', 0)}"
+        f"execution_not_supported={result_reasons.get('execution_not_supported', 0)} "
         f"chain_complete={str(chain_complete).lower()} "
         f"missing_stages={missing_text} "
     )
+
+
+def _exit_code_for_summary(
+    summary: Mapping[str, Any],
+    *,
+    require_complete: bool = False,
+) -> int:
+    if require_complete and not bool(summary.get("chain_complete")):
+        return 1
+    return 0
 
 
 def main() -> None:
@@ -305,6 +320,13 @@ def main() -> None:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(_format_summary(summary))
+
+    raise SystemExit(
+        _exit_code_for_summary(
+            summary,
+            require_complete=bool(getattr(args, "require_complete", False)),
+        )
+    )
 
 
 if __name__ == "__main__":

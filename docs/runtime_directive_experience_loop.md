@@ -584,6 +584,10 @@ results. The helper does not publish records and does not execute retry commands
 The retry governance trail summary includes `chain_complete` and `missing_stages`
 so CI and operators can detect incomplete proposal-to-result chains.
 
+The inspection helper supports `--require-complete`, which exits with code `1`
+when `chain_complete=false` and code `0` when the proposal-to-result trail is
+complete.
+
 ---
 
 ## Safety guarantees

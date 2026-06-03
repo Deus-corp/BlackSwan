@@ -2,6 +2,7 @@ import argparse
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.testing.inspect_retry_governance_trail import (
+    _exit_code_for_summary,
     inspect_retry_governance_trail,
     inspect_retry_governance_trail_from_records,
 )
@@ -140,3 +141,26 @@ def test_inspect_retry_governance_trail_reports_missing_stages() -> None:
 
     assert summary["chain_complete"] is False
     assert summary["missing_stages"] == ["approval", "plan", "result"]
+
+
+def test_retry_governance_trail_exit_code_is_zero_by_default_when_incomplete() -> None:
+    summary = inspect_retry_governance_trail_from_records([_proposal()])
+
+    assert summary["chain_complete"] is False
+    assert _exit_code_for_summary(summary, require_complete=False) == 0
+
+
+def test_retry_governance_trail_exit_code_is_one_when_require_complete_and_incomplete() -> None:
+    summary = inspect_retry_governance_trail_from_records([_proposal()])
+
+    assert summary["chain_complete"] is False
+    assert _exit_code_for_summary(summary, require_complete=True) == 1
+
+
+def test_retry_governance_trail_exit_code_is_zero_when_require_complete_and_complete() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [_proposal(), _approval(), _plan(), _result()]
+    )
+
+    assert summary["chain_complete"] is True
+    assert _exit_code_for_summary(summary, require_complete=True) == 0
