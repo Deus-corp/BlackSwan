@@ -136,6 +136,21 @@ def build_global_swarm_brief(
         security_validation_record_type_counts.get("replay_lifecycle_retry_execution_result"),
         0,
     )
+    security_retry_execution_result_statuses = _safe_dict(
+        security_validation.get("security_validation_retry_execution_result_statuses")
+    )
+    security_retry_execution_result_reasons = _safe_dict(
+        security_validation.get("security_validation_retry_execution_result_reasons")
+    )
+
+    security_retry_execution_skipped = _safe_int(
+        security_retry_execution_result_statuses.get("skipped"),
+        0,
+    )
+    security_retry_execution_rejected = _safe_int(
+        security_retry_execution_result_statuses.get("rejected"),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -613,6 +628,10 @@ def build_global_swarm_brief(
         "security_retry_policy_approvals": security_retry_policy_approvals,
         "security_retry_execution_plans": security_retry_execution_plans,
         "security_retry_execution_results": security_retry_execution_results,
+        "security_retry_execution_result_statuses": security_retry_execution_result_statuses,
+        "security_retry_execution_result_reasons": security_retry_execution_result_reasons,
+        "security_retry_execution_skipped": security_retry_execution_skipped,
+        "security_retry_execution_rejected": security_retry_execution_rejected,
     }
 
     summary = _build_summary(
@@ -639,6 +658,8 @@ def build_global_swarm_brief(
         security_retry_policy_approvals=security_retry_policy_approvals,
         security_retry_execution_plans=security_retry_execution_plans,
         security_retry_execution_results=security_retry_execution_results,
+        security_retry_execution_skipped=security_retry_execution_skipped,
+        security_retry_execution_rejected=security_retry_execution_rejected,
     )
 
     return build_swarm_brief(
@@ -696,6 +717,8 @@ def _build_summary(
     security_retry_policy_approvals: int,
     security_retry_execution_plans: int,
     security_retry_execution_results: int,
+    security_retry_execution_skipped: int,
+    security_retry_execution_rejected: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -767,6 +790,13 @@ def _build_summary(
     if security_retry_execution_results > 0:
         parts.append(
            f"Security validated {security_retry_execution_results} replay lifecycle retry execution result record(s)."
+        )
+
+    if security_retry_execution_skipped > 0 or security_retry_execution_rejected > 0:
+        parts.append(
+            "Security observed replay retry execution result statuses: "
+            f"skipped={security_retry_execution_skipped}, "
+            f"rejected={security_retry_execution_rejected}."
         )
 
     if simulation_replay_pending > 0:
@@ -996,6 +1026,8 @@ def _aggregate_security_validation_from_heartbeats(
     severity_counts: dict[str, int] = {}
     record_type_counts: dict[str, int] = {}
     retry_approval_decision_modes: dict[str, int] = {}
+    retry_execution_result_statuses: dict[str, int] = {}
+    retry_execution_result_reasons: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1015,12 +1047,22 @@ def _aggregate_security_validation_from_heartbeats(
             retry_approval_decision_modes,
             metrics.get("security_validation_retry_approval_decision_modes"),
         )
+        _merge_int_counts(
+            retry_execution_result_statuses,
+            metrics.get("security_validation_retry_execution_result_statuses"),
+        )
+        _merge_int_counts(
+            retry_execution_result_reasons,
+            metrics.get("security_validation_retry_execution_result_reasons"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
     aggregate["security_validation_severity_counts"] = severity_counts
     aggregate["security_validation_record_type_counts"] = record_type_counts
     aggregate["security_validation_retry_approval_decision_modes"] = retry_approval_decision_modes
+    aggregate["security_validation_retry_execution_result_statuses"] = retry_execution_result_statuses
+    aggregate["security_validation_retry_execution_result_reasons"] = retry_execution_result_reasons
 
     return aggregate
 

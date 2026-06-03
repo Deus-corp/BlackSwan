@@ -550,3 +550,40 @@ def test_build_global_swarm_brief_reports_retry_execution_results_from_security_
         for item in brief.opportunities
     )
     assert "replay lifecycle retry execution result" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_reports_retry_execution_result_statuses() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation={
+            "security_validation_records": 2,
+            "security_validation_valid_records": 2,
+            "security_validation_invalid_records": 0,
+            "security_validation_critical_records": 0,
+            "security_validation_record_type_counts": {
+                "replay_lifecycle_retry_execution_result": 2,
+            },
+            "security_validation_retry_execution_result_statuses": {
+                "skipped": 1,
+                "rejected": 1,
+            },
+            "security_validation_retry_execution_result_reasons": {
+                "execution_disabled": 1,
+                "execution_not_supported": 1,
+            },
+        },
+    )
+
+    assert brief.key_metrics["security_retry_execution_results"] == 2
+    assert brief.key_metrics["security_retry_execution_skipped"] == 1
+    assert brief.key_metrics["security_retry_execution_rejected"] == 1
+    assert brief.key_metrics["security_retry_execution_result_statuses"] == {
+        "skipped": 1,
+        "rejected": 1,
+    }
+    assert brief.key_metrics["security_retry_execution_result_reasons"] == {
+        "execution_disabled": 1,
+        "execution_not_supported": 1,
+    }
+    assert "skipped=1" in brief.summary
+    assert "rejected=1" in brief.summary

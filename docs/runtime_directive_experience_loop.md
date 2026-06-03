@@ -569,6 +569,10 @@ Security heartbeat metrics include
 `security_validation_retry_execution_result_reasons` for dry-run retry runner
 results.
 
+Overseer global briefs surface retry execution result status and reason
+breakdowns through `security_retry_execution_result_statuses` and
+`security_retry_execution_result_reasons`.
+
 ---
 
 ## Safety guarantees
