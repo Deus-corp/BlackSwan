@@ -630,6 +630,15 @@ governance trail, verifies `chain_complete=true`, and checks Security/Overseer
 observability in one command.
 The one-command retry governance smoke verifies Security/Overseer observability.
 
+Runtime smoke checklist command:
+
+```bash
+python -m src.testing.retry_governance_smoke \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+This command seeds a synthetic non-executing retry governance trail, verifies
+chain_complete=true, and checks Security/Overseer observability.
+
 ---
 
 ## Related modules
