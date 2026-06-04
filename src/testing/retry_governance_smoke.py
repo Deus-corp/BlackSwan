@@ -179,6 +179,9 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
             proposal_id=proposal_id,
             approval_id=str(args.approval_id or "replay-retry-smoke-approval-1"),
             plan_id=str(args.plan_id or "replay-retry-smoke-plan-1"),
+            rendered_command_id=str(
+                getattr(args, "rendered_command_id", "") or "replay-retry-smoke-rendered-command-1"
+            ),
             result_id=str(args.result_id or "replay-retry-smoke-result-1"),
             timeout_profile=str(args.timeout_profile or "standard"),
             decision_mode=str(args.decision_mode or "manual"),

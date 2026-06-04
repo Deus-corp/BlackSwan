@@ -35,6 +35,7 @@ async def test_retry_governance_smoke_passes_for_synthetic_trail(tmp_path) -> No
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_commands"] == 1
     assert result["exit_codes"]["trail"] == 0
     assert result["exit_codes"]["observability"] == 0
+    assert result["trail_summary"]["chain_ids"]["rendered_command_ids"] == ["rendered-smoke"]
 
 
 @pytest.mark.asyncio
@@ -60,6 +61,7 @@ async def test_retry_governance_smoke_accepts_policy_patient_profile(tmp_path) -
     assert result["trail_summary"]["counts"]["rendered_commands"] == 1
     assert result["trail_summary"]["decision_modes"]["policy"] == 3
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_commands"] == 1
+    assert result["trail_summary"]["chain_ids"]["rendered_command_ids"] == ["rendered-smoke-policy"]
 
 
 @pytest.mark.asyncio
@@ -133,3 +135,6 @@ async def test_retry_governance_smoke_require_clean_passes_on_clean_db(tmp_path)
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_commands"] == 1
     assert result["existing_records"] == 0
     assert result["exit_codes"]["preflight"] == 0
+    assert result["trail_summary"]["chain_ids"]["rendered_command_ids"] == [
+    "rendered-smoke-clean-first"
+]

@@ -27,6 +27,22 @@ async def test_seed_retry_governance_trail_builds_complete_chain(tmp_path) -> No
         )
     )
 
+    rendered = next(
+        record
+        for record in records
+        if record["type"] == "replay_lifecycle_retry_rendered_command"
+    )
+    result = next(
+        record
+        for record in records
+        if record["type"] == "replay_lifecycle_retry_execution_result"
+    )
+
+    assert rendered["rendered_command_id"] == "rendered-command-test"
+    assert rendered["payload"]["rendered_command_id"] == "rendered-command-test"
+    assert result["rendered_command_id"] == "rendered-command-test"
+    assert result["payload"]["rendered_command_id"] == "rendered-command-test"
+
     assert [record["type"] for record in records] == [
         "replay_lifecycle_retry_proposal",
         "replay_lifecycle_retry_approval",

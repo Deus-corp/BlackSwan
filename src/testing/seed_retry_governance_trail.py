@@ -78,6 +78,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str, Any]]:
     """Publish a synthetic safe replay retry governance trail."""
+    rendered_command_id = str(
+        getattr(args, "rendered_command_id", "") or "replay-retry-seed-rendered-command-1"
+    ).strip()
     db_path = str(args.db_path or config.crdt_db_path)
     source = str(args.source or "retry-governance-seed")
 
@@ -87,9 +90,6 @@ async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str
     result_id = str(args.result_id or "replay-retry-seed-result-1").strip()
     timeout_profile = str(args.timeout_profile or "standard").strip()
     decision_mode = str(args.decision_mode or "manual").strip()
-    rendered_command_id = str(
-        getattr(args, "rendered_command_id", "") or "replay-retry-seed-rendered-command-1"
-    ).strip()
 
     if not proposal_id:
         raise ValueError("proposal_id must be present")
