@@ -671,6 +671,10 @@ Security heartbeat metrics include
 `security_validation_retry_rendered_command_decision_modes` for rendered retry
 commands.
 
+Overseer global briefs surface rendered retry command profile and decision-mode
+breakdowns through `security_retry_rendered_command_profiles` and
+`security_retry_rendered_command_decision_modes`.
+
 ---
 
 ## Related modules

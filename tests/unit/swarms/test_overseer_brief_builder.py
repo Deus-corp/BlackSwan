@@ -609,3 +609,40 @@ def test_build_global_swarm_brief_reports_retry_rendered_commands_from_security_
         for item in brief.opportunities
     )
     assert "replay lifecycle retry rendered command" in brief.summary.lower()
+
+
+def test_build_global_swarm_brief_reports_retry_rendered_command_profiles() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation={
+            "security_validation_records": 2,
+            "security_validation_valid_records": 2,
+            "security_validation_invalid_records": 0,
+            "security_validation_critical_records": 0,
+            "security_validation_record_type_counts": {
+                "replay_lifecycle_retry_rendered_command": 2,
+            },
+            "security_validation_retry_rendered_command_profiles": {
+                "standard": 1,
+                "patient": 1,
+            },
+            "security_validation_retry_rendered_command_decision_modes": {
+                "manual": 1,
+                "policy": 1,
+            },
+        },
+    )
+
+    assert brief.key_metrics["security_retry_rendered_commands"] == 2
+    assert brief.key_metrics["security_retry_rendered_command_profiles"] == {
+        "standard": 1,
+        "patient": 1,
+    }
+    assert brief.key_metrics["security_retry_rendered_command_decision_modes"] == {
+        "manual": 1,
+        "policy": 1,
+    }
+    assert brief.key_metrics["security_retry_rendered_standard_commands"] == 1
+    assert brief.key_metrics["security_retry_rendered_patient_commands"] == 1
+    assert "standard=1" in brief.summary
+    assert "patient=1" in brief.summary

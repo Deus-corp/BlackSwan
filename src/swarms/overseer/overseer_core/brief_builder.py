@@ -155,6 +155,20 @@ def build_global_swarm_brief(
         security_retry_execution_result_statuses.get("rejected"),
         0,
     )
+    security_retry_rendered_command_profiles = _safe_dict(
+        security_validation.get("security_validation_retry_rendered_command_profiles")
+    )
+    security_retry_rendered_command_decision_modes = _safe_dict(
+        security_validation.get("security_validation_retry_rendered_command_decision_modes")
+    )
+    security_retry_rendered_standard_commands = _safe_int(
+        security_retry_rendered_command_profiles.get("standard"),
+        0,
+    )
+    security_retry_rendered_patient_commands = _safe_int(
+        security_retry_rendered_command_profiles.get("patient"),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -653,6 +667,10 @@ def build_global_swarm_brief(
         "security_retry_execution_skipped": security_retry_execution_skipped,
         "security_retry_execution_rejected": security_retry_execution_rejected,
         "security_retry_rendered_commands": security_retry_rendered_commands,
+        "security_retry_rendered_command_profiles": security_retry_rendered_command_profiles,
+        "security_retry_rendered_command_decision_modes": security_retry_rendered_command_decision_modes,
+        "security_retry_rendered_standard_commands": security_retry_rendered_standard_commands,
+        "security_retry_rendered_patient_commands": security_retry_rendered_patient_commands,
     }
 
     summary = _build_summary(
@@ -682,6 +700,8 @@ def build_global_swarm_brief(
         security_retry_execution_skipped=security_retry_execution_skipped,
         security_retry_execution_rejected=security_retry_execution_rejected,
         security_retry_rendered_commands=security_retry_rendered_commands,
+        security_retry_rendered_standard_commands=security_retry_rendered_standard_commands,
+        security_retry_rendered_patient_commands=security_retry_rendered_patient_commands,
     )
 
     return build_swarm_brief(
@@ -742,6 +762,8 @@ def _build_summary(
     security_retry_execution_skipped: int,
     security_retry_execution_rejected: int,
     security_retry_rendered_commands: int,
+    security_retry_rendered_standard_commands: int,
+    security_retry_rendered_patient_commands: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -825,6 +847,13 @@ def _build_summary(
     if security_retry_rendered_commands > 0:
         parts.append(
             f"Security validated {security_retry_rendered_commands} replay lifecycle retry rendered command record(s)."
+        )
+
+    if security_retry_rendered_standard_commands > 0 or security_retry_rendered_patient_commands > 0:
+        parts.append(
+            "Security observed replay retry rendered command profiles: "
+           f"standard={security_retry_rendered_standard_commands}, "
+           f"patient={security_retry_rendered_patient_commands}."
         )
 
     if simulation_replay_pending > 0:
@@ -1056,6 +1085,8 @@ def _aggregate_security_validation_from_heartbeats(
     retry_approval_decision_modes: dict[str, int] = {}
     retry_execution_result_statuses: dict[str, int] = {}
     retry_execution_result_reasons: dict[str, int] = {}
+    retry_rendered_command_profiles: dict[str, int] = {}
+    retry_rendered_command_decision_modes: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1083,6 +1114,14 @@ def _aggregate_security_validation_from_heartbeats(
             retry_execution_result_reasons,
             metrics.get("security_validation_retry_execution_result_reasons"),
         )
+        _merge_int_counts(
+            retry_rendered_command_profiles,
+            metrics.get("security_validation_retry_rendered_command_profiles"),
+        )
+        _merge_int_counts(
+            retry_rendered_command_decision_modes,
+            metrics.get("security_validation_retry_rendered_command_decision_modes"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1091,6 +1130,8 @@ def _aggregate_security_validation_from_heartbeats(
     aggregate["security_validation_retry_approval_decision_modes"] = retry_approval_decision_modes
     aggregate["security_validation_retry_execution_result_statuses"] = retry_execution_result_statuses
     aggregate["security_validation_retry_execution_result_reasons"] = retry_execution_result_reasons
+    aggregate["security_validation_retry_rendered_command_profiles"] = retry_rendered_command_profiles
+    aggregate["security_validation_retry_rendered_command_decision_modes"] = retry_rendered_command_decision_modes
 
     return aggregate
 

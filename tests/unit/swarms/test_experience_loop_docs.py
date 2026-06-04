@@ -140,3 +140,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "retry rendered command opportunities" in text
     assert "security_validation_retry_rendered_command_profiles" in text
     assert "security_validation_retry_rendered_command_decision_modes" in text
+    assert "security_retry_rendered_command_profiles" in text
+    assert "security_retry_rendered_command_decision_modes" in text
