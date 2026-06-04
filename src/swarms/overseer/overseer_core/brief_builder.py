@@ -136,6 +136,10 @@ def build_global_swarm_brief(
         security_validation_record_type_counts.get("replay_lifecycle_retry_execution_result"),
         0,
     )
+    security_retry_rendered_commands = _safe_int(
+        security_validation_record_type_counts.get("replay_lifecycle_retry_rendered_command"),
+        0,
+    )
     security_retry_execution_result_statuses = _safe_dict(
         security_validation.get("security_validation_retry_execution_result_statuses")
     )
@@ -457,6 +461,22 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_retry_rendered_commands > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Replay lifecycle retry rendered commands observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Security validated {security_retry_rendered_commands} "
+                    "replay lifecycle retry rendered command record(s)."
+                ),
+                payload={
+                    "security_retry_rendered_commands": security_retry_rendered_commands,
+                    "recommendation": "review_replay_retry_rendered_commands",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -632,6 +652,7 @@ def build_global_swarm_brief(
         "security_retry_execution_result_reasons": security_retry_execution_result_reasons,
         "security_retry_execution_skipped": security_retry_execution_skipped,
         "security_retry_execution_rejected": security_retry_execution_rejected,
+        "security_retry_rendered_commands": security_retry_rendered_commands,
     }
 
     summary = _build_summary(
@@ -660,6 +681,7 @@ def build_global_swarm_brief(
         security_retry_execution_results=security_retry_execution_results,
         security_retry_execution_skipped=security_retry_execution_skipped,
         security_retry_execution_rejected=security_retry_execution_rejected,
+        security_retry_rendered_commands=security_retry_rendered_commands,
     )
 
     return build_swarm_brief(
@@ -719,6 +741,7 @@ def _build_summary(
     security_retry_execution_results: int,
     security_retry_execution_skipped: int,
     security_retry_execution_rejected: int,
+    security_retry_rendered_commands: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -797,6 +820,11 @@ def _build_summary(
             "Security observed replay retry execution result statuses: "
             f"skipped={security_retry_execution_skipped}, "
             f"rejected={security_retry_execution_rejected}."
+        )
+
+    if security_retry_rendered_commands > 0:
+        parts.append(
+            f"Security validated {security_retry_rendered_commands} replay lifecycle retry rendered command record(s)."
         )
 
     if simulation_replay_pending > 0:

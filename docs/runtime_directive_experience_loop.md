@@ -663,6 +663,9 @@ Rendered retry commands are valid only when they are non-executing, call
 `python -m src.testing.run_replay_evidence_check`, include scenario/directive ids,
 use safe timeout profiles, and avoid shell operators.
 
+Overseer global briefs surface validated `replay_lifecycle_retry_rendered_command`
+records as retry rendered command opportunities.
+
 ---
 
 ## Related modules
