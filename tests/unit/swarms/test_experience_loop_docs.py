@@ -147,3 +147,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "src.testing.run_rendered_retry_commands" in text
     assert "replay_lifecycle_retry_rendered_command_result" in text
     assert "without executing the command text" in text
+    assert "Security validation recognizes `replay_lifecycle_retry_rendered_command_result`" in text
+    assert "Rendered command dry-run results" in text

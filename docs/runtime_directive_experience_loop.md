@@ -690,6 +690,12 @@ command text. Disabled rendered commands are recorded as `status=skipped`,
 recorded as `status=rejected`, `reason=execution_not_supported`, and
 `executed=false`, without executing the command text.
 
+Security validation recognizes `replay_lifecycle_retry_rendered_command_result`
+records. Rendered command dry-run results are valid only when they remain
+non-executing: skipped results use `reason=execution_disabled`, rejected enabled
+commands use `reason=execution_not_supported`, and all valid records keep
+`executed=false`.
+
 ---
 
 ## Related modules

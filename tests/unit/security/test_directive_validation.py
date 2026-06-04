@@ -14,6 +14,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_execution_plan,
     validate_replay_lifecycle_retry_execution_result,
     validate_replay_lifecycle_retry_rendered_command,
+    validate_replay_lifecycle_retry_rendered_command_result,
 )
 
 
@@ -937,3 +938,114 @@ def test_security_validation_metrics_reports_retry_rendered_command_profiles_and
     assert metrics["security_validation_retry_rendered_command_profiles"]["patient"] == 1
     assert metrics["security_validation_retry_rendered_command_decision_modes"]["manual"] == 1
     assert metrics["security_validation_retry_rendered_command_decision_modes"]["policy"] == 1
+
+
+def _retry_rendered_command_result(**overrides):
+    command = (
+        "python -m src.testing.run_replay_evidence_check "
+        "--scenario-id replay-render-test "
+        "--directive-id runtime-run-replay-render-test "
+        "--timeout-profile standard"
+    )
+    record = {
+        "type": "replay_lifecycle_retry_rendered_command_result",
+        "rendered_command_result_id": "rendered-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "status": "skipped",
+        "reason": "execution_disabled",
+        "source": "runner-test",
+        "execution_enabled": False,
+        "timeout_profile": "standard",
+        "decision_mode": "manual",
+        "command": command,
+        "payload": {
+            "rendered_command_id": "rendered-command-1",
+            "plan_id": "plan-1",
+            "proposal_id": "proposal-1",
+            "approval_id": "approval-1",
+            "timeout_profile": "standard",
+            "decision_mode": "manual",
+            "command": command,
+            "execution_enabled": False,
+            "executed": False,
+        },
+    }
+    record.update(overrides)
+    return record
+
+def test_validate_replay_lifecycle_retry_rendered_command_result_accepts_skipped_disabled() -> None:
+    result = validate_replay_lifecycle_retry_rendered_command_result(
+        _retry_rendered_command_result()
+    )
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["status"] == "skipped"
+    assert result["reason"] == "execution_disabled"
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_result_accepts_rejected_enabled() -> None:
+    record = _retry_rendered_command_result(
+        status="rejected",
+        reason="execution_not_supported",
+        execution_enabled=True,
+    )
+    record["payload"]["execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_rendered_command_result(record)
+
+    assert result["valid"] is True
+    assert result["status"] == "rejected"
+    assert result["reason"] == "execution_not_supported"
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_result_rejects_executed_payload() -> None:
+    record = _retry_rendered_command_result()
+    record["payload"]["executed"] = True
+
+    result = validate_replay_lifecycle_retry_rendered_command_result(record)
+
+    assert result["valid"] is False
+    assert "rendered_command_result_executed_before_runner" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_result_rejects_completed_status() -> None:
+    result = validate_replay_lifecycle_retry_rendered_command_result(
+        _retry_rendered_command_result(status="completed", reason="completed")
+    )
+
+    assert result["valid"] is False
+    assert "invalid_rendered_command_result_status" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_rendered_command_result_rejects_payload_command_mismatch() -> None:
+    record = _retry_rendered_command_result()
+    record["payload"]["command"] = "python -m other"
+
+    result = validate_replay_lifecycle_retry_rendered_command_result(record)
+
+    assert result["valid"] is False
+    assert "payload_command_mismatch" in result["reasons"]
+
+
+def test_security_validation_metrics_counts_retry_rendered_command_results() -> None:
+    metrics = build_security_validation_heartbeat_metrics(
+        [_retry_rendered_command_result()]
+    )
+
+    assert (
+        metrics["security_validation_record_type_counts"][
+            "replay_lifecycle_retry_rendered_command_result"
+        ]
+        == 1
+    )
+    assert metrics["security_validation_retry_rendered_command_result_statuses"]["skipped"] == 1
+    assert (
+        metrics["security_validation_retry_rendered_command_result_reasons"][
+            "execution_disabled"
+        ]
+        == 1
+    )
