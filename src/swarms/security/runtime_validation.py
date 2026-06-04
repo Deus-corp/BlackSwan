@@ -149,6 +149,8 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     retry_approval_decision_modes: dict[str, int] = {}
     retry_execution_result_statuses: dict[str, int] = {}
     retry_execution_result_reasons: dict[str, int] = {}
+    retry_rendered_command_profiles: dict[str, int] = {}
+    retry_rendered_command_decision_modes: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -170,6 +172,17 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 retry_execution_result_reasons.get(reason, 0) + 1
             )
 
+        if record_type == "replay_lifecycle_retry_rendered_command":
+            profile = str(item.get("timeout_profile") or "unknown").strip() or "unknown"
+            mode = str(item.get("decision_mode") or "unknown").strip() or "unknown"
+
+            retry_rendered_command_profiles[profile] = (
+                retry_rendered_command_profiles.get(profile, 0) + 1
+            )
+            retry_rendered_command_decision_modes[mode] = (
+                retry_rendered_command_decision_modes.get(mode, 0) + 1
+            )
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -183,6 +196,8 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "retry_approval_decision_modes": retry_approval_decision_modes,
         "retry_execution_result_statuses": retry_execution_result_statuses,
         "retry_execution_result_reasons": retry_execution_result_reasons,
+        "retry_rendered_command_profiles": retry_rendered_command_profiles,
+        "retry_rendered_command_decision_modes": retry_rendered_command_decision_modes,
     }
 
 
@@ -203,6 +218,8 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_retry_approval_decision_modes": summary["retry_approval_decision_modes"],
         "security_validation_retry_execution_result_statuses": summary["retry_execution_result_statuses"],
         "security_validation_retry_execution_result_reasons": summary["retry_execution_result_reasons"],
+        "security_validation_retry_rendered_command_profiles": summary["retry_rendered_command_profiles"],
+        "security_validation_retry_rendered_command_decision_modes": summary["retry_rendered_command_decision_modes"],
     }
 
 

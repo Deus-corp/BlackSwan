@@ -904,3 +904,36 @@ def test_security_validation_metrics_counts_retry_rendered_commands() -> None:
         ]
         == 1
     )
+
+
+def test_security_validation_metrics_reports_retry_rendered_command_profiles_and_modes() -> None:
+    standard = _retry_rendered_command(
+        rendered_command_id="rendered-standard",
+        timeout_profile="standard",
+        decision_mode="manual",
+    )
+    patient_command = standard["command"].replace(
+        "--timeout-profile standard",
+        "--timeout-profile patient",
+    )
+    patient = _retry_rendered_command(
+        rendered_command_id="rendered-patient",
+        timeout_profile="patient",
+        decision_mode="policy",
+        command=patient_command,
+        payload={
+            "plan_id": "replay-retry-plan-test",
+            "timeout_profile": "patient",
+            "decision_mode": "policy",
+            "command": patient_command,
+            "execution_enabled": False,
+            "executed": False,
+        },
+    )
+
+    metrics = build_security_validation_heartbeat_metrics([standard, patient])
+
+    assert metrics["security_validation_retry_rendered_command_profiles"]["standard"] == 1
+    assert metrics["security_validation_retry_rendered_command_profiles"]["patient"] == 1
+    assert metrics["security_validation_retry_rendered_command_decision_modes"]["manual"] == 1
+    assert metrics["security_validation_retry_rendered_command_decision_modes"]["policy"] == 1

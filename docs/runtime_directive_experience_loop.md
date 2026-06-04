@@ -666,6 +666,11 @@ use safe timeout profiles, and avoid shell operators.
 Overseer global briefs surface validated `replay_lifecycle_retry_rendered_command`
 records as retry rendered command opportunities.
 
+Security heartbeat metrics include
+`security_validation_retry_rendered_command_profiles` and
+`security_validation_retry_rendered_command_decision_modes` for rendered retry
+commands.
+
 ---
 
 ## Related modules

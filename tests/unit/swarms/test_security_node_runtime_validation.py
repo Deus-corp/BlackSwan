@@ -55,6 +55,10 @@ def test_security_node_heartbeat_reports_runtime_validation_metrics() -> None:
     assert metrics["security_validation_retry_approval_decision_modes"] == {}
     assert metrics["security_validation_retry_execution_result_statuses"] == {}
     assert metrics["security_validation_retry_execution_result_reasons"] == {}
+    assert "security_validation_retry_rendered_command_profiles" in metrics
+    assert "security_validation_retry_rendered_command_decision_modes" in metrics
+    assert metrics["security_validation_retry_rendered_command_profiles"] == {}
+    assert metrics["security_validation_retry_rendered_command_decision_modes"] == {}
 
 def make_security_node() -> SecurityNode:
     try:
