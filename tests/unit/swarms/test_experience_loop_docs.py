@@ -144,3 +144,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "security_retry_rendered_command_decision_modes" in text
     assert "rendered command stage" in text
     assert "proposal, approval, execution plan, rendered command, and execution result" in text
+    assert "src.testing.run_rendered_retry_commands" in text
+    assert "replay_lifecycle_retry_rendered_command_result" in text
+    assert "without executing the command text" in text

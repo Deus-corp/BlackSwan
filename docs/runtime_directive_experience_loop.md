@@ -680,6 +680,18 @@ proposal, approval, execution plan, rendered command, and execution result.
 
 ---
 
+## Rendered retry command dry-run runner
+
+`src.testing.run_rendered_retry_commands` reads
+`replay_lifecycle_retry_rendered_command` records and publishes
+`replay_lifecycle_retry_rendered_command_result` records without executing the
+command text. Disabled rendered commands are recorded as `status=skipped`,
+`reason=execution_disabled`, and `executed=false`; enabled rendered commands are
+recorded as `status=rejected`, `reason=execution_not_supported`, and
+`executed=false`, without executing the command text.
+
+---
+
 ## Related modules
 
 ```text
