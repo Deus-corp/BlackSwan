@@ -131,6 +131,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Fail before seeding if retry governance records already exist for the proposal id.",
     )
+    parser.add_argument(
+        "--rendered-command-id",
+        default="replay-retry-smoke-rendered-command-1",
+        help="Synthetic rendered command id.",
+    )
     return parser
 
 
@@ -139,6 +144,10 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
     db_path = str(args.db_path or config.crdt_db_path)
     proposal_id = str(args.proposal_id or "replay-retry-smoke-proposal-1").strip()
     require_clean = bool(getattr(args, "require_clean", False))
+
+    rendered_command_id=str(
+        getattr(args, "rendered_command_id", "") or "replay-retry-smoke-rendered-command-1"
+    ),
 
     existing_records: list[dict[str, Any]] = []
     if require_clean:
@@ -227,6 +236,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"proposals={counts.get('proposals', 0)} "
         f"approvals={counts.get('approvals', 0)} "
         f"plans={counts.get('plans', 0)} "
+        f"rendered={counts.get('rendered_commands', 0)} "
         f"results={counts.get('results', 0)} "
         f"chain_complete={str(bool(trail.get('chain_complete'))).lower()} "
         f"observability={observability.get('status')} "

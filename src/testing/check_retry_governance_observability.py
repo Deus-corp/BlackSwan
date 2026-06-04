@@ -23,6 +23,7 @@ REQUIRED_RECORD_TYPES = {
     "replay_lifecycle_retry_approval": "security_retry_approvals",
     "replay_lifecycle_retry_execution_plan": "security_retry_execution_plans",
     "replay_lifecycle_retry_execution_result": "security_retry_execution_results",
+    "replay_lifecycle_retry_rendered_command": "security_retry_rendered_commands",
 }
 
 
@@ -147,6 +148,21 @@ def _build_checks(
                 "value": brief_count,
             }
         )
+
+    rendered_profiles = key_metrics.get("security_retry_rendered_command_profiles")
+    if not isinstance(rendered_profiles, Mapping):
+        rendered_profiles = {}
+
+    rendered_standard = _safe_int(rendered_profiles.get("standard"), 0)
+    rendered_patient = _safe_int(rendered_profiles.get("patient"), 0)
+
+    checks.append(
+        {
+            "name": "brief_surfaces_retry_rendered_command_profile_breakdown",
+            "status": "passed" if rendered_standard > 0 or rendered_patient > 0 else "failed",
+            "value": dict(rendered_profiles),
+        }
+    )
 
     skipped = _safe_int(key_metrics.get("security_retry_execution_skipped"), 0)
     checks.append(

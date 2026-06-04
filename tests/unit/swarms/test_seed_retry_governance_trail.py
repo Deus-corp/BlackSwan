@@ -20,6 +20,7 @@ async def test_seed_retry_governance_trail_builds_complete_chain(tmp_path) -> No
             proposal_id="proposal-test",
             approval_id="approval-test",
             plan_id="plan-test",
+            rendered_command_id="rendered-command-test",
             result_id="result-test",
             timeout_profile="standard",
             decision_mode="manual",
@@ -30,6 +31,7 @@ async def test_seed_retry_governance_trail_builds_complete_chain(tmp_path) -> No
         "replay_lifecycle_retry_proposal",
         "replay_lifecycle_retry_approval",
         "replay_lifecycle_retry_execution_plan",
+        "replay_lifecycle_retry_rendered_command",
         "replay_lifecycle_retry_execution_result",
     ]
 
@@ -40,9 +42,19 @@ async def test_seed_retry_governance_trail_builds_complete_chain(tmp_path) -> No
     assert summary["counts"]["proposals"] == 1
     assert summary["counts"]["approvals"] == 1
     assert summary["counts"]["plans"] == 1
+    assert summary["counts"]["rendered_commands"] == 1
     assert summary["counts"]["results"] == 1
+
+    assert summary["rendered_command_statuses"]["rendered"] == 1
+    assert summary["rendered_command_profiles"]["standard"] == 1
     assert summary["result_statuses"]["skipped"] == 1
     assert summary["result_reasons"]["execution_disabled"] == 1
+
+    assert summary["chain_ids"]["proposal_ids"] == ["proposal-test"]
+    assert summary["chain_ids"]["approval_ids"] == ["approval-test"]
+    assert summary["chain_ids"]["plan_ids"] == ["plan-test"]
+    assert summary["chain_ids"]["rendered_command_ids"] == ["rendered-command-test"]
+    assert summary["chain_ids"]["result_ids"] == ["result-test"]
 
 
 @pytest.mark.asyncio
@@ -56,6 +68,7 @@ async def test_seed_retry_governance_trail_publishes_to_crdt(tmp_path) -> None:
             proposal_id="proposal-test",
             approval_id="approval-test",
             plan_id="plan-test",
+            rendered_command_id="rendered-command-test",
             result_id="result-test",
             timeout_profile="patient",
             decision_mode="policy",
@@ -74,6 +87,7 @@ async def test_seed_retry_governance_trail_publishes_to_crdt(tmp_path) -> None:
             "replay_lifecycle_retry_proposal",
             "replay_lifecycle_retry_approval",
             "replay_lifecycle_retry_execution_plan",
+            "replay_lifecycle_retry_rendered_command",
             "replay_lifecycle_retry_execution_result",
         }
     ]
@@ -81,10 +95,12 @@ async def test_seed_retry_governance_trail_publishes_to_crdt(tmp_path) -> None:
     summary = inspect_retry_governance_trail_from_records(records)
 
     assert summary["chain_complete"] is True
-    assert summary["decision_modes"]["policy"] == 2
+    assert summary["decision_modes"]["policy"] == 3
+    assert summary["rendered_command_profiles"]["patient"] == 1
     assert summary["chain_ids"]["proposal_ids"] == ["proposal-test"]
     assert summary["chain_ids"]["approval_ids"] == ["approval-test"]
     assert summary["chain_ids"]["plan_ids"] == ["plan-test"]
+    assert summary["chain_ids"]["rendered_command_ids"] == ["rendered-command-test"]
     assert summary["chain_ids"]["result_ids"] == ["result-test"]
 
 
@@ -98,6 +114,7 @@ async def test_seed_retry_governance_trail_rejects_fast_profile(tmp_path) -> Non
                 proposal_id="proposal-test",
                 approval_id="approval-test",
                 plan_id="plan-test",
+                rendered_command_id="rendered-command-test",
                 result_id="result-test",
                 timeout_profile="fast",
                 decision_mode="manual",
@@ -115,6 +132,7 @@ async def test_seed_retry_governance_trail_rejects_autonomous_decision_mode(tmp_
                 proposal_id="proposal-test",
                 approval_id="approval-test",
                 plan_id="plan-test",
+                rendered_command_id="rendered-command-test",
                 result_id="result-test",
                 timeout_profile="standard",
                 decision_mode="autonomous",
@@ -149,10 +167,21 @@ def test_seed_retry_governance_trail_record_id_is_type_aware() -> None:
 
     assert _record_id(
         {
+            "type": "replay_lifecycle_retry_rendered_command",
+            "proposal_id": "proposal-test",
+            "approval_id": "approval-test",
+            "plan_id": "plan-test",
+            "rendered_command_id": "rendered-command-test",
+        }
+    ) == "rendered-command-test"
+
+    assert _record_id(
+        {
             "type": "replay_lifecycle_retry_execution_result",
             "proposal_id": "proposal-test",
             "approval_id": "approval-test",
             "plan_id": "plan-test",
+            "rendered_command_id": "rendered-command-test",
             "result_id": "result-test",
         }
     ) == "result-test"

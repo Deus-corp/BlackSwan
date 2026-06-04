@@ -18,6 +18,6 @@ async def test_swarm_runtime_smoke_runs_retry_governance_smoke() -> None:
     assert result["name"] == "retry_governance_smoke"
     assert result["passed"] is True
     assert result["status"] == "passed"
-    assert result["records_seeded"] == 4
+    assert result["records_seeded"] == 5
     assert result["chain_complete"] is True
     assert result["observability"] == "passed"

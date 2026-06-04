@@ -15,6 +15,10 @@ from typing import Any
 from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
 
+from src.swarms.overseer.overseer_core.replay_retry_command_rendering import (
+    build_replay_lifecycle_retry_rendered_command,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +68,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["manual", "policy"],
         help="Approval decision mode.",
     )
+    parser.add_argument(
+        "--rendered-command-id",
+        default="replay-retry-seed-rendered-command-1",
+        help="Rendered command id to seed.",
+    )
     return parser
 
 
@@ -78,6 +87,9 @@ async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str
     result_id = str(args.result_id or "replay-retry-seed-result-1").strip()
     timeout_profile = str(args.timeout_profile or "standard").strip()
     decision_mode = str(args.decision_mode or "manual").strip()
+    rendered_command_id = str(
+        getattr(args, "rendered_command_id", "") or "replay-retry-seed-rendered-command-1"
+    ).strip()
 
     if not proposal_id:
         raise ValueError("proposal_id must be present")
@@ -87,6 +99,8 @@ async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str
         raise ValueError("plan_id must be present")
     if not result_id:
         raise ValueError("result_id must be present")
+    if not rendered_command_id:
+        raise ValueError("rendered_command_id must be present")
     if timeout_profile not in {"standard", "patient"}:
         raise ValueError("timeout_profile must be standard or patient")
     if decision_mode not in {"manual", "policy"}:
@@ -167,12 +181,22 @@ async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str
         },
     }
 
+    rendered_command = build_replay_lifecycle_retry_rendered_command(
+        plan,
+        scenario_id=f"{proposal_id}-scenario",
+        new_directive_id=f"{proposal_id}-directive",
+        source=source,
+    )
+    rendered_command["rendered_command_id"] = rendered_command_id
+    rendered_command["payload"]["rendered_command_id"] = rendered_command_id
+
     result = {
         "type": "replay_lifecycle_retry_execution_result",
         "result_id": result_id,
         "plan_id": plan_id,
         "proposal_id": proposal_id,
         "approval_id": approval_id,
+        "rendered_command_id": rendered_command_id,
         "status": "skipped",
         "reason": "execution_disabled",
         "source": source,
@@ -181,6 +205,7 @@ async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str
             "plan_id": plan_id,
             "proposal_id": proposal_id,
             "approval_id": approval_id,
+            "rendered_command_id": rendered_command_id,
             "timeout_profile": timeout_profile,
             "decision_mode": decision_mode,
             "command_template": command_template,
@@ -189,7 +214,7 @@ async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str
         },
     }
 
-    records = [proposal, approval, plan, result]
+    records = [proposal, approval, plan, rendered_command, result]
 
     crdt = CRDTAdapter(node_id=source, db_path=db_path)
     try:
@@ -216,11 +241,12 @@ def _record_id(record: dict[str, Any]) -> str:
         "replay_lifecycle_retry_approval": ("approval_id", "proposal_id"),
         "replay_lifecycle_retry_execution_plan": ("plan_id", "approval_id", "proposal_id"),
         "replay_lifecycle_retry_execution_result": ("result_id", "plan_id", "approval_id", "proposal_id"),
+        "replay_lifecycle_retry_rendered_command": ("rendered_command_id", "plan_id", "approval_id", "proposal_id"),
     }
 
     keys = preferred_keys_by_type.get(
         record_type,
-        ("result_id", "plan_id", "approval_id", "proposal_id"),
+        ("rendered_command_id", "result_id", "plan_id", "approval_id", "proposal_id")
     )
 
     for key in keys:

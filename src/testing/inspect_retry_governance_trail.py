@@ -22,6 +22,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_approval",
     "replay_lifecycle_retry_execution_plan",
     "replay_lifecycle_retry_execution_result",
+    "replay_lifecycle_retry_rendered_command",
 }
 
 
@@ -101,6 +102,10 @@ def inspect_retry_governance_trail_from_records(
         item for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_execution_plan"
     ]
+    rendered_commands = [
+        item for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_rendered_command"
+    ]
     results = [
         item for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_execution_result"
@@ -110,12 +115,23 @@ def inspect_retry_governance_trail_from_records(
     plan_statuses = Counter(_clean_status(item.get("status")) for item in plans)
     result_statuses = Counter(_clean_status(item.get("status")) for item in results)
     result_reasons = Counter(str(item.get("reason") or "unknown").strip() or "unknown" for item in results)
-    decision_modes = Counter(str(item.get("decision_mode") or "unknown").strip() or "unknown" for item in approvals + plans)
+    decision_modes = Counter(
+        str(item.get("decision_mode") or "unknown").strip() or "unknown"
+        for item in approvals + plans + rendered_commands
+    )
+    rendered_command_statuses = Counter(
+        _clean_status(item.get("status")) for item in rendered_commands
+    )
+    rendered_command_profiles = Counter(
+        str(item.get("timeout_profile") or "unknown").strip() or "unknown"
+        for item in rendered_commands
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
         approvals=approvals,
         plans=plans,
+        rendered_commands=rendered_commands,
         results=results,
     )
 
@@ -123,6 +139,7 @@ def inspect_retry_governance_trail_from_records(
         proposals=proposals,
         approvals=approvals,
         plans=plans,
+        rendered_commands=rendered_commands,
         results=results,
     )
 
@@ -133,6 +150,7 @@ def inspect_retry_governance_trail_from_records(
             "proposals": len(proposals),
             "approvals": len(approvals),
             "plans": len(plans),
+            "rendered_commands": len(rendered_commands),
             "results": len(results),
         },
         "by_type": dict(by_type),
@@ -149,6 +167,8 @@ def inspect_retry_governance_trail_from_records(
         },
         "chain_complete": not missing_stages,
         "missing_stages": missing_stages,
+        "rendered_command_statuses": dict(rendered_command_statuses),
+        "rendered_command_profiles": dict(rendered_command_profiles),
     }
 
 def _missing_stages(
@@ -156,6 +176,7 @@ def _missing_stages(
     proposals: list[Mapping[str, Any]],
     approvals: list[Mapping[str, Any]],
     plans: list[Mapping[str, Any]],
+    rendered_commands: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> list[str]:
     missing: list[str] = []
@@ -166,6 +187,8 @@ def _missing_stages(
         missing.append("approval")
     if not plans:
         missing.append("plan")
+    if not rendered_commands:
+        missing.append("rendered_command")
     if not results:
         missing.append("result")
 
@@ -229,28 +252,38 @@ def _build_chain_ids(
     proposals: list[Mapping[str, Any]],
     approvals: list[Mapping[str, Any]],
     plans: list[Mapping[str, Any]],
+    rendered_commands: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
+    all_records = proposals + approvals + plans + rendered_commands + results
+
     return {
         "proposal_ids": sorted(
             {
                 str(item.get("proposal_id") or "").strip()
-                for item in proposals + approvals + plans + results
+                for item in all_records
                 if str(item.get("proposal_id") or "").strip()
             }
         ),
         "approval_ids": sorted(
             {
                 str(item.get("approval_id") or "").strip()
-                for item in approvals + plans + results
+                for item in approvals + plans + rendered_commands + results
                 if str(item.get("approval_id") or "").strip()
             }
         ),
         "plan_ids": sorted(
             {
                 str(item.get("plan_id") or "").strip()
-                for item in plans + results
+                for item in plans + rendered_commands + results
                 if str(item.get("plan_id") or "").strip()
+            }
+        ),
+        "rendered_command_ids": sorted(
+            {
+                str(item.get("rendered_command_id") or "").strip()
+                for item in rendered_commands + results
+                if str(item.get("rendered_command_id") or "").strip()
             }
         ),
         "result_ids": sorted(
@@ -288,6 +321,7 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"proposals={counts.get('proposals', 0)} "
         f"approvals={counts.get('approvals', 0)} "
         f"plans={counts.get('plans', 0)} "
+        f"rendered={counts.get('rendered_commands', 0)} "
         f"results={counts.get('results', 0)} "
         f"skipped={result_statuses.get('skipped', 0)} "
         f"rejected={result_statuses.get('rejected', 0)} "

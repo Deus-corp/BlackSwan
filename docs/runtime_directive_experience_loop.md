@@ -675,6 +675,9 @@ Overseer global briefs surface rendered retry command profile and decision-mode
 breakdowns through `security_retry_rendered_command_profiles` and
 `security_retry_rendered_command_decision_modes`.
 
+Retry governance smoke includes the rendered command stage:
+proposal, approval, execution plan, rendered command, and execution result.
+
 ---
 
 ## Related modules
