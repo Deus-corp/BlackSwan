@@ -696,6 +696,11 @@ non-executing: skipped results use `reason=execution_disabled`, rejected enabled
 commands use `reason=execution_not_supported`, and all valid records keep
 `executed=false`.
 
+Overseer global briefs surface
+`replay_lifecycle_retry_rendered_command_result` records, including rendered
+command dry-run result statuses and reasons such as `skipped`,
+`execution_disabled`, `rejected`, and `execution_not_supported`. Rendered command dry-run results, replay_lifecycle_retry_rendered_command_result, rendered command dry-run result statuses.
+
 ---
 
 ## Related modules

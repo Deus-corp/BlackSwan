@@ -140,6 +140,12 @@ def build_global_swarm_brief(
         security_validation_record_type_counts.get("replay_lifecycle_retry_rendered_command"),
         0,
     )
+    security_retry_rendered_command_results = _safe_int(
+        security_validation_record_type_counts.get(
+            "replay_lifecycle_retry_rendered_command_result"
+        ),
+        0,
+    )
     security_retry_execution_result_statuses = _safe_dict(
         security_validation.get("security_validation_retry_execution_result_statuses")
     )
@@ -195,6 +201,21 @@ def build_global_swarm_brief(
     )
     memory_replay_execution_evidence_failed = _safe_int(
         aggregate.get("replay_execution_evidence_failed"),
+        0,
+    )
+    security_retry_rendered_command_result_statuses = _safe_dict(
+        security_validation.get("security_validation_retry_rendered_command_result_statuses")
+    )
+    security_retry_rendered_command_result_reasons = _safe_dict(
+        security_validation.get("security_validation_retry_rendered_command_result_reasons")
+    )
+
+    security_retry_rendered_command_skipped = _safe_int(
+        security_retry_rendered_command_result_statuses.get("skipped"),
+        0,
+    )
+    security_retry_rendered_command_rejected = _safe_int(
+        security_retry_rendered_command_result_statuses.get("rejected"),
         0,
     )
 
@@ -491,6 +512,30 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_retry_rendered_command_results > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Replay lifecycle retry rendered command results observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Security validated {security_retry_rendered_command_results} "
+                    "replay lifecycle retry rendered command result record(s)."
+                ),
+                payload={
+                    "security_retry_rendered_command_results": security_retry_rendered_command_results,
+                    "security_retry_rendered_command_skipped": security_retry_rendered_command_skipped,
+                    "security_retry_rendered_command_rejected": security_retry_rendered_command_rejected,
+                    "security_retry_rendered_command_result_statuses": (
+                        security_retry_rendered_command_result_statuses
+                    ),
+                    "security_retry_rendered_command_result_reasons": (
+                        security_retry_rendered_command_result_reasons
+                    ),
+                    "recommendation": "review_replay_retry_rendered_command_results",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -671,6 +716,11 @@ def build_global_swarm_brief(
         "security_retry_rendered_command_decision_modes": security_retry_rendered_command_decision_modes,
         "security_retry_rendered_standard_commands": security_retry_rendered_standard_commands,
         "security_retry_rendered_patient_commands": security_retry_rendered_patient_commands,
+        "security_retry_rendered_command_results": security_retry_rendered_command_results,
+        "security_retry_rendered_command_result_statuses": security_retry_rendered_command_result_statuses,
+        "security_retry_rendered_command_result_reasons": security_retry_rendered_command_result_reasons,
+        "security_retry_rendered_command_skipped": security_retry_rendered_command_skipped,
+        "security_retry_rendered_command_rejected": security_retry_rendered_command_rejected,
     }
 
     summary = _build_summary(
@@ -702,6 +752,9 @@ def build_global_swarm_brief(
         security_retry_rendered_commands=security_retry_rendered_commands,
         security_retry_rendered_standard_commands=security_retry_rendered_standard_commands,
         security_retry_rendered_patient_commands=security_retry_rendered_patient_commands,
+        security_retry_rendered_command_results=security_retry_rendered_command_results,
+        security_retry_rendered_command_skipped=security_retry_rendered_command_skipped,
+        security_retry_rendered_command_rejected=security_retry_rendered_command_rejected,
     )
 
     return build_swarm_brief(
@@ -764,6 +817,9 @@ def _build_summary(
     security_retry_rendered_commands: int,
     security_retry_rendered_standard_commands: int,
     security_retry_rendered_patient_commands: int,
+    security_retry_rendered_command_results: int,
+    security_retry_rendered_command_skipped: int,
+    security_retry_rendered_command_rejected: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -854,6 +910,19 @@ def _build_summary(
             "Security observed replay retry rendered command profiles: "
            f"standard={security_retry_rendered_standard_commands}, "
            f"patient={security_retry_rendered_patient_commands}."
+        )
+
+    if security_retry_rendered_command_results > 0:
+        parts.append(
+            f"Security validated {security_retry_rendered_command_results} "
+            "replay lifecycle retry rendered command result record(s)."
+        )
+
+    if security_retry_rendered_command_skipped > 0 or security_retry_rendered_command_rejected > 0:
+        parts.append(
+           "Security observed replay retry rendered command result statuses: "
+            f"skipped={security_retry_rendered_command_skipped}, "
+            f"rejected={security_retry_rendered_command_rejected}."
         )
 
     if simulation_replay_pending > 0:
@@ -1087,6 +1156,8 @@ def _aggregate_security_validation_from_heartbeats(
     retry_execution_result_reasons: dict[str, int] = {}
     retry_rendered_command_profiles: dict[str, int] = {}
     retry_rendered_command_decision_modes: dict[str, int] = {}
+    retry_rendered_command_result_statuses: dict[str, int] = {}
+    retry_rendered_command_result_reasons: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1122,6 +1193,14 @@ def _aggregate_security_validation_from_heartbeats(
             retry_rendered_command_decision_modes,
             metrics.get("security_validation_retry_rendered_command_decision_modes"),
         )
+        _merge_int_counts(
+            retry_rendered_command_result_statuses,
+            metrics.get("security_validation_retry_rendered_command_result_statuses"),
+        )
+        _merge_int_counts(
+            retry_rendered_command_result_reasons,
+            metrics.get("security_validation_retry_rendered_command_result_reasons"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1132,6 +1211,12 @@ def _aggregate_security_validation_from_heartbeats(
     aggregate["security_validation_retry_execution_result_reasons"] = retry_execution_result_reasons
     aggregate["security_validation_retry_rendered_command_profiles"] = retry_rendered_command_profiles
     aggregate["security_validation_retry_rendered_command_decision_modes"] = retry_rendered_command_decision_modes
+    aggregate["security_validation_retry_rendered_command_result_statuses"] = (
+        retry_rendered_command_result_statuses
+    )
+    aggregate["security_validation_retry_rendered_command_result_reasons"] = (
+        retry_rendered_command_result_reasons
+    )
 
     return aggregate
 
