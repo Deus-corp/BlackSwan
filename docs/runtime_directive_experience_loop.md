@@ -713,6 +713,17 @@ complete.
 
 ---
 
+## Retry execution eligibility gate
+
+`src.testing.build_retry_execution_eligibility` publishes
+`replay_lifecycle_retry_execution_eligibility` records for rendered retry
+commands. The eligibility gate is non-executing: it keeps
+`execution_supported=false`, publishes `status=blocked`, and records block
+reasons such as `execution_disabled`, `execution_not_supported`,
+`missing_rendered_command_result`, or `missing_rendered_command`.
+
+---
+
 ## Related modules
 
 ```text

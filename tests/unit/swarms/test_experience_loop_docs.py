@@ -158,3 +158,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "chain_records=6" in text
     assert "six_stage=true" in text
     assert "rendered_results=1" in text
+    assert "src.testing.build_retry_execution_eligibility" in text
+    assert "replay_lifecycle_retry_execution_eligibility" in text
+    assert "execution_supported=false" in text
+    assert "status=blocked" in text
