@@ -168,3 +168,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "replay_lifecycle_retry_execution_eligibility" in text
     assert "retry execution eligibility observations" in text
     assert "blocked eligibility status" in text
+    assert "retry execution eligibility gate" in text
+    assert "replay_lifecycle_retry_execution_eligibility" in text
+    assert "safe governance path remains non-executing" in text

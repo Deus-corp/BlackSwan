@@ -4,11 +4,6 @@ import pytest
 
 from src.testing.retry_governance_smoke import (
     _exit_code_for_result,
-    run_retry_governance_smoke,
-)
-
-from src.testing.retry_governance_smoke import (
-    _exit_code_for_result,
     _format_result,
     run_retry_governance_smoke,
 )
@@ -45,6 +40,11 @@ async def test_retry_governance_smoke_passes_for_synthetic_trail(tmp_path) -> No
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
     assert result["exit_codes"]["trail"] == 0
     assert result["exit_codes"]["observability"] == 0
+    assert result["eligibility_results"] == 1
+    assert result["execution_blocked"] == 1
+    assert result["observability"]["brief_key_metrics"]["security_retry_execution_eligibilities"] == 1
+    assert result["observability"]["brief_key_metrics"]["security_retry_execution_blocked"] == 1
+    assert result["exit_codes"]["eligibility"] == 0
 
 
 @pytest.mark.asyncio
@@ -74,6 +74,10 @@ async def test_retry_governance_smoke_accepts_policy_patient_profile(tmp_path) -
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_commands"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_results"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
+    assert result["eligibility_results"] == 1
+    assert result["execution_blocked"] == 1
+    assert result["observability"]["brief_key_metrics"]["security_retry_execution_eligibilities"] == 1
+    assert result["observability"]["brief_key_metrics"]["security_retry_execution_blocked"] == 1
 
 
 @pytest.mark.asyncio
@@ -120,6 +124,9 @@ async def test_retry_governance_smoke_require_clean_fails_when_records_exist(tmp
     assert second["reason"] == "existing_retry_governance_records"
     assert second["records_seeded"] == 0
     assert second["rendered_command_results"] == 0
+    assert second["eligibility_results"] == 0
+    assert second["execution_blocked"] == 0
+    assert second["exit_codes"]["eligibility"] == 1
     assert second["existing_records"] >= 1
     assert _exit_code_for_result(second) == 1
 
@@ -155,14 +162,21 @@ async def test_retry_governance_smoke_require_clean_passes_on_clean_db(tmp_path)
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
     assert result["existing_records"] == 0
     assert result["exit_codes"]["preflight"] == 0
+    assert result["eligibility_results"] == 1
+    assert result["execution_blocked"] == 1
+    assert result["observability"]["brief_key_metrics"]["security_retry_execution_eligibilities"] == 1
+    assert result["observability"]["brief_key_metrics"]["security_retry_execution_blocked"] == 1
+    assert result["exit_codes"]["eligibility"] == 0
 
 
-def test_retry_governance_smoke_format_reports_six_stage_chain() -> None:
+def test_retry_governance_smoke_format_reports_execution_eligibility_gate() -> None:
     text = _format_result(
         {
             "status": "passed",
             "records_seeded": 5,
             "rendered_command_results": 1,
+            "eligibility_results": 1,
+            "execution_blocked": 1,
             "existing_records": 0,
             "reason": "ok",
             "trail_summary": {
@@ -183,3 +197,5 @@ def test_retry_governance_smoke_format_reports_six_stage_chain() -> None:
     assert "chain_records=6" in text
     assert "six_stage=true" in text
     assert "rendered_results=1" in text
+    assert "eligibility_results=1" in text
+    assert "execution_blocked=1" in text

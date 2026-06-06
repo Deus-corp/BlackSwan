@@ -25,6 +25,7 @@ REQUIRED_RECORD_TYPES = {
     "replay_lifecycle_retry_execution_result": "security_retry_execution_results",
     "replay_lifecycle_retry_rendered_command": "security_retry_rendered_commands",
     "replay_lifecycle_retry_rendered_command_result": "security_retry_rendered_command_results",
+    "replay_lifecycle_retry_execution_eligibility": "security_retry_execution_eligibilities",
 }
 
 
@@ -227,6 +228,41 @@ def _build_checks(
             "name": "brief_surfaces_retry_execution_result_reason_breakdown",
             "status": "passed" if _safe_int(result_reasons.get("execution_disabled"), 0) > 0 else "failed",
             "value": dict(result_reasons),
+        }
+    )
+
+    eligibility_statuses = key_metrics.get("security_retry_execution_eligibility_statuses")
+    if not isinstance(eligibility_statuses, Mapping):
+        eligibility_statuses = {}
+
+    eligibility_reasons = key_metrics.get("security_retry_execution_eligibility_reasons")
+    if not isinstance(eligibility_reasons, Mapping):
+        eligibility_reasons = {}
+
+    checks.append(
+        {
+            "name": "brief_surfaces_retry_execution_eligibility_status_breakdown",
+            "status": (
+                "passed"
+                if _safe_int(eligibility_statuses.get("blocked"), 0) > 0
+                else "failed"
+            ),
+            "value": dict(eligibility_statuses),
+        }
+    )
+
+    checks.append(
+        {
+            "name": "brief_surfaces_retry_execution_eligibility_reason_breakdown",
+            "status": (
+                "passed"
+                if _safe_int(eligibility_reasons.get("execution_disabled"), 0) > 0
+                or _safe_int(eligibility_reasons.get("execution_not_supported"), 0) > 0
+                or _safe_int(eligibility_reasons.get("missing_rendered_command_result"), 0) > 0
+                or _safe_int(eligibility_reasons.get("missing_rendered_command"), 0) > 0
+                else "failed"
+            ),
+            "value": dict(eligibility_reasons),
         }
     )
 

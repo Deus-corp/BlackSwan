@@ -736,6 +736,12 @@ blocked eligibility status and block reasons such as `execution_disabled`,
 `execution_not_supported`, `missing_rendered_command_result`, and
 `missing_rendered_command`.
 
+`src.testing.retry_governance_smoke` runs the retry execution eligibility gate
+after the rendered command dry-run runner. The smoke requires at least one
+`replay_lifecycle_retry_execution_eligibility` record with `status=blocked`,
+so the safe governance path remains non-executing before any future controlled
+runner.
+
 ---
 
 ## Related modules

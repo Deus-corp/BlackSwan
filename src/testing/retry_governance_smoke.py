@@ -25,6 +25,9 @@ from src.testing.inspect_retry_governance_trail import (
 from src.testing.run_rendered_retry_commands import run_rendered_retry_commands
 from src.testing.seed_retry_governance_trail import seed_retry_governance_trail
 from swarm_config import config
+from src.testing.build_retry_execution_eligibility import (
+    build_retry_execution_eligibilities,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,7 @@ RETRY_GOVERNANCE_RECORD_TYPES = {
     "replay_lifecycle_retry_execution_plan",
     "replay_lifecycle_retry_rendered_command",
     "replay_lifecycle_retry_rendered_command_result",
+    "replay_lifecycle_retry_execution_eligibility",
     "replay_lifecycle_retry_execution_result",
 }
 
@@ -164,6 +168,8 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
                 "status": "failed",
                 "records_seeded": 0,
                 "rendered_command_results": 0,
+                "eligibility_results": 0,
+                "execution_blocked": 0,
                 "proposal_id": proposal_id,
                 "reason": "existing_retry_governance_records",
                 "existing_records": len(existing_records),
@@ -172,6 +178,7 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
                 "exit_codes": {
                     "preflight": 1,
                     "rendered_command_results": 1,
+                    "eligibility": 1,
                     "trail": 1,
                     "observability": 1,
                 },
@@ -200,6 +207,15 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
         )
     )
 
+    eligibilities = await build_retry_execution_eligibilities(
+        argparse.Namespace(
+            db_path=db_path,
+            source="retry-execution-eligibility-smoke",
+            rendered_command_id=rendered_command_id,
+            plan_id="",
+        )
+    )
+
     trail_summary = inspect_retry_governance_trail(
         argparse.Namespace(
             db_path=db_path,
@@ -221,11 +237,20 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
     observability_code = observability_exit_code(observability)
     rendered_command_result_count = len(rendered_command_results)
 
+    eligibility_count = len(eligibilities)
+    execution_blocked = sum(
+        1
+        for item in eligibilities
+        if item.get("status") == "blocked"
+    )
+
     status = (
         "passed"
         if trail_code == 0
         and observability_code == 0
         and rendered_command_result_count > 0
+        and eligibility_count > 0
+        and execution_blocked > 0
         else "failed"
     )
 
@@ -239,9 +264,12 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
         "existing_records": len(existing_records),
         "trail_summary": trail_summary,
         "observability": observability,
+        "eligibility_results": eligibility_count,
+        "execution_blocked": execution_blocked,
         "exit_codes": {
             "preflight": 0,
             "rendered_command_results": 0 if rendered_command_result_count > 0 else 1,
+            "eligibility": 0 if eligibility_count > 0 and execution_blocked > 0 else 1,
             "trail": trail_code,
             "observability": observability_code,
         },
@@ -280,6 +308,8 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"chain_records={chain_records} "
         f"six_stage={str(six_stage).lower()} "
         f"rendered_command_results={result.get('rendered_command_results', 0)} "
+        f"eligibility_results={result.get('eligibility_results', 0)} "
+        f"execution_blocked={result.get('execution_blocked', 0)} "
         f"proposals={counts.get('proposals', 0)} "
         f"approvals={counts.get('approvals', 0)} "
         f"plans={counts.get('plans', 0)} "
