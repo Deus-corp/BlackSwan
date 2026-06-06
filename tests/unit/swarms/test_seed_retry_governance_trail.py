@@ -10,7 +10,7 @@ from src.testing.seed_retry_governance_trail import _record_id, seed_retry_gover
 
 
 @pytest.mark.asyncio
-async def test_seed_retry_governance_trail_builds_complete_chain(tmp_path) -> None:
+async def test_seed_retry_governance_trail_builds_seed_chain(tmp_path) -> None:
     db_path = str(tmp_path / "crdt.db")
 
     records = await seed_retry_governance_trail(
@@ -53,13 +53,14 @@ async def test_seed_retry_governance_trail_builds_complete_chain(tmp_path) -> No
 
     summary = inspect_retry_governance_trail_from_records(records)
 
-    assert summary["chain_complete"] is True
-    assert summary["missing_stages"] == []
+    assert summary["chain_complete"] is False
+    assert summary["missing_stages"] == ["rendered_command_result"]
     assert summary["counts"]["proposals"] == 1
     assert summary["counts"]["approvals"] == 1
     assert summary["counts"]["plans"] == 1
     assert summary["counts"]["rendered_commands"] == 1
     assert summary["counts"]["results"] == 1
+    assert summary["counts"]["rendered_command_results"] == 0
 
     assert summary["rendered_command_statuses"]["rendered"] == 1
     assert summary["rendered_command_profiles"]["standard"] == 1
@@ -110,7 +111,9 @@ async def test_seed_retry_governance_trail_publishes_to_crdt(tmp_path) -> None:
 
     summary = inspect_retry_governance_trail_from_records(records)
 
-    assert summary["chain_complete"] is True
+    assert summary["chain_complete"] is False
+    assert summary["missing_stages"] == ["rendered_command_result"]
+    assert summary["counts"]["rendered_command_results"] == 0
     assert summary["decision_modes"]["policy"] == 3
     assert summary["rendered_command_profiles"]["patient"] == 1
     assert summary["chain_ids"]["proposal_ids"] == ["proposal-test"]
