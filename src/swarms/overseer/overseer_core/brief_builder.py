@@ -175,6 +175,22 @@ def build_global_swarm_brief(
         security_retry_rendered_command_profiles.get("patient"),
         0,
     )
+    security_retry_execution_eligibility_statuses = _safe_dict(
+       security_validation.get("security_validation_retry_execution_eligibility_statuses")
+    )
+    security_retry_execution_eligibility_reasons = _safe_dict(
+        security_validation.get("security_validation_retry_execution_eligibility_reasons")
+    )
+    security_retry_execution_blocked = _safe_int(
+        security_retry_execution_eligibility_statuses.get("blocked"),
+        0,
+    )
+    security_retry_execution_eligibilities = _safe_int(
+        security_validation_record_type_counts.get(
+            "replay_lifecycle_retry_execution_eligibility"
+        ),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -536,6 +552,29 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_retry_execution_eligibilities > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Replay retry execution eligibility observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Security validated {security_retry_execution_eligibilities} "
+                    "retry execution eligibility record(s)."
+                ),
+                payload={
+                    "security_retry_execution_eligibilities": security_retry_execution_eligibilities,
+                    "security_retry_execution_blocked": security_retry_execution_blocked,
+                    "security_retry_execution_eligibility_statuses": (
+                        security_retry_execution_eligibility_statuses
+                    ),
+                    "security_retry_execution_eligibility_reasons": (
+                        security_retry_execution_eligibility_reasons
+                    ),
+                    "recommendation": "review_replay_retry_execution_eligibility",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -721,6 +760,10 @@ def build_global_swarm_brief(
         "security_retry_rendered_command_result_reasons": security_retry_rendered_command_result_reasons,
         "security_retry_rendered_command_skipped": security_retry_rendered_command_skipped,
         "security_retry_rendered_command_rejected": security_retry_rendered_command_rejected,
+        "security_retry_execution_eligibilities": security_retry_execution_eligibilities,
+        "security_retry_execution_eligibility_statuses": security_retry_execution_eligibility_statuses,
+        "security_retry_execution_eligibility_reasons": security_retry_execution_eligibility_reasons,
+        "security_retry_execution_blocked": security_retry_execution_blocked,
     }
 
     summary = _build_summary(
@@ -755,6 +798,9 @@ def build_global_swarm_brief(
         security_retry_rendered_command_results=security_retry_rendered_command_results,
         security_retry_rendered_command_skipped=security_retry_rendered_command_skipped,
         security_retry_rendered_command_rejected=security_retry_rendered_command_rejected,
+        security_retry_execution_eligibilities=security_retry_execution_eligibilities,
+        security_retry_execution_blocked=security_retry_execution_blocked,
+        security_retry_execution_eligibility_reasons=security_retry_execution_eligibility_reasons,
     )
 
     return build_swarm_brief(
@@ -820,6 +866,9 @@ def _build_summary(
     security_retry_rendered_command_results: int,
     security_retry_rendered_command_skipped: int,
     security_retry_rendered_command_rejected: int,
+    security_retry_execution_eligibilities: int,
+    security_retry_execution_blocked: int,
+    security_retry_execution_eligibility_reasons: Mapping[str, Any],
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -923,6 +972,49 @@ def _build_summary(
            "Security observed replay retry rendered command result statuses: "
             f"skipped={security_retry_rendered_command_skipped}, "
             f"rejected={security_retry_rendered_command_rejected}."
+        )
+
+    if security_retry_execution_eligibilities > 0:
+        parts.append(
+            f"Security validated {security_retry_execution_eligibilities} "
+            "retry execution eligibility record(s)."
+        )
+
+    if security_retry_execution_blocked > 0:
+        parts.append(
+            "Security observed retry execution eligibility statuses: "
+            f"blocked={security_retry_execution_blocked}."
+        )
+
+    blocked_execution_disabled = _safe_int(
+        security_retry_execution_eligibility_reasons.get("execution_disabled"),
+        0,
+    )
+    blocked_execution_not_supported = _safe_int(
+        security_retry_execution_eligibility_reasons.get("execution_not_supported"),
+        0,
+    )
+    blocked_missing_result = _safe_int(
+        security_retry_execution_eligibility_reasons.get("missing_rendered_command_result"),
+        0,
+    )
+    blocked_missing_command = _safe_int(
+        security_retry_execution_eligibility_reasons.get("missing_rendered_command"),
+        0,
+    )
+
+    if (
+        blocked_execution_disabled > 0
+        or blocked_execution_not_supported > 0
+        or blocked_missing_result > 0
+        or blocked_missing_command > 0
+    ):
+        parts.append(
+            "Execution remains blocked: "
+            f"execution_disabled={blocked_execution_disabled}, "
+            f"execution_not_supported={blocked_execution_not_supported}, "
+            f"missing_rendered_command_result={blocked_missing_result}, "
+            f"missing_rendered_command={blocked_missing_command}."
         )
 
     if simulation_replay_pending > 0:
@@ -1158,6 +1250,8 @@ def _aggregate_security_validation_from_heartbeats(
     retry_rendered_command_decision_modes: dict[str, int] = {}
     retry_rendered_command_result_statuses: dict[str, int] = {}
     retry_rendered_command_result_reasons: dict[str, int] = {}
+    retry_execution_eligibility_statuses: dict[str, int] = {}
+    retry_execution_eligibility_reasons: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1201,6 +1295,14 @@ def _aggregate_security_validation_from_heartbeats(
             retry_rendered_command_result_reasons,
             metrics.get("security_validation_retry_rendered_command_result_reasons"),
         )
+        _merge_int_counts(
+            retry_execution_eligibility_statuses,
+            metrics.get("security_validation_retry_execution_eligibility_statuses"),
+        )
+        _merge_int_counts(
+            retry_execution_eligibility_reasons,
+            metrics.get("security_validation_retry_execution_eligibility_reasons"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1216,6 +1318,12 @@ def _aggregate_security_validation_from_heartbeats(
     )
     aggregate["security_validation_retry_rendered_command_result_reasons"] = (
         retry_rendered_command_result_reasons
+    )
+    aggregate["security_validation_retry_execution_eligibility_statuses"] = (
+        retry_execution_eligibility_statuses
+    )
+    aggregate["security_validation_retry_execution_eligibility_reasons"] = (
+        retry_execution_eligibility_reasons
     )
 
     return aggregate

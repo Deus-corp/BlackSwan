@@ -208,6 +208,7 @@ def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_hea
                         "security_validation_record_type_counts": {
                             "replay_evidence_lifecycle_result": 1,
                             "replay_lifecycle_retry_rendered_command_result": 1,
+                            "replay_lifecycle_retry_execution_eligibility": 1,
                         },
                         "security_validation_warning_reasons": {
                             "execution_not_observed_before_timeout": 1,
@@ -218,6 +219,8 @@ def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_hea
                         },
                         "security_validation_retry_rendered_command_result_statuses": {"skipped": 1},
                         "security_validation_retry_rendered_command_result_reasons": {"execution_disabled": 1},
+                        "security_validation_retry_execution_eligibility_statuses": {"blocked": 1},
+                        "security_validation_retry_execution_eligibility_reasons": {"execution_disabled": 1},
                         "simulation_replay_executions": 1,
                         "simulation_replay_execution_completed": 1,
                         "simulation_replay_execution_failed": 0,
@@ -243,6 +246,8 @@ def test_build_global_swarm_brief_extracts_security_validation_from_snapshot_hea
     assert brief.key_metrics["security_retry_policy_approvals"] == 1
     assert brief.key_metrics["security_retry_rendered_command_results"] == 1
     assert brief.key_metrics["security_retry_rendered_command_skipped"] == 1
+    assert brief.key_metrics["security_retry_execution_eligibilities"] == 1
+    assert brief.key_metrics["security_retry_execution_blocked"] == 1
 
 def test_build_global_swarm_brief_reports_simulation_replay_opportunity() -> None:
     brief = build_global_swarm_brief(
@@ -689,3 +694,40 @@ def test_build_global_swarm_brief_reports_retry_rendered_command_results() -> No
     assert "replay lifecycle retry rendered command result" in brief.summary.lower()
     assert "skipped=1" in brief.summary
     assert "rejected=0" in brief.summary
+
+
+def test_build_global_swarm_brief_reports_retry_execution_eligibility() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "security_validation_valid_records": 1,
+            "security_validation_invalid_records": 0,
+            "security_validation_critical_records": 0,
+            "security_validation_record_type_counts": {
+                "replay_lifecycle_retry_execution_eligibility": 1,
+            },
+            "security_validation_retry_execution_eligibility_statuses": {
+                "blocked": 1,
+            },
+            "security_validation_retry_execution_eligibility_reasons": {
+                "execution_disabled": 1,
+            },
+        },
+    )
+
+    assert brief.key_metrics["security_retry_execution_eligibilities"] == 1
+    assert brief.key_metrics["security_retry_execution_blocked"] == 1
+    assert brief.key_metrics["security_retry_execution_eligibility_statuses"] == {
+        "blocked": 1,
+    }
+    assert brief.key_metrics["security_retry_execution_eligibility_reasons"] == {
+        "execution_disabled": 1,
+    }
+    assert any(
+        "Replay retry execution eligibility" in item.get("title", "")
+        for item in brief.opportunities
+    )
+    assert "retry execution eligibility record" in brief.summary.lower()
+    assert "blocked=1" in brief.summary
+    assert "execution_disabled=1" in brief.summary

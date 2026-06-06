@@ -730,6 +730,12 @@ records. Eligibility records are valid only when execution remains blocked:
 `execution_not_supported`, `missing_rendered_command_result`, or
 `missing_rendered_command`.
 
+Overseer global briefs surface `replay_lifecycle_retry_execution_eligibility`
+records as retry execution eligibility observations. Brief summaries report
+blocked eligibility status and block reasons such as `execution_disabled`,
+`execution_not_supported`, `missing_rendered_command_result`, and
+`missing_rendered_command`.
+
 ---
 
 ## Related modules
