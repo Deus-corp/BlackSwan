@@ -722,6 +722,14 @@ commands. The eligibility gate is non-executing: it keeps
 reasons such as `execution_disabled`, `execution_not_supported`,
 `missing_rendered_command_result`, or `missing_rendered_command`.
 
+
+Security validation recognizes `replay_lifecycle_retry_execution_eligibility`
+records. Eligibility records are valid only when execution remains blocked:
+`status=blocked`, `execution_supported=false`, `execution_enabled=false`, and
+`executed=false`, with block reasons such as `execution_disabled`,
+`execution_not_supported`, `missing_rendered_command_result`, or
+`missing_rendered_command`.
+
 ---
 
 ## Related modules

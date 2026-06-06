@@ -162,3 +162,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "replay_lifecycle_retry_execution_eligibility" in text
     assert "execution_supported=false" in text
     assert "status=blocked" in text
+    assert "Security validation recognizes `replay_lifecycle_retry_execution_eligibility`" in text
+    assert "execution remains blocked" in text
+    assert "missing_rendered_command_result" in text

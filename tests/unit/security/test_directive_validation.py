@@ -15,6 +15,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_execution_result,
     validate_replay_lifecycle_retry_rendered_command,
     validate_replay_lifecycle_retry_rendered_command_result,
+    validate_replay_lifecycle_retry_execution_eligibility,
 )
 
 
@@ -1045,6 +1046,165 @@ def test_security_validation_metrics_counts_retry_rendered_command_results() -> 
     assert metrics["security_validation_retry_rendered_command_result_statuses"]["skipped"] == 1
     assert (
         metrics["security_validation_retry_rendered_command_result_reasons"][
+            "execution_disabled"
+        ]
+        == 1
+    )
+
+
+def _retry_execution_eligibility(**overrides):
+    command = (
+        "python -m src.testing.run_replay_evidence_check "
+        "--scenario-id replay-render-test "
+        "--directive-id runtime-run-replay-render-test "
+        "--timeout-profile standard"
+    )
+    record = {
+        "type": "replay_lifecycle_retry_execution_eligibility",
+        "eligibility_id": "eligibility-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "status": "blocked",
+        "reason": "execution_disabled",
+        "source": "eligibility-test",
+        "execution_supported": False,
+        "execution_enabled": False,
+        "timeout_profile": "standard",
+        "decision_mode": "manual",
+        "command": command,
+        "payload": {
+            "rendered_command_id": "rendered-command-1",
+            "plan_id": "plan-1",
+            "proposal_id": "proposal-1",
+            "approval_id": "approval-1",
+            "status": "blocked",
+            "reason": "execution_disabled",
+            "execution_supported": False,
+            "execution_enabled": False,
+            "executed": False,
+            "timeout_profile": "standard",
+            "decision_mode": "manual",
+            "command": command,
+        },
+    }
+    record.update(overrides)
+    return record
+
+def test_validate_replay_lifecycle_retry_execution_eligibility_accepts_blocked_disabled() -> None:
+    result = validate_replay_lifecycle_retry_execution_eligibility(
+        _retry_execution_eligibility()
+    )
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["status"] == "blocked"
+    assert result["reason"] == "execution_disabled"
+
+
+def test_validate_replay_lifecycle_retry_execution_eligibility_accepts_execution_not_supported() -> None:
+    record = _retry_execution_eligibility(reason="execution_not_supported")
+    record["payload"]["reason"] = "execution_not_supported"
+
+    result = validate_replay_lifecycle_retry_execution_eligibility(record)
+
+    assert result["valid"] is True
+    assert result["reason"] == "execution_not_supported"
+
+
+def test_validate_replay_lifecycle_retry_execution_eligibility_rejects_supported_execution() -> None:
+    record = _retry_execution_eligibility(execution_supported=True)
+    record["payload"]["execution_supported"] = True
+
+    result = validate_replay_lifecycle_retry_execution_eligibility(record)
+
+    assert result["valid"] is False
+    assert "execution_supported_before_runner" in result["reasons"]
+    assert "payload_execution_supported_before_runner" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_eligibility_rejects_execution_enabled() -> None:
+    record = _retry_execution_eligibility(execution_enabled=True)
+    record["payload"]["execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_execution_eligibility(record)
+
+    assert result["valid"] is False
+    assert "execution_enabled_before_runner" in result["reasons"]
+    assert "payload_execution_enabled_before_runner" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_eligibility_rejects_executed_payload() -> None:
+    record = _retry_execution_eligibility()
+    record["payload"]["executed"] = True
+
+    result = validate_replay_lifecycle_retry_execution_eligibility(record)
+
+    assert result["valid"] is False
+    assert "execution_eligibility_executed_before_runner" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_eligibility_rejects_unknown_reason() -> None:
+    record = _retry_execution_eligibility(reason="ready")
+    record["payload"]["reason"] = "ready"
+
+    result = validate_replay_lifecycle_retry_execution_eligibility(record)
+
+    assert result["valid"] is False
+    assert "invalid_execution_eligibility_reason" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_eligibility_rejects_eligible_status() -> None:
+    record = _retry_execution_eligibility(status="eligible")
+    record["payload"]["status"] = "eligible"
+
+    result = validate_replay_lifecycle_retry_execution_eligibility(record)
+
+    assert result["valid"] is False
+    assert "invalid_execution_eligibility_status" in result["reasons"]
+
+
+def test_validate_replay_lifecycle_retry_execution_eligibility_accepts_missing_rendered_command_reason() -> None:
+    record = _retry_execution_eligibility(
+        reason="missing_rendered_command",
+        rendered_command_id="",
+        plan_id="",
+        proposal_id="",
+        approval_id="",
+        timeout_profile="unknown",
+        decision_mode="unknown",
+        command="",
+    )
+    record["payload"]["reason"] = "missing_rendered_command"
+    record["payload"]["rendered_command_id"] = ""
+    record["payload"]["plan_id"] = ""
+    record["payload"]["proposal_id"] = ""
+    record["payload"]["approval_id"] = ""
+    record["payload"]["timeout_profile"] = "unknown"
+    record["payload"]["decision_mode"] = "unknown"
+    record["payload"]["command"] = ""
+
+    result = validate_replay_lifecycle_retry_execution_eligibility(record)
+
+    assert result["valid"] is True
+    assert result["reason"] == "missing_rendered_command"
+
+
+def test_security_validation_metrics_counts_retry_execution_eligibility() -> None:
+    metrics = build_security_validation_heartbeat_metrics(
+        [_retry_execution_eligibility()]
+    )
+
+    assert (
+        metrics["security_validation_record_type_counts"][
+            "replay_lifecycle_retry_execution_eligibility"
+        ]
+        == 1
+    )
+    assert metrics["security_validation_retry_execution_eligibility_statuses"]["blocked"] == 1
+    assert (
+        metrics["security_validation_retry_execution_eligibility_reasons"][
             "execution_disabled"
         ]
         == 1

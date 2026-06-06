@@ -29,6 +29,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_execution_result",
     "replay_lifecycle_retry_rendered_command",
     "replay_lifecycle_retry_rendered_command_result",
+    "replay_lifecycle_retry_execution_eligibility",
 }
 
 
@@ -131,6 +132,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_execution_eligibility":
+            result = validate_replay_lifecycle_retry_execution_eligibility(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -166,6 +179,8 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     retry_rendered_command_decision_modes: dict[str, int] = {}
     retry_rendered_command_result_statuses: dict[str, int] = {}
     retry_rendered_command_result_reasons: dict[str, int] = {}
+    retry_execution_eligibility_statuses: dict[str, int] = {}
+    retry_execution_eligibility_reasons: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -209,6 +224,17 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 retry_rendered_command_result_reasons.get(reason, 0) + 1
             )
 
+        elif record_type == "replay_lifecycle_retry_execution_eligibility":
+            status = str(item.get("status") or "unknown").strip() or "unknown"
+            reason = str(item.get("reason") or "unknown").strip() or "unknown"
+
+            retry_execution_eligibility_statuses[status] = (
+                retry_execution_eligibility_statuses.get(status, 0) + 1
+            )
+            retry_execution_eligibility_reasons[reason] = (
+                retry_execution_eligibility_reasons.get(reason, 0) + 1
+            )
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -226,6 +252,8 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "retry_rendered_command_decision_modes": retry_rendered_command_decision_modes,
         "retry_rendered_command_result_statuses": retry_rendered_command_result_statuses,
         "retry_rendered_command_result_reasons": retry_rendered_command_result_reasons,
+        "retry_execution_eligibility_statuses": retry_execution_eligibility_statuses,
+        "retry_execution_eligibility_reasons": retry_execution_eligibility_reasons,
     }
 
 
@@ -250,6 +278,8 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_retry_rendered_command_decision_modes": summary["retry_rendered_command_decision_modes"],
         "security_validation_retry_rendered_command_result_statuses": summary["retry_rendered_command_result_statuses"],
         "security_validation_retry_rendered_command_result_reasons": summary["retry_rendered_command_result_reasons"],
+        "security_validation_retry_execution_eligibility_statuses": summary["retry_execution_eligibility_statuses"],
+        "security_validation_retry_execution_eligibility_reasons": summary["retry_execution_eligibility_reasons"],
     }
 
 
@@ -267,13 +297,13 @@ def _reason_counts(records: Iterable[Mapping[str, Any]]) -> dict[str, int]:
 
 
 def _record_id(record: Mapping[str, Any]) -> str:
-    for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "rendered_command_result_id", "rendered_command_id", "approval_id"):
+    for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "eligibility_id", "rendered_command_result_id", "rendered_command_id", "approval_id"):
         value = str(record.get(key) or "").strip()
         if value:
             return value
     payload = record.get("payload")
     if isinstance(payload, Mapping):
-        for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "rendered_command_result_id", "rendered_command_id", "approval_id"):
+        for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "eligibility_id", "rendered_command_result_id", "rendered_command_id", "approval_id"):
             value = str(payload.get(key) or "").strip()
             if value:
                 return value
@@ -824,6 +854,127 @@ def validate_replay_lifecycle_retry_rendered_command_result(record: Mapping[str,
     }
 
 
+ELIGIBILITY_BLOCK_REASONS = {
+    "execution_disabled",
+    "execution_not_supported",
+    "missing_rendered_command_result",
+    "missing_rendered_command",
+}
+
+
+def validate_replay_lifecycle_retry_execution_eligibility(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate non-executing retry execution eligibility records."""
+    reasons: list[str] = []
+
+    eligibility_id = str(record.get("eligibility_id") or "").strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    plan_id = str(record.get("plan_id") or "").strip()
+    proposal_id = str(record.get("proposal_id") or "").strip()
+    approval_id = str(record.get("approval_id") or "").strip()
+    status = str(record.get("status") or "").strip().lower()
+    reason = str(record.get("reason") or "").strip()
+    execution_supported = bool(record.get("execution_supported"))
+    execution_enabled = bool(record.get("execution_enabled"))
+    timeout_profile = str(record.get("timeout_profile") or "").strip()
+    decision_mode = str(record.get("decision_mode") or "").strip().lower()
+    command = str(record.get("command") or "").strip()
+
+    payload = record.get("payload")
+    if not isinstance(payload, Mapping):
+        payload = {}
+
+    payload_rendered_command_id = str(payload.get("rendered_command_id") or "").strip()
+    payload_plan_id = str(payload.get("plan_id") or "").strip()
+    payload_status = str(payload.get("status") or "").strip().lower()
+    payload_reason = str(payload.get("reason") or "").strip()
+    payload_execution_supported = bool(payload.get("execution_supported"))
+    payload_execution_enabled = bool(payload.get("execution_enabled"))
+    payload_executed = bool(payload.get("executed"))
+    payload_timeout_profile = str(payload.get("timeout_profile") or "").strip()
+    payload_decision_mode = str(payload.get("decision_mode") or "").strip().lower()
+    payload_command = str(payload.get("command") or "").strip()
+
+    if not eligibility_id:
+        reasons.append("missing_eligibility_id")
+
+    if reason != "missing_rendered_command" and not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if reason != "missing_rendered_command" and not plan_id:
+        reasons.append("missing_plan_id")
+
+    if reason not in {"missing_rendered_command", "missing_rendered_command_result"}:
+        if not proposal_id:
+            reasons.append("missing_proposal_id")
+        if not approval_id:
+            reasons.append("missing_approval_id")
+
+    if status != "blocked":
+        reasons.append("invalid_execution_eligibility_status")
+
+    if reason not in ELIGIBILITY_BLOCK_REASONS:
+        reasons.append("invalid_execution_eligibility_reason")
+
+    if execution_supported:
+        reasons.append("execution_supported_before_runner")
+
+    if execution_enabled:
+        reasons.append("execution_enabled_before_runner")
+
+    if payload_execution_supported:
+        reasons.append("payload_execution_supported_before_runner")
+
+    if payload_execution_enabled:
+        reasons.append("payload_execution_enabled_before_runner")
+
+    if payload_executed:
+        reasons.append("execution_eligibility_executed_before_runner")
+
+    if payload_status and payload_status != status:
+        reasons.append("payload_status_mismatch")
+
+    if payload_reason and payload_reason != reason:
+        reasons.append("payload_reason_mismatch")
+
+    if payload_rendered_command_id and payload_rendered_command_id != rendered_command_id:
+        reasons.append("payload_rendered_command_id_mismatch")
+
+    if payload_plan_id and payload_plan_id != plan_id:
+        reasons.append("payload_plan_id_mismatch")
+
+    if payload_timeout_profile and payload_timeout_profile != timeout_profile:
+        reasons.append("payload_timeout_profile_mismatch")
+
+    if payload_decision_mode and payload_decision_mode != decision_mode:
+        reasons.append("payload_decision_mode_mismatch")
+
+    if payload_command and payload_command != command:
+        reasons.append("payload_command_mismatch")
+
+    if timeout_profile and timeout_profile not in {"standard", "patient", "unknown"}:
+        reasons.append("invalid_execution_eligibility_timeout_profile")
+
+    if decision_mode and decision_mode not in {"manual", "policy", "unknown"}:
+        reasons.append("invalid_execution_eligibility_decision_mode")
+
+    valid = not reasons
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_execution_eligibility",
+        "valid": valid,
+        "severity": "info" if valid else "critical",
+        "reasons": reasons,
+        "subject": eligibility_id or rendered_command_id or plan_id or "unknown",
+        "status": status or "unknown",
+        "reason": reason or "unknown",
+        "timeout_profile": timeout_profile or "unknown",
+        "decision_mode": decision_mode or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -836,4 +987,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_execution_result",
     "validate_replay_lifecycle_retry_rendered_command",
     "validate_replay_lifecycle_retry_rendered_command_result",
+    "validate_replay_lifecycle_retry_execution_eligibility",
 ]
