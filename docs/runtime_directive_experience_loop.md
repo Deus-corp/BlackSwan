@@ -701,6 +701,10 @@ Overseer global briefs surface
 command dry-run result statuses and reasons such as `skipped`,
 `execution_disabled`, `rejected`, and `execution_not_supported`. Rendered command dry-run results, replay_lifecycle_retry_rendered_command_result, rendered command dry-run result statuses.
 
+`src.testing.retry_governance_smoke` also runs the rendered command dry-run
+runner and requires `replay_lifecycle_retry_rendered_command_result` visibility
+through Security metrics and Overseer brief key metrics. rendered command dry-run runner, replay_lifecycle_retry_rendered_command_result visibility.
+
 ---
 
 ## Related modules

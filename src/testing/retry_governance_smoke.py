@@ -1,7 +1,8 @@
 """One-command smoke check for retry governance trail.
 
 Seeds a synthetic non-executing retry governance trail, verifies chain
-completeness, and checks Security/Overseer observability.
+completeness, runs rendered-command dry-run, and checks Security/Overseer
+observability.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import json
 import logging
 from typing import Any, Mapping
 
+from src.core.crdt_adapter import CRDTAdapter
 from src.testing.check_retry_governance_observability import (
     _exit_code_for_result as observability_exit_code,
     check_retry_governance_observability,
@@ -20,8 +22,8 @@ from src.testing.inspect_retry_governance_trail import (
     _exit_code_for_summary as trail_exit_code,
     inspect_retry_governance_trail,
 )
+from src.testing.run_rendered_retry_commands import run_rendered_retry_commands
 from src.testing.seed_retry_governance_trail import seed_retry_governance_trail
-from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -31,8 +33,74 @@ RETRY_GOVERNANCE_RECORD_TYPES = {
     "replay_lifecycle_retry_proposal",
     "replay_lifecycle_retry_approval",
     "replay_lifecycle_retry_execution_plan",
+    "replay_lifecycle_retry_rendered_command",
+    "replay_lifecycle_retry_rendered_command_result",
     "replay_lifecycle_retry_execution_result",
 }
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Run retry governance smoke check.",
+    )
+    parser.add_argument(
+        "--db-path",
+        default=config.crdt_db_path,
+        help="Path to CRDT sqlite database.",
+    )
+    parser.add_argument(
+        "--source",
+        default="retry-governance-smoke",
+        help="Source node id for seeded records.",
+    )
+    parser.add_argument(
+        "--proposal-id",
+        default="replay-retry-smoke-proposal-1",
+        help="Synthetic proposal id.",
+    )
+    parser.add_argument(
+        "--approval-id",
+        default="replay-retry-smoke-approval-1",
+        help="Synthetic approval id.",
+    )
+    parser.add_argument(
+        "--plan-id",
+        default="replay-retry-smoke-plan-1",
+        help="Synthetic plan id.",
+    )
+    parser.add_argument(
+        "--rendered-command-id",
+        default="replay-retry-smoke-rendered-command-1",
+        help="Synthetic rendered command id.",
+    )
+    parser.add_argument(
+        "--result-id",
+        default="replay-retry-smoke-result-1",
+        help="Synthetic result id.",
+    )
+    parser.add_argument(
+        "--timeout-profile",
+        default="standard",
+        choices=["standard", "patient"],
+        help="Safe timeout profile.",
+    )
+    parser.add_argument(
+        "--decision-mode",
+        default="manual",
+        choices=["manual", "policy"],
+        help="Approval decision mode.",
+    )
+    parser.add_argument(
+        "--require-clean",
+        action="store_true",
+        help="Fail before seeding if retry governance records already exist for the proposal id.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print machine-readable JSON result.",
+    )
+    return parser
 
 
 def _existing_retry_governance_records(
@@ -75,79 +143,14 @@ def _record_matches_proposal_id(record: Mapping[str, Any], proposal_id: str) -> 
     return False
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Run retry governance smoke check.",
-    )
-    parser.add_argument(
-        "--db-path",
-        default=config.crdt_db_path,
-        help="Path to CRDT sqlite database.",
-    )
-    parser.add_argument(
-        "--source",
-        default="retry-governance-smoke",
-        help="Source node id for seeded records.",
-    )
-    parser.add_argument(
-        "--proposal-id",
-        default="replay-retry-smoke-proposal-1",
-        help="Synthetic proposal id.",
-    )
-    parser.add_argument(
-        "--approval-id",
-        default="replay-retry-smoke-approval-1",
-        help="Synthetic approval id.",
-    )
-    parser.add_argument(
-        "--plan-id",
-        default="replay-retry-smoke-plan-1",
-        help="Synthetic plan id.",
-    )
-    parser.add_argument(
-        "--result-id",
-        default="replay-retry-smoke-result-1",
-        help="Synthetic result id.",
-    )
-    parser.add_argument(
-        "--timeout-profile",
-        default="standard",
-        choices=["standard", "patient"],
-        help="Safe timeout profile.",
-    )
-    parser.add_argument(
-        "--decision-mode",
-        default="manual",
-        choices=["manual", "policy"],
-        help="Approval decision mode.",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Print machine-readable JSON result.",
-    )
-    parser.add_argument(
-        "--require-clean",
-        action="store_true",
-        help="Fail before seeding if retry governance records already exist for the proposal id.",
-    )
-    parser.add_argument(
-        "--rendered-command-id",
-        default="replay-retry-smoke-rendered-command-1",
-        help="Synthetic rendered command id.",
-    )
-    return parser
-
-
 async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]:
-    """Seed and verify retry governance trail and observability."""
+    """Seed, dry-run, and verify retry governance trail and observability."""
     db_path = str(args.db_path or config.crdt_db_path)
     proposal_id = str(args.proposal_id or "replay-retry-smoke-proposal-1").strip()
-    require_clean = bool(getattr(args, "require_clean", False))
-
-    rendered_command_id=str(
+    rendered_command_id = str(
         getattr(args, "rendered_command_id", "") or "replay-retry-smoke-rendered-command-1"
-    ),
+    ).strip()
+    require_clean = bool(getattr(args, "require_clean", False))
 
     existing_records: list[dict[str, Any]] = []
     if require_clean:
@@ -160,6 +163,7 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
                 "type": "retry_governance_smoke_result",
                 "status": "failed",
                 "records_seeded": 0,
+                "rendered_command_results": 0,
                 "proposal_id": proposal_id,
                 "reason": "existing_retry_governance_records",
                 "existing_records": len(existing_records),
@@ -167,6 +171,7 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
                 "observability": {},
                 "exit_codes": {
                     "preflight": 1,
+                    "rendered_command_results": 1,
                     "trail": 1,
                     "observability": 1,
                 },
@@ -179,12 +184,19 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
             proposal_id=proposal_id,
             approval_id=str(args.approval_id or "replay-retry-smoke-approval-1"),
             plan_id=str(args.plan_id or "replay-retry-smoke-plan-1"),
-            rendered_command_id=str(
-                getattr(args, "rendered_command_id", "") or "replay-retry-smoke-rendered-command-1"
-            ),
+            rendered_command_id=rendered_command_id,
             result_id=str(args.result_id or "replay-retry-smoke-result-1"),
             timeout_profile=str(args.timeout_profile or "standard"),
             decision_mode=str(args.decision_mode or "manual"),
+        )
+    )
+
+    rendered_command_results = await run_rendered_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="rendered-retry-command-smoke",
+            rendered_command_id=rendered_command_id,
+            plan_id="",
         )
     )
 
@@ -207,13 +219,21 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
 
     trail_code = trail_exit_code(trail_summary, require_complete=True)
     observability_code = observability_exit_code(observability)
+    rendered_command_result_count = len(rendered_command_results)
 
-    status = "passed" if trail_code == 0 and observability_code == 0 else "failed"
+    status = (
+        "passed"
+        if trail_code == 0
+        and observability_code == 0
+        and rendered_command_result_count > 0
+        else "failed"
+    )
 
     return {
         "type": "retry_governance_smoke_result",
         "status": status,
         "records_seeded": len(records),
+        "rendered_command_results": rendered_command_result_count,
         "proposal_id": proposal_id,
         "reason": "ok" if status == "passed" else "retry_governance_smoke_failed",
         "existing_records": len(existing_records),
@@ -221,6 +241,7 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
         "observability": observability,
         "exit_codes": {
             "preflight": 0,
+            "rendered_command_results": 0 if rendered_command_result_count > 0 else 1,
             "trail": trail_code,
             "observability": observability_code,
         },
@@ -236,6 +257,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         "Retry governance smoke: "
         f"status={result.get('status')} "
         f"records_seeded={result.get('records_seeded')} "
+        f"rendered_command_results={result.get('rendered_command_results', 0)} "
         f"proposals={counts.get('proposals', 0)} "
         f"approvals={counts.get('approvals', 0)} "
         f"plans={counts.get('plans', 0)} "

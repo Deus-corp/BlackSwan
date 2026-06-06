@@ -6,6 +6,7 @@ from src.testing.check_retry_governance_observability import (
     check_retry_governance_observability,
     check_retry_governance_observability_from_records,
 )
+from src.testing.run_rendered_retry_commands import run_rendered_retry_commands
 from src.testing.seed_retry_governance_trail import seed_retry_governance_trail
 
 
@@ -111,12 +112,46 @@ def _rendered_command(**overrides):
         "decision_mode": "manual",
         "command": command,
         "payload": {
+            "rendered_command_id": "rendered-1",
             "plan_id": "plan-1",
             "proposal_id": "proposal-1",
             "approval_id": "approval-1",
             "timeout_profile": "standard",
             "decision_mode": "manual",
             "command": command,
+            "execution_enabled": False,
+            "executed": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def _rendered_command_result(**overrides):
+    command = (
+        "python -m src.testing.run_replay_evidence_check "
+        "--scenario-id replay-render-test "
+        "--directive-id runtime-run-replay-render-test "
+        "--timeout-profile standard"
+    )
+    item = {
+        "type": "replay_lifecycle_retry_rendered_command_result",
+        "rendered_command_result_id": "rendered-result-1",
+        "rendered_command_id": "rendered-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "status": "skipped",
+        "reason": "execution_disabled",
+        "execution_enabled": False,
+        "timeout_profile": "standard",
+        "decision_mode": "manual",
+        "command": command,
+        "payload": {
+            "rendered_command_id": "rendered-1",
+            "plan_id": "plan-1",
+            "proposal_id": "proposal-1",
+            "approval_id": "approval-1",
             "execution_enabled": False,
             "executed": False,
         },
@@ -151,7 +186,14 @@ def _result(**overrides):
 
 def test_check_retry_governance_observability_passes_for_full_trail() -> None:
     result = check_retry_governance_observability_from_records(
-        [_proposal(), _approval(), _plan(), _rendered_command(), _result()]
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _result(),
+        ]
     )
 
     assert result["status"] == "passed"
@@ -161,6 +203,8 @@ def test_check_retry_governance_observability_passes_for_full_trail() -> None:
     assert result["brief_key_metrics"]["security_retry_approvals"] == 1
     assert result["brief_key_metrics"]["security_retry_execution_plans"] == 1
     assert result["brief_key_metrics"]["security_retry_rendered_commands"] == 1
+    assert result["brief_key_metrics"]["security_retry_rendered_command_results"] == 1
+    assert result["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
     assert result["brief_key_metrics"]["security_retry_execution_results"] == 1
     assert result["brief_key_metrics"]["security_retry_execution_skipped"] == 1
     assert result["brief_key_metrics"]["security_retry_rendered_command_profiles"]["standard"] == 1
@@ -168,7 +212,7 @@ def test_check_retry_governance_observability_passes_for_full_trail() -> None:
 
 def test_check_retry_governance_observability_fails_for_missing_result() -> None:
     result = check_retry_governance_observability_from_records(
-        [_proposal(), _approval(), _plan(), _rendered_command()]
+        [_proposal(), _approval(), _plan(), _rendered_command(), _rendered_command_result()]
     )
 
     assert result["status"] == "failed"
@@ -187,6 +231,7 @@ def test_check_retry_governance_observability_filters_by_proposal_id() -> None:
             _approval(proposal_id="proposal-1"),
             _plan(proposal_id="proposal-1"),
             _rendered_command(proposal_id="proposal-1"),
+            _rendered_command_result(proposal_id="proposal-1"),
             _result(proposal_id="proposal-1"),
             _proposal(proposal_id="proposal-2"),
         ],
@@ -196,6 +241,7 @@ def test_check_retry_governance_observability_filters_by_proposal_id() -> None:
     assert result["status"] == "passed"
     assert result["brief_key_metrics"]["security_retry_proposals"] == 1
     assert result["brief_key_metrics"]["security_retry_rendered_commands"] == 1
+    assert result["brief_key_metrics"]["security_retry_rendered_command_results"] == 1
 
 
 def test_check_retry_governance_observability_reads_crdt(tmp_path) -> None:
@@ -217,6 +263,17 @@ def test_check_retry_governance_observability_reads_crdt(tmp_path) -> None:
         )
     )
 
+    asyncio.run(
+        run_rendered_retry_commands(
+            argparse.Namespace(
+                db_path=db_path,
+                source="rendered-retry-command-runner-test",
+                rendered_command_id="rendered-1",
+                plan_id="",
+            )
+        )
+    )
+
     result = check_retry_governance_observability(
         argparse.Namespace(
             db_path=db_path,
@@ -227,6 +284,8 @@ def test_check_retry_governance_observability_reads_crdt(tmp_path) -> None:
 
     assert result["status"] == "passed"
     assert result["brief_key_metrics"]["security_retry_rendered_commands"] == 1
+    assert result["brief_key_metrics"]["security_retry_rendered_command_results"] == 1
+    assert result["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
     assert result["brief_key_metrics"]["security_retry_execution_skipped"] == 1
 
 
@@ -236,6 +295,20 @@ def test_check_retry_governance_observability_accepts_patient_rendered_profile()
         "--scenario-id replay-render-test "
         "--directive-id runtime-run-replay-render-test "
         "--timeout-profile patient"
+    )
+
+    rendered_result = _rendered_command_result(
+        timeout_profile="patient",
+        decision_mode="policy",
+        command=command,
+        payload={
+            "rendered_command_id": "rendered-1",
+            "plan_id": "plan-1",
+            "proposal_id": "proposal-1",
+            "approval_id": "approval-1",
+            "execution_enabled": False,
+            "executed": False,
+        },
     )
 
     result = check_retry_governance_observability_from_records(
@@ -257,6 +330,7 @@ def test_check_retry_governance_observability_accepts_patient_rendered_profile()
                 decision_mode="policy",
                 command=command,
                 payload={
+                    "rendered_command_id": "rendered-1",
                     "plan_id": "plan-1",
                     "proposal_id": "proposal-1",
                     "approval_id": "approval-1",
@@ -267,9 +341,11 @@ def test_check_retry_governance_observability_accepts_patient_rendered_profile()
                     "executed": False,
                 },
             ),
+            rendered_result,
             _result(),
         ]
     )
 
     assert result["status"] == "passed"
     assert result["brief_key_metrics"]["security_retry_rendered_command_profiles"]["patient"] == 1
+    assert result["brief_key_metrics"]["security_retry_rendered_command_results"] == 1

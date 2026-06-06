@@ -24,6 +24,7 @@ REQUIRED_RECORD_TYPES = {
     "replay_lifecycle_retry_execution_plan": "security_retry_execution_plans",
     "replay_lifecycle_retry_execution_result": "security_retry_execution_results",
     "replay_lifecycle_retry_rendered_command": "security_retry_rendered_commands",
+    "replay_lifecycle_retry_rendered_command_result": "security_retry_rendered_command_results",
 }
 
 
@@ -170,6 +171,39 @@ def _build_checks(
             "name": "brief_surfaces_retry_execution_skipped",
             "status": "passed" if skipped > 0 else "failed",
             "value": skipped,
+        }
+    )
+
+    rendered_result_statuses = key_metrics.get("security_retry_rendered_command_result_statuses")
+    if not isinstance(rendered_result_statuses, Mapping):
+        rendered_result_statuses = {}
+
+    rendered_result_reasons = key_metrics.get("security_retry_rendered_command_result_reasons")
+    if not isinstance(rendered_result_reasons, Mapping):
+        rendered_result_reasons = {}
+
+    checks.append(
+        {
+            "name": "brief_surfaces_retry_rendered_command_result_status_breakdown",
+            "status": (
+                "passed"
+                if _safe_int(rendered_result_statuses.get("skipped"), 0) > 0
+                or _safe_int(rendered_result_statuses.get("rejected"), 0) > 0
+                else "failed"
+            ),
+            "value": dict(rendered_result_statuses),
+        }
+    )
+    checks.append(
+        {
+            "name": "brief_surfaces_retry_rendered_command_result_reason_breakdown",
+            "status": (
+                "passed"
+                if _safe_int(rendered_result_reasons.get("execution_disabled"), 0) > 0
+                or _safe_int(rendered_result_reasons.get("execution_not_supported"), 0) > 0
+                else "failed"
+            ),
+            "value": dict(rendered_result_reasons),
         }
     )
 

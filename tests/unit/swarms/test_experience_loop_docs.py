@@ -152,3 +152,5 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "replay_lifecycle_retry_rendered_command_result" in text
     assert "rendered command dry-run result statuses" in text
     assert "execution_not_supported" in text
+    assert "rendered command dry-run runner" in text
+    assert "replay_lifecycle_retry_rendered_command_result visibility" in text
