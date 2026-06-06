@@ -253,15 +253,38 @@ def _format_result(result: Mapping[str, Any]) -> str:
     observability = result.get("observability") if isinstance(result.get("observability"), Mapping) else {}
     counts = trail.get("counts") if isinstance(trail.get("counts"), Mapping) else {}
 
+    chain_records = sum(
+        int(counts.get(key, 0) or 0)
+        for key in (
+            "proposals",
+            "approvals",
+            "plans",
+            "rendered_commands",
+            "rendered_command_results",
+            "results",
+        )
+    )
+    six_stage = (
+        int(counts.get("proposals", 0) or 0) > 0
+        and int(counts.get("approvals", 0) or 0) > 0
+        and int(counts.get("plans", 0) or 0) > 0
+        and int(counts.get("rendered_commands", 0) or 0) > 0
+        and int(counts.get("rendered_command_results", 0) or 0) > 0
+        and int(counts.get("results", 0) or 0) > 0
+    )
+
     return (
         "Retry governance smoke: "
         f"status={result.get('status')} "
         f"records_seeded={result.get('records_seeded')} "
+        f"chain_records={chain_records} "
+        f"six_stage={str(six_stage).lower()} "
         f"rendered_command_results={result.get('rendered_command_results', 0)} "
         f"proposals={counts.get('proposals', 0)} "
         f"approvals={counts.get('approvals', 0)} "
         f"plans={counts.get('plans', 0)} "
         f"rendered={counts.get('rendered_commands', 0)} "
+        f"rendered_results={counts.get('rendered_command_results', 0)} "
         f"results={counts.get('results', 0)} "
         f"chain_complete={str(bool(trail.get('chain_complete'))).lower()} "
         f"observability={observability.get('status')} "

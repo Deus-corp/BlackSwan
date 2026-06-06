@@ -7,6 +7,12 @@ from src.testing.retry_governance_smoke import (
     run_retry_governance_smoke,
 )
 
+from src.testing.retry_governance_smoke import (
+    _exit_code_for_result,
+    _format_result,
+    run_retry_governance_smoke,
+)
+
 
 @pytest.mark.asyncio
 async def test_retry_governance_smoke_passes_for_synthetic_trail(tmp_path) -> None:
@@ -149,3 +155,31 @@ async def test_retry_governance_smoke_require_clean_passes_on_clean_db(tmp_path)
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
     assert result["existing_records"] == 0
     assert result["exit_codes"]["preflight"] == 0
+
+
+def test_retry_governance_smoke_format_reports_six_stage_chain() -> None:
+    text = _format_result(
+        {
+            "status": "passed",
+            "records_seeded": 5,
+            "rendered_command_results": 1,
+            "existing_records": 0,
+            "reason": "ok",
+            "trail_summary": {
+                "chain_complete": True,
+                "counts": {
+                    "proposals": 1,
+                    "approvals": 1,
+                    "plans": 1,
+                    "rendered_commands": 1,
+                    "rendered_command_results": 1,
+                    "results": 1,
+                },
+            },
+            "observability": {"status": "passed"},
+        }
+    )
+
+    assert "chain_records=6" in text
+    assert "six_stage=true" in text
+    assert "rendered_results=1" in text

@@ -705,6 +705,12 @@ command dry-run result statuses and reasons such as `skipped`,
 runner and requires `replay_lifecycle_retry_rendered_command_result` visibility
 through Security metrics and Overseer brief key metrics. rendered command dry-run runner, replay_lifecycle_retry_rendered_command_result visibility.
 
+The retry governance smoke now reports the full six-stage governance trail:
+proposal, approval, execution plan, rendered command, rendered command result,
+and execution result. Its summary includes `chain_records=6`,
+`six_stage=true`, and `rendered_results=1` when the safe dry-run path is
+complete.
+
 ---
 
 ## Related modules

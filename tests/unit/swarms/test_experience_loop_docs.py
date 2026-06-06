@@ -154,3 +154,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "execution_not_supported" in text
     assert "rendered command dry-run runner" in text
     assert "replay_lifecycle_retry_rendered_command_result visibility" in text
+    assert "full six-stage governance trail" in text
+    assert "chain_records=6" in text
+    assert "six_stage=true" in text
+    assert "rendered_results=1" in text
