@@ -76,6 +76,29 @@ def _rendered_command_result(**overrides):
     item.update(overrides)
     return item
 
+def _eligibility(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_execution_eligibility",
+        "eligibility_id": "eligibility-1",
+        "rendered_command_id": "rendered-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "status": "blocked",
+        "reason": "execution_disabled",
+        "execution_supported": False,
+        "execution_enabled": False,
+        "payload": {
+            "status": "blocked",
+            "reason": "execution_disabled",
+            "execution_supported": False,
+            "execution_enabled": False,
+            "executed": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
 
 def _result(**overrides):
     item = {
@@ -105,18 +128,20 @@ def test_inspect_retry_governance_trail_from_records_counts_chain() -> None:
             _plan(),
             _rendered_command(),
             _rendered_command_result(),
+            _eligibility(),
             _result(),
             {"type": "swarm_heartbeat"},
         ]
     )
 
-    assert summary["total_records"] == 6
+    assert summary["total_records"] == 7
     assert summary["counts"]["proposals"] == 1
     assert summary["counts"]["approvals"] == 1
     assert summary["counts"]["plans"] == 1
     assert summary["counts"]["rendered_commands"] == 1
     assert summary["counts"]["rendered_command_results"] == 1
     assert summary["counts"]["results"] == 1
+    assert summary["counts"]["eligibilities"] == 1
 
     assert summary["approval_statuses"]["approved"] == 1
     assert summary["plan_statuses"]["planned"] == 1
@@ -126,6 +151,8 @@ def test_inspect_retry_governance_trail_from_records_counts_chain() -> None:
     assert summary["rendered_command_result_reasons"]["execution_disabled"] == 1
     assert summary["result_statuses"]["skipped"] == 1
     assert summary["result_reasons"]["execution_disabled"] == 1
+    assert summary["eligibility_statuses"]["blocked"] == 1
+    assert summary["eligibility_reasons"]["execution_disabled"] == 1
 
     assert summary["decision_modes"]["manual"] == 3
 
@@ -135,6 +162,7 @@ def test_inspect_retry_governance_trail_from_records_counts_chain() -> None:
     assert summary["chain_ids"]["rendered_command_ids"] == ["rendered-1"]
     assert summary["chain_ids"]["rendered_command_result_ids"] == ["rendered-result-1"]
     assert summary["chain_ids"]["result_ids"] == ["result-1"]
+    assert summary["chain_ids"]["eligibility_ids"] == ["eligibility-1"]
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
@@ -162,6 +190,12 @@ def test_inspect_retry_governance_trail_from_records_filters_by_plan_id() -> Non
                 proposal_id="proposal-1",
                 rendered_command_id="rendered-1",
             ),
+            _eligibility(
+                eligibility_id="eligibility-1",
+                rendered_command_id="rendered-1",
+                plan_id="plan-1",
+                proposal_id="proposal-1",
+            ),
             _plan(plan_id="plan-2", proposal_id="proposal-2"),
             _rendered_command(
                 rendered_command_id="rendered-2",
@@ -180,6 +214,12 @@ def test_inspect_retry_governance_trail_from_records_filters_by_plan_id() -> Non
                 proposal_id="proposal-2",
                 rendered_command_id="rendered-2",
             ),
+            _eligibility(
+                eligibility_id="eligibility-2",
+                rendered_command_id="rendered-2",
+                plan_id="plan-2",
+                proposal_id="proposal-2",
+            ),
         ],
         plan_id="plan-1",
     )
@@ -188,9 +228,11 @@ def test_inspect_retry_governance_trail_from_records_filters_by_plan_id() -> Non
     assert summary["counts"]["rendered_commands"] == 1
     assert summary["counts"]["rendered_command_results"] == 1
     assert summary["counts"]["results"] == 1
+    assert summary["counts"]["eligibilities"] == 1
     assert summary["chain_ids"]["plan_ids"] == ["plan-1"]
     assert summary["chain_ids"]["rendered_command_ids"] == ["rendered-1"]
     assert summary["chain_ids"]["rendered_command_result_ids"] == ["rendered-result-1"]
+    assert summary["chain_ids"]["eligibility_ids"] == ["eligibility-1"]
 
 
 def test_inspect_retry_governance_trail_from_crdt(tmp_path) -> None:
@@ -205,6 +247,7 @@ def test_inspect_retry_governance_trail_from_crdt(tmp_path) -> None:
         await crdt.add_genome(_plan())
         await crdt.add_genome(_rendered_command())
         await crdt.add_genome(_rendered_command_result())
+        await crdt.add_genome(_eligibility())
         await crdt.add_genome(_result())
 
     asyncio.run(seed())
@@ -224,6 +267,7 @@ def test_inspect_retry_governance_trail_from_crdt(tmp_path) -> None:
     assert summary["counts"]["rendered_commands"] == 1
     assert summary["counts"]["rendered_command_results"] == 1
     assert summary["counts"]["results"] == 1
+    assert summary["counts"]["eligibilities"] == 1
     assert summary["chain_complete"] is True
 
 
@@ -236,6 +280,7 @@ def test_inspect_retry_governance_trail_reports_missing_stages() -> None:
         "plan",
         "rendered_command",
         "rendered_command_result",
+        "execution_eligibility",
         "result",
     ]
 
@@ -262,6 +307,7 @@ def test_retry_governance_trail_exit_code_is_zero_when_require_complete_and_comp
             _plan(),
             _rendered_command(),
             _rendered_command_result(),
+            _eligibility(),
             _result(),
         ]
     )

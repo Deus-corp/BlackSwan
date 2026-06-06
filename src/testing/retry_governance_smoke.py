@@ -289,15 +289,17 @@ def _format_result(result: Mapping[str, Any]) -> str:
             "plans",
             "rendered_commands",
             "rendered_command_results",
+            "eligibilities",
             "results",
         )
     )
-    six_stage = (
+    seven_stage = (
         int(counts.get("proposals", 0) or 0) > 0
         and int(counts.get("approvals", 0) or 0) > 0
         and int(counts.get("plans", 0) or 0) > 0
         and int(counts.get("rendered_commands", 0) or 0) > 0
         and int(counts.get("rendered_command_results", 0) or 0) > 0
+        and int(counts.get("eligibilities", 0) or 0) > 0
         and int(counts.get("results", 0) or 0) > 0
     )
 
@@ -306,7 +308,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"status={result.get('status')} "
         f"records_seeded={result.get('records_seeded')} "
         f"chain_records={chain_records} "
-        f"six_stage={str(six_stage).lower()} "
+        f"seven_stage={str(seven_stage).lower()} "
         f"rendered_command_results={result.get('rendered_command_results', 0)} "
         f"eligibility_results={result.get('eligibility_results', 0)} "
         f"execution_blocked={result.get('execution_blocked', 0)} "
@@ -315,6 +317,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"plans={counts.get('plans', 0)} "
         f"rendered={counts.get('rendered_commands', 0)} "
         f"rendered_results={counts.get('rendered_command_results', 0)} "
+        f"eligibilities={counts.get('eligibilities', 0)} "
         f"results={counts.get('results', 0)} "
         f"chain_complete={str(bool(trail.get('chain_complete'))).lower()} "
         f"observability={observability.get('status')} "

@@ -171,3 +171,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "retry execution eligibility gate" in text
     assert "replay_lifecycle_retry_execution_eligibility" in text
     assert "safe governance path remains non-executing" in text
+    assert "full seven-stage safe governance trail" in text
+    assert "chain_records=7" in text
+    assert "seven_stage=true" in text
+    assert "eligibilities=1" in text

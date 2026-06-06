@@ -23,6 +23,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_execution_plan",
     "replay_lifecycle_retry_execution_result",
     "replay_lifecycle_retry_rendered_command",
+    "replay_lifecycle_retry_execution_eligibility",
     "replay_lifecycle_retry_rendered_command_result",
 }
 
@@ -111,6 +112,11 @@ def inspect_retry_governance_trail_from_records(
         item for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_rendered_command_result"
     ]
+    eligibilities = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_execution_eligibility"
+    ]
     results = [
         item for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_execution_result"
@@ -138,6 +144,13 @@ def inspect_retry_governance_trail_from_records(
         str(item.get("reason") or "unknown").strip() or "unknown"
         for item in rendered_command_results
     )
+    eligibility_statuses = Counter(
+        _clean_status(item.get("status")) for item in eligibilities
+    )
+    eligibility_reasons = Counter(
+        str(item.get("reason") or "unknown").strip() or "unknown"
+        for item in eligibilities
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -146,6 +159,7 @@ def inspect_retry_governance_trail_from_records(
         rendered_commands=rendered_commands,
         results=results,
         rendered_command_results=rendered_command_results,
+        eligibilities=eligibilities,
     )
 
     missing_stages = _missing_stages(
@@ -153,39 +167,43 @@ def inspect_retry_governance_trail_from_records(
         approvals=approvals,
         plans=plans,
         rendered_commands=rendered_commands,
-        results=results,
         rendered_command_results=rendered_command_results,
+        eligibilities=eligibilities,
+        results=results,
     )
 
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
+        "filters": {
+            "proposal_id": clean_proposal_id or None,
+            "approval_id": clean_approval_id or None,
+            "plan_id": clean_plan_id or None,
+        },
+        "by_type": dict(by_type),
         "counts": {
             "proposals": len(proposals),
             "approvals": len(approvals),
             "plans": len(plans),
             "rendered_commands": len(rendered_commands),
             "rendered_command_results": len(rendered_command_results),
+            "eligibilities": len(eligibilities),
             "results": len(results),
         },
-        "by_type": dict(by_type),
         "approval_statuses": dict(approval_statuses),
         "plan_statuses": dict(plan_statuses),
-        "result_statuses": dict(result_statuses),
-        "result_reasons": dict(result_reasons),
-        "decision_modes": dict(decision_modes),
-        "chain_ids": chain_ids,
-        "filters": {
-            "proposal_id": clean_proposal_id or None,
-            "approval_id": clean_approval_id or None,
-            "plan_id": clean_plan_id or None,
-        },
-        "chain_complete": not missing_stages,
-        "missing_stages": missing_stages,
         "rendered_command_statuses": dict(rendered_command_statuses),
         "rendered_command_profiles": dict(rendered_command_profiles),
         "rendered_command_result_statuses": dict(rendered_command_result_statuses),
         "rendered_command_result_reasons": dict(rendered_command_result_reasons),
+        "eligibility_statuses": dict(eligibility_statuses),
+        "eligibility_reasons": dict(eligibility_reasons),
+        "result_statuses": dict(result_statuses),
+        "result_reasons": dict(result_reasons),
+        "decision_modes": dict(decision_modes),
+        "chain_ids": chain_ids,
+        "chain_complete": not missing_stages,
+        "missing_stages": missing_stages,
     }
 
 def _missing_stages(
@@ -195,6 +213,7 @@ def _missing_stages(
     plans: list[Mapping[str, Any]],
     rendered_commands: list[Mapping[str, Any]],
     rendered_command_results: list[Mapping[str, Any]],
+    eligibilities: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> list[str]:
     missing: list[str] = []
@@ -209,6 +228,8 @@ def _missing_stages(
         missing.append("rendered_command")
     if not rendered_command_results:
         missing.append("rendered_command_result")
+    if not eligibilities:
+        missing.append("execution_eligibility")
     if not results:
         missing.append("result")
 
@@ -274,20 +295,22 @@ def _build_chain_ids(
     plans: list[Mapping[str, Any]],
     rendered_commands: list[Mapping[str, Any]],
     rendered_command_results: list[Mapping[str, Any]],
+    eligibilities: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
-    proposals
-    + approvals
-    + plans
-    + rendered_commands
-    + rendered_command_results
-    + results
-)
+        proposals
+        + approvals
+        + plans
+        + rendered_commands
+        + rendered_command_results
+        + eligibilities
+        + results
+    )
 
     return {
         "proposal_ids": sorted(
-            {
+           {
                 str(item.get("proposal_id") or "").strip()
                 for item in all_records
                 if str(item.get("proposal_id") or "").strip()
@@ -296,21 +319,30 @@ def _build_chain_ids(
         "approval_ids": sorted(
             {
                 str(item.get("approval_id") or "").strip()
-                for item in approvals + plans + rendered_commands + rendered_command_results + results
-                if str(item.get("approval_id") or "").strip()
+                for item in approvals
+                + plans
+                + rendered_commands
+                + rendered_command_results
+                + eligibilities
+                + results
+               if str(item.get("approval_id") or "").strip()
             }
         ),
         "plan_ids": sorted(
-            {
+           {
                 str(item.get("plan_id") or "").strip()
-                for item in plans + rendered_commands + rendered_command_results + results
+                for item in plans
+                + rendered_commands
+                + rendered_command_results
+                + eligibilities
+                + results
                 if str(item.get("plan_id") or "").strip()
             }
         ),
         "rendered_command_ids": sorted(
             {
                 str(item.get("rendered_command_id") or "").strip()
-                for item in rendered_commands + rendered_command_results + results
+                for item in rendered_commands + rendered_command_results + eligibilities + results
                 if str(item.get("rendered_command_id") or "").strip()
             }
         ),
@@ -319,6 +351,13 @@ def _build_chain_ids(
                 str(item.get("rendered_command_result_id") or "").strip()
                 for item in rendered_command_results
                 if str(item.get("rendered_command_result_id") or "").strip()
+            }
+        ),
+        "eligibility_ids": sorted(
+            {
+                str(item.get("eligibility_id") or "").strip()
+                for item in eligibilities
+                if str(item.get("eligibility_id") or "").strip()
             }
         ),
         "result_ids": sorted(
@@ -353,6 +392,16 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("rendered_command_result_reasons"), Mapping)
         else {}
     )
+    eligibility_statuses = (
+        summary.get("eligibility_statuses")
+        if isinstance(summary.get("eligibility_statuses"), Mapping)
+        else {}
+    )
+    eligibility_reasons = (
+        summary.get("eligibility_reasons")
+        if isinstance(summary.get("eligibility_reasons"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -368,6 +417,7 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"plans={counts.get('plans', 0)} "
         f"rendered={counts.get('rendered_commands', 0)} "
         f"rendered_results={counts.get('rendered_command_results', 0)} "
+        f"eligibilities={counts.get('eligibilities', 0)} "
         f"results={counts.get('results', 0)} "
         f"skipped={result_statuses.get('skipped', 0)} "
         f"rejected={result_statuses.get('rejected', 0)} "
@@ -375,6 +425,8 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"execution_not_supported={result_reasons.get('execution_not_supported', 0)} "
         f"rendered_skipped={rendered_command_result_statuses.get('skipped', 0)} "
         f"rendered_execution_disabled={rendered_command_result_reasons.get('execution_disabled', 0)} "
+        f"blocked={eligibility_statuses.get('blocked', 0)} "
+        f"eligibility_execution_disabled={eligibility_reasons.get('execution_disabled', 0)} "
         f"chain_complete={str(chain_complete).lower()} "
         f"missing_stages={missing_text} "
     )

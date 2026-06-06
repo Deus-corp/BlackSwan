@@ -54,13 +54,17 @@ async def test_seed_retry_governance_trail_builds_seed_chain(tmp_path) -> None:
     summary = inspect_retry_governance_trail_from_records(records)
 
     assert summary["chain_complete"] is False
-    assert summary["missing_stages"] == ["rendered_command_result"]
+    assert summary["missing_stages"] == [
+        "rendered_command_result",
+        "execution_eligibility",
+    ]
     assert summary["counts"]["proposals"] == 1
     assert summary["counts"]["approvals"] == 1
     assert summary["counts"]["plans"] == 1
     assert summary["counts"]["rendered_commands"] == 1
     assert summary["counts"]["results"] == 1
     assert summary["counts"]["rendered_command_results"] == 0
+    assert summary["counts"]["eligibilities"] == 0
 
     assert summary["rendered_command_statuses"]["rendered"] == 1
     assert summary["rendered_command_profiles"]["standard"] == 1
@@ -112,8 +116,12 @@ async def test_seed_retry_governance_trail_publishes_to_crdt(tmp_path) -> None:
     summary = inspect_retry_governance_trail_from_records(records)
 
     assert summary["chain_complete"] is False
-    assert summary["missing_stages"] == ["rendered_command_result"]
+    assert summary["missing_stages"] == [
+        "rendered_command_result",
+        "execution_eligibility",
+    ]
     assert summary["counts"]["rendered_command_results"] == 0
+    assert summary["counts"]["eligibilities"] == 0
     assert summary["decision_modes"]["policy"] == 3
     assert summary["rendered_command_profiles"]["patient"] == 1
     assert summary["chain_ids"]["proposal_ids"] == ["proposal-test"]

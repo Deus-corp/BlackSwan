@@ -742,6 +742,12 @@ after the rendered command dry-run runner. The smoke requires at least one
 so the safe governance path remains non-executing before any future controlled
 runner.
 
+The retry governance smoke now reports the full seven-stage safe governance
+trail: proposal, approval, execution plan, rendered command, rendered command
+result, execution eligibility, and execution result. Its summary includes
+`chain_records=7`, `seven_stage=true`, `eligibilities=1`, and
+`execution_blocked=1` when the safe path is complete. full seven-stage safe governance trail.
+
 ---
 
 ## Related modules

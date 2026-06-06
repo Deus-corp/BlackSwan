@@ -31,19 +31,25 @@ async def test_retry_governance_smoke_passes_for_synthetic_trail(tmp_path) -> No
     assert _exit_code_for_result(result) == 0
     assert result["records_seeded"] == 5
     assert result["rendered_command_results"] == 1
+    assert result["eligibility_results"] == 1
+    assert result["execution_blocked"] == 1
+
     assert result["trail_summary"]["chain_complete"] is True
     assert result["trail_summary"]["counts"]["rendered_commands"] == 1
+    assert result["trail_summary"]["counts"]["rendered_command_results"] == 1
+    assert result["trail_summary"]["counts"]["eligibilities"] == 1
     assert result["trail_summary"]["chain_ids"]["rendered_command_ids"] == ["rendered-smoke"]
+    assert result["trail_summary"]["chain_ids"]["eligibility_ids"]
+
     assert result["observability"]["status"] == "passed"
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_commands"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_results"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
-    assert result["exit_codes"]["trail"] == 0
-    assert result["exit_codes"]["observability"] == 0
-    assert result["eligibility_results"] == 1
-    assert result["execution_blocked"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_execution_eligibilities"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_execution_blocked"] == 1
+
+    assert result["exit_codes"]["trail"] == 0
+    assert result["exit_codes"]["observability"] == 0
     assert result["exit_codes"]["eligibility"] == 0
 
 
@@ -68,14 +74,19 @@ async def test_retry_governance_smoke_accepts_policy_patient_profile(tmp_path) -
     assert result["status"] == "passed"
     assert result["records_seeded"] == 5
     assert result["rendered_command_results"] == 1
+    assert result["eligibility_results"] == 1
+    assert result["execution_blocked"] == 1
+
     assert result["trail_summary"]["counts"]["rendered_commands"] == 1
+    assert result["trail_summary"]["counts"]["rendered_command_results"] == 1
+    assert result["trail_summary"]["counts"]["eligibilities"] == 1
     assert result["trail_summary"]["decision_modes"]["policy"] == 3
     assert result["trail_summary"]["chain_ids"]["rendered_command_ids"] == ["rendered-smoke-policy"]
+    assert result["trail_summary"]["chain_ids"]["eligibility_ids"]
+
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_commands"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_results"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
-    assert result["eligibility_results"] == 1
-    assert result["execution_blocked"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_execution_eligibilities"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_execution_blocked"] == 1
 
@@ -103,6 +114,8 @@ async def test_retry_governance_smoke_require_clean_fails_when_records_exist(tmp
     assert first["status"] == "passed"
     assert first["records_seeded"] == 5
     assert first["rendered_command_results"] == 1
+    assert first["eligibility_results"] == 1
+    assert first["execution_blocked"] == 1
 
     second = await run_retry_governance_smoke(
         argparse.Namespace(
@@ -153,19 +166,25 @@ async def test_retry_governance_smoke_require_clean_passes_on_clean_db(tmp_path)
     assert result["reason"] == "ok"
     assert result["records_seeded"] == 5
     assert result["rendered_command_results"] == 1
+    assert result["eligibility_results"] == 1
+    assert result["execution_blocked"] == 1
+
     assert result["trail_summary"]["counts"]["rendered_commands"] == 1
+    assert result["trail_summary"]["counts"]["rendered_command_results"] == 1
+    assert result["trail_summary"]["counts"]["eligibilities"] == 1
     assert result["trail_summary"]["chain_ids"]["rendered_command_ids"] == [
         "rendered-smoke-clean-first"
     ]
+    assert result["trail_summary"]["chain_ids"]["eligibility_ids"]
+
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_commands"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_results"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_rendered_command_skipped"] == 1
-    assert result["existing_records"] == 0
-    assert result["exit_codes"]["preflight"] == 0
-    assert result["eligibility_results"] == 1
-    assert result["execution_blocked"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_execution_eligibilities"] == 1
     assert result["observability"]["brief_key_metrics"]["security_retry_execution_blocked"] == 1
+
+    assert result["existing_records"] == 0
+    assert result["exit_codes"]["preflight"] == 0
     assert result["exit_codes"]["eligibility"] == 0
 
 
@@ -187,6 +206,7 @@ def test_retry_governance_smoke_format_reports_execution_eligibility_gate() -> N
                     "plans": 1,
                     "rendered_commands": 1,
                     "rendered_command_results": 1,
+                    "eligibilities": 1,
                     "results": 1,
                 },
             },
@@ -194,8 +214,9 @@ def test_retry_governance_smoke_format_reports_execution_eligibility_gate() -> N
         }
     )
 
-    assert "chain_records=6" in text
-    assert "six_stage=true" in text
+    assert "chain_records=7" in text
+    assert "seven_stage=true" in text
     assert "rendered_results=1" in text
+    assert "eligibilities=1" in text
     assert "eligibility_results=1" in text
     assert "execution_blocked=1" in text
