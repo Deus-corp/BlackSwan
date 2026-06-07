@@ -25,6 +25,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_rendered_command",
     "replay_lifecycle_retry_execution_eligibility",
     "replay_lifecycle_retry_rendered_command_result",
+    "replay_lifecycle_retry_controlled_execution_result",
 }
 
 
@@ -117,6 +118,11 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_execution_eligibility"
     ]
+    controlled_execution_results = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_controlled_execution_result"
+    ]
     results = [
         item for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_execution_result"
@@ -151,15 +157,23 @@ def inspect_retry_governance_trail_from_records(
         str(item.get("reason") or "unknown").strip() or "unknown"
         for item in eligibilities
     )
+    controlled_execution_result_statuses = Counter(
+        _clean_status(item.get("status")) for item in controlled_execution_results
+    )
+    controlled_execution_result_reasons = Counter(
+        str(item.get("reason") or "unknown").strip() or "unknown"
+        for item in controlled_execution_results
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
         approvals=approvals,
         plans=plans,
         rendered_commands=rendered_commands,
-        results=results,
         rendered_command_results=rendered_command_results,
         eligibilities=eligibilities,
+        controlled_execution_results=controlled_execution_results,
+        results=results,
     )
 
     missing_stages = _missing_stages(
@@ -188,6 +202,7 @@ def inspect_retry_governance_trail_from_records(
             "rendered_commands": len(rendered_commands),
             "rendered_command_results": len(rendered_command_results),
             "eligibilities": len(eligibilities),
+            "controlled_execution_results": len(controlled_execution_results),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -198,6 +213,13 @@ def inspect_retry_governance_trail_from_records(
         "rendered_command_result_reasons": dict(rendered_command_result_reasons),
         "eligibility_statuses": dict(eligibility_statuses),
         "eligibility_reasons": dict(eligibility_reasons),
+        "controlled_execution_result_statuses": dict(
+            controlled_execution_result_statuses
+        ),
+        "controlled_execution_result_reasons": dict(
+            controlled_execution_result_reasons
+        ),
+        "extended_controlled_execution_observed": bool(controlled_execution_results),
         "result_statuses": dict(result_statuses),
         "result_reasons": dict(result_reasons),
         "decision_modes": dict(decision_modes),
@@ -296,6 +318,7 @@ def _build_chain_ids(
     rendered_commands: list[Mapping[str, Any]],
     rendered_command_results: list[Mapping[str, Any]],
     eligibilities: list[Mapping[str, Any]],
+    controlled_execution_results: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -305,6 +328,7 @@ def _build_chain_ids(
         + rendered_commands
         + rendered_command_results
         + eligibilities
+        + controlled_execution_results
         + results
     )
 
@@ -324,6 +348,7 @@ def _build_chain_ids(
                 + rendered_commands
                 + rendered_command_results
                 + eligibilities
+                + controlled_execution_results
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -335,6 +360,7 @@ def _build_chain_ids(
                 + rendered_commands
                 + rendered_command_results
                 + eligibilities
+                + controlled_execution_results
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -342,7 +368,13 @@ def _build_chain_ids(
         "rendered_command_ids": sorted(
             {
                 str(item.get("rendered_command_id") or "").strip()
-                for item in rendered_commands + rendered_command_results + eligibilities + results
+                for item in (
+                    rendered_commands
+                    + rendered_command_results
+                    + eligibilities
+                    + controlled_execution_results
+                    + results
+                )
                 if str(item.get("rendered_command_id") or "").strip()
             }
         ),
@@ -358,6 +390,13 @@ def _build_chain_ids(
                 str(item.get("eligibility_id") or "").strip()
                 for item in eligibilities
                 if str(item.get("eligibility_id") or "").strip()
+            }
+        ),
+        "controlled_execution_result_ids": sorted(
+            {
+                str(item.get("controlled_execution_result_id") or "").strip()
+                for item in controlled_execution_results
+                if str(item.get("controlled_execution_result_id") or "").strip()
             }
         ),
         "result_ids": sorted(
@@ -402,6 +441,16 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("eligibility_reasons"), Mapping)
         else {}
     )
+    controlled_execution_result_statuses = (
+        summary.get("controlled_execution_result_statuses")
+        if isinstance(summary.get("controlled_execution_result_statuses"), Mapping)
+        else {}
+    )
+    controlled_execution_result_reasons = (
+        summary.get("controlled_execution_result_reasons")
+        if isinstance(summary.get("controlled_execution_result_reasons"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -418,6 +467,7 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"rendered={counts.get('rendered_commands', 0)} "
         f"rendered_results={counts.get('rendered_command_results', 0)} "
         f"eligibilities={counts.get('eligibilities', 0)} "
+        f"controlled_results={counts.get('controlled_execution_results', 0)} "
         f"results={counts.get('results', 0)} "
         f"skipped={result_statuses.get('skipped', 0)} "
         f"rejected={result_statuses.get('rejected', 0)} "
@@ -427,6 +477,9 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"rendered_execution_disabled={rendered_command_result_reasons.get('execution_disabled', 0)} "
         f"blocked={eligibility_statuses.get('blocked', 0)} "
         f"eligibility_execution_disabled={eligibility_reasons.get('execution_disabled', 0)} "
+        f"controlled_rejected={controlled_execution_result_statuses.get('rejected', 0)} "
+        f"controlled_not_implemented={controlled_execution_result_reasons.get('controlled_execution_not_implemented', 0)} "
+        f"extended_controlled_execution_observed={str(bool(summary.get('extended_controlled_execution_observed'))).lower()} "
         f"chain_complete={str(chain_complete).lower()} "
         f"missing_stages={missing_text} "
     )

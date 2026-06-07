@@ -253,3 +253,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "Overseer brief surfaces controlled execution result visibility" in text
     assert "rejected/skipped/executed status counts" in text
     assert "controlled_execution_not_implemented" in text
+    assert "optional controlled execution extension" in text
+    assert "extended_controlled_execution_observed=true" in text
+    assert "does not require a controlled execution result" in text

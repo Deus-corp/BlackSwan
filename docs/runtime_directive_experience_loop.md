@@ -1090,6 +1090,13 @@ metrics. In the reject-only phase it reports the controlled execution result
 count, rejected/skipped/executed status counts, and
 `controlled_execution_not_implemented` reason count.
 
+The governance trail inspector treats
+`replay_lifecycle_retry_controlled_execution_result` as an optional controlled
+execution extension. It reports controlled execution result counts, statuses,
+reasons, ids, and `extended_controlled_execution_observed=true`, but the safe
+seven-stage `chain_complete=true` result does not require a controlled execution
+result. optional controlled execution extension, does not require a controlled execution result.
+
 ---
 
 ## Related modules
