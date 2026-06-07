@@ -763,6 +763,11 @@ If a proposal, approval, execution plan, rendered command, or execution result
 already exists with the requested id, the seed helper skips publishing a
 duplicate and leaves the existing governance record in place.
 
+`src.testing.retry_governance_smoke` is idempotent when rerun without
+`--require-clean`. If the safe seven-stage trail already exists and is complete,
+the smoke can pass with `records_seeded=0`, `rendered_command_results=0`, and
+`eligibility_results=0` while reporting `existing_complete=true`.
+
 ---
 
 ## Related modules

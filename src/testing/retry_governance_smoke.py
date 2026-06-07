@@ -244,13 +244,44 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
         if item.get("status") == "blocked"
     )
 
+    existing_rendered_command_results = _safe_count(
+        trail_summary,
+        "rendered_command_results",
+    )
+    existing_eligibilities = _safe_count(
+        trail_summary,
+        "eligibilities",
+    )
+    existing_execution_blocked = _safe_count_from_mapping(
+        trail_summary,
+        "eligibility_statuses",
+        "blocked",
+    )
+
+    has_rendered_command_result = (
+        rendered_command_result_count > 0 or existing_rendered_command_results > 0
+    )
+    has_eligibility = eligibility_count > 0 or existing_eligibilities > 0
+    has_execution_blocked = execution_blocked > 0 or existing_execution_blocked > 0
+
+    existing_complete = (
+        len(records) == 0
+        and rendered_command_result_count == 0
+        and eligibility_count == 0
+        and trail_code == 0
+        and observability_code == 0
+        and has_rendered_command_result
+        and has_eligibility
+        and has_execution_blocked
+    )
+
     status = (
         "passed"
         if trail_code == 0
         and observability_code == 0
-        and rendered_command_result_count > 0
-        and eligibility_count > 0
-        and execution_blocked > 0
+        and has_rendered_command_result
+        and has_eligibility
+        and has_execution_blocked
         else "failed"
     )
 
@@ -262,14 +293,18 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
         "proposal_id": proposal_id,
         "reason": "ok" if status == "passed" else "retry_governance_smoke_failed",
         "existing_records": len(existing_records),
+        "existing_complete": existing_complete,
+        "existing_rendered_command_results": existing_rendered_command_results,
+        "existing_eligibilities": existing_eligibilities,
+        "existing_execution_blocked": existing_execution_blocked,
         "trail_summary": trail_summary,
         "observability": observability,
         "eligibility_results": eligibility_count,
         "execution_blocked": execution_blocked,
         "exit_codes": {
             "preflight": 0,
-            "rendered_command_results": 0 if rendered_command_result_count > 0 else 1,
-            "eligibility": 0 if eligibility_count > 0 and execution_blocked > 0 else 1,
+            "rendered_command_results": 0 if has_rendered_command_result else 1,
+            "eligibility": 0 if has_eligibility and has_execution_blocked else 1,
             "trail": trail_code,
             "observability": observability_code,
         },
@@ -322,12 +357,40 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"chain_complete={str(bool(trail.get('chain_complete'))).lower()} "
         f"observability={observability.get('status')} "
         f"existing_records={result.get('existing_records', 0)} "
+        f"existing_complete={str(bool(result.get('existing_complete'))).lower()} "
+        f"existing_rendered_results={result.get('existing_rendered_command_results', 0)} "
+        f"existing_eligibilities={result.get('existing_eligibilities', 0)} "
         f"reason={result.get('reason') or 'ok'} "
     )
 
 
 def _exit_code_for_result(result: Mapping[str, Any]) -> int:
     return 0 if result.get("status") == "passed" else 1
+
+
+def _safe_count(summary: Mapping[str, Any], key: str) -> int:
+    counts = summary.get("counts")
+    if not isinstance(counts, Mapping):
+        return 0
+    return _safe_int(counts.get(key), 0)
+
+
+def _safe_count_from_mapping(
+    summary: Mapping[str, Any],
+    mapping_key: str,
+    value_key: str,
+) -> int:
+    values = summary.get(mapping_key)
+    if not isinstance(values, Mapping):
+        return 0
+    return _safe_int(values.get(value_key), 0)
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 async def async_main() -> int:

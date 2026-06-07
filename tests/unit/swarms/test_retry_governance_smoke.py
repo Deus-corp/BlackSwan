@@ -197,6 +197,9 @@ def test_retry_governance_smoke_format_reports_execution_eligibility_gate() -> N
             "eligibility_results": 1,
             "execution_blocked": 1,
             "existing_records": 0,
+            "existing_complete": True,
+            "existing_rendered_command_results": 1,
+            "existing_eligibilities": 1,
             "reason": "ok",
             "trail_summary": {
                 "chain_complete": True,
@@ -220,3 +223,49 @@ def test_retry_governance_smoke_format_reports_execution_eligibility_gate() -> N
     assert "eligibilities=1" in text
     assert "eligibility_results=1" in text
     assert "execution_blocked=1" in text
+    assert "existing_complete=true" in text
+    assert "existing_rendered_results=1" in text
+    assert "existing_eligibilities=1" in text
+
+
+@pytest.mark.asyncio
+async def test_retry_governance_smoke_passes_on_idempotent_rerun(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    args = argparse.Namespace(
+        db_path=db_path,
+        source="retry-governance-smoke-test",
+        proposal_id="proposal-smoke-rerun",
+        approval_id="approval-smoke-rerun",
+        plan_id="plan-smoke-rerun",
+        rendered_command_id="rendered-smoke-rerun",
+        result_id="result-smoke-rerun",
+        timeout_profile="standard",
+        decision_mode="manual",
+        require_clean=False,
+        json=False,
+    )
+
+    first = await run_retry_governance_smoke(args)
+    second = await run_retry_governance_smoke(args)
+
+    assert first["status"] == "passed"
+    assert first["records_seeded"] == 5
+    assert first["rendered_command_results"] == 1
+    assert first["eligibility_results"] == 1
+    assert first["execution_blocked"] == 1
+    assert first["existing_complete"] is False
+
+    assert second["status"] == "passed"
+    assert second["records_seeded"] == 0
+    assert second["rendered_command_results"] == 0
+    assert second["eligibility_results"] == 0
+    assert second["execution_blocked"] == 0
+    assert second["existing_complete"] is True
+    assert second["existing_rendered_command_results"] == 1
+    assert second["existing_eligibilities"] == 1
+    assert second["existing_execution_blocked"] == 1
+    assert second["trail_summary"]["chain_complete"] is True
+    assert second["observability"]["status"] == "passed"
+    assert second["exit_codes"]["rendered_command_results"] == 0
+    assert second["exit_codes"]["eligibility"] == 0
+    assert _exit_code_for_result(second) == 0
