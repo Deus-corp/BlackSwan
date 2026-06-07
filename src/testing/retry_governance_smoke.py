@@ -163,6 +163,51 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
             proposal_id=proposal_id,
         )
         if existing_records:
+            existing_trail_summary = inspect_retry_governance_trail(
+                argparse.Namespace(
+                    db_path=db_path,
+                    proposal_id=proposal_id,
+                    approval_id="",
+                    plan_id="",
+                )
+            )
+            existing_observability = check_retry_governance_observability(
+                argparse.Namespace(
+                    db_path=db_path,
+                    proposal_id=proposal_id,
+                    json=False,
+                )
+            )
+
+            existing_trail_code = trail_exit_code(
+                existing_trail_summary,
+                require_complete=True,
+            )
+            existing_observability_code = observability_exit_code(
+                existing_observability
+            )
+
+            existing_rendered_command_results = _safe_count(
+                existing_trail_summary,
+                "rendered_command_results",
+            )
+            existing_eligibilities = _safe_count(
+                existing_trail_summary,
+                "eligibilities",
+            )
+            existing_execution_blocked = _safe_count_from_mapping(
+                existing_trail_summary,
+                "eligibility_statuses",
+                "blocked",
+            )
+            existing_complete = (
+                existing_trail_code == 0
+                and existing_observability_code == 0
+                and existing_rendered_command_results > 0
+                and existing_eligibilities > 0
+                and existing_execution_blocked > 0
+            )
+
             return {
                 "type": "retry_governance_smoke_result",
                 "status": "failed",
@@ -173,14 +218,24 @@ async def run_retry_governance_smoke(args: argparse.Namespace) -> dict[str, Any]
                 "proposal_id": proposal_id,
                 "reason": "existing_retry_governance_records",
                 "existing_records": len(existing_records),
-                "trail_summary": {},
-                "observability": {},
+                "existing_complete": existing_complete,
+                "existing_rendered_command_results": existing_rendered_command_results,
+                "existing_eligibilities": existing_eligibilities,
+                "existing_execution_blocked": existing_execution_blocked,
+                "trail_summary": existing_trail_summary,
+                "observability": existing_observability,
                 "exit_codes": {
                     "preflight": 1,
-                    "rendered_command_results": 1,
-                    "eligibility": 1,
-                    "trail": 1,
-                    "observability": 1,
+                    "rendered_command_results": (
+                        0 if existing_rendered_command_results > 0 else 1
+                    ),
+                    "eligibility": (
+                        0
+                        if existing_eligibilities > 0 and existing_execution_blocked > 0
+                        else 1
+                    ),
+                    "trail": existing_trail_code,
+                    "observability": existing_observability_code,
                 },
             }
 
@@ -360,6 +415,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"existing_complete={str(bool(result.get('existing_complete'))).lower()} "
         f"existing_rendered_results={result.get('existing_rendered_command_results', 0)} "
         f"existing_eligibilities={result.get('existing_eligibilities', 0)} "
+        f"existing_execution_blocked={result.get('existing_execution_blocked', 0)} "
         f"reason={result.get('reason') or 'ok'} "
     )
 

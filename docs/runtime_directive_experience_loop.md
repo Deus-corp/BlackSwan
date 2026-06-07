@@ -768,6 +768,12 @@ duplicate and leaves the existing governance record in place.
 the smoke can pass with `records_seeded=0`, `rendered_command_results=0`, and
 `eligibility_results=0` while reporting `existing_complete=true`.
 
+When `src.testing.retry_governance_smoke --require-clean` finds existing retry
+governance records, it still fails the clean preflight, but it reports whether
+the existing seven-stage trail is already complete. A complete existing trail is
+reported with `existing_complete=true`, `existing_rendered_results=1`,
+`existing_eligibilities=1`, and `existing_execution_blocked=1`.
+
 ---
 
 ## Related modules

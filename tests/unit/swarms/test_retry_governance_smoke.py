@@ -139,8 +139,17 @@ async def test_retry_governance_smoke_require_clean_fails_when_records_exist(tmp
     assert second["rendered_command_results"] == 0
     assert second["eligibility_results"] == 0
     assert second["execution_blocked"] == 0
-    assert second["exit_codes"]["eligibility"] == 1
     assert second["existing_records"] >= 1
+    assert second["existing_complete"] is True
+    assert second["existing_rendered_command_results"] == 1
+    assert second["existing_eligibilities"] == 1
+    assert second["existing_execution_blocked"] == 1
+    assert second["trail_summary"]["chain_complete"] is True
+    assert second["observability"]["status"] == "passed"
+    assert second["exit_codes"]["rendered_command_results"] == 0
+    assert second["exit_codes"]["eligibility"] == 0
+    assert second["exit_codes"]["trail"] == 0
+    assert second["exit_codes"]["observability"] == 0
     assert _exit_code_for_result(second) == 1
 
 
@@ -200,6 +209,7 @@ def test_retry_governance_smoke_format_reports_execution_eligibility_gate() -> N
             "existing_complete": True,
             "existing_rendered_command_results": 1,
             "existing_eligibilities": 1,
+            "existing_execution_blocked": 1,
             "reason": "ok",
             "trail_summary": {
                 "chain_complete": True,
@@ -226,6 +236,7 @@ def test_retry_governance_smoke_format_reports_execution_eligibility_gate() -> N
     assert "existing_complete=true" in text
     assert "existing_rendered_results=1" in text
     assert "existing_eligibilities=1" in text
+    assert "existing_execution_blocked=1" in text
 
 
 @pytest.mark.asyncio

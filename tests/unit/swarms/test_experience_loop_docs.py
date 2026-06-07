@@ -189,3 +189,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "existing_complete=true" in text
     assert "records_seeded=0" in text
     assert "eligibility_results=0" in text
+    assert "fails the clean preflight" in text
+    assert "existing_complete=true" in text
+    assert "existing_rendered_results=1" in text
+    assert "existing_execution_blocked=1" in text
