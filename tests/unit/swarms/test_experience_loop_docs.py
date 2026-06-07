@@ -1,6 +1,26 @@
 from pathlib import Path
 
 
+DOC_PATH = Path("docs/runtime_directive_experience_loop.md")
+
+
+def test_runtime_directive_experience_loop_docs_include_seven_stage_retry_governance_checklist() -> None:
+    text = DOC_PATH.read_text(encoding="utf-8")
+
+    assert "Seven-stage retry governance safe path" in text
+    assert "replay_lifecycle_retry_proposal" in text
+    assert "replay_lifecycle_retry_execution_eligibility" in text
+    assert "chain_records=7" in text
+    assert "seven_stage=true" in text
+    assert "eligibilities" in text
+    assert "execution_blocked=1" in text
+    assert "security_retry_execution_eligibilities=1" in text
+    assert "existing_complete=true" in text
+    assert "existing_execution_blocked=1" in text
+    assert "Controlled execution boundary" in text
+    assert "does not execute rendered retry commands" in text
+
+
 def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> None:
     path = Path("docs/runtime_directive_experience_loop.md")
 
@@ -193,3 +213,11 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "existing_complete=true" in text
     assert "existing_rendered_results=1" in text
     assert "existing_execution_blocked=1" in text
+    assert "Retry governance seven-stage smoke" in text
+    assert "chain_records=7" in text
+    assert "execution_blocked=1" in text
+    assert "Pre-controlled-runner readiness" in text
+    assert "check_retry_controlled_runner_readiness" in text
+    assert "readiness_score=100" in text
+    assert "controlled_execution_enabled=false" in text
+    assert "ready_for_controlled_runner_design" in text

@@ -776,6 +776,183 @@ reported with `existing_complete=true`, `existing_rendered_results=1`,
 
 ---
 
+## Seven-stage retry governance safe path
+
+The retry governance safe path is a non-executing seven-stage control trail:
+
+1. `replay_lifecycle_retry_proposal`
+2. `replay_lifecycle_retry_approval`
+3. `replay_lifecycle_retry_execution_plan`
+4. `replay_lifecycle_retry_rendered_command`
+5. `replay_lifecycle_retry_rendered_command_result`
+6. `replay_lifecycle_retry_execution_eligibility`
+7. `replay_lifecycle_retry_execution_result`
+
+This path is intentionally safe: rendered retry commands are only dry-run
+rendered, rendered command results are skipped when execution is disabled, and
+execution eligibility remains blocked until a future controlled runner is
+explicitly introduced.
+
+### Canonical smoke command
+
+```bash
+python -m src.testing.retry_governance_smoke \
+  --proposal-id replay-retry-seven-stage-smoke-1 \
+  --approval-id replay-retry-seven-stage-approval-1 \
+  --plan-id replay-retry-seven-stage-plan-1 \
+  --rendered-command-id replay-retry-seven-stage-command-1 \
+  --result-id replay-retry-seven-stage-result-1 \
+  --require-clean \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+````
+
+Expected output includes:
+
+```text
+status=passed
+records_seeded=5
+chain_records=7
+seven_stage=true
+rendered_command_results=1
+eligibility_results=1
+execution_blocked=1
+chain_complete=true
+observability=passed
+```
+
+### Inspector check
+
+```bash
+python -m src.testing.inspect_retry_governance_trail \
+  --require-complete \
+  --proposal-id replay-retry-seven-stage-smoke-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+Expected output includes:
+
+```text
+chain_complete=true
+missing_stages=none
+```
+
+The JSON form should include:
+
+```json
+{
+  "counts": {
+    "proposals": 1,
+    "approvals": 1,
+    "plans": 1,
+    "rendered_commands": 1,
+    "rendered_command_results": 1,
+    "eligibilities": 1,
+    "results": 1
+  },
+  "eligibility_statuses": {
+    "blocked": 1
+  },
+  "eligibility_reasons": {
+    "execution_disabled": 1
+  }
+}
+```
+
+### Observability check
+
+```bash
+python -m src.testing.check_retry_governance_observability \
+  --proposal-id replay-retry-seven-stage-smoke-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+Expected output includes:
+
+```text
+status=passed
+```
+
+Security/Overseer brief metrics should include:
+
+```text
+security_retry_rendered_commands=1
+security_retry_rendered_command_results=1
+security_retry_execution_eligibilities=1
+security_retry_execution_blocked=1
+```
+
+### Idempotent rerun behavior
+
+Rerunning `src.testing.retry_governance_smoke` without `--require-clean` against
+the same ids is expected to pass without publishing duplicates:
+
+```text
+status=passed
+records_seeded=0
+rendered_command_results=0
+eligibility_results=0
+existing_complete=true
+chain_complete=true
+observability=passed
+```
+
+Rerunning with `--require-clean` against existing ids is expected to fail the
+clean preflight while still reporting the existing complete trail:
+
+```text
+status=failed
+reason=existing_retry_governance_records
+existing_complete=true
+existing_rendered_results=1
+existing_eligibilities=1
+existing_execution_blocked=1
+```
+
+This failure is intentional: `--require-clean` means the operator requested a
+fresh trail and existing records violate that precondition.
+
+### Controlled execution boundary
+
+The current seven-stage path does not execute rendered retry commands. It only
+renders commands, records a skipped dry-run result, records blocked execution
+eligibility, and records the safe skipped execution result. Any future controlled
+runner must preserve this default non-executing behavior unless explicit policy
+and operator controls enable a narrower execution mode.
+
+---
+
+- Retry governance seven-stage smoke:
+  `python -m src.testing.retry_governance_smoke --require-clean ...`
+  Expected: `chain_records=7`, `seven_stage=true`, `execution_blocked=1`.
+
+---
+
+### Pre-controlled-runner readiness
+
+Before designing or enabling any controlled retry runner, operators can run a
+read-only readiness check:
+
+```bash
+python -m src.testing.check_retry_controlled_runner_readiness \
+  --proposal-id replay-retry-seven-stage-smoke-1 \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+The readiness check does not execute rendered commands. It verifies that the
+seven-stage safe path is complete, observability passes, rendered command
+results are skipped, execution eligibility remains blocked, execution results
+are skipped, and Security reports no invalid or critical validation records.
+
+Expected output for a complete safe baseline includes:
+
+```text
+status=passed
+readiness_score=100
+controlled_execution_enabled=false
+recommendation=ready_for_controlled_runner_design
+```
+---
+
 ## Related modules
 
 ```text
