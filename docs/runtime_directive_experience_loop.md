@@ -1085,6 +1085,11 @@ In the reject-only skeleton phase, Security accepts only rejected results with
 `reason=controlled_execution_not_implemented`, `operator_authorized=false`,
 `allowlist_matched=false`, and `payload.executed=false`.
 
+The Overseer brief surfaces controlled execution result visibility from Security
+metrics. In the reject-only phase it reports the controlled execution result
+count, rejected/skipped/executed status counts, and
+`controlled_execution_not_implemented` reason count.
+
 ---
 
 ## Related modules

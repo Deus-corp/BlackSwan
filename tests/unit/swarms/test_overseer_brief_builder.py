@@ -731,3 +731,39 @@ def test_build_global_swarm_brief_reports_retry_execution_eligibility() -> None:
     assert "retry execution eligibility record" in brief.summary.lower()
     assert "blocked=1" in brief.summary
     assert "execution_disabled=1" in brief.summary
+
+
+def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"swarm_counts": {"overseer": 1, "security": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "security_validation_record_type_counts": {
+                "replay_lifecycle_retry_controlled_execution_result": 1,
+            },
+            "security_validation_controlled_execution_result_statuses": {
+                "rejected": 1,
+            },
+            "security_validation_controlled_execution_result_reasons": {
+                "controlled_execution_not_implemented": 1,
+            },
+        },
+    )
+
+    text = brief.summary
+
+    assert "Security validated 1 controlled retry execution result record(s)." in text
+    assert (
+        "Controlled retry execution results: rejected=1, skipped=0, executed=0."
+        in text
+    )
+    assert (
+        "Controlled retry execution remains disabled/not implemented: "
+        "controlled_execution_not_implemented=1."
+        in text
+    )
+    assert brief.key_metrics["security_controlled_execution_results"] == 1
+    assert brief.key_metrics["security_controlled_execution_rejected"] == 1
+    assert brief.key_metrics["security_controlled_execution_skipped"] == 0
+    assert brief.key_metrics["security_controlled_execution_executed"] == 0
+    assert brief.key_metrics["security_controlled_execution_not_implemented"] == 1

@@ -234,6 +234,40 @@ def build_global_swarm_brief(
         security_retry_rendered_command_result_statuses.get("rejected"),
         0,
     )
+    security_controlled_execution_results = _safe_int(
+        security_validation_record_type_counts.get(
+            "replay_lifecycle_retry_controlled_execution_result"
+        ),
+        0,
+    )
+    security_controlled_execution_result_statuses = _safe_dict(
+        security_validation.get(
+            "security_validation_controlled_execution_result_statuses"
+        )
+    )
+    security_controlled_execution_result_reasons = _safe_dict(
+        security_validation.get(
+            "security_validation_controlled_execution_result_reasons"
+        )
+    )
+    security_controlled_execution_rejected = _safe_int(
+        security_controlled_execution_result_statuses.get("rejected"),
+        0,
+    )
+    security_controlled_execution_skipped = _safe_int(
+        security_controlled_execution_result_statuses.get("skipped"),
+        0,
+    )
+    security_controlled_execution_executed = _safe_int(
+        security_controlled_execution_result_statuses.get("executed"),
+        0,
+    )
+    security_controlled_execution_not_implemented = _safe_int(
+        security_controlled_execution_result_reasons.get(
+            "controlled_execution_not_implemented"
+        ),
+        0,
+    )
 
     if gold_candidates > 0:
         opportunities.append(
@@ -575,6 +609,42 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_controlled_execution_results > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Controlled retry execution results observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    f"Security validated {security_controlled_execution_results} "
+                    "controlled retry execution result record(s)."
+                ),
+                payload={
+                    "security_controlled_execution_results": (
+                        security_controlled_execution_results
+                    ),
+                    "security_controlled_execution_rejected": (
+                        security_controlled_execution_rejected
+                    ),
+                    "security_controlled_execution_skipped": (
+                        security_controlled_execution_skipped
+                    ),
+                    "security_controlled_execution_executed": (
+                        security_controlled_execution_executed
+                    ),
+                    "security_controlled_execution_not_implemented": (
+                        security_controlled_execution_not_implemented
+                    ),
+                    "security_controlled_execution_result_statuses": (
+                        security_controlled_execution_result_statuses
+                    ),
+                    "security_controlled_execution_result_reasons": (
+                        security_controlled_execution_result_reasons
+                    ),
+                    "recommendation": "review_controlled_retry_execution_results",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -764,6 +834,19 @@ def build_global_swarm_brief(
         "security_retry_execution_eligibility_statuses": security_retry_execution_eligibility_statuses,
         "security_retry_execution_eligibility_reasons": security_retry_execution_eligibility_reasons,
         "security_retry_execution_blocked": security_retry_execution_blocked,
+        "security_controlled_execution_results": security_controlled_execution_results,
+        "security_controlled_execution_result_statuses": (
+            security_controlled_execution_result_statuses
+        ),
+        "security_controlled_execution_result_reasons": (
+            security_controlled_execution_result_reasons
+        ),
+        "security_controlled_execution_rejected": security_controlled_execution_rejected,
+        "security_controlled_execution_skipped": security_controlled_execution_skipped,
+        "security_controlled_execution_executed": security_controlled_execution_executed,
+        "security_controlled_execution_not_implemented": (
+            security_controlled_execution_not_implemented
+        ),
     }
 
     summary = _build_summary(
@@ -801,6 +884,13 @@ def build_global_swarm_brief(
         security_retry_execution_eligibilities=security_retry_execution_eligibilities,
         security_retry_execution_blocked=security_retry_execution_blocked,
         security_retry_execution_eligibility_reasons=security_retry_execution_eligibility_reasons,
+        security_controlled_execution_results=security_controlled_execution_results,
+        security_controlled_execution_rejected=security_controlled_execution_rejected,
+        security_controlled_execution_skipped=security_controlled_execution_skipped,
+        security_controlled_execution_executed=security_controlled_execution_executed,
+        security_controlled_execution_not_implemented=(
+            security_controlled_execution_not_implemented
+        ),
     )
 
     return build_swarm_brief(
@@ -869,6 +959,11 @@ def _build_summary(
     security_retry_execution_eligibilities: int,
     security_retry_execution_blocked: int,
     security_retry_execution_eligibility_reasons: Mapping[str, Any],
+    security_controlled_execution_results: int,
+    security_controlled_execution_rejected: int,
+    security_controlled_execution_skipped: int,
+    security_controlled_execution_executed: int,
+    security_controlled_execution_not_implemented: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1015,6 +1110,31 @@ def _build_summary(
             f"execution_not_supported={blocked_execution_not_supported}, "
             f"missing_rendered_command_result={blocked_missing_result}, "
             f"missing_rendered_command={blocked_missing_command}."
+        )
+
+    if security_controlled_execution_results > 0:
+        parts.append(
+            f"Security validated {security_controlled_execution_results} "
+            "controlled retry execution result record(s)."
+        )
+
+    if (
+        security_controlled_execution_rejected > 0
+        or security_controlled_execution_skipped > 0
+        or security_controlled_execution_executed > 0
+    ):
+        parts.append(
+            "Controlled retry execution results: "
+            f"rejected={security_controlled_execution_rejected}, "
+            f"skipped={security_controlled_execution_skipped}, "
+            f"executed={security_controlled_execution_executed}."
+        )
+
+    if security_controlled_execution_not_implemented > 0:
+        parts.append(
+            "Controlled retry execution remains disabled/not implemented: "
+            f"controlled_execution_not_implemented="
+            f"{security_controlled_execution_not_implemented}."
         )
 
     if simulation_replay_pending > 0:
@@ -1252,6 +1372,10 @@ def _aggregate_security_validation_from_heartbeats(
     retry_rendered_command_result_reasons: dict[str, int] = {}
     retry_execution_eligibility_statuses: dict[str, int] = {}
     retry_execution_eligibility_reasons: dict[str, int] = {}
+    controlled_execution_result_statuses: dict[str, int] = {}
+    controlled_execution_result_reasons: dict[str, int] = {}
+    controlled_execution_operator_authorized: dict[str, int] = {}
+    controlled_execution_allowlist_matched: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1303,6 +1427,22 @@ def _aggregate_security_validation_from_heartbeats(
             retry_execution_eligibility_reasons,
             metrics.get("security_validation_retry_execution_eligibility_reasons"),
         )
+        _merge_int_counts(
+            controlled_execution_result_statuses,
+            metrics.get("security_validation_controlled_execution_result_statuses"),
+        )
+        _merge_int_counts(
+            controlled_execution_result_reasons,
+            metrics.get("security_validation_controlled_execution_result_reasons"),
+        )
+        _merge_int_counts(
+            controlled_execution_operator_authorized,
+            metrics.get("security_validation_controlled_execution_operator_authorized"),
+        )
+        _merge_int_counts(
+            controlled_execution_allowlist_matched,
+            metrics.get("security_validation_controlled_execution_allowlist_matched"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1324,6 +1464,18 @@ def _aggregate_security_validation_from_heartbeats(
     )
     aggregate["security_validation_retry_execution_eligibility_reasons"] = (
         retry_execution_eligibility_reasons
+    )
+    aggregate["security_validation_controlled_execution_result_statuses"] = (
+        controlled_execution_result_statuses
+    )
+    aggregate["security_validation_controlled_execution_result_reasons"] = (
+        controlled_execution_result_reasons
+    )
+    aggregate["security_validation_controlled_execution_operator_authorized"] = (
+        controlled_execution_operator_authorized
+    )
+    aggregate["security_validation_controlled_execution_allowlist_matched"] = (
+        controlled_execution_allowlist_matched
     )
 
     return aggregate

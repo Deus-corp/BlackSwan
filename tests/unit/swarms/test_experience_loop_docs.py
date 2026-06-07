@@ -250,3 +250,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "reject-only skeleton phase" in text
     assert "operator_authorized=false" in text
     assert "allowlist_matched=false" in text
+    assert "Overseer brief surfaces controlled execution result visibility" in text
+    assert "rejected/skipped/executed status counts" in text
+    assert "controlled_execution_not_implemented" in text
