@@ -748,6 +748,11 @@ result, execution eligibility, and execution result. Its summary includes
 `chain_records=7`, `seven_stage=true`, `eligibilities=1`, and
 `execution_blocked=1` when the safe path is complete. full seven-stage safe governance trail.
 
+The retry execution eligibility builder is idempotent for a rendered command.
+If an eligibility record already exists for the rendered command or plan, the
+builder skips publishing a duplicate and leaves the existing blocked decision
+in place.
+
 ---
 
 ## Related modules

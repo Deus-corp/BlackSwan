@@ -175,3 +175,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "chain_records=7" in text
     assert "seven_stage=true" in text
     assert "eligibilities=1" in text
+    assert "eligibility builder is idempotent" in text
+    assert "skips publishing a duplicate" in text
+    assert "existing blocked decision" in text

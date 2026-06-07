@@ -148,3 +148,45 @@ async def test_build_retry_execution_eligibilities_publishes_to_crdt(tmp_path) -
 
     assert len(stored) == 1
     assert stored[0]["execution_supported"] is False
+
+
+@pytest.mark.asyncio
+async def test_build_retry_execution_eligibilities_skips_existing_for_rendered_command(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(_rendered_command())
+    await crdt.add_genome(_rendered_command_result())
+
+    first = await build_retry_execution_eligibilities(
+        argparse.Namespace(
+            db_path=db_path,
+            source="eligibility-test",
+            rendered_command_id="rendered-1",
+            plan_id="",
+        )
+    )
+    second = await build_retry_execution_eligibilities(
+        argparse.Namespace(
+            db_path=db_path,
+            source="eligibility-test",
+            rendered_command_id="rendered-1",
+            plan_id="",
+        )
+    )
+
+    assert len(first) == 1
+    assert len(second) == 0
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    state = getattr(reader, "state", {}) or {}
+    stored = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type") == "replay_lifecycle_retry_execution_eligibility"
+        and item.get("rendered_command_id") == "rendered-1"
+    ]
+
+    assert len(stored) == 1
+    assert stored[0]["status"] == "blocked"
+    assert stored[0]["reason"] == "execution_disabled"

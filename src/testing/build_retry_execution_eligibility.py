@@ -85,10 +85,28 @@ async def build_retry_execution_eligibilities(
 
         eligibilities: list[dict[str, Any]] = []
         for rendered_command in rendered_commands:
+            current_rendered_command_id = str(
+                rendered_command.get("rendered_command_id") or ""
+            ).strip()
+            current_plan_id = str(rendered_command.get("plan_id") or "").strip()
+
+            existing_eligibility = _find_existing_eligibility(
+                records,
+                rendered_command_id=current_rendered_command_id,
+                plan_id=current_plan_id,
+            )
+            if existing_eligibility is not None:
+                logger.info(
+                    "Skipping duplicate retry execution eligibility: rendered_command_id=%s plan_id=%s",
+                    current_rendered_command_id,
+                    current_plan_id,
+                )
+                continue
+
             result = _find_rendered_command_result(
                 records,
-                rendered_command_id=str(rendered_command.get("rendered_command_id") or "").strip(),
-                plan_id=str(rendered_command.get("plan_id") or "").strip(),
+                rendered_command_id=current_rendered_command_id,
+                plan_id=current_plan_id,
             )
             eligibility = build_retry_execution_eligibility(
                 rendered_command,
@@ -96,6 +114,7 @@ async def build_retry_execution_eligibilities(
                 source=source,
             )
             await crdt.add_genome(eligibility)
+            records.append(eligibility)
             eligibilities.append(eligibility)
             logger.info(
                 "Published retry execution eligibility: rendered_command_id=%s status=%s reason=%s",
@@ -263,6 +282,23 @@ def _find_rendered_command_result(
             return item
     return None
 
+def _find_existing_eligibility(
+    records: list[Mapping[str, Any]],
+    *,
+    rendered_command_id: str,
+    plan_id: str,
+) -> Mapping[str, Any] | None:
+    for item in records:
+        if item.get("type") != "replay_lifecycle_retry_execution_eligibility":
+            continue
+        if (
+            rendered_command_id
+            and str(item.get("rendered_command_id") or "").strip() == rendered_command_id
+        ):
+            return item
+        if plan_id and str(item.get("plan_id") or "").strip() == plan_id:
+            return item
+    return None
 
 def _matches_filters(
     record: Mapping[str, Any],
