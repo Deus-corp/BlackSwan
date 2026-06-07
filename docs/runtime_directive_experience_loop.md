@@ -758,6 +758,11 @@ If a `replay_lifecycle_retry_rendered_command_result` already exists for the
 rendered command or plan, the runner skips publishing a duplicate and leaves the
 existing skipped dry-run result in place.
 
+The retry governance seed helper is idempotent for explicit governance ids.
+If a proposal, approval, execution plan, rendered command, or execution result
+already exists with the requested id, the seed helper skips publishing a
+duplicate and leaves the existing governance record in place.
+
 ---
 
 ## Related modules

@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Mapping
 
 from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
@@ -217,20 +217,44 @@ async def seed_retry_governance_trail(args: argparse.Namespace) -> list[dict[str
     records = [proposal, approval, plan, rendered_command, result]
 
     crdt = CRDTAdapter(node_id=source, db_path=db_path)
+
     try:
+        refresh = getattr(crdt, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
+
+        state = getattr(crdt, "state", {}) or {}
+        existing_records = [
+            item for item in state.values()
+            if isinstance(item, Mapping)
+        ]
+
+        published: list[dict[str, Any]] = []
         for record in records:
+            existing = _find_existing_record(existing_records, record)
+            if existing is not None:
+                logger.info(
+                    "Skipping duplicate retry governance record: type=%s id=%s",
+                    record.get("type"),
+                    _record_id(record),
+                )
+                continue
+
             await crdt.add_genome(record)
+            existing_records.append(record)
+            published.append(record)
             logger.info(
                 "Seeded retry governance record: type=%s id=%s",
                 record.get("type"),
                 _record_id(record),
             )
+
+        logger.info("Seeded retry governance trail: records=%d", len(published))
+        return published
     finally:
         close = getattr(crdt, "close", None)
         if callable(close):
             close()
-
-    return records
 
 
 def _record_id(record: dict[str, Any]) -> str:
@@ -255,6 +279,25 @@ def _record_id(record: dict[str, Any]) -> str:
             return value
 
     return ""
+
+
+def _find_existing_record(
+    records: list[Mapping[str, Any]],
+    record: Mapping[str, Any],
+) -> Mapping[str, Any] | None:
+    expected_type = str(record.get("type") or "").strip()
+    expected_id = _record_id(record)
+
+    if not expected_type or not expected_id:
+        return None
+
+    for item in records:
+        if str(item.get("type") or "").strip() != expected_type:
+            continue
+        if _record_id(item) == expected_id:
+            return item
+
+    return None
 
 
 async def async_main() -> int:

@@ -182,3 +182,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "replay_lifecycle_retry_rendered_command_result" in text
     assert "skips publishing a duplicate" in text
     assert "existing skipped dry-run result" in text
+    assert "retry governance seed helper is idempotent" in text
+    assert "skips publishing a duplicate" in text
+    assert "existing governance record" in text

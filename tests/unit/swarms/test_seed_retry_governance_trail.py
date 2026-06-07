@@ -212,3 +212,54 @@ def test_seed_retry_governance_trail_record_id_is_type_aware() -> None:
             "result_id": "result-test",
         }
     ) == "result-test"
+
+
+@pytest.mark.asyncio
+async def test_seed_retry_governance_trail_skips_existing_records(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+
+    args = argparse.Namespace(
+        db_path=db_path,
+        source="retry-governance-seed-test",
+        proposal_id="proposal-test",
+        approval_id="approval-test",
+        plan_id="plan-test",
+        rendered_command_id="rendered-command-test",
+        result_id="result-test",
+        timeout_profile="standard",
+        decision_mode="manual",
+    )
+
+    first = await seed_retry_governance_trail(args)
+    second = await seed_retry_governance_trail(args)
+
+    assert len(first) == 5
+    assert len(second) == 0
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    state = getattr(reader, "state", {}) or {}
+
+    governance_records = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type")
+        in {
+            "replay_lifecycle_retry_proposal",
+            "replay_lifecycle_retry_approval",
+            "replay_lifecycle_retry_execution_plan",
+            "replay_lifecycle_retry_rendered_command",
+            "replay_lifecycle_retry_execution_result",
+        }
+    ]
+
+    assert len(governance_records) == 5
+    assert sorted(_record_id(item) for item in governance_records) == sorted(
+        [
+            "proposal-test",
+            "approval-test",
+            "plan-test",
+            "rendered-command-test",
+            "result-test",
+        ]
+    )
