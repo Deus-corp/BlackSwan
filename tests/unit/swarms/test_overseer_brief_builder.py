@@ -747,6 +747,15 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "security_validation_controlled_execution_result_reasons": {
                 "controlled_execution_not_implemented": 1,
             },
+            "security_validation_controlled_execution_command_parse_valid": {
+                "true": 1
+            },
+            "security_validation_controlled_execution_command_parse_allowlist_matched": {
+                "true": 1
+            },
+            "security_validation_controlled_execution_command_parse_execution_performed": {
+                "false": 1
+            },
         },
     )
 
@@ -767,3 +776,6 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert brief.key_metrics["security_controlled_execution_skipped"] == 0
     assert brief.key_metrics["security_controlled_execution_executed"] == 0
     assert brief.key_metrics["security_controlled_execution_not_implemented"] == 1
+    assert brief.key_metrics["security_controlled_command_parse_valid"] == 1
+    assert brief.key_metrics["security_controlled_command_parse_allowlisted"] == 1
+    assert brief.key_metrics["security_controlled_command_parse_execution_performed"] == 0

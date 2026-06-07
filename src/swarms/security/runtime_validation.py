@@ -198,6 +198,9 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     controlled_execution_result_reasons: dict[str, int] = {}
     controlled_execution_operator_authorized: dict[str, int] = {}
     controlled_execution_allowlist_matched: dict[str, int] = {}
+    controlled_execution_command_parse_valid: dict[str, int] = {}
+    controlled_execution_command_parse_allowlist_matched: dict[str, int] = {}
+    controlled_execution_command_parse_execution_performed: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -275,6 +278,36 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 controlled_execution_allowlist_matched.get(allowlist_matched, 0) + 1
             )
 
+            command_parse_valid = str(
+                bool(item.get("command_parse_valid"))
+            ).lower()
+            command_parse_allowlist_matched = str(
+                bool(item.get("command_parse_allowlist_matched"))
+            ).lower()
+            command_parse_execution_performed = str(
+                bool(item.get("command_parse_execution_performed"))
+            ).lower()
+
+            controlled_execution_command_parse_valid[command_parse_valid] = (
+                controlled_execution_command_parse_valid.get(command_parse_valid, 0) + 1
+            )
+            controlled_execution_command_parse_allowlist_matched[
+                command_parse_allowlist_matched
+            ] = (
+                controlled_execution_command_parse_allowlist_matched.get(
+                    command_parse_allowlist_matched, 0
+                )
+                + 1
+            )
+            controlled_execution_command_parse_execution_performed[
+                command_parse_execution_performed
+            ] = (
+                controlled_execution_command_parse_execution_performed.get(
+                    command_parse_execution_performed, 0
+                )
+                + 1
+            )
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -298,6 +331,13 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "controlled_execution_result_reasons": controlled_execution_result_reasons,
         "controlled_execution_operator_authorized": controlled_execution_operator_authorized,
         "controlled_execution_allowlist_matched": controlled_execution_allowlist_matched,
+        "controlled_execution_command_parse_valid": controlled_execution_command_parse_valid,
+        "controlled_execution_command_parse_allowlist_matched": (
+            controlled_execution_command_parse_allowlist_matched
+        ),
+        "controlled_execution_command_parse_execution_performed": (
+            controlled_execution_command_parse_execution_performed
+        ),
     }
 
 
@@ -335,6 +375,15 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         ],
         "security_validation_controlled_execution_allowlist_matched": summary[
             "controlled_execution_allowlist_matched"
+        ],
+        "security_validation_controlled_execution_command_parse_valid": summary[
+            "controlled_execution_command_parse_valid"
+        ],
+        "security_validation_controlled_execution_command_parse_allowlist_matched": summary[
+            "controlled_execution_command_parse_allowlist_matched"
+        ],
+        "security_validation_controlled_execution_command_parse_execution_performed": summary[
+            "controlled_execution_command_parse_execution_performed"
         ],
     }
 
@@ -1140,6 +1189,19 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
     payload_mapping = payload if isinstance(payload, Mapping) else {}
     payload_executed = bool(payload_mapping.get("executed"))
 
+    command_parse = record.get("command_parse")
+    if not isinstance(command_parse, Mapping):
+        command_parse = payload_mapping.get("command_parse")
+
+    command_parse_mapping = command_parse if isinstance(command_parse, Mapping) else {}
+    command_parse_valid = bool(command_parse_mapping.get("valid"))
+    command_parse_allowlist_matched = bool(
+        command_parse_mapping.get("allowlist_matched")
+    )
+    command_parse_execution_performed = bool(
+        command_parse_mapping.get("execution_performed")
+    )
+
     if not controlled_execution_result_id:
         reasons.append("missing_controlled_execution_result_id")
     if not rendered_command_id:
@@ -1153,6 +1215,12 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
 
     if status not in {"rejected", "skipped", "executed"}:
         reasons.append("invalid_status")
+
+    if not command_parse_mapping:
+        reasons.append("missing_command_parse")
+
+    if command_parse_execution_performed:
+        reasons.append("command_parse_must_not_execute")
 
     if reason not in {
         "controlled_execution_not_implemented",
@@ -1209,6 +1277,9 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         "timeout_profile": timeout_profile or "unknown",
         "decision_mode": decision_mode or "unknown",
         "command": command,
+        "command_parse_valid": command_parse_valid,
+        "command_parse_allowlist_matched": command_parse_allowlist_matched,
+        "command_parse_execution_performed": command_parse_execution_performed,
     }
 
 

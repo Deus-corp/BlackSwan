@@ -164,6 +164,30 @@ def inspect_retry_governance_trail_from_records(
         str(item.get("reason") or "unknown").strip() or "unknown"
         for item in controlled_execution_results
     )
+    controlled_command_parse_valid = Counter(
+        str(
+            bool(
+                _command_parse(item).get("valid")
+            )
+        ).lower()
+        for item in controlled_execution_results
+    )
+    controlled_command_parse_allowlist_matched = Counter(
+        str(
+            bool(
+                _command_parse(item).get("allowlist_matched")
+            )
+        ).lower()
+        for item in controlled_execution_results
+    )
+    controlled_command_parse_execution_performed = Counter(
+        str(
+            bool(
+                _command_parse(item).get("execution_performed")
+            )
+        ).lower()
+        for item in controlled_execution_results
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -226,6 +250,13 @@ def inspect_retry_governance_trail_from_records(
         "chain_ids": chain_ids,
         "chain_complete": not missing_stages,
         "missing_stages": missing_stages,
+        "controlled_command_parse_valid": dict(controlled_command_parse_valid),
+        "controlled_command_parse_allowlist_matched": dict(
+            controlled_command_parse_allowlist_matched
+        ),
+        "controlled_command_parse_execution_performed": dict(
+            controlled_command_parse_execution_performed
+        ),
     }
 
 def _missing_stages(
@@ -308,6 +339,20 @@ def _matches_filters(
 
 def _clean_status(value: Any) -> str:
     return str(value or "unknown").strip().lower() or "unknown"
+
+
+def _command_parse(record: Mapping[str, Any]) -> Mapping[str, Any]:
+    command_parse = record.get("command_parse")
+    if isinstance(command_parse, Mapping):
+        return command_parse
+
+    payload = record.get("payload")
+    if isinstance(payload, Mapping):
+        nested = payload.get("command_parse")
+        if isinstance(nested, Mapping):
+            return nested
+
+    return {}
 
 
 def _build_chain_ids(
@@ -451,6 +496,21 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("controlled_execution_result_reasons"), Mapping)
         else {}
     )
+    controlled_command_parse_valid = (
+        summary.get("controlled_command_parse_valid")
+        if isinstance(summary.get("controlled_command_parse_valid"), Mapping)
+        else {}
+    )
+    controlled_command_parse_allowlist_matched = (
+        summary.get("controlled_command_parse_allowlist_matched")
+        if isinstance(summary.get("controlled_command_parse_allowlist_matched"), Mapping)
+        else {}
+    )
+    controlled_command_parse_execution_performed = (
+        summary.get("controlled_command_parse_execution_performed")
+        if isinstance(summary.get("controlled_command_parse_execution_performed"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -482,6 +542,9 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"extended_controlled_execution_observed={str(bool(summary.get('extended_controlled_execution_observed'))).lower()} "
         f"chain_complete={str(chain_complete).lower()} "
         f"missing_stages={missing_text} "
+        f"command_parse_valid={controlled_command_parse_valid.get('true', 0)} "
+        f"command_parse_allowlisted={controlled_command_parse_allowlist_matched.get('true', 0)} "
+        f"command_parse_execution_performed={controlled_command_parse_execution_performed.get('true', 0)} "
     )
 
 

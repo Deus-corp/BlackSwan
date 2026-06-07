@@ -33,6 +33,9 @@ def test_controlled_retry_execution_observability_passes_for_reject_only_result(
     assert result["controlled_execution_not_implemented"] == 1
     assert result["controlled_execution_enabled"] is False
     assert "controlled_execution_allowlist_match_does_not_execute" not in result["failed_checks"]
+    assert result["controlled_command_parse_valid"] == 1
+    assert result["controlled_command_parse_allowlisted"] == 1
+    assert result["controlled_command_parse_execution_performed"] == 0
     assert _exit_code_for_result(result) == 0
 
 
@@ -98,3 +101,14 @@ def test_controlled_retry_execution_observability_allows_allowlist_match_without
     assert result["controlled_execution_rejected"] == 1
     assert result["controlled_execution_executed"] == 0
     assert result["failed_checks"] == []
+
+
+def test_controlled_retry_execution_observability_fails_when_command_parse_executed() -> None:
+    record = _controlled_result()
+    record["command_parse"]["execution_performed"] = True
+    record["payload"]["command_parse"]["execution_performed"] = True
+
+    result = check_controlled_retry_execution_observability_from_records([record])
+
+    assert result["status"] == "failed"
+    assert "controlled_command_parse_did_not_execute" in result["failed_checks"]

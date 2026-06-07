@@ -266,3 +266,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "read-only command allowlist parser" in text
     assert "execution_performed=false" in text
     assert "Parser allowlist matches do not enable execution" in text
+    assert "Controlled command parse observability" in text
+    assert "command_parse_valid=1" in text
+    assert "command_parse_allowlisted=1" in text
+    assert "command_parse_execution_performed=0" in text

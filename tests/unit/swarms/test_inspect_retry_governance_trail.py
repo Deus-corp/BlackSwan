@@ -329,7 +329,35 @@ def _controlled_execution_result(**overrides):
         "execution_enabled": False,
         "operator_authorized": False,
         "allowlist_matched": False,
-        "payload": {"executed": False},
+        "command_parse": {
+            "type": "controlled_retry_command_parse_result",
+            "valid": True,
+            "allowlist_matched": True,
+            "reasons": [],
+            "module": "src.testing.run_replay_evidence_check",
+            "args": {
+                "scenario_id": "replay-controlled-test",
+                "directive_id": "runtime-run-replay-controlled-test",
+                "timeout_profile": "standard",
+            },
+            "execution_performed": False,
+        },
+        "payload": {
+            "executed": False,
+            "command_parse": {
+                "type": "controlled_retry_command_parse_result",
+                "valid": True,
+                "allowlist_matched": True,
+                "reasons": [],
+                "module": "src.testing.run_replay_evidence_check",
+                "args": {
+                    "scenario_id": "replay-controlled-test",
+                    "directive_id": "runtime-run-replay-controlled-test",
+                    "timeout_profile": "standard",
+                },
+                "execution_performed": False,
+            },
+        },
     }
     item.update(overrides)
     return item
@@ -364,6 +392,9 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["chain_ids"]["controlled_execution_result_ids"] == [
         "controlled-result-1"
     ]
+    assert summary["controlled_command_parse_valid"]["true"] == 1
+    assert summary["controlled_command_parse_allowlist_matched"]["true"] == 1
+    assert summary["controlled_command_parse_execution_performed"]["false"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:

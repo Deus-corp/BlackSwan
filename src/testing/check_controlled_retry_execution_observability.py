@@ -75,6 +75,21 @@ def _build_checks(
     reasons = _safe_mapping(
         metrics.get("security_validation_controlled_execution_result_reasons")
     )
+
+    parse_valid = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_command_parse_valid")
+    )
+    parse_allowlist_matched = _safe_mapping(
+        metrics.get(
+            "security_validation_controlled_execution_command_parse_allowlist_matched"
+        )
+    )
+    parse_execution_performed = _safe_mapping(
+        metrics.get(
+            "security_validation_controlled_execution_command_parse_execution_performed"
+        )
+    )
+
     record_type_counts = _safe_mapping(metrics.get("security_validation_record_type_counts"))
 
     rejected = _safe_int(statuses.get("rejected"), 0)
@@ -82,6 +97,12 @@ def _build_checks(
     security_count = _safe_int(
         record_type_counts.get(CONTROLLED_RESULT_TYPE),
         0,
+    )
+
+    parse_valid_true = _safe_int(parse_valid.get("true"), 0)
+    parse_allowlisted_true = _safe_int(parse_allowlist_matched.get("true"), 0)
+    parse_execution_performed_true = _safe_int(
+        parse_execution_performed.get("true"), 0
     )
 
     payload_executed_count = 0
@@ -138,6 +159,21 @@ def _build_checks(
             "status": "passed" if security_count > 0 else "failed",
             "value": security_count,
         },
+        {
+            "name": "controlled_command_parse_valid",
+            "status": "passed" if parse_valid_true > 0 else "failed",
+            "value": parse_valid_true,
+        },
+        {
+            "name": "controlled_command_parse_allowlisted",
+            "status": "passed" if parse_allowlisted_true > 0 else "failed",
+            "value": parse_allowlisted_true,
+        },
+        {
+            "name": "controlled_command_parse_did_not_execute",
+            "status": "passed" if parse_execution_performed_true == 0 else "failed",
+            "value": parse_execution_performed_true,
+        },
     ]
 
 
@@ -178,6 +214,28 @@ def check_controlled_retry_execution_observability_from_records(
             reasons.get("controlled_execution_not_implemented"),
             0,
         ),
+        "controlled_command_parse_valid": _safe_int(
+            _safe_mapping(
+                metrics.get("security_validation_controlled_execution_command_parse_valid")
+            ).get("true"),
+            0,
+        ),
+        "controlled_command_parse_allowlisted": _safe_int(
+            _safe_mapping(
+                metrics.get(
+                    "security_validation_controlled_execution_command_parse_allowlist_matched"
+                )
+            ).get("true"),
+            0,
+        ),
+        "controlled_command_parse_execution_performed": _safe_int(
+            _safe_mapping(
+                metrics.get(
+                    "security_validation_controlled_execution_command_parse_execution_performed"
+                )
+            ).get("true"),
+            0,
+        ),
         "controlled_execution_enabled": False,
         "checks": checks,
         "failed_checks": [str(item.get("name")) for item in failed_checks],
@@ -200,6 +258,30 @@ def check_controlled_retry_execution_observability_from_records(
             ),
             "security_controlled_execution_not_implemented": _safe_int(
                 reasons.get("controlled_execution_not_implemented"),
+                0,
+            ),
+            "security_controlled_command_parse_valid": _safe_int(
+                _safe_mapping(
+                    metrics.get(
+                        "security_validation_controlled_execution_command_parse_valid"
+                    )
+                ).get("true"),
+                0,
+            ),
+            "security_controlled_command_parse_allowlisted": _safe_int(
+                _safe_mapping(
+                    metrics.get(
+                        "security_validation_controlled_execution_command_parse_allowlist_matched"
+                    )
+                ).get("true"),
+                0,
+            ),
+            "security_controlled_command_parse_execution_performed": _safe_int(
+                _safe_mapping(
+                    metrics.get(
+                        "security_validation_controlled_execution_command_parse_execution_performed"
+                    )
+                ).get("true"),
                 0,
             ),
         },
@@ -266,6 +348,9 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"controlled_execution_enabled="
         f"{str(bool(result.get('controlled_execution_enabled'))).lower()} "
         f"failed_checks={','.join(str(item) for item in failed_checks)} "
+        f"command_parse_valid={result.get('controlled_command_parse_valid', 0)} "
+        f"command_parse_allowlisted={result.get('controlled_command_parse_allowlisted', 0)} "
+        f"command_parse_execution_performed={result.get('controlled_command_parse_execution_performed', 0)} "
     )
 
 

@@ -1235,6 +1235,30 @@ def _retry_controlled_execution_result(**overrides):
         "timeout_profile": "standard",
         "decision_mode": "manual",
         "command": command,
+        "command_parse": {
+            "type": "controlled_retry_command_parse_result",
+            "valid": True,
+            "allowlist_matched": True,
+            "reasons": [],
+            "argv": [
+                "python",
+                "-m",
+                "src.testing.run_replay_evidence_check",
+                "--scenario-id",
+                "replay-controlled-test",
+                "--directive-id",
+                "runtime-run-replay-controlled-test",
+                "--timeout-profile",
+                "standard",
+            ],
+            "module": "src.testing.run_replay_evidence_check",
+            "args": {
+                "scenario_id": "replay-controlled-test",
+                "directive_id": "runtime-run-replay-controlled-test",
+                "timeout_profile": "standard",
+            },
+            "execution_performed": False,
+        },
         "payload": {
             "rendered_command_id": "rendered-command-1",
             "plan_id": "plan-1",
@@ -1250,6 +1274,19 @@ def _retry_controlled_execution_result(**overrides):
             "decision_mode": "manual",
             "command": command,
             "executed": False,
+            "command_parse": {
+                "type": "controlled_retry_command_parse_result",
+                "valid": True,
+                "allowlist_matched": True,
+                "reasons": [],
+                "module": "src.testing.run_replay_evidence_check",
+                "args": {
+                    "scenario_id": "replay-controlled-test",
+                    "directive_id": "runtime-run-replay-controlled-test",
+                    "timeout_profile": "standard",
+                },
+                "execution_performed": False,
+            },
         },
     }
     item.update(overrides)
@@ -1268,6 +1305,9 @@ def test_validate_retry_controlled_execution_result_accepts_reject_only_skeleton
     assert result["operator_authorized"] is False
     assert result["allowlist_matched"] is True
     assert result["payload_executed"] is False
+    assert result["command_parse_valid"] is True
+    assert result["command_parse_allowlist_matched"] is True
+    assert result["command_parse_execution_performed"] is False
     assert result["reasons"] == []
 
 
@@ -1330,6 +1370,15 @@ def test_security_validation_metrics_counts_retry_controlled_execution_results()
     assert metrics["security_validation_controlled_execution_allowlist_matched"][
         "true"
     ] == 1
+    assert metrics["security_validation_controlled_execution_command_parse_valid"][
+        "true"
+    ] == 1
+    assert metrics[
+        "security_validation_controlled_execution_command_parse_allowlist_matched"
+    ]["true"] == 1
+    assert metrics[
+        "security_validation_controlled_execution_command_parse_execution_performed"
+    ]["false"] == 1
 
 
 def test_validate_retry_controlled_execution_result_accepts_allowlist_match_without_execution() -> None:
@@ -1340,3 +1389,25 @@ def test_validate_retry_controlled_execution_result_accepts_allowlist_match_with
     assert result["valid"] is True
     assert result["allowlist_matched"] is True
     assert result["payload_executed"] is False
+
+
+def test_validate_retry_controlled_execution_result_rejects_missing_command_parse() -> None:
+    record = _retry_controlled_execution_result()
+    record.pop("command_parse", None)
+    record["payload"].pop("command_parse", None)
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "missing_command_parse" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_parse_execution_performed() -> None:
+    record = _retry_controlled_execution_result()
+    record["command_parse"]["execution_performed"] = True
+    record["payload"]["command_parse"]["execution_performed"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "command_parse_must_not_execute" in result["reasons"]

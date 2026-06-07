@@ -1104,6 +1104,11 @@ modules, and reports `execution_performed=false`. Parser allowlist matches do no
 enable execution; the controlled runner remains reject-only with
 `reason=controlled_execution_not_implemented`. Parser allowlist matches do not enable execution.
 
+Controlled command parse observability is surfaced through Security metrics,
+the governance trail inspector, controlled execution observability, and Overseer
+briefs. A valid parser observation reports `command_parse_valid=1`,
+`command_parse_allowlisted=1`, and `command_parse_execution_performed=0`.
+
 ---
 
 ### Controlled execution observability check

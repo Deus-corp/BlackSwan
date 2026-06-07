@@ -75,6 +75,28 @@ def test_security_node_heartbeat_reports_runtime_validation_metrics() -> None:
     assert metrics["security_validation_controlled_execution_result_reasons"] == {}
     assert metrics["security_validation_controlled_execution_operator_authorized"] == {}
     assert metrics["security_validation_controlled_execution_allowlist_matched"] == {}
+    assert "security_validation_controlled_execution_command_parse_valid" in metrics
+    assert (
+        "security_validation_controlled_execution_command_parse_allowlist_matched"
+        in metrics
+    )
+    assert (
+        "security_validation_controlled_execution_command_parse_execution_performed"
+        in metrics
+    )
+    assert metrics["security_validation_controlled_execution_command_parse_valid"] == {}
+    assert (
+        metrics[
+            "security_validation_controlled_execution_command_parse_allowlist_matched"
+        ]
+        == {}
+    )
+    assert (
+        metrics[
+            "security_validation_controlled_execution_command_parse_execution_performed"
+        ]
+        == {}
+    )
 
 def make_security_node() -> SecurityNode:
     try:

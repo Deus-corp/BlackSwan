@@ -191,6 +191,30 @@ def build_global_swarm_brief(
         ),
         0,
     )
+    security_controlled_command_parse_valid = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_command_parse_valid"
+            )
+        ).get("true"),
+        0,
+    )
+    security_controlled_command_parse_allowlisted = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_command_parse_allowlist_matched"
+            )
+        ).get("true"),
+        0,
+    )
+    security_controlled_command_parse_execution_performed = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_command_parse_execution_performed"
+            )
+        ).get("true"),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -645,6 +669,31 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_controlled_command_parse_valid > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Controlled retry command parser observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Controlled retry command parser recognized "
+                    f"{security_controlled_command_parse_allowlisted} "
+                    "allowlisted command(s) without execution."
+                ),
+                payload={
+                    "security_controlled_command_parse_valid": (
+                        security_controlled_command_parse_valid
+                    ),
+                    "security_controlled_command_parse_allowlisted": (
+                        security_controlled_command_parse_allowlisted
+                    ),
+                    "security_controlled_command_parse_execution_performed": (
+                        security_controlled_command_parse_execution_performed
+                    ),
+                    "recommendation": "keep_controlled_execution_disabled_until_authorized",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -847,6 +896,15 @@ def build_global_swarm_brief(
         "security_controlled_execution_not_implemented": (
             security_controlled_execution_not_implemented
         ),
+        "security_controlled_command_parse_valid": (
+            security_controlled_command_parse_valid
+        ),
+        "security_controlled_command_parse_allowlisted": (
+            security_controlled_command_parse_allowlisted
+        ),
+        "security_controlled_command_parse_execution_performed": (
+            security_controlled_command_parse_execution_performed
+        ),
     }
 
     summary = _build_summary(
@@ -890,6 +948,13 @@ def build_global_swarm_brief(
         security_controlled_execution_executed=security_controlled_execution_executed,
         security_controlled_execution_not_implemented=(
             security_controlled_execution_not_implemented
+        ),
+        security_controlled_command_parse_valid=security_controlled_command_parse_valid,
+        security_controlled_command_parse_allowlisted=(
+            security_controlled_command_parse_allowlisted
+        ),
+        security_controlled_command_parse_execution_performed=(
+            security_controlled_command_parse_execution_performed
         ),
     )
 
@@ -964,6 +1029,9 @@ def _build_summary(
     security_controlled_execution_skipped: int,
     security_controlled_execution_executed: int,
     security_controlled_execution_not_implemented: int,
+    security_controlled_command_parse_valid: int,
+    security_controlled_command_parse_allowlisted: int,
+    security_controlled_command_parse_execution_performed: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1079,6 +1147,19 @@ def _build_summary(
         parts.append(
             "Security observed retry execution eligibility statuses: "
             f"blocked={security_retry_execution_blocked}."
+        )
+
+    if security_controlled_command_parse_valid > 0:
+        parts.append(
+            "Controlled retry command parser recognized "
+            f"{security_controlled_command_parse_allowlisted} allowlisted command(s). "
+            "No controlled command execution was performed."
+        )
+
+    if security_controlled_command_parse_execution_performed > 0:
+        parts.append(
+            "Controlled retry command parser reported execution_performed="
+            f"{security_controlled_command_parse_execution_performed}."
         )
 
     blocked_execution_disabled = _safe_int(
@@ -1376,6 +1457,9 @@ def _aggregate_security_validation_from_heartbeats(
     controlled_execution_result_reasons: dict[str, int] = {}
     controlled_execution_operator_authorized: dict[str, int] = {}
     controlled_execution_allowlist_matched: dict[str, int] = {}
+    controlled_execution_command_parse_valid: dict[str, int] = {}
+    controlled_execution_command_parse_allowlist_matched: dict[str, int] = {}
+    controlled_execution_command_parse_execution_performed: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1443,6 +1527,22 @@ def _aggregate_security_validation_from_heartbeats(
             controlled_execution_allowlist_matched,
             metrics.get("security_validation_controlled_execution_allowlist_matched"),
         )
+        _merge_int_counts(
+            controlled_execution_command_parse_valid,
+            metrics.get("security_validation_controlled_execution_command_parse_valid"),
+        )
+        _merge_int_counts(
+            controlled_execution_command_parse_allowlist_matched,
+            metrics.get(
+                "security_validation_controlled_execution_command_parse_allowlist_matched"
+            ),
+        )
+        _merge_int_counts(
+            controlled_execution_command_parse_execution_performed,
+            metrics.get(
+                "security_validation_controlled_execution_command_parse_execution_performed"
+            ),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1477,6 +1577,15 @@ def _aggregate_security_validation_from_heartbeats(
     aggregate["security_validation_controlled_execution_allowlist_matched"] = (
         controlled_execution_allowlist_matched
     )
+    aggregate["security_validation_controlled_execution_command_parse_valid"] = (
+        controlled_execution_command_parse_valid
+    )
+    aggregate[
+        "security_validation_controlled_execution_command_parse_allowlist_matched"
+    ] = controlled_execution_command_parse_allowlist_matched
+    aggregate[
+        "security_validation_controlled_execution_command_parse_execution_performed"
+    ] = controlled_execution_command_parse_execution_performed
 
     return aggregate
 
