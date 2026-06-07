@@ -951,6 +951,115 @@ readiness_score=100
 controlled_execution_enabled=false
 recommendation=ready_for_controlled_runner_design
 ```
+
+---
+
+### Controlled retry runner contract
+
+The controlled retry runner is not implemented yet. Before implementation, the
+project defines the following contract for any future controlled execution path.
+
+#### Default posture
+
+Controlled retry execution is disabled by default. The safe seven-stage retry
+governance path remains non-executing unless a future runner receives explicit
+operator authorization and passes all readiness and validation gates.
+
+A future controlled runner must never execute rendered retry commands merely
+because a command was rendered, approved, or marked eligible. Rendering,
+approval, and eligibility are necessary but not sufficient for execution.
+
+#### Required gates
+
+A future controlled retry runner must require all of the following before it can
+attempt execution:
+
+- `src.testing.check_retry_controlled_runner_readiness` reports
+  `status=passed` and `readiness_score=100`.
+- The seven-stage safe governance trail is complete.
+- Security/Overseer observability reports the trail as passed.
+- The rendered command has a prior
+  `replay_lifecycle_retry_rendered_command_result` with `status=skipped`.
+- The execution eligibility record exists and remains `status=blocked`.
+- The approval, execution plan, and rendered command explicitly opt in with
+  `execution_enabled=true`.
+- The operator provides an explicit controlled-execution flag, such as
+  `--allow-controlled-execution`.
+- The command matches an allowlisted module invocation.
+
+#### Initial allowlist
+
+The initial controlled runner allowlist is limited to:
+
+```text
+python -m src.testing.run_replay_evidence_check
+```
+
+The runner must reject arbitrary shell commands, `shell=True`, chained commands,
+unrecognized Python modules, and commands that request network, trading, or other
+side effects outside the explicit allowlist.
+
+#### Required rejection behavior
+
+A future controlled runner must reject or skip execution when any of the
+following is true:
+
+* readiness is missing or not `readiness_score=100`;
+* the safe seven-stage trail is incomplete;
+* Security reports invalid or critical validation records;
+* the rendered command result is missing;
+* execution eligibility is missing;
+* execution eligibility is not blocked before the controlled decision;
+* approval, plan, or rendered command does not explicitly set
+  `execution_enabled=true`;
+* the operator flag is missing;
+* the command is not allowlisted;
+* a controlled execution result already exists for the rendered command.
+
+#### Controlled execution result
+
+A future controlled runner must publish a new record type rather than mutating
+the safe baseline trail:
+
+```text
+replay_lifecycle_retry_controlled_execution_result
+```
+
+The result must include:
+
+* `controlled_execution_result_id`
+* `rendered_command_id`
+* `plan_id`
+* `proposal_id`
+* `approval_id`
+* `status`: `executed`, `skipped`, or `rejected`
+* `reason`
+* `execution_enabled`
+* `operator_authorized`
+* `allowlist_matched`
+* `readiness_score`
+* `payload.executed`
+
+The controlled execution result must be idempotent for a rendered command. A
+second run for the same rendered command must not publish a duplicate controlled
+execution result.
+
+#### Non-goals for the first implementation
+
+The first controlled runner implementation must not support arbitrary command
+execution, live trading, network side effects, shell pipelines, background
+processes, or unrestricted subprocess execution.
+
+The first implementation may start as a skeleton that always publishes
+`status=rejected` or `status=skipped` while proving that the contract, validation,
+idempotency, and observability surfaces are correct.
+
+must not support arbitrary command execution.
+---
+
+This readiness score is a prerequisite for controlled runner design, not a
+permission to execute commands. not a permission to execute commands.
+
 ---
 
 ## Related modules

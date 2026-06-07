@@ -21,6 +21,25 @@ def test_runtime_directive_experience_loop_docs_include_seven_stage_retry_govern
     assert "does not execute rendered retry commands" in text
 
 
+def test_runtime_directive_experience_loop_docs_include_controlled_runner_contract() -> None:
+    text = DOC_PATH.read_text(encoding="utf-8")
+
+    assert "Controlled retry runner contract" in text
+    assert "controlled retry runner is not implemented yet" in text
+    assert "Controlled retry execution is disabled by default" in text
+    assert "readiness_score=100" in text
+    assert "--allow-controlled-execution" in text
+    assert "python -m src.testing.run_replay_evidence_check" in text
+    assert "reject arbitrary shell commands" in text
+    assert "shell=True" in text
+    assert "replay_lifecycle_retry_controlled_execution_result" in text
+    assert "controlled_execution_result_id" in text
+    assert "operator_authorized" in text
+    assert "allowlist_matched" in text
+    assert "must not publish a duplicate controlled" in text
+    assert "must not support arbitrary command execution" in text
+
+
 def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> None:
     path = Path("docs/runtime_directive_experience_loop.md")
 
@@ -221,3 +240,4 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "readiness_score=100" in text
     assert "controlled_execution_enabled=false" in text
     assert "ready_for_controlled_runner_design" in text
+    assert "not a permission to execute commands" in text
