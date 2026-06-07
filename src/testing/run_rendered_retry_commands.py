@@ -61,11 +61,12 @@ async def run_rendered_retry_commands(args: argparse.Namespace) -> list[dict[str
             refresh()
 
         state = getattr(crdt, "state", {}) or {}
+        records = [item for item in state.values() if isinstance(item, Mapping)]
+
         rendered_commands = [
             item
-            for item in state.values()
-            if isinstance(item, Mapping)
-            and item.get("type") == "replay_lifecycle_retry_rendered_command"
+            for item in records
+            if item.get("type") == "replay_lifecycle_retry_rendered_command"
             and _matches_filters(
                 item,
                 rendered_command_id=rendered_command_id,
@@ -75,11 +76,30 @@ async def run_rendered_retry_commands(args: argparse.Namespace) -> list[dict[str
 
         results: list[dict[str, Any]] = []
         for rendered_command in rendered_commands:
+            current_rendered_command_id = str(
+                rendered_command.get("rendered_command_id") or ""
+            ).strip()
+            current_plan_id = str(rendered_command.get("plan_id") or "").strip()
+
+            existing_result = _find_existing_rendered_command_result(
+                records,
+                rendered_command_id=current_rendered_command_id,
+                plan_id=current_plan_id,
+            )
+            if existing_result is not None:
+                logger.info(
+                    "Skipping duplicate rendered retry command result: rendered_command_id=%s plan_id=%s",
+                    current_rendered_command_id,
+                    current_plan_id,
+                )
+                continue
+
             result = build_rendered_retry_command_result(
                 rendered_command,
                 source=source,
             )
             await crdt.add_genome(result)
+            records.append(result)
             results.append(result)
             logger.info(
                 "Published rendered retry command result: rendered_command_id=%s status=%s reason=%s",
@@ -180,6 +200,25 @@ def _matches_filters(
             return False
 
     return True
+
+
+def _find_existing_rendered_command_result(
+    records: list[Mapping[str, Any]],
+    *,
+    rendered_command_id: str,
+    plan_id: str,
+) -> Mapping[str, Any] | None:
+    for item in records:
+        if item.get("type") != "replay_lifecycle_retry_rendered_command_result":
+            continue
+        if (
+            rendered_command_id
+            and str(item.get("rendered_command_id") or "").strip() == rendered_command_id
+        ):
+            return item
+        if plan_id and str(item.get("plan_id") or "").strip() == plan_id:
+            return item
+    return None
 
 
 def _result_id(

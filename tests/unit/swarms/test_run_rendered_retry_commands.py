@@ -102,6 +102,7 @@ async def test_run_rendered_retry_commands_publishes_result(tmp_path) -> None:
     ]
 
     assert len(stored) == 1
+    assert stored[0]["rendered_command_id"] == "rendered-command-1"
     assert stored[0]["payload"]["executed"] is False
 
 
@@ -109,8 +110,18 @@ async def test_run_rendered_retry_commands_publishes_result(tmp_path) -> None:
 async def test_run_rendered_retry_commands_filters_by_rendered_command_id(tmp_path) -> None:
     db_path = str(tmp_path / "crdt.db")
     crdt = CRDTAdapter(node_id="seed", db_path=db_path)
-    await crdt.add_genome(_rendered_command(rendered_command_id="rendered-command-1"))
-    await crdt.add_genome(_rendered_command(rendered_command_id="rendered-command-2"))
+    await crdt.add_genome(
+        _rendered_command(
+            rendered_command_id="rendered-command-1",
+            plan_id="plan-1",
+        )
+    )
+    await crdt.add_genome(
+        _rendered_command(
+            rendered_command_id="rendered-command-2",
+            plan_id="plan-2",
+        )
+    )
 
     results = await run_rendered_retry_commands(
         argparse.Namespace(
@@ -123,3 +134,86 @@ async def test_run_rendered_retry_commands_filters_by_rendered_command_id(tmp_pa
 
     assert len(results) == 1
     assert results[0]["rendered_command_id"] == "rendered-command-2"
+    assert results[0]["plan_id"] == "plan-2"
+
+
+@pytest.mark.asyncio
+async def test_run_rendered_retry_commands_skips_existing_result_for_rendered_command(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(_rendered_command())
+
+    first = await run_rendered_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="rendered-retry-command-runner-test",
+            rendered_command_id="rendered-command-1",
+            plan_id="",
+        )
+    )
+    second = await run_rendered_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="rendered-retry-command-runner-test",
+            rendered_command_id="rendered-command-1",
+            plan_id="",
+        )
+    )
+
+    assert len(first) == 1
+    assert len(second) == 0
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    state = getattr(reader, "state", {}) or {}
+    stored = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type") == "replay_lifecycle_retry_rendered_command_result"
+        and item.get("rendered_command_id") == "rendered-command-1"
+    ]
+
+    assert len(stored) == 1
+    assert stored[0]["status"] == "skipped"
+    assert stored[0]["reason"] == "execution_disabled"
+
+
+@pytest.mark.asyncio
+async def test_run_rendered_retry_commands_skips_duplicate_with_same_plan_in_single_run(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(
+        _rendered_command(
+            rendered_command_id="rendered-command-1",
+            plan_id="plan-1",
+        )
+    )
+    await crdt.add_genome(
+        _rendered_command(
+            rendered_command_id="rendered-command-duplicate",
+            plan_id="plan-1",
+        )
+    )
+
+    results = await run_rendered_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="rendered-retry-command-runner-test",
+            rendered_command_id="",
+            plan_id="plan-1",
+        )
+    )
+
+    assert len(results) == 1
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    state = getattr(reader, "state", {}) or {}
+    stored = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type") == "replay_lifecycle_retry_rendered_command_result"
+        and item.get("plan_id") == "plan-1"
+    ]
+
+    assert len(stored) == 1

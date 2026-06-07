@@ -753,6 +753,11 @@ If an eligibility record already exists for the rendered command or plan, the
 builder skips publishing a duplicate and leaves the existing blocked decision
 in place.
 
+The rendered retry command dry-run runner is idempotent for a rendered command.
+If a `replay_lifecycle_retry_rendered_command_result` already exists for the
+rendered command or plan, the runner skips publishing a duplicate and leaves the
+existing skipped dry-run result in place.
+
 ---
 
 ## Related modules

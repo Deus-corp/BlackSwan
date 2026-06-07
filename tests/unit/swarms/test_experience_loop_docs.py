@@ -178,3 +178,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "eligibility builder is idempotent" in text
     assert "skips publishing a duplicate" in text
     assert "existing blocked decision" in text
+    assert "rendered retry command dry-run runner is idempotent" in text
+    assert "replay_lifecycle_retry_rendered_command_result" in text
+    assert "skips publishing a duplicate" in text
+    assert "existing skipped dry-run result" in text
