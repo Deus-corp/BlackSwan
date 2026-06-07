@@ -16,6 +16,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_rendered_command,
     validate_replay_lifecycle_retry_rendered_command_result,
     validate_replay_lifecycle_retry_execution_eligibility,
+    validate_replay_lifecycle_retry_controlled_execution_result,
 )
 
 
@@ -1209,3 +1210,123 @@ def test_security_validation_metrics_counts_retry_execution_eligibility() -> Non
         ]
         == 1
     )
+
+
+def _retry_controlled_execution_result(**overrides):
+    command = (
+        "python -m src.testing.run_replay_evidence_check "
+        "--scenario-id replay-controlled-test "
+        "--directive-id runtime-run-replay-controlled-test "
+        "--timeout-profile standard"
+    )
+    item = {
+        "type": "replay_lifecycle_retry_controlled_execution_result",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "status": "rejected",
+        "reason": "controlled_execution_not_implemented",
+        "execution_enabled": False,
+        "operator_authorized": False,
+        "allowlist_matched": False,
+        "readiness_score": 0,
+        "timeout_profile": "standard",
+        "decision_mode": "manual",
+        "command": command,
+        "payload": {
+            "rendered_command_id": "rendered-command-1",
+            "plan_id": "plan-1",
+            "proposal_id": "proposal-1",
+            "approval_id": "approval-1",
+            "status": "rejected",
+            "reason": "controlled_execution_not_implemented",
+            "execution_enabled": False,
+            "operator_authorized": False,
+            "allowlist_matched": False,
+            "readiness_score": 0,
+            "timeout_profile": "standard",
+            "decision_mode": "manual",
+            "command": command,
+            "executed": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+def test_validate_retry_controlled_execution_result_accepts_reject_only_skeleton() -> None:
+    result = validate_replay_lifecycle_retry_controlled_execution_result(
+        _retry_controlled_execution_result()
+    )
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["record_type"] == "replay_lifecycle_retry_controlled_execution_result"
+    assert result["status"] == "rejected"
+    assert result["reason"] == "controlled_execution_not_implemented"
+    assert result["operator_authorized"] is False
+    assert result["allowlist_matched"] is False
+    assert result["payload_executed"] is False
+    assert result["reasons"] == []
+
+
+def test_validate_retry_controlled_execution_result_rejects_executed_payload() -> None:
+    record = _retry_controlled_execution_result(
+        payload={
+            "executed": True,
+        }
+    )
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "not_implemented_result_must_not_execute" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_executed_status() -> None:
+    result = validate_replay_lifecycle_retry_controlled_execution_result(
+        _retry_controlled_execution_result(
+            status="executed",
+            reason="controlled_execution_not_implemented",
+        )
+    )
+
+    assert result["valid"] is False
+    assert "controlled_execution_not_allowed_yet" in result["reasons"]
+    assert "not_implemented_result_must_be_rejected" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_operator_authorized() -> None:
+    result = validate_replay_lifecycle_retry_controlled_execution_result(
+        _retry_controlled_execution_result(operator_authorized=True)
+    )
+
+    assert result["valid"] is False
+    assert "operator_authorization_not_supported_yet" in result["reasons"]
+
+
+def test_security_validation_metrics_counts_retry_controlled_execution_results() -> None:
+    metrics = build_security_validation_heartbeat_metrics(
+        [_retry_controlled_execution_result()]
+    )
+
+    assert (
+        metrics["security_validation_record_type_counts"][
+            "replay_lifecycle_retry_controlled_execution_result"
+        ]
+        == 1
+    )
+    assert metrics["security_validation_controlled_execution_result_statuses"][
+        "rejected"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_result_reasons"][
+        "controlled_execution_not_implemented"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_operator_authorized"][
+        "false"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_allowlist_matched"][
+        "false"
+    ] == 1

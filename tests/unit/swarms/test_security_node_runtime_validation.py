@@ -67,6 +67,14 @@ def test_security_node_heartbeat_reports_runtime_validation_metrics() -> None:
     assert "security_validation_retry_execution_eligibility_reasons" in metrics
     assert metrics["security_validation_retry_execution_eligibility_statuses"] == {}
     assert metrics["security_validation_retry_execution_eligibility_reasons"] == {}
+    assert "security_validation_controlled_execution_result_statuses" in metrics
+    assert "security_validation_controlled_execution_result_reasons" in metrics
+    assert "security_validation_controlled_execution_operator_authorized" in metrics
+    assert "security_validation_controlled_execution_allowlist_matched" in metrics
+    assert metrics["security_validation_controlled_execution_result_statuses"] == {}
+    assert metrics["security_validation_controlled_execution_result_reasons"] == {}
+    assert metrics["security_validation_controlled_execution_operator_authorized"] == {}
+    assert metrics["security_validation_controlled_execution_allowlist_matched"] == {}
 
 def make_security_node() -> SecurityNode:
     try:

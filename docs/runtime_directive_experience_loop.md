@@ -1080,6 +1080,13 @@ execute the rendered command.
 
 ---
 
+Security validates `replay_lifecycle_retry_controlled_execution_result` records.
+In the reject-only skeleton phase, Security accepts only rejected results with
+`reason=controlled_execution_not_implemented`, `operator_authorized=false`,
+`allowlist_matched=false`, and `payload.executed=false`.
+
+---
+
 ## Related modules
 
 ```text

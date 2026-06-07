@@ -30,6 +30,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_rendered_command",
     "replay_lifecycle_retry_rendered_command_result",
     "replay_lifecycle_retry_execution_eligibility",
+    "replay_lifecycle_retry_controlled_execution_result",
 }
 
 
@@ -144,6 +145,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_controlled_execution_result":
+            result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -181,6 +194,10 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     retry_rendered_command_result_reasons: dict[str, int] = {}
     retry_execution_eligibility_statuses: dict[str, int] = {}
     retry_execution_eligibility_reasons: dict[str, int] = {}
+    controlled_execution_result_statuses: dict[str, int] = {}
+    controlled_execution_result_reasons: dict[str, int] = {}
+    controlled_execution_operator_authorized: dict[str, int] = {}
+    controlled_execution_allowlist_matched: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -235,6 +252,29 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 retry_execution_eligibility_reasons.get(reason, 0) + 1
             )
 
+        if record_type == "replay_lifecycle_retry_controlled_execution_result":
+            status = str(item.get("status") or "unknown").strip() or "unknown"
+            reason = str(item.get("reason") or "unknown").strip() or "unknown"
+            operator_authorized = str(
+                bool(item.get("operator_authorized"))
+            ).lower()
+            allowlist_matched = str(
+                bool(item.get("allowlist_matched"))
+            ).lower()
+
+            controlled_execution_result_statuses[status] = (
+                controlled_execution_result_statuses.get(status, 0) + 1
+            )
+            controlled_execution_result_reasons[reason] = (
+                controlled_execution_result_reasons.get(reason, 0) + 1
+            )
+            controlled_execution_operator_authorized[operator_authorized] = (
+                controlled_execution_operator_authorized.get(operator_authorized, 0) + 1
+            )
+            controlled_execution_allowlist_matched[allowlist_matched] = (
+                controlled_execution_allowlist_matched.get(allowlist_matched, 0) + 1
+            )
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -254,6 +294,10 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "retry_rendered_command_result_reasons": retry_rendered_command_result_reasons,
         "retry_execution_eligibility_statuses": retry_execution_eligibility_statuses,
         "retry_execution_eligibility_reasons": retry_execution_eligibility_reasons,
+        "controlled_execution_result_statuses": controlled_execution_result_statuses,
+        "controlled_execution_result_reasons": controlled_execution_result_reasons,
+        "controlled_execution_operator_authorized": controlled_execution_operator_authorized,
+        "controlled_execution_allowlist_matched": controlled_execution_allowlist_matched,
     }
 
 
@@ -280,6 +324,18 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_retry_rendered_command_result_reasons": summary["retry_rendered_command_result_reasons"],
         "security_validation_retry_execution_eligibility_statuses": summary["retry_execution_eligibility_statuses"],
         "security_validation_retry_execution_eligibility_reasons": summary["retry_execution_eligibility_reasons"],
+        "security_validation_controlled_execution_result_statuses": summary[
+            "controlled_execution_result_statuses"
+        ],
+        "security_validation_controlled_execution_result_reasons": summary[
+            "controlled_execution_result_reasons"
+        ],
+        "security_validation_controlled_execution_operator_authorized": summary[
+            "controlled_execution_operator_authorized"
+        ],
+        "security_validation_controlled_execution_allowlist_matched": summary[
+            "controlled_execution_allowlist_matched"
+        ],
     }
 
 
@@ -297,16 +353,98 @@ def _reason_counts(records: Iterable[Mapping[str, Any]]) -> dict[str, int]:
 
 
 def _record_id(record: Mapping[str, Any]) -> str:
-    for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "eligibility_id", "rendered_command_result_id", "rendered_command_id", "approval_id"):
+    record_type = str(record.get("type") or "").strip()
+
+    if record_type == "replay_lifecycle_retry_controlled_execution_result":
+        return str(
+            record.get("controlled_execution_result_id")
+            or record.get("rendered_command_id")
+            or ""
+        ).strip()
+
+    if record_type == "replay_lifecycle_retry_execution_eligibility":
+        return str(
+            record.get("eligibility_id")
+            or record.get("rendered_command_id")
+            or record.get("plan_id")
+            or ""
+        ).strip()
+
+    if record_type == "replay_lifecycle_retry_rendered_command_result":
+        return str(
+            record.get("rendered_command_result_id")
+            or record.get("rendered_command_id")
+            or record.get("plan_id")
+            or ""
+        ).strip()
+
+    if record_type == "replay_lifecycle_retry_rendered_command":
+        return str(
+            record.get("rendered_command_id")
+            or record.get("plan_id")
+            or ""
+        ).strip()
+
+    if record_type == "replay_lifecycle_retry_execution_result":
+        return str(
+            record.get("result_id")
+            or record.get("plan_id")
+            or ""
+        ).strip()
+
+    if record_type == "replay_lifecycle_retry_execution_plan":
+        return str(record.get("plan_id") or "").strip()
+
+    if record_type == "replay_lifecycle_retry_approval":
+        return str(record.get("approval_id") or "").strip()
+
+    if record_type == "replay_lifecycle_retry_proposal":
+        return str(record.get("proposal_id") or "").strip()
+
+    for key in (
+        "directive_id",
+        "scenario_id",
+        "execution_id",
+        "evidence_id",
+        "memory_id",
+        "id",
+        "event_id",
+        "result_id",
+        "plan_id",
+        "eligibility_id",
+        "rendered_command_result_id",
+        "rendered_command_id",
+        "approval_id",
+        "proposal_id",
+        "controlled_execution_result_id",
+    ):
         value = str(record.get(key) or "").strip()
         if value:
             return value
+
     payload = record.get("payload")
     if isinstance(payload, Mapping):
-        for key in ("proposal_id", "directive_id", "scenario_id", "execution_id", "evidence_id", "memory_id", "id", "event_id", "result_id", "plan_id", "eligibility_id", "rendered_command_result_id", "rendered_command_id", "approval_id"):
+        for key in (
+            "directive_id",
+            "scenario_id",
+            "execution_id",
+            "evidence_id",
+            "memory_id",
+            "id",
+            "event_id",
+            "result_id",
+            "plan_id",
+            "eligibility_id",
+            "rendered_command_result_id",
+            "rendered_command_id",
+            "approval_id",
+            "proposal_id",
+            "controlled_execution_result_id",
+        ):
             value = str(payload.get(key) or "").strip()
             if value:
                 return value
+
     return ""
 
 
@@ -975,6 +1113,105 @@ def validate_replay_lifecycle_retry_execution_eligibility(
     }
 
 
+def validate_replay_lifecycle_retry_controlled_execution_result(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate reject-only controlled retry execution result records."""
+    reasons: list[str] = []
+
+    controlled_execution_result_id = str(
+        record.get("controlled_execution_result_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    plan_id = str(record.get("plan_id") or "").strip()
+    proposal_id = str(record.get("proposal_id") or "").strip()
+    approval_id = str(record.get("approval_id") or "").strip()
+    status = str(record.get("status") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+    command = str(record.get("command") or "").strip()
+    timeout_profile = str(record.get("timeout_profile") or "").strip()
+    decision_mode = str(record.get("decision_mode") or "").strip()
+
+    execution_enabled = bool(record.get("execution_enabled"))
+    operator_authorized = bool(record.get("operator_authorized"))
+    allowlist_matched = bool(record.get("allowlist_matched"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+    payload_executed = bool(payload_mapping.get("executed"))
+
+    if not controlled_execution_result_id:
+        reasons.append("missing_controlled_execution_result_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+    if not plan_id:
+        reasons.append("missing_plan_id")
+    if not proposal_id:
+        reasons.append("missing_proposal_id")
+    if not approval_id:
+        reasons.append("missing_approval_id")
+
+    if status not in {"rejected", "skipped", "executed"}:
+        reasons.append("invalid_status")
+
+    if reason not in {
+        "controlled_execution_not_implemented",
+        "execution_disabled",
+        "operator_authorization_missing",
+        "readiness_not_passed",
+        "command_not_allowlisted",
+        "duplicate_controlled_execution_result",
+    }:
+        reasons.append("invalid_reason")
+
+    if timeout_profile and timeout_profile not in {"standard", "patient"}:
+        reasons.append("invalid_timeout_profile")
+
+    if decision_mode and decision_mode not in {"manual", "policy"}:
+        reasons.append("invalid_decision_mode")
+
+    # PR 28.2 skeleton phase: execution is not implemented yet.
+    if status == "executed":
+        reasons.append("controlled_execution_not_allowed_yet")
+
+    if reason == "controlled_execution_not_implemented" and status != "rejected":
+        reasons.append("not_implemented_result_must_be_rejected")
+
+    if reason == "controlled_execution_not_implemented" and payload_executed:
+        reasons.append("not_implemented_result_must_not_execute")
+
+    if operator_authorized:
+        reasons.append("operator_authorization_not_supported_yet")
+
+    if allowlist_matched:
+        reasons.append("allowlist_execution_not_supported_yet")
+
+    if execution_enabled and reason == "controlled_execution_not_implemented":
+        # The skeleton may preserve rendered execution_enabled=true, but it still must reject.
+        # This is informational and remains valid as long as no execution happened.
+        pass
+
+    severity = "critical" if reasons else "info"
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_controlled_execution_result",
+        "valid": not reasons,
+        "severity": severity,
+        "reasons": reasons,
+        "subject": controlled_execution_result_id or rendered_command_id,
+        "status": status or "unknown",
+        "reason": reason or "unknown",
+        "operator_authorized": operator_authorized,
+        "allowlist_matched": allowlist_matched,
+        "execution_enabled": execution_enabled,
+        "payload_executed": payload_executed,
+        "timeout_profile": timeout_profile or "unknown",
+        "decision_mode": decision_mode or "unknown",
+        "command": command,
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -988,4 +1225,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_rendered_command",
     "validate_replay_lifecycle_retry_rendered_command_result",
     "validate_replay_lifecycle_retry_execution_eligibility",
+    "validate_replay_lifecycle_retry_controlled_execution_result",
 ]
