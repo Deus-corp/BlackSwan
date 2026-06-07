@@ -1230,7 +1230,7 @@ def _retry_controlled_execution_result(**overrides):
         "reason": "controlled_execution_not_implemented",
         "execution_enabled": False,
         "operator_authorized": False,
-        "allowlist_matched": False,
+        "allowlist_matched": True,
         "readiness_score": 0,
         "timeout_profile": "standard",
         "decision_mode": "manual",
@@ -1244,7 +1244,7 @@ def _retry_controlled_execution_result(**overrides):
             "reason": "controlled_execution_not_implemented",
             "execution_enabled": False,
             "operator_authorized": False,
-            "allowlist_matched": False,
+            "allowlist_matched": True,
             "readiness_score": 0,
             "timeout_profile": "standard",
             "decision_mode": "manual",
@@ -1266,7 +1266,7 @@ def test_validate_retry_controlled_execution_result_accepts_reject_only_skeleton
     assert result["status"] == "rejected"
     assert result["reason"] == "controlled_execution_not_implemented"
     assert result["operator_authorized"] is False
-    assert result["allowlist_matched"] is False
+    assert result["allowlist_matched"] is True
     assert result["payload_executed"] is False
     assert result["reasons"] == []
 
@@ -1328,5 +1328,15 @@ def test_security_validation_metrics_counts_retry_controlled_execution_results()
         "false"
     ] == 1
     assert metrics["security_validation_controlled_execution_allowlist_matched"][
-        "false"
+        "true"
     ] == 1
+
+
+def test_validate_retry_controlled_execution_result_accepts_allowlist_match_without_execution() -> None:
+    result = validate_replay_lifecycle_retry_controlled_execution_result(
+        _retry_controlled_execution_result(allowlist_matched=True)
+    )
+
+    assert result["valid"] is True
+    assert result["allowlist_matched"] is True
+    assert result["payload_executed"] is False

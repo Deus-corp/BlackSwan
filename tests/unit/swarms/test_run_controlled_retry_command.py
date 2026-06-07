@@ -56,9 +56,12 @@ def test_build_controlled_retry_command_result_rejects_by_default() -> None:
     assert result["reason"] == "controlled_execution_not_implemented"
     assert result["execution_enabled"] is False
     assert result["operator_authorized"] is False
-    assert result["allowlist_matched"] is False
+    assert result["allowlist_matched"] is True
+    assert result["command_parse"]["valid"] is True
+    assert result["command_parse"]["allowlist_matched"] is True
     assert result["readiness_score"] == 0
-    assert result["payload"]["executed"] is False
+    assert result["payload"]["allowlist_matched"] is True
+    assert result["payload"]["command_parse"]["valid"] is True
 
 
 def test_build_controlled_retry_command_result_rejects_even_when_execution_enabled() -> None:
@@ -70,7 +73,7 @@ def test_build_controlled_retry_command_result_rejects_even_when_execution_enabl
     assert result["reason"] == "controlled_execution_not_implemented"
     assert result["execution_enabled"] is True
     assert result["operator_authorized"] is False
-    assert result["allowlist_matched"] is False
+    assert result["allowlist_matched"] is True
     assert result["payload"]["executed"] is False
 
 

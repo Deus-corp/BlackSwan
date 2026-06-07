@@ -1097,6 +1097,13 @@ reasons, ids, and `extended_controlled_execution_observed=true`, but the safe
 seven-stage `chain_complete=true` result does not require a controlled execution
 result. optional controlled execution extension, does not require a controlled execution result.
 
+The controlled runner now includes a read-only command allowlist parser. The
+parser recognizes only `python -m src.testing.run_replay_evidence_check`,
+extracts required arguments, rejects shell chaining/redirection and unknown
+modules, and reports `execution_performed=false`. Parser allowlist matches do not
+enable execution; the controlled runner remains reject-only with
+`reason=controlled_execution_not_implemented`. Parser allowlist matches do not enable execution.
+
 ---
 
 ### Controlled execution observability check

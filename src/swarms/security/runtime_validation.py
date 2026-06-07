@@ -1183,8 +1183,8 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
     if operator_authorized:
         reasons.append("operator_authorization_not_supported_yet")
 
-    if allowlist_matched:
-        reasons.append("allowlist_execution_not_supported_yet")
+    # allowlist_matched may be true once the parser recognizes a safe command.
+    # It is valid as long as the skeleton still rejects and payload.executed=false.
 
     if execution_enabled and reason == "controlled_execution_not_implemented":
         # The skeleton may preserve rendered execution_enabled=true, but it still must reject.

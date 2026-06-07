@@ -126,9 +126,12 @@ def _build_checks(
             "value": operator_authorized_count,
         },
         {
-            "name": "controlled_execution_allowlist_not_matched",
-            "status": "passed" if allowlist_matched_count == 0 else "failed",
-            "value": allowlist_matched_count,
+            "name": "controlled_execution_allowlist_match_does_not_execute",
+            "status": "passed" if payload_executed_count == 0 else "failed",
+            "value": {
+                "allowlist_matched": allowlist_matched_count,
+                "payload_executed": payload_executed_count,
+            },
         },
         {
             "name": "security_validates_controlled_execution_result",

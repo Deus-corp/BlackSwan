@@ -263,3 +263,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "controlled_execution_enabled=false" in text
     assert "payload.executed=true" in text
     assert "operator_authorized=true" in text
+    assert "read-only command allowlist parser" in text
+    assert "execution_performed=false" in text
+    assert "Parser allowlist matches do not enable execution" in text

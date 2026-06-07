@@ -16,6 +16,7 @@ from typing import Any, Mapping
 
 from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
+from src.testing.controlled_retry_command_allowlist import parse_controlled_retry_command
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ def build_controlled_retry_command_result(
     proposal_id = _clean(rendered_command.get("proposal_id"))
     approval_id = _clean(rendered_command.get("approval_id"))
     command = _clean(rendered_command.get("command"))
+    parse_result = parse_controlled_retry_command(command)
     timeout_profile = _clean(rendered_command.get("timeout_profile")) or "unknown"
     decision_mode = _clean(rendered_command.get("decision_mode")) or "unknown"
     execution_enabled = bool(rendered_command.get("execution_enabled"))
@@ -96,11 +98,12 @@ def build_controlled_retry_command_result(
         "source": source,
         "execution_enabled": execution_enabled,
         "operator_authorized": False,
-        "allowlist_matched": False,
+        "allowlist_matched": bool(parse_result.get("allowlist_matched")),
         "readiness_score": 0,
         "timeout_profile": timeout_profile,
         "decision_mode": decision_mode,
         "command": command,
+        "command_parse": parse_result,
         "payload": {
             "rendered_command_id": rendered_command_id,
             "plan_id": plan_id,
@@ -110,11 +113,12 @@ def build_controlled_retry_command_result(
             "reason": "controlled_execution_not_implemented",
             "execution_enabled": execution_enabled,
             "operator_authorized": False,
-            "allowlist_matched": False,
+            "allowlist_matched": bool(parse_result.get("allowlist_matched")),
             "readiness_score": 0,
             "timeout_profile": timeout_profile,
             "decision_mode": decision_mode,
             "command": command,
+            "command_parse": parse_result,
             "executed": False,
         },
     }

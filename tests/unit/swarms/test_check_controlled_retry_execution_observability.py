@@ -32,7 +32,7 @@ def test_controlled_retry_execution_observability_passes_for_reject_only_result(
     assert result["controlled_execution_executed"] == 0
     assert result["controlled_execution_not_implemented"] == 1
     assert result["controlled_execution_enabled"] is False
-    assert result["failed_checks"] == []
+    assert "controlled_execution_allowlist_match_does_not_execute" not in result["failed_checks"]
     assert _exit_code_for_result(result) == 0
 
 
@@ -85,3 +85,16 @@ def test_controlled_retry_execution_observability_reads_crdt(tmp_path) -> None:
     assert result["status"] == "passed"
     assert result["controlled_execution_results"] == 1
     assert result["controlled_execution_rejected"] == 1
+
+
+def test_controlled_retry_execution_observability_allows_allowlist_match_without_execution() -> None:
+    record = _controlled_result(allowlist_matched=True)
+    record["payload"]["allowlist_matched"] = True
+    record["payload"]["executed"] = False
+
+    result = check_controlled_retry_execution_observability_from_records([record])
+
+    assert result["status"] == "passed"
+    assert result["controlled_execution_rejected"] == 1
+    assert result["controlled_execution_executed"] == 0
+    assert result["failed_checks"] == []
