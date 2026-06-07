@@ -1062,6 +1062,24 @@ permission to execute commands. not a permission to execute commands.
 
 ---
 
+### Reject-only controlled runner skeleton
+
+The first implementation is a reject-only skeleton:
+
+```bash
+python -m src.testing.run_controlled_retry_command \
+  --rendered-command-id <rendered-command-id> \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+This command publishes replay_lifecycle_retry_controlled_execution_result with
+status=rejected, reason=controlled_execution_not_implemented,
+operator_authorized=false, allowlist_matched=false, and
+payload.executed=false. It is idempotent for a rendered command and does not
+execute the rendered command.
+
+---
+
 ## Related modules
 
 ```text

@@ -241,3 +241,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "controlled_execution_enabled=false" in text
     assert "ready_for_controlled_runner_design" in text
     assert "not a permission to execute commands" in text
+    assert "Reject-only controlled runner skeleton" in text
+    assert "run_controlled_retry_command" in text
+    assert "controlled_execution_not_implemented" in text
+    assert "payload.executed=false" in text
+    assert "It is idempotent for a rendered command" in text
