@@ -256,3 +256,10 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "optional controlled execution extension" in text
     assert "extended_controlled_execution_observed=true" in text
     assert "does not require a controlled execution result" in text
+    assert "Controlled execution observability check" in text
+    assert "check_controlled_retry_execution_observability" in text
+    assert "controlled_execution_observed=true" in text
+    assert "controlled_execution_results=1" in text
+    assert "controlled_execution_enabled=false" in text
+    assert "payload.executed=true" in text
+    assert "operator_authorized=true" in text

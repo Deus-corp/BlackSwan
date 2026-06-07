@@ -1099,6 +1099,33 @@ result. optional controlled execution extension, does not require a controlled e
 
 ---
 
+### Controlled execution observability check
+
+The reject-only controlled execution extension has a dedicated read-only
+observability check:
+
+```bash
+python -m src.testing.check_controlled_retry_execution_observability \
+  --rendered-command-id <rendered-command-id> \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+Expected output for the skeleton phase includes:
+```text
+status=passed
+controlled_execution_observed=true
+controlled_execution_results=1
+rejected=1
+executed=0
+controlled_execution_not_implemented=1
+controlled_execution_enabled=false
+```
+The check fails if the controlled execution result is missing, if
+payload.executed=true, if operator_authorized=true, or if the Security
+validation metrics do not observe the controlled execution result.
+
+---
+
 ## Related modules
 
 ```text
