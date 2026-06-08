@@ -1109,6 +1109,12 @@ the governance trail inspector, controlled execution observability, and Overseer
 briefs. A valid parser observation reports `command_parse_valid=1`,
 `command_parse_allowlisted=1`, and `command_parse_execution_performed=0`.
 
+The `--allow-controlled-execution` flag records explicit operator authorization
+intent as `operator_authorized=true`, but PR 29.3 still does not execute
+commands. Authorized intent remains valid only while
+`status=rejected`, `reason=controlled_execution_not_implemented`, and
+`payload.executed=false`.
+
 ---
 
 ### Controlled execution observability check

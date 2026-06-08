@@ -97,6 +97,7 @@ async def test_run_controlled_retry_commands_publishes_rejected_result(tmp_path)
             rendered_command_id="rendered-controlled-1",
             plan_id="",
             json=False,
+            allow_controlled_execution=False,
         )
     )
 
@@ -132,6 +133,7 @@ async def test_run_controlled_retry_commands_skips_duplicate_for_rendered_comman
             rendered_command_id="rendered-controlled-1",
             plan_id="",
             json=False,
+            allow_controlled_execution=False,
         )
     )
     second = await run_controlled_retry_commands(
@@ -141,6 +143,7 @@ async def test_run_controlled_retry_commands_skips_duplicate_for_rendered_comman
             rendered_command_id="rendered-controlled-1",
             plan_id="",
             json=False,
+            allow_controlled_execution=False,
         )
     )
 
@@ -159,3 +162,79 @@ async def test_run_controlled_retry_commands_skips_duplicate_for_rendered_comman
 
     assert len(stored) == 1
     assert stored[0]["status"] == "rejected"
+
+
+def test_build_controlled_retry_command_result_records_operator_authorization_intent() -> None:
+    result = build_controlled_retry_command_result(
+        _rendered_command(),
+        operator_authorized=True,
+    )
+
+    assert result["status"] == "rejected"
+    assert result["reason"] == "controlled_execution_not_implemented"
+    assert result["operator_authorized"] is True
+    assert result["payload"]["operator_authorized"] is True
+    assert result["payload"]["executed"] is False
+
+
+@pytest.mark.asyncio
+async def test_run_controlled_retry_commands_records_operator_authorization_flag(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(_rendered_command())
+
+    results = await run_controlled_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="controlled-retry-command-runner-test",
+            rendered_command_id="rendered-controlled-1",
+            plan_id="",
+            json=False,
+            allow_controlled_execution=True,
+        )
+    )
+
+    assert len(results) == 1
+    assert results[0]["status"] == "rejected"
+    assert results[0]["reason"] == "controlled_execution_not_implemented"
+    assert results[0]["operator_authorized"] is True
+    assert results[0]["payload"]["operator_authorized"] is True
+    assert results[0]["payload"]["executed"] is False
+
+
+def test_build_controlled_retry_command_result_records_operator_authorization_intent() -> None:
+    result = build_controlled_retry_command_result(
+        _rendered_command(),
+        operator_authorized=True,
+    )
+
+    assert result["status"] == "rejected"
+    assert result["reason"] == "controlled_execution_not_implemented"
+    assert result["operator_authorized"] is True
+    assert result["payload"]["operator_authorized"] is True
+    assert result["payload"]["executed"] is False
+
+
+@pytest.mark.asyncio
+async def test_run_controlled_retry_commands_records_operator_authorization_flag(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(_rendered_command())
+
+    results = await run_controlled_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="controlled-retry-command-runner-test",
+            rendered_command_id="rendered-controlled-1",
+            plan_id="",
+            json=False,
+            allow_controlled_execution=True,
+        )
+    )
+
+    assert len(results) == 1
+    assert results[0]["status"] == "rejected"
+    assert results[0]["reason"] == "controlled_execution_not_implemented"
+    assert results[0]["operator_authorized"] is True
+    assert results[0]["payload"]["operator_authorized"] is True
+    assert results[0]["payload"]["executed"] is False

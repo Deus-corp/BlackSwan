@@ -1248,8 +1248,12 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
     if reason == "controlled_execution_not_implemented" and payload_executed:
         reasons.append("not_implemented_result_must_not_execute")
 
-    if operator_authorized:
-        reasons.append("operator_authorization_not_supported_yet")
+    if operator_authorized and payload_executed:
+        reasons.append("operator_authorized_result_must_not_execute_yet")
+
+    # operator_authorized may be true once the operator explicitly provides
+    # --allow-controlled-execution. In PR 29.3 it records intent only and is
+    # valid as long as the result remains rejected and payload.executed=false.
 
     # allowlist_matched may be true once the parser recognizes a safe command.
     # It is valid as long as the skeleton still rejects and payload.executed=false.

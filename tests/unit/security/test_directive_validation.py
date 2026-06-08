@@ -1338,13 +1338,16 @@ def test_validate_retry_controlled_execution_result_rejects_executed_status() ->
     assert "not_implemented_result_must_be_rejected" in result["reasons"]
 
 
-def test_validate_retry_controlled_execution_result_rejects_operator_authorized() -> None:
+def test_validate_retry_controlled_execution_result_accepts_operator_authorization_intent_without_execution() -> None:
     result = validate_replay_lifecycle_retry_controlled_execution_result(
         _retry_controlled_execution_result(operator_authorized=True)
     )
 
-    assert result["valid"] is False
-    assert "operator_authorization_not_supported_yet" in result["reasons"]
+    assert result["valid"] is True
+    assert result["operator_authorized"] is True
+    assert result["payload_executed"] is False
+    assert result["status"] == "rejected"
+    assert result["reason"] == "controlled_execution_not_implemented"
 
 
 def test_security_validation_metrics_counts_retry_controlled_execution_results() -> None:
@@ -1411,3 +1414,27 @@ def test_validate_retry_controlled_execution_result_rejects_parse_execution_perf
 
     assert result["valid"] is False
     assert "command_parse_must_not_execute" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_authorized_execution_payload() -> None:
+    record = _retry_controlled_execution_result(operator_authorized=True)
+    record["payload"]["executed"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "operator_authorized_result_must_not_execute_yet" in result["reasons"]
+    assert "not_implemented_result_must_not_execute" in result["reasons"]
+
+
+def test_security_validation_metrics_counts_operator_authorized_controlled_execution_intent() -> None:
+    metrics = build_security_validation_heartbeat_metrics(
+        [_retry_controlled_execution_result(operator_authorized=True)]
+    )
+
+    assert metrics["security_validation_controlled_execution_operator_authorized"][
+        "true"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_result_statuses"][
+        "rejected"
+    ] == 1

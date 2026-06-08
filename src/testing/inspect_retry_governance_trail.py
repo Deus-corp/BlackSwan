@@ -188,6 +188,10 @@ def inspect_retry_governance_trail_from_records(
         ).lower()
         for item in controlled_execution_results
     )
+    controlled_execution_operator_authorized = Counter(
+        str(bool(item.get("operator_authorized"))).lower()
+        for item in controlled_execution_results
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -256,6 +260,9 @@ def inspect_retry_governance_trail_from_records(
         ),
         "controlled_command_parse_execution_performed": dict(
             controlled_command_parse_execution_performed
+        ),
+        "controlled_execution_operator_authorized": dict(
+            controlled_execution_operator_authorized
         ),
     }
 
@@ -511,6 +518,11 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("controlled_command_parse_execution_performed"), Mapping)
         else {}
     )
+    controlled_execution_operator_authorized = (
+        summary.get("controlled_execution_operator_authorized")
+        if isinstance(summary.get("controlled_execution_operator_authorized"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -545,6 +557,7 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"command_parse_valid={controlled_command_parse_valid.get('true', 0)} "
         f"command_parse_allowlisted={controlled_command_parse_allowlist_matched.get('true', 0)} "
         f"command_parse_execution_performed={controlled_command_parse_execution_performed.get('true', 0)} "
+        f"operator_authorized={controlled_execution_operator_authorized.get('true', 0)} "
     )
 
 

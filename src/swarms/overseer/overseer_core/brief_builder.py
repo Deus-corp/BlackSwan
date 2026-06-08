@@ -215,6 +215,14 @@ def build_global_swarm_brief(
         ).get("true"),
         0,
     )
+    security_controlled_execution_operator_authorized = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_operator_authorized"
+            )
+        ).get("true"),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -665,6 +673,9 @@ def build_global_swarm_brief(
                         security_controlled_execution_result_reasons
                     ),
                     "recommendation": "review_controlled_retry_execution_results",
+                    "security_controlled_execution_operator_authorized": (
+                        security_controlled_execution_operator_authorized
+                    ),
                 },
             )
         )
@@ -905,6 +916,9 @@ def build_global_swarm_brief(
         "security_controlled_command_parse_execution_performed": (
             security_controlled_command_parse_execution_performed
         ),
+        "security_controlled_execution_operator_authorized": (
+            security_controlled_execution_operator_authorized
+        ),
     }
 
     summary = _build_summary(
@@ -955,6 +969,9 @@ def build_global_swarm_brief(
         ),
         security_controlled_command_parse_execution_performed=(
             security_controlled_command_parse_execution_performed
+        ),
+        security_controlled_execution_operator_authorized=(
+            security_controlled_execution_operator_authorized
         ),
     )
 
@@ -1032,6 +1049,7 @@ def _build_summary(
     security_controlled_command_parse_valid: int,
     security_controlled_command_parse_allowlisted: int,
     security_controlled_command_parse_execution_performed: int,
+    security_controlled_execution_operator_authorized: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1160,6 +1178,13 @@ def _build_summary(
         parts.append(
             "Controlled retry command parser reported execution_performed="
             f"{security_controlled_command_parse_execution_performed}."
+        )
+
+    if security_controlled_execution_operator_authorized > 0:
+        parts.append(
+            "Controlled retry execution operator authorization intent observed: "
+            f"operator_authorized={security_controlled_execution_operator_authorized}. "
+            "No controlled command execution was performed."
         )
 
     blocked_execution_disabled = _safe_int(

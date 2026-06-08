@@ -756,6 +756,9 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "security_validation_controlled_execution_command_parse_execution_performed": {
                 "false": 1
             },
+            "security_validation_controlled_execution_operator_authorized": {
+                "true": 1,
+            },
         },
     )
 
@@ -779,3 +782,10 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert brief.key_metrics["security_controlled_command_parse_valid"] == 1
     assert brief.key_metrics["security_controlled_command_parse_allowlisted"] == 1
     assert brief.key_metrics["security_controlled_command_parse_execution_performed"] == 0
+    assert (
+        "Controlled retry execution operator authorization intent observed: "
+        "operator_authorized=1."
+        in text
+    )
+    assert "No controlled command execution was performed." in text
+    assert brief.key_metrics["security_controlled_execution_operator_authorized"] == 1

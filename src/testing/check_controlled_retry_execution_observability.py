@@ -142,9 +142,12 @@ def _build_checks(
             "value": payload_executed_count,
         },
         {
-            "name": "controlled_execution_operator_not_authorized",
-            "status": "passed" if operator_authorized_count == 0 else "failed",
-            "value": operator_authorized_count,
+            "name": "operator_authorization_intent_does_not_execute",
+            "status": "passed" if payload_executed_count == 0 else "failed",
+            "value": {
+                "operator_authorized": operator_authorized_count,
+                "payload_executed": payload_executed_count,
+            },
         },
         {
             "name": "controlled_execution_allowlist_match_does_not_execute",
@@ -199,6 +202,10 @@ def check_controlled_retry_execution_observability_from_records(
     )
     record_type_counts = _safe_mapping(metrics.get("security_validation_record_type_counts"))
 
+    operator_authorized_count = sum(
+        1 for record in controlled_records if bool(record.get("operator_authorized"))
+    )
+
     return {
         "type": "controlled_retry_execution_observability",
         "status": "passed" if not failed_checks else "failed",
@@ -236,6 +243,7 @@ def check_controlled_retry_execution_observability_from_records(
             ).get("true"),
             0,
         ),
+        "controlled_execution_operator_authorized": operator_authorized_count,
         "controlled_execution_enabled": False,
         "checks": checks,
         "failed_checks": [str(item.get("name")) for item in failed_checks],
@@ -284,6 +292,7 @@ def check_controlled_retry_execution_observability_from_records(
                 ).get("true"),
                 0,
             ),
+            "security_controlled_execution_operator_authorized": operator_authorized_count,
         },
     }
 
@@ -351,6 +360,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"command_parse_valid={result.get('controlled_command_parse_valid', 0)} "
         f"command_parse_allowlisted={result.get('controlled_command_parse_allowlisted', 0)} "
         f"command_parse_execution_performed={result.get('controlled_command_parse_execution_performed', 0)} "
+        f"operator_authorized={result.get('controlled_execution_operator_authorized', 0)} "
     )
 
 

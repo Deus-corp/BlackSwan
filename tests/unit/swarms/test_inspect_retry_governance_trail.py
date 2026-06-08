@@ -395,6 +395,7 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["controlled_command_parse_valid"]["true"] == 1
     assert summary["controlled_command_parse_allowlist_matched"]["true"] == 1
     assert summary["controlled_command_parse_execution_performed"]["false"] == 1
+    assert summary["controlled_execution_operator_authorized"]["false"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -415,3 +416,21 @@ def test_inspect_retry_governance_trail_does_not_require_controlled_execution_re
     assert summary["counts"]["controlled_execution_results"] == 0
     assert summary["extended_controlled_execution_observed"] is False
     assert summary["chain_ids"]["controlled_execution_result_ids"] == []
+
+
+def test_inspect_retry_governance_trail_counts_operator_authorization_intent() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(operator_authorized=True),
+        ]
+    )
+
+    assert summary["chain_complete"] is True
+    assert summary["controlled_execution_operator_authorized"]["true"] == 1

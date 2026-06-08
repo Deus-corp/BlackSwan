@@ -36,6 +36,7 @@ def test_controlled_retry_execution_observability_passes_for_reject_only_result(
     assert result["controlled_command_parse_valid"] == 1
     assert result["controlled_command_parse_allowlisted"] == 1
     assert result["controlled_command_parse_execution_performed"] == 0
+    assert result["controlled_execution_operator_authorized"] == 0
     assert _exit_code_for_result(result) == 0
 
 
@@ -57,13 +58,15 @@ def test_controlled_retry_execution_observability_fails_when_payload_executed() 
     assert "controlled_execution_payload_not_executed" in result["failed_checks"]
 
 
-def test_controlled_retry_execution_observability_fails_when_operator_authorized() -> None:
+def test_controlled_retry_execution_observability_allows_operator_authorization_intent_without_execution() -> None:
     result = check_controlled_retry_execution_observability_from_records(
         [_controlled_result(operator_authorized=True)]
     )
 
-    assert result["status"] == "failed"
-    assert "controlled_execution_operator_not_authorized" in result["failed_checks"]
+    assert result["status"] == "passed"
+    assert result["controlled_execution_operator_authorized"] == 1
+    assert result["controlled_execution_executed"] == 0
+    assert result["failed_checks"] == []
 
 
 def test_controlled_retry_execution_observability_reads_crdt(tmp_path) -> None:
@@ -112,3 +115,13 @@ def test_controlled_retry_execution_observability_fails_when_command_parse_execu
 
     assert result["status"] == "failed"
     assert "controlled_command_parse_did_not_execute" in result["failed_checks"]
+
+
+def test_controlled_retry_execution_observability_fails_when_authorized_payload_executed() -> None:
+    record = _controlled_result(operator_authorized=True)
+    record["payload"]["executed"] = True
+
+    result = check_controlled_retry_execution_observability_from_records([record])
+
+    assert result["status"] == "failed"
+    assert "operator_authorization_intent_does_not_execute" in result["failed_checks"]

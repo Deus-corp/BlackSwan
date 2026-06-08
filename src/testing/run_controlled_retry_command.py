@@ -66,6 +66,7 @@ def build_controlled_retry_command_result(
     rendered_command: Mapping[str, Any],
     *,
     source: str = "controlled-retry-command-runner",
+    operator_authorized: bool = False,
 ) -> dict[str, Any]:
     """Build a reject-only controlled execution result for a rendered command."""
     rendered_command_id = _clean(rendered_command.get("rendered_command_id"))
@@ -97,7 +98,7 @@ def build_controlled_retry_command_result(
         "reason": "controlled_execution_not_implemented",
         "source": source,
         "execution_enabled": execution_enabled,
-        "operator_authorized": False,
+        "operator_authorized": bool(operator_authorized),
         "allowlist_matched": bool(parse_result.get("allowlist_matched")),
         "readiness_score": 0,
         "timeout_profile": timeout_profile,
@@ -112,7 +113,7 @@ def build_controlled_retry_command_result(
             "status": "rejected",
             "reason": "controlled_execution_not_implemented",
             "execution_enabled": execution_enabled,
-            "operator_authorized": False,
+            "operator_authorized": bool(operator_authorized),
             "allowlist_matched": bool(parse_result.get("allowlist_matched")),
             "readiness_score": 0,
             "timeout_profile": timeout_profile,
@@ -130,6 +131,7 @@ async def run_controlled_retry_commands(args: argparse.Namespace) -> list[dict[s
     source = str(getattr(args, "source", "") or "controlled-retry-command-runner")
     rendered_command_id = _clean(getattr(args, "rendered_command_id", ""))
     plan_id = _clean(getattr(args, "plan_id", ""))
+    operator_authorized = bool(getattr(args, "allow_controlled_execution", False))
 
     crdt = CRDTAdapter(node_id=source, db_path=db_path)
 
@@ -173,6 +175,7 @@ async def run_controlled_retry_commands(args: argparse.Namespace) -> list[dict[s
             result = build_controlled_retry_command_result(
                 rendered_command,
                 source=source,
+                operator_authorized=operator_authorized,
             )
             await crdt.add_genome(result)
             records.append(result)
@@ -220,6 +223,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Print machine-readable JSON result.",
+    )
+    parser.add_argument(
+        "--allow-controlled-execution",
+        action="store_true",
+        help=(
+            "Record explicit operator authorization intent. "
+            "PR 29.3 still does not execute commands."
+        ),
     )
     return parser
 

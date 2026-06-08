@@ -270,3 +270,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "command_parse_valid=1" in text
     assert "command_parse_allowlisted=1" in text
     assert "command_parse_execution_performed=0" in text
+    assert "--allow-controlled-execution" in text
+    assert "operator_authorized=true" in text
+    assert "Authorized intent remains valid only" in text

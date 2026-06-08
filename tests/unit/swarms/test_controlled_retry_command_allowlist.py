@@ -1,3 +1,5 @@
+import pytest
+
 from src.testing.controlled_retry_command_allowlist import (
     ALLOWED_MODULE,
     parse_controlled_retry_command,
