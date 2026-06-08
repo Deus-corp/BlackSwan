@@ -201,6 +201,11 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     controlled_execution_command_parse_valid: dict[str, int] = {}
     controlled_execution_command_parse_allowlist_matched: dict[str, int] = {}
     controlled_execution_command_parse_execution_performed: dict[str, int] = {}
+    controlled_execution_gate_statuses: dict[str, int] = {}
+    controlled_execution_gate_would_execute: dict[str, int] = {}
+    controlled_execution_gate_would_execute_if_enabled: dict[str, int] = {}
+    controlled_execution_gate_execution_performed: dict[str, int] = {}
+    controlled_execution_gate_reasons: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -307,6 +312,46 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 )
                 + 1
             )
+            gate_status = str(item.get("gate_status") or "unknown").strip() or "unknown"
+            gate_would_execute = str(bool(item.get("gate_would_execute"))).lower()
+            gate_would_execute_if_enabled = str(
+                bool(item.get("gate_would_execute_if_enabled"))
+            ).lower()
+            gate_execution_performed = str(
+                bool(item.get("gate_execution_performed"))
+            ).lower()
+
+            controlled_execution_gate_statuses[gate_status] = (
+                controlled_execution_gate_statuses.get(gate_status, 0) + 1
+            )
+            controlled_execution_gate_would_execute[gate_would_execute] = (
+                controlled_execution_gate_would_execute.get(gate_would_execute, 0) + 1
+            )
+            controlled_execution_gate_would_execute_if_enabled[
+                gate_would_execute_if_enabled
+            ] = (
+                controlled_execution_gate_would_execute_if_enabled.get(
+                    gate_would_execute_if_enabled, 0
+                )
+                + 1
+            )
+            controlled_execution_gate_execution_performed[
+                gate_execution_performed
+            ] = (
+                controlled_execution_gate_execution_performed.get(
+                    gate_execution_performed, 0
+                )
+                + 1
+            )
+
+            gate_reasons = item.get("gate_reasons")
+            if isinstance(gate_reasons, list):
+                for reason_item in gate_reasons:
+                    clean_reason = str(reason_item or "").strip()
+                    if clean_reason:
+                        controlled_execution_gate_reasons[clean_reason] = (
+                            controlled_execution_gate_reasons.get(clean_reason, 0) + 1
+                        )
 
     return {
         "type": "security_validation_summary",
@@ -338,6 +383,15 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "controlled_execution_command_parse_execution_performed": (
             controlled_execution_command_parse_execution_performed
         ),
+        "controlled_execution_gate_statuses": controlled_execution_gate_statuses,
+        "controlled_execution_gate_would_execute": controlled_execution_gate_would_execute,
+        "controlled_execution_gate_would_execute_if_enabled": (
+            controlled_execution_gate_would_execute_if_enabled
+        ),
+        "controlled_execution_gate_execution_performed": (
+            controlled_execution_gate_execution_performed
+        ),
+        "controlled_execution_gate_reasons": controlled_execution_gate_reasons,
     }
 
 
@@ -384,6 +438,21 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         ],
         "security_validation_controlled_execution_command_parse_execution_performed": summary[
             "controlled_execution_command_parse_execution_performed"
+        ],
+        "security_validation_controlled_execution_gate_statuses": summary[
+            "controlled_execution_gate_statuses"
+        ],
+        "security_validation_controlled_execution_gate_would_execute": summary[
+            "controlled_execution_gate_would_execute"
+        ],
+        "security_validation_controlled_execution_gate_would_execute_if_enabled": summary[
+            "controlled_execution_gate_would_execute_if_enabled"
+        ],
+        "security_validation_controlled_execution_gate_execution_performed": summary[
+            "controlled_execution_gate_execution_performed"
+        ],
+        "security_validation_controlled_execution_gate_reasons": summary[
+            "controlled_execution_gate_reasons"
         ],
     }
 
@@ -1202,6 +1271,22 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         command_parse_mapping.get("execution_performed")
     )
 
+    gate_evaluation = record.get("gate_evaluation")
+    if not isinstance(gate_evaluation, Mapping):
+        gate_evaluation = payload_mapping.get("gate_evaluation")
+
+    gate_mapping = gate_evaluation if isinstance(gate_evaluation, Mapping) else {}
+    gate_status = str(gate_mapping.get("gate_status") or "unknown").strip() or "unknown"
+    gate_would_execute = bool(gate_mapping.get("would_execute"))
+    gate_would_execute_if_enabled = bool(gate_mapping.get("would_execute_if_enabled"))
+    gate_execution_performed = bool(gate_mapping.get("execution_performed"))
+    gate_reasons = gate_mapping.get("reasons")
+    gate_reason_list = [
+        str(item).strip()
+        for item in gate_reasons
+        if str(item).strip()
+    ] if isinstance(gate_reasons, list) else []
+
     if not controlled_execution_result_id:
         reasons.append("missing_controlled_execution_result_id")
     if not rendered_command_id:
@@ -1237,6 +1322,15 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
 
     if decision_mode and decision_mode not in {"manual", "policy"}:
         reasons.append("invalid_decision_mode")
+
+    if not gate_mapping:
+        reasons.append("missing_gate_evaluation")
+
+    if gate_would_execute:
+        reasons.append("gate_would_execute_must_remain_false")
+
+    if gate_execution_performed:
+        reasons.append("gate_must_not_perform_execution")
 
     # PR 28.2 skeleton phase: execution is not implemented yet.
     if status == "executed":
@@ -1284,6 +1378,11 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         "command_parse_valid": command_parse_valid,
         "command_parse_allowlist_matched": command_parse_allowlist_matched,
         "command_parse_execution_performed": command_parse_execution_performed,
+        "gate_status": gate_status,
+        "gate_would_execute": gate_would_execute,
+        "gate_would_execute_if_enabled": gate_would_execute_if_enabled,
+        "gate_execution_performed": gate_execution_performed,
+        "gate_reasons": gate_reason_list,
     }
 
 

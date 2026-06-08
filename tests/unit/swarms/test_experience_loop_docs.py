@@ -273,3 +273,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "--allow-controlled-execution" in text
     assert "operator_authorized=true" in text
     assert "Authorized intent remains valid only" in text
+    assert "Controlled execution gate observability" in text
+    assert "gate_status=blocked" in text
+    assert "would_execute=false" in text
+    assert "controlled_execution_implementation_not_enabled" in text

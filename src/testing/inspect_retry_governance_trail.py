@@ -192,6 +192,31 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("operator_authorized"))).lower()
         for item in controlled_execution_results
     )
+    controlled_gate_statuses = Counter(
+        str(_gate_evaluation(item).get("gate_status") or "unknown").strip()
+        or "unknown"
+        for item in controlled_execution_results
+    )
+    controlled_gate_would_execute = Counter(
+        str(bool(_gate_evaluation(item).get("would_execute"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_gate_would_execute_if_enabled = Counter(
+        str(bool(_gate_evaluation(item).get("would_execute_if_enabled"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_gate_execution_performed = Counter(
+        str(bool(_gate_evaluation(item).get("execution_performed"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_gate_reasons: Counter[str] = Counter()
+    for item in controlled_execution_results:
+        gate_reasons = _gate_evaluation(item).get("reasons")
+        if isinstance(gate_reasons, list):
+            for reason_item in gate_reasons:
+                clean_reason = str(reason_item or "").strip()
+                if clean_reason:
+                    controlled_gate_reasons[clean_reason] += 1
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -264,6 +289,15 @@ def inspect_retry_governance_trail_from_records(
         "controlled_execution_operator_authorized": dict(
             controlled_execution_operator_authorized
         ),
+        "controlled_gate_statuses": dict(controlled_gate_statuses),
+        "controlled_gate_would_execute": dict(controlled_gate_would_execute),
+        "controlled_gate_would_execute_if_enabled": dict(
+            controlled_gate_would_execute_if_enabled
+        ),
+        "controlled_gate_execution_performed": dict(
+            controlled_gate_execution_performed
+        ),
+        "controlled_gate_reasons": dict(controlled_gate_reasons),
     }
 
 def _missing_stages(
@@ -356,6 +390,20 @@ def _command_parse(record: Mapping[str, Any]) -> Mapping[str, Any]:
     payload = record.get("payload")
     if isinstance(payload, Mapping):
         nested = payload.get("command_parse")
+        if isinstance(nested, Mapping):
+            return nested
+
+    return {}
+
+
+def _gate_evaluation(record: Mapping[str, Any]) -> Mapping[str, Any]:
+    gate_evaluation = record.get("gate_evaluation")
+    if isinstance(gate_evaluation, Mapping):
+        return gate_evaluation
+
+    payload = record.get("payload")
+    if isinstance(payload, Mapping):
+        nested = payload.get("gate_evaluation")
         if isinstance(nested, Mapping):
             return nested
 
@@ -523,6 +571,31 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("controlled_execution_operator_authorized"), Mapping)
         else {}
     )
+    controlled_gate_statuses = (
+        summary.get("controlled_gate_statuses")
+        if isinstance(summary.get("controlled_gate_statuses"), Mapping)
+        else {}
+    )
+    controlled_gate_would_execute = (
+        summary.get("controlled_gate_would_execute")
+        if isinstance(summary.get("controlled_gate_would_execute"), Mapping)
+        else {}
+    )
+    controlled_gate_would_execute_if_enabled = (
+        summary.get("controlled_gate_would_execute_if_enabled")
+        if isinstance(summary.get("controlled_gate_would_execute_if_enabled"), Mapping)
+        else {}
+    )
+    controlled_gate_execution_performed = (
+        summary.get("controlled_gate_execution_performed")
+        if isinstance(summary.get("controlled_gate_execution_performed"), Mapping)
+        else {}
+    )
+    controlled_gate_reasons = (
+        summary.get("controlled_gate_reasons")
+        if isinstance(summary.get("controlled_gate_reasons"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -558,6 +631,11 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"command_parse_allowlisted={controlled_command_parse_allowlist_matched.get('true', 0)} "
         f"command_parse_execution_performed={controlled_command_parse_execution_performed.get('true', 0)} "
         f"operator_authorized={controlled_execution_operator_authorized.get('true', 0)} "
+        f"gate_blocked={controlled_gate_statuses.get('blocked', 0)} "
+        f"gate_would_execute={controlled_gate_would_execute.get('true', 0)} "
+        f"gate_would_execute_if_enabled={controlled_gate_would_execute_if_enabled.get('true', 0)} "
+        f"gate_execution_performed={controlled_gate_execution_performed.get('true', 0)} "
+        f"gate_not_enabled={controlled_gate_reasons.get('controlled_execution_not_enabled', 0)} "
     )
 
 

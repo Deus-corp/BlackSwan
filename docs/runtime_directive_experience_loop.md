@@ -1115,6 +1115,12 @@ commands. Authorized intent remains valid only while
 `status=rejected`, `reason=controlled_execution_not_implemented`, and
 `payload.executed=false`.
 
+Controlled execution gate observability surfaces the nested `gate_evaluation`
+from controlled execution results. The gate reports `gate_status=blocked`,
+`would_execute=false`, `execution_performed=false`, and reason counts such as
+`controlled_execution_not_enabled` and
+`controlled_execution_implementation_not_enabled`.
+
 ---
 
 ### Controlled execution observability check

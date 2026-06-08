@@ -317,6 +317,43 @@ def test_retry_governance_trail_exit_code_is_zero_when_require_complete_and_comp
 
 
 def _controlled_execution_result(**overrides):
+    command_parse = {
+        "type": "controlled_retry_command_parse_result",
+        "valid": True,
+        "allowlist_matched": True,
+        "reasons": [],
+        "module": "src.testing.run_replay_evidence_check",
+        "args": {
+            "scenario_id": "replay-controlled-test",
+            "directive_id": "runtime-run-replay-controlled-test",
+            "timeout_profile": "standard",
+        },
+        "execution_performed": False,
+    }
+
+    gate_evaluation = {
+        "type": "controlled_retry_execution_gate_evaluation",
+        "gate_status": "blocked",
+        "would_execute": False,
+        "would_execute_if_enabled": False,
+        "reasons": [
+            "controlled_execution_not_enabled",
+            "controlled_execution_implementation_not_enabled",
+        ],
+        "controlled_execution_enabled": False,
+        "implementation_enabled": False,
+        "operator_authorized": False,
+        "allowlist_matched": True,
+        "command_parse_valid": True,
+        "command_parse_allowlist_matched": True,
+        "command_parse_execution_performed": False,
+        "payload_executed": False,
+        "execution_enabled": False,
+        "readiness_score": 0,
+        "min_readiness_score": 100,
+        "execution_performed": False,
+    }
+
     item = {
         "type": "replay_lifecycle_retry_controlled_execution_result",
         "controlled_execution_result_id": "controlled-result-1",
@@ -328,35 +365,15 @@ def _controlled_execution_result(**overrides):
         "reason": "controlled_execution_not_implemented",
         "execution_enabled": False,
         "operator_authorized": False,
-        "allowlist_matched": False,
-        "command_parse": {
-            "type": "controlled_retry_command_parse_result",
-            "valid": True,
-            "allowlist_matched": True,
-            "reasons": [],
-            "module": "src.testing.run_replay_evidence_check",
-            "args": {
-                "scenario_id": "replay-controlled-test",
-                "directive_id": "runtime-run-replay-controlled-test",
-                "timeout_profile": "standard",
-            },
-            "execution_performed": False,
-        },
+        "allowlist_matched": True,
+        "command_parse": dict(command_parse),
+        "gate_evaluation": dict(gate_evaluation),
         "payload": {
             "executed": False,
-            "command_parse": {
-                "type": "controlled_retry_command_parse_result",
-                "valid": True,
-                "allowlist_matched": True,
-                "reasons": [],
-                "module": "src.testing.run_replay_evidence_check",
-                "args": {
-                    "scenario_id": "replay-controlled-test",
-                    "directive_id": "runtime-run-replay-controlled-test",
-                    "timeout_profile": "standard",
-                },
-                "execution_performed": False,
-            },
+            "operator_authorized": False,
+            "allowlist_matched": True,
+            "command_parse": dict(command_parse),
+            "gate_evaluation": dict(gate_evaluation),
         },
     }
     item.update(overrides)
@@ -396,6 +413,10 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["controlled_command_parse_allowlist_matched"]["true"] == 1
     assert summary["controlled_command_parse_execution_performed"]["false"] == 1
     assert summary["controlled_execution_operator_authorized"]["false"] == 1
+    assert summary["controlled_gate_statuses"]["blocked"] == 1
+    assert summary["controlled_gate_would_execute"]["false"] == 1
+    assert summary["controlled_gate_execution_performed"]["false"] == 1
+    assert summary["controlled_gate_reasons"]["controlled_execution_not_enabled"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:

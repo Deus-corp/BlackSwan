@@ -759,6 +759,22 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "security_validation_controlled_execution_operator_authorized": {
                 "true": 1,
             },
+            "security_validation_controlled_execution_gate_statuses": {
+                "blocked": 1,
+            },
+            "security_validation_controlled_execution_gate_would_execute": {
+                "false": 1,
+            },
+            "security_validation_controlled_execution_gate_would_execute_if_enabled": {
+                "false": 1,
+            },
+            "security_validation_controlled_execution_gate_execution_performed": {
+                "false": 1,
+            },
+            "security_validation_controlled_execution_gate_reasons": {
+                "controlled_execution_not_enabled": 1,
+                "controlled_execution_implementation_not_enabled": 1,
+            },
         },
     )
 
@@ -787,5 +803,17 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
         "operator_authorized=1."
         in text
     )
+    assert (
+        "Controlled retry execution gate is blocked: "
+        "controlled_execution_not_enabled=1, "
+        "controlled_execution_implementation_not_enabled=1."
+        in text
+    )
     assert "No controlled command execution was performed." in text
     assert brief.key_metrics["security_controlled_execution_operator_authorized"] == 1
+    assert brief.key_metrics["security_controlled_execution_gate_blocked"] == 1
+    assert brief.key_metrics["security_controlled_execution_gate_would_execute"] == 0
+    assert (
+        brief.key_metrics["security_controlled_execution_gate_execution_performed"]
+        == 0
+    )

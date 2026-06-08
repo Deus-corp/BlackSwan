@@ -1219,6 +1219,55 @@ def _retry_controlled_execution_result(**overrides):
         "--directive-id runtime-run-replay-controlled-test "
         "--timeout-profile standard"
     )
+
+    command_parse = {
+        "type": "controlled_retry_command_parse_result",
+        "valid": True,
+        "allowlist_matched": True,
+        "reasons": [],
+        "argv": [
+            "python",
+            "-m",
+            "src.testing.run_replay_evidence_check",
+            "--scenario-id",
+            "replay-controlled-test",
+            "--directive-id",
+            "runtime-run-replay-controlled-test",
+            "--timeout-profile",
+            "standard",
+        ],
+        "module": "src.testing.run_replay_evidence_check",
+        "args": {
+            "scenario_id": "replay-controlled-test",
+            "directive_id": "runtime-run-replay-controlled-test",
+            "timeout_profile": "standard",
+        },
+        "execution_performed": False,
+    }
+
+    gate_evaluation = {
+        "type": "controlled_retry_execution_gate_evaluation",
+        "gate_status": "blocked",
+        "would_execute": False,
+        "would_execute_if_enabled": False,
+        "reasons": [
+            "controlled_execution_not_enabled",
+            "controlled_execution_implementation_not_enabled",
+        ],
+        "controlled_execution_enabled": False,
+        "implementation_enabled": False,
+        "operator_authorized": False,
+        "allowlist_matched": True,
+        "command_parse_valid": True,
+        "command_parse_allowlist_matched": True,
+        "command_parse_execution_performed": False,
+        "payload_executed": False,
+        "execution_enabled": False,
+        "readiness_score": 0,
+        "min_readiness_score": 100,
+        "execution_performed": False,
+    }
+
     item = {
         "type": "replay_lifecycle_retry_controlled_execution_result",
         "controlled_execution_result_id": "controlled-result-1",
@@ -1235,30 +1284,8 @@ def _retry_controlled_execution_result(**overrides):
         "timeout_profile": "standard",
         "decision_mode": "manual",
         "command": command,
-        "command_parse": {
-            "type": "controlled_retry_command_parse_result",
-            "valid": True,
-            "allowlist_matched": True,
-            "reasons": [],
-            "argv": [
-                "python",
-                "-m",
-                "src.testing.run_replay_evidence_check",
-                "--scenario-id",
-                "replay-controlled-test",
-                "--directive-id",
-                "runtime-run-replay-controlled-test",
-                "--timeout-profile",
-                "standard",
-            ],
-            "module": "src.testing.run_replay_evidence_check",
-            "args": {
-                "scenario_id": "replay-controlled-test",
-                "directive_id": "runtime-run-replay-controlled-test",
-                "timeout_profile": "standard",
-            },
-            "execution_performed": False,
-        },
+        "command_parse": dict(command_parse),
+        "gate_evaluation": dict(gate_evaluation),
         "payload": {
             "rendered_command_id": "rendered-command-1",
             "plan_id": "plan-1",
@@ -1274,19 +1301,8 @@ def _retry_controlled_execution_result(**overrides):
             "decision_mode": "manual",
             "command": command,
             "executed": False,
-            "command_parse": {
-                "type": "controlled_retry_command_parse_result",
-                "valid": True,
-                "allowlist_matched": True,
-                "reasons": [],
-                "module": "src.testing.run_replay_evidence_check",
-                "args": {
-                    "scenario_id": "replay-controlled-test",
-                    "directive_id": "runtime-run-replay-controlled-test",
-                    "timeout_profile": "standard",
-                },
-                "execution_performed": False,
-            },
+            "command_parse": dict(command_parse),
+            "gate_evaluation": dict(gate_evaluation),
         },
     }
     item.update(overrides)
@@ -1308,6 +1324,11 @@ def test_validate_retry_controlled_execution_result_accepts_reject_only_skeleton
     assert result["command_parse_valid"] is True
     assert result["command_parse_allowlist_matched"] is True
     assert result["command_parse_execution_performed"] is False
+    assert result["gate_status"] == "blocked"
+    assert result["gate_would_execute"] is False
+    assert result["gate_would_execute_if_enabled"] is False
+    assert result["gate_execution_performed"] is False
+    assert "controlled_execution_not_enabled" in result["gate_reasons"]
     assert result["reasons"] == []
 
 
@@ -1382,6 +1403,21 @@ def test_security_validation_metrics_counts_retry_controlled_execution_results()
     assert metrics[
         "security_validation_controlled_execution_command_parse_execution_performed"
     ]["false"] == 1
+    assert metrics["security_validation_controlled_execution_gate_statuses"][
+        "blocked"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_gate_would_execute"][
+        "false"
+    ] == 1
+    assert metrics[
+        "security_validation_controlled_execution_gate_would_execute_if_enabled"
+    ]["false"] == 1
+    assert metrics[
+        "security_validation_controlled_execution_gate_execution_performed"
+    ]["false"] == 1
+    assert metrics["security_validation_controlled_execution_gate_reasons"][
+        "controlled_execution_not_enabled"
+    ] == 1
 
 
 def test_validate_retry_controlled_execution_result_accepts_allowlist_match_without_execution() -> None:
@@ -1438,3 +1474,36 @@ def test_security_validation_metrics_counts_operator_authorized_controlled_execu
     assert metrics["security_validation_controlled_execution_result_statuses"][
         "rejected"
     ] == 1
+
+
+def test_validate_retry_controlled_execution_result_rejects_missing_gate_evaluation() -> None:
+    record = _retry_controlled_execution_result()
+    record.pop("gate_evaluation", None)
+    record["payload"].pop("gate_evaluation", None)
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "missing_gate_evaluation" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_gate_would_execute() -> None:
+    record = _retry_controlled_execution_result()
+    record["gate_evaluation"]["would_execute"] = True
+    record["payload"]["gate_evaluation"]["would_execute"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "gate_would_execute_must_remain_false" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_gate_execution_performed() -> None:
+    record = _retry_controlled_execution_result()
+    record["gate_evaluation"]["execution_performed"] = True
+    record["payload"]["gate_evaluation"]["execution_performed"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "gate_must_not_perform_execution" in result["reasons"]

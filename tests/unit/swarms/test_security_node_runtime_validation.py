@@ -97,6 +97,30 @@ def test_security_node_heartbeat_reports_runtime_validation_metrics() -> None:
         ]
         == {}
     )
+    assert "security_validation_controlled_execution_gate_statuses" in metrics
+    assert "security_validation_controlled_execution_gate_would_execute" in metrics
+    assert (
+        "security_validation_controlled_execution_gate_would_execute_if_enabled"
+        in metrics
+    )
+    assert (
+        "security_validation_controlled_execution_gate_execution_performed"
+        in metrics
+    )
+    assert "security_validation_controlled_execution_gate_reasons" in metrics
+    assert metrics["security_validation_controlled_execution_gate_statuses"] == {}
+    assert metrics["security_validation_controlled_execution_gate_would_execute"] == {}
+    assert (
+        metrics[
+            "security_validation_controlled_execution_gate_would_execute_if_enabled"
+        ]
+        == {}
+    )
+    assert (
+        metrics["security_validation_controlled_execution_gate_execution_performed"]
+        == {}
+    )
+    assert metrics["security_validation_controlled_execution_gate_reasons"] == {}
 
 def make_security_node() -> SecurityNode:
     try:

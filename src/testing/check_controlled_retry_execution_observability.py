@@ -89,6 +89,20 @@ def _build_checks(
             "security_validation_controlled_execution_command_parse_execution_performed"
         )
     )
+    gate_statuses = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_gate_statuses")
+    )
+    gate_would_execute = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_gate_would_execute")
+    )
+    gate_execution_performed = _safe_mapping(
+        metrics.get(
+            "security_validation_controlled_execution_gate_execution_performed"
+        )
+    )
+    gate_reasons = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_gate_reasons")
+    )
 
     record_type_counts = _safe_mapping(metrics.get("security_validation_record_type_counts"))
 
@@ -103,6 +117,16 @@ def _build_checks(
     parse_allowlisted_true = _safe_int(parse_allowlist_matched.get("true"), 0)
     parse_execution_performed_true = _safe_int(
         parse_execution_performed.get("true"), 0
+    )
+
+    gate_blocked = _safe_int(gate_statuses.get("blocked"), 0)
+    gate_would_execute_true = _safe_int(gate_would_execute.get("true"), 0)
+    gate_execution_performed_true = _safe_int(
+        gate_execution_performed.get("true"), 0
+    )
+    gate_not_enabled = _safe_int(
+        gate_reasons.get("controlled_execution_not_enabled"),
+        0,
     )
 
     payload_executed_count = 0
@@ -177,6 +201,26 @@ def _build_checks(
             "status": "passed" if parse_execution_performed_true == 0 else "failed",
             "value": parse_execution_performed_true,
         },
+        {
+            "name": "controlled_execution_gate_blocked",
+            "status": "passed" if gate_blocked > 0 else "failed",
+            "value": gate_blocked,
+        },
+        {
+            "name": "controlled_execution_gate_would_not_execute",
+            "status": "passed" if gate_would_execute_true == 0 else "failed",
+            "value": gate_would_execute_true,
+        },
+        {
+            "name": "controlled_execution_gate_did_not_execute",
+            "status": "passed" if gate_execution_performed_true == 0 else "failed",
+            "value": gate_execution_performed_true,
+        },
+        {
+            "name": "controlled_execution_gate_not_enabled_reason",
+            "status": "passed" if gate_not_enabled > 0 else "failed",
+            "value": gate_not_enabled,
+        },
     ]
 
 
@@ -204,6 +248,26 @@ def check_controlled_retry_execution_observability_from_records(
 
     operator_authorized_count = sum(
         1 for record in controlled_records if bool(record.get("operator_authorized"))
+    )
+
+    gate_statuses = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_gate_statuses")
+    )
+    gate_would_execute = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_gate_would_execute")
+    )
+    gate_would_execute_if_enabled = _safe_mapping(
+        metrics.get(
+            "security_validation_controlled_execution_gate_would_execute_if_enabled"
+        )
+    )
+    gate_execution_performed = _safe_mapping(
+        metrics.get(
+            "security_validation_controlled_execution_gate_execution_performed"
+        )
+    )
+    gate_reasons = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_gate_reasons")
     )
 
     return {
@@ -293,7 +357,44 @@ def check_controlled_retry_execution_observability_from_records(
                 0,
             ),
             "security_controlled_execution_operator_authorized": operator_authorized_count,
+            "security_controlled_execution_gate_blocked": _safe_int(
+                gate_statuses.get("blocked"),
+                0,
+            ),
+            "security_controlled_execution_gate_would_execute": _safe_int(
+                gate_would_execute.get("true"),
+                0,
+            ),
+            "security_controlled_execution_gate_would_execute_if_enabled": _safe_int(
+                gate_would_execute_if_enabled.get("true"),
+                0,
+            ),
+            "security_controlled_execution_gate_execution_performed": _safe_int(
+                gate_execution_performed.get("true"),
+                0,
+            ),
+            "security_controlled_execution_gate_not_enabled": _safe_int(
+                gate_reasons.get("controlled_execution_not_enabled"),
+                0,
+            ),
         },
+        "controlled_execution_gate_blocked": _safe_int(gate_statuses.get("blocked"), 0),
+        "controlled_execution_gate_would_execute": _safe_int(
+            gate_would_execute.get("true"),
+            0,
+        ),
+        "controlled_execution_gate_would_execute_if_enabled": _safe_int(
+            gate_would_execute_if_enabled.get("true"),
+            0,
+        ),
+        "controlled_execution_gate_execution_performed": _safe_int(
+            gate_execution_performed.get("true"),
+            0,
+        ),
+        "controlled_execution_gate_not_enabled": _safe_int(
+            gate_reasons.get("controlled_execution_not_enabled"),
+            0,
+        ),
     }
 
 
@@ -361,6 +462,11 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"command_parse_allowlisted={result.get('controlled_command_parse_allowlisted', 0)} "
         f"command_parse_execution_performed={result.get('controlled_command_parse_execution_performed', 0)} "
         f"operator_authorized={result.get('controlled_execution_operator_authorized', 0)} "
+        f"gate_blocked={result.get('controlled_execution_gate_blocked', 0)} "
+        f"gate_would_execute={result.get('controlled_execution_gate_would_execute', 0)} "
+        f"gate_would_execute_if_enabled={result.get('controlled_execution_gate_would_execute_if_enabled', 0)} "
+        f"gate_execution_performed={result.get('controlled_execution_gate_execution_performed', 0)} "
+        f"gate_not_enabled={result.get('controlled_execution_gate_not_enabled', 0)} "
     )
 
 

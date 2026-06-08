@@ -17,6 +17,9 @@ from typing import Any, Mapping
 from src.core.crdt_adapter import CRDTAdapter
 from swarm_config import config
 from src.testing.controlled_retry_command_allowlist import parse_controlled_retry_command
+from src.testing.controlled_retry_execution_gate import (
+    evaluate_controlled_retry_execution_gate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +85,26 @@ def build_controlled_retry_command_result(
     decision_mode = _clean(rendered_command.get("decision_mode")) or "unknown"
     execution_enabled = bool(rendered_command.get("execution_enabled"))
 
+    provisional_result = {
+        "status": "rejected",
+        "reason": "controlled_execution_not_implemented",
+        "execution_enabled": execution_enabled,
+        "operator_authorized": bool(operator_authorized),
+        "allowlist_matched": bool(parse_result.get("allowlist_matched")),
+        "readiness_score": 0,
+        "command_parse": parse_result,
+        "payload": {
+            "executed": False,
+            "command_parse": parse_result,
+        },
+    }
+    gate_evaluation = evaluate_controlled_retry_execution_gate(
+        controlled_result=provisional_result,
+        controlled_execution_enabled=False,
+        implementation_enabled=False,
+        min_readiness_score=100,
+    )
+
     result_id = (
         "replay-retry-controlled-result-"
         + _stable_suffix(rendered_command_id, plan_id, command)
@@ -105,6 +128,7 @@ def build_controlled_retry_command_result(
         "decision_mode": decision_mode,
         "command": command,
         "command_parse": parse_result,
+        "gate_evaluation": gate_evaluation,
         "payload": {
             "rendered_command_id": rendered_command_id,
             "plan_id": plan_id,
@@ -120,6 +144,7 @@ def build_controlled_retry_command_result(
             "decision_mode": decision_mode,
             "command": command,
             "command_parse": parse_result,
+            "gate_evaluation": gate_evaluation,
             "executed": False,
         },
     }

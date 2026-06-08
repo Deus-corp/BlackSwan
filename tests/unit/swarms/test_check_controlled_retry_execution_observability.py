@@ -37,6 +37,10 @@ def test_controlled_retry_execution_observability_passes_for_reject_only_result(
     assert result["controlled_command_parse_allowlisted"] == 1
     assert result["controlled_command_parse_execution_performed"] == 0
     assert result["controlled_execution_operator_authorized"] == 0
+    assert result["controlled_execution_gate_blocked"] == 1
+    assert result["controlled_execution_gate_would_execute"] == 0
+    assert result["controlled_execution_gate_execution_performed"] == 0
+    assert result["controlled_execution_gate_not_enabled"] == 1
     assert _exit_code_for_result(result) == 0
 
 

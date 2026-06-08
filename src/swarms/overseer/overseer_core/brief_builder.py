@@ -223,6 +223,52 @@ def build_global_swarm_brief(
         ).get("true"),
         0,
     )
+    security_controlled_execution_gate_statuses = _safe_dict(
+        security_validation.get("security_validation_controlled_execution_gate_statuses")
+    )
+    security_controlled_execution_gate_reasons = _safe_dict(
+        security_validation.get("security_validation_controlled_execution_gate_reasons")
+    )
+    security_controlled_execution_gate_would_execute = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_gate_would_execute"
+            )
+        ).get("true"),
+        0,
+    )
+    security_controlled_execution_gate_would_execute_if_enabled = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_gate_would_execute_if_enabled"
+            )
+        ).get("true"),
+        0,
+    )
+    security_controlled_execution_gate_execution_performed = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_gate_execution_performed"
+            )
+        ).get("true"),
+        0,
+    )
+    security_controlled_execution_gate_blocked = _safe_int(
+        security_controlled_execution_gate_statuses.get("blocked"),
+        0,
+    )
+    security_controlled_execution_gate_not_enabled = _safe_int(
+        security_controlled_execution_gate_reasons.get(
+            "controlled_execution_not_enabled"
+        ),
+        0,
+    )
+    security_controlled_execution_gate_implementation_not_enabled = _safe_int(
+        security_controlled_execution_gate_reasons.get(
+            "controlled_execution_implementation_not_enabled"
+        ),
+        0,
+    )
     simulation_replay_scenarios = _safe_int(simulation_replay.get("simulation_replay_scenarios"), 0)
     simulation_replay_pending = _safe_int(simulation_replay.get("simulation_replay_pending"), 0)
     simulation_replay_completed = _safe_int(simulation_replay.get("simulation_replay_completed"), 0)
@@ -705,6 +751,39 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_controlled_execution_gate_blocked > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Controlled retry execution gate evaluated",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Controlled retry execution gate is blocked: "
+                    f"controlled_execution_not_enabled="
+                    f"{security_controlled_execution_gate_not_enabled}, "
+                    "controlled_execution_implementation_not_enabled="
+                    f"{security_controlled_execution_gate_implementation_not_enabled}."
+                ),
+                payload={
+                    "security_controlled_execution_gate_blocked": (
+                        security_controlled_execution_gate_blocked
+                    ),
+                    "security_controlled_execution_gate_would_execute": (
+                        security_controlled_execution_gate_would_execute
+                    ),
+                    "security_controlled_execution_gate_would_execute_if_enabled": (
+                        security_controlled_execution_gate_would_execute_if_enabled
+                    ),
+                    "security_controlled_execution_gate_execution_performed": (
+                        security_controlled_execution_gate_execution_performed
+                    ),
+                    "security_controlled_execution_gate_reasons": (
+                        security_controlled_execution_gate_reasons
+                    ),
+                    "recommendation": "keep_controlled_execution_gate_closed",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -919,6 +998,24 @@ def build_global_swarm_brief(
         "security_controlled_execution_operator_authorized": (
             security_controlled_execution_operator_authorized
         ),
+        "security_controlled_execution_gate_blocked": (
+            security_controlled_execution_gate_blocked
+        ),
+        "security_controlled_execution_gate_would_execute": (
+            security_controlled_execution_gate_would_execute
+        ),
+        "security_controlled_execution_gate_would_execute_if_enabled": (
+            security_controlled_execution_gate_would_execute_if_enabled
+        ),
+        "security_controlled_execution_gate_execution_performed": (
+            security_controlled_execution_gate_execution_performed
+        ),
+        "security_controlled_execution_gate_not_enabled": (
+            security_controlled_execution_gate_not_enabled
+        ),
+        "security_controlled_execution_gate_implementation_not_enabled": (
+            security_controlled_execution_gate_implementation_not_enabled
+        ),
     }
 
     summary = _build_summary(
@@ -972,6 +1069,24 @@ def build_global_swarm_brief(
         ),
         security_controlled_execution_operator_authorized=(
             security_controlled_execution_operator_authorized
+        ),
+        security_controlled_execution_gate_blocked=(
+            security_controlled_execution_gate_blocked
+        ),
+        security_controlled_execution_gate_would_execute=(
+            security_controlled_execution_gate_would_execute
+        ),
+        security_controlled_execution_gate_would_execute_if_enabled=(
+            security_controlled_execution_gate_would_execute_if_enabled
+        ),
+        security_controlled_execution_gate_execution_performed=(
+            security_controlled_execution_gate_execution_performed
+        ),
+        security_controlled_execution_gate_not_enabled=(
+            security_controlled_execution_gate_not_enabled
+        ),
+        security_controlled_execution_gate_implementation_not_enabled=(
+            security_controlled_execution_gate_implementation_not_enabled
         ),
     )
 
@@ -1050,6 +1165,12 @@ def _build_summary(
     security_controlled_command_parse_allowlisted: int,
     security_controlled_command_parse_execution_performed: int,
     security_controlled_execution_operator_authorized: int,
+    security_controlled_execution_gate_blocked: int,
+    security_controlled_execution_gate_would_execute: int,
+    security_controlled_execution_gate_would_execute_if_enabled: int,
+    security_controlled_execution_gate_execution_performed: int,
+    security_controlled_execution_gate_not_enabled: int,
+    security_controlled_execution_gate_implementation_not_enabled: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1185,6 +1306,26 @@ def _build_summary(
             "Controlled retry execution operator authorization intent observed: "
             f"operator_authorized={security_controlled_execution_operator_authorized}. "
             "No controlled command execution was performed."
+        )
+
+    if security_controlled_execution_gate_blocked > 0:
+        parts.append(
+            "Controlled retry execution gate is blocked: "
+            f"controlled_execution_not_enabled="
+            f"{security_controlled_execution_gate_not_enabled}, "
+            "controlled_execution_implementation_not_enabled="
+            f"{security_controlled_execution_gate_implementation_not_enabled}."
+        )
+
+    if (
+        security_controlled_execution_gate_would_execute > 0
+        or security_controlled_execution_gate_execution_performed > 0
+    ):
+        parts.append(
+            "Controlled execution gate reported: "
+            f"would_execute={security_controlled_execution_gate_would_execute}, "
+            f"execution_performed="
+            f"{security_controlled_execution_gate_execution_performed}."
         )
 
     blocked_execution_disabled = _safe_int(
@@ -1485,6 +1626,11 @@ def _aggregate_security_validation_from_heartbeats(
     controlled_execution_command_parse_valid: dict[str, int] = {}
     controlled_execution_command_parse_allowlist_matched: dict[str, int] = {}
     controlled_execution_command_parse_execution_performed: dict[str, int] = {}
+    controlled_execution_gate_statuses: dict[str, int] = {}
+    controlled_execution_gate_would_execute: dict[str, int] = {}
+    controlled_execution_gate_would_execute_if_enabled: dict[str, int] = {}
+    controlled_execution_gate_execution_performed: dict[str, int] = {}
+    controlled_execution_gate_reasons: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1568,6 +1714,30 @@ def _aggregate_security_validation_from_heartbeats(
                 "security_validation_controlled_execution_command_parse_execution_performed"
             ),
         )
+        _merge_int_counts(
+            controlled_execution_gate_statuses,
+            metrics.get("security_validation_controlled_execution_gate_statuses"),
+        )
+        _merge_int_counts(
+            controlled_execution_gate_would_execute,
+            metrics.get("security_validation_controlled_execution_gate_would_execute"),
+        )
+        _merge_int_counts(
+            controlled_execution_gate_would_execute_if_enabled,
+            metrics.get(
+                "security_validation_controlled_execution_gate_would_execute_if_enabled"
+            ),
+        )
+        _merge_int_counts(
+            controlled_execution_gate_execution_performed,
+            metrics.get(
+                "security_validation_controlled_execution_gate_execution_performed"
+            ),
+        )
+        _merge_int_counts(
+            controlled_execution_gate_reasons,
+            metrics.get("security_validation_controlled_execution_gate_reasons"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1611,6 +1781,21 @@ def _aggregate_security_validation_from_heartbeats(
     aggregate[
         "security_validation_controlled_execution_command_parse_execution_performed"
     ] = controlled_execution_command_parse_execution_performed
+    aggregate["security_validation_controlled_execution_gate_statuses"] = (
+        controlled_execution_gate_statuses
+    )
+    aggregate["security_validation_controlled_execution_gate_would_execute"] = (
+        controlled_execution_gate_would_execute
+    )
+    aggregate[
+        "security_validation_controlled_execution_gate_would_execute_if_enabled"
+    ] = controlled_execution_gate_would_execute_if_enabled
+    aggregate["security_validation_controlled_execution_gate_execution_performed"] = (
+        controlled_execution_gate_execution_performed
+    )
+    aggregate["security_validation_controlled_execution_gate_reasons"] = (
+        controlled_execution_gate_reasons
+    )
 
     return aggregate
 
