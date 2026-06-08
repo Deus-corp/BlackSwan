@@ -277,3 +277,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "gate_status=blocked" in text
     assert "would_execute=false" in text
     assert "controlled_execution_implementation_not_enabled" in text
+    assert "Controlled execution readiness report" in text
+    assert "check_controlled_execution_readiness" in text
+    assert "ready_for_mock_execution=true" in text
+    assert "ready_for_real_execution=false" in text
+    assert "real_execution_not_supported_yet" in text

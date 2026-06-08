@@ -1123,6 +1123,34 @@ from controlled execution results. The gate reports `gate_status=blocked`,
 
 ---
 
+### Controlled execution readiness report
+
+Before introducing any execution adapter, the controlled execution readiness
+helper aggregates the seven-stage retry governance trail, retry governance
+observability, controlled execution observability, command parse observability,
+operator authorization intent, and gate evaluation.
+
+```bash
+python -m src.testing.check_controlled_execution_readiness \
+  --proposal-id <proposal-id> \
+  --rendered-command-id <rendered-command-id> \
+  --require-operator-authorized \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+Expected safe pre-execution output:
+
+```text
+status=passed
+ready_for_mock_execution=true
+ready_for_real_execution=false
+blocking_reasons=real_execution_not_supported_yet
+```
+
+The report is read-only and does not execute commands. Real execution remains
+unsupported until a separate execution adapter PR explicitly introduces it.
+
+---
+
 ### Controlled execution observability check
 
 The reject-only controlled execution extension has a dedicated read-only
