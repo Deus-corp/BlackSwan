@@ -354,6 +354,28 @@ def _controlled_execution_result(**overrides):
         "execution_performed": False,
     }
 
+    mock_execution = {
+        "type": "controlled_retry_mock_execution",
+        "status": "mock_executed",
+        "reason": "mock_execution_completed",
+        "mock_execution_enabled": True,
+        "real_execution_enabled": False,
+        "mock_execution": {
+            "performed": True,
+            "adapter": "mock",
+            "subprocess_invoked": False,
+            "exit_code": 0,
+            "stdout": "mock controlled retry execution",
+            "stderr": "",
+            "reasons": [],
+        },
+        "payload": {
+            "executed": False,
+            "mock_executed": True,
+            "subprocess_invoked": False,
+        },
+    }
+
     item = {
         "type": "replay_lifecycle_retry_controlled_execution_result",
         "controlled_execution_result_id": "controlled-result-1",
@@ -368,12 +390,14 @@ def _controlled_execution_result(**overrides):
         "allowlist_matched": True,
         "command_parse": dict(command_parse),
         "gate_evaluation": dict(gate_evaluation),
+        "mock_execution": dict(mock_execution),
         "payload": {
             "executed": False,
             "operator_authorized": False,
             "allowlist_matched": True,
             "command_parse": dict(command_parse),
             "gate_evaluation": dict(gate_evaluation),
+            "mock_execution": dict(mock_execution),
         },
     }
     item.update(overrides)
@@ -417,6 +441,10 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["controlled_gate_would_execute"]["false"] == 1
     assert summary["controlled_gate_execution_performed"]["false"] == 1
     assert summary["controlled_gate_reasons"]["controlled_execution_not_enabled"] == 1
+    assert summary["controlled_mock_statuses"]["mock_executed"] == 1
+    assert summary["controlled_mock_reasons"]["mock_execution_completed"] == 1
+    assert summary["controlled_mock_performed"]["true"] == 1
+    assert summary["controlled_mock_subprocess_invoked"]["false"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -455,3 +483,22 @@ def test_inspect_retry_governance_trail_counts_operator_authorization_intent() -
 
     assert summary["chain_complete"] is True
     assert summary["controlled_execution_operator_authorized"]["true"] == 1
+
+
+def test_inspect_retry_governance_trail_counts_mock_subprocess_safety() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+        ]
+    )
+
+    assert summary["controlled_mock_performed"]["true"] == 1
+    assert summary["controlled_mock_subprocess_invoked"]["false"] == 1
+    assert summary["controlled_mock_subprocess_invoked"].get("true", 0) == 0

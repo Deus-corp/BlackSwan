@@ -775,6 +775,15 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
                 "controlled_execution_not_enabled": 1,
                 "controlled_execution_implementation_not_enabled": 1,
             },
+            "security_validation_controlled_execution_mock_statuses": {
+                "mock_executed": 1,
+            },
+            "security_validation_controlled_execution_mock_performed": {
+                "true": 1,
+            },
+            "security_validation_controlled_execution_mock_subprocess_invoked": {
+                "false": 1,
+            },
         },
     )
 
@@ -817,3 +826,12 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
         brief.key_metrics["security_controlled_execution_gate_execution_performed"]
         == 0
     )
+    assert (
+        "Controlled mock execution observed: "
+        "mock_executed=1, mock_performed=1, subprocess_invoked=0. "
+        "Real execution remains disabled."
+        in text
+    )
+    assert brief.key_metrics["security_controlled_mock_executed"] == 1
+    assert brief.key_metrics["security_controlled_mock_performed"] == 1
+    assert brief.key_metrics["security_controlled_mock_subprocess_invoked"] == 0

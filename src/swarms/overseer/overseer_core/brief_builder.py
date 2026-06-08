@@ -346,6 +346,34 @@ def build_global_swarm_brief(
         ),
         0,
     )
+    security_controlled_mock_statuses = _safe_dict(
+        security_validation.get(
+            "security_validation_controlled_execution_mock_statuses"
+        )
+    )
+    security_controlled_mock_performed_mapping = _safe_dict(
+        security_validation.get(
+            "security_validation_controlled_execution_mock_performed"
+        )
+    )
+    security_controlled_mock_subprocess_mapping = _safe_dict(
+        security_validation.get(
+            "security_validation_controlled_execution_mock_subprocess_invoked"
+        )
+    )
+
+    security_controlled_mock_executed = _safe_int(
+        security_controlled_mock_statuses.get("mock_executed"),
+        0,
+    )
+    security_controlled_mock_performed = _safe_int(
+        security_controlled_mock_performed_mapping.get("true"),
+        0,
+    )
+    security_controlled_mock_subprocess_invoked = _safe_int(
+        security_controlled_mock_subprocess_mapping.get("true"),
+        0,
+    )
 
     if gold_candidates > 0:
         opportunities.append(
@@ -784,6 +812,34 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_controlled_mock_executed > 0 or security_controlled_mock_performed > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Controlled mock execution observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Controlled mock execution observed: "
+                    f"mock_executed={security_controlled_mock_executed}, "
+                    f"mock_performed={security_controlled_mock_performed}, "
+                    "subprocess_invoked="
+                    f"{security_controlled_mock_subprocess_invoked}. "
+                    "Real execution remains disabled."
+                ),
+                payload={
+                    "security_controlled_mock_executed": (
+                        security_controlled_mock_executed
+                    ),
+                    "security_controlled_mock_performed": (
+                        security_controlled_mock_performed
+                    ),
+                    "security_controlled_mock_subprocess_invoked": (
+                        security_controlled_mock_subprocess_invoked
+                    ),
+                    "recommendation": "keep_real_execution_disabled_until_real_adapter_pr",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -1016,6 +1072,11 @@ def build_global_swarm_brief(
         "security_controlled_execution_gate_implementation_not_enabled": (
             security_controlled_execution_gate_implementation_not_enabled
         ),
+        "security_controlled_mock_executed": security_controlled_mock_executed,
+        "security_controlled_mock_performed": security_controlled_mock_performed,
+        "security_controlled_mock_subprocess_invoked": (
+            security_controlled_mock_subprocess_invoked
+        ),
     }
 
     summary = _build_summary(
@@ -1087,6 +1148,11 @@ def build_global_swarm_brief(
         ),
         security_controlled_execution_gate_implementation_not_enabled=(
             security_controlled_execution_gate_implementation_not_enabled
+        ),
+        security_controlled_mock_executed=security_controlled_mock_executed,
+        security_controlled_mock_performed=security_controlled_mock_performed,
+        security_controlled_mock_subprocess_invoked=(
+            security_controlled_mock_subprocess_invoked
         ),
     )
 
@@ -1171,6 +1237,9 @@ def _build_summary(
     security_controlled_execution_gate_execution_performed: int,
     security_controlled_execution_gate_not_enabled: int,
     security_controlled_execution_gate_implementation_not_enabled: int,
+    security_controlled_mock_executed: int,
+    security_controlled_mock_performed: int,
+    security_controlled_mock_subprocess_invoked: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1326,6 +1395,15 @@ def _build_summary(
             f"would_execute={security_controlled_execution_gate_would_execute}, "
             f"execution_performed="
             f"{security_controlled_execution_gate_execution_performed}."
+        )
+
+    if security_controlled_mock_executed > 0 or security_controlled_mock_performed > 0:
+        parts.append(
+            "Controlled mock execution observed: "
+            f"mock_executed={security_controlled_mock_executed}, "
+            f"mock_performed={security_controlled_mock_performed}, "
+            f"subprocess_invoked={security_controlled_mock_subprocess_invoked}. "
+            "Real execution remains disabled."
         )
 
     blocked_execution_disabled = _safe_int(
@@ -1631,6 +1709,9 @@ def _aggregate_security_validation_from_heartbeats(
     controlled_execution_gate_would_execute_if_enabled: dict[str, int] = {}
     controlled_execution_gate_execution_performed: dict[str, int] = {}
     controlled_execution_gate_reasons: dict[str, int] = {}
+    controlled_execution_mock_statuses: dict[str, int] = {}
+    controlled_execution_mock_performed: dict[str, int] = {}
+    controlled_execution_mock_subprocess_invoked: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1738,6 +1819,20 @@ def _aggregate_security_validation_from_heartbeats(
             controlled_execution_gate_reasons,
             metrics.get("security_validation_controlled_execution_gate_reasons"),
         )
+        _merge_int_counts(
+            controlled_execution_mock_statuses,
+            metrics.get("security_validation_controlled_execution_mock_statuses"),
+        )
+        _merge_int_counts(
+            controlled_execution_mock_performed,
+            metrics.get("security_validation_controlled_execution_mock_performed"),
+        )
+        _merge_int_counts(
+            controlled_execution_mock_subprocess_invoked,
+            metrics.get(
+                "security_validation_controlled_execution_mock_subprocess_invoked"
+            ),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1795,6 +1890,15 @@ def _aggregate_security_validation_from_heartbeats(
     )
     aggregate["security_validation_controlled_execution_gate_reasons"] = (
         controlled_execution_gate_reasons
+    )
+    aggregate["security_validation_controlled_execution_mock_statuses"] = (
+        controlled_execution_mock_statuses
+    )
+    aggregate["security_validation_controlled_execution_mock_performed"] = (
+        controlled_execution_mock_performed
+    )
+    aggregate["security_validation_controlled_execution_mock_subprocess_invoked"] = (
+        controlled_execution_mock_subprocess_invoked
     )
 
     return aggregate

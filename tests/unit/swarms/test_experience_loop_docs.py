@@ -286,3 +286,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "payload.executed=false" in text
     assert "subprocess_invoked=false" in text
     assert "mock_executed" in text
+    assert "Mock execution visibility" in text
+    assert "mock_executed=1" in text
+    assert "mock_performed=1" in text
+    assert "mock_subprocess_invoked=0" in text
+    assert "Real execution remains disabled" in text

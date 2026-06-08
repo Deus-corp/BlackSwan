@@ -44,6 +44,15 @@ def _trail_summary(**overrides):
             "controlled_execution_not_enabled": 1,
             "controlled_execution_implementation_not_enabled": 1,
         },
+        "controlled_mock_statuses": {
+            "mock_executed": 1,
+        },
+        "controlled_mock_performed": {
+            "true": 1,
+        },
+        "controlled_mock_subprocess_invoked": {
+            "false": 1,
+        },
     }
     item.update(overrides)
     return item
@@ -144,6 +153,9 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "ready_for_real_execution": False,
             "require_operator_authorized": True,
             "blocking_reasons": ["real_execution_not_supported_yet"],
+            "mock_execution_observed": True,
+            "mock_execution_performed": 1,
+            "mock_subprocess_invoked": 0,
         }
     )
 
@@ -152,8 +164,28 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "ready_for_real_execution=false" in text
     assert "require_operator_authorized=true" in text
     assert "blocking_reasons=real_execution_not_supported_yet" in text
+    assert "mock_execution_observed=true" in text
+    assert "mock_execution_performed=1" in text
+    assert "mock_subprocess_invoked=0" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
     assert _exit_code_for_result({"status": "passed"}) == 0
     assert _exit_code_for_result({"status": "failed"}) == 1
+
+
+def test_controlled_execution_readiness_checks_fail_when_mock_missing() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_mock_statuses={},
+            controlled_mock_performed={},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "mock_execution_observed" in failed
+    assert "mock_execution_performed" in failed

@@ -1186,6 +1186,15 @@ validation metrics do not observe the controlled execution result.
 
 ---
 
+### Mock execution visibility
+
+Mock execution is surfaced in the governance trail inspector, Overseer brief,
+and final readiness report. A safe mock run reports `mock_executed=1`,
+`mock_performed=1`, and `mock_subprocess_invoked=0`. Real execution remains
+disabled. Real execution remains disabled.
+
+---
+
 ## Related modules
 
 ```text

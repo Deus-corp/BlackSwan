@@ -78,6 +78,16 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     if ready_for_mock_execution:
         blocking_reasons.append("real_execution_not_supported_yet")
 
+    controlled_mock_statuses = _safe_mapping(
+        trail_summary.get("controlled_mock_statuses")
+    )
+    controlled_mock_performed = _safe_mapping(
+        trail_summary.get("controlled_mock_performed")
+    )
+    controlled_mock_subprocess_invoked = _safe_mapping(
+        trail_summary.get("controlled_mock_subprocess_invoked")
+    )
+
     return {
         "type": "controlled_execution_readiness_report",
         "status": "passed" if ready_for_mock_execution else "failed",
@@ -99,6 +109,16 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             ),
             "real_execution": 1,
         },
+        "mock_execution_observed": _safe_int(
+            controlled_mock_statuses.get("mock_executed")
+        )
+        > 0,
+        "mock_execution_performed": _safe_int(
+            controlled_mock_performed.get("true")
+        ),
+        "mock_subprocess_invoked": _safe_int(
+            controlled_mock_subprocess_invoked.get("true")
+        ),
     }
 
 
@@ -136,6 +156,15 @@ def _build_checks(
         trail_summary.get("controlled_gate_execution_performed")
     )
     gate_reasons = _safe_mapping(trail_summary.get("controlled_gate_reasons"))
+    controlled_mock_statuses = _safe_mapping(
+        trail_summary.get("controlled_mock_statuses")
+    )
+    controlled_mock_performed = _safe_mapping(
+        trail_summary.get("controlled_mock_performed")
+    )
+    controlled_mock_subprocess_invoked = _safe_mapping(
+        trail_summary.get("controlled_mock_subprocess_invoked")
+    )
 
     checks = [
         _check(
@@ -223,6 +252,21 @@ def _build_checks(
                 ),
             },
         ),
+        _check(
+            "mock_execution_observed",
+            _safe_int(controlled_mock_statuses.get("mock_executed")) > 0,
+            _safe_int(controlled_mock_statuses.get("mock_executed")),
+        ),
+        _check(
+            "mock_execution_performed",
+            _safe_int(controlled_mock_performed.get("true")) > 0,
+            _safe_int(controlled_mock_performed.get("true")),
+        ),
+        _check(
+            "mock_execution_did_not_invoke_subprocess",
+            _safe_int(controlled_mock_subprocess_invoked.get("true")) == 0,
+            _safe_int(controlled_mock_subprocess_invoked.get("true")),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -283,6 +327,10 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"require_operator_authorized="
         f"{str(bool(result.get('require_operator_authorized'))).lower()} "
         f"blocking_reasons={','.join(str(item) for item in blocking_reasons)} "
+        f"mock_execution_observed="
+        f"{str(bool(result.get('mock_execution_observed'))).lower()} "
+        f"mock_execution_performed={result.get('mock_execution_performed', 0)} "
+        f"mock_subprocess_invoked={result.get('mock_subprocess_invoked', 0)} "
     )
 
 

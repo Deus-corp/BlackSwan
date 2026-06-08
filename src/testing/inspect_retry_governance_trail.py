@@ -218,6 +218,23 @@ def inspect_retry_governance_trail_from_records(
                 if clean_reason:
                     controlled_gate_reasons[clean_reason] += 1
 
+    controlled_mock_statuses = Counter(
+        str(_mock_execution(item).get("status") or "none").strip() or "none"
+        for item in controlled_execution_results
+    )
+    controlled_mock_reasons = Counter(
+        str(_mock_execution(item).get("reason") or "none").strip() or "none"
+        for item in controlled_execution_results
+    )
+    controlled_mock_performed = Counter(
+        str(bool(_mock_execution_payload(item).get("performed"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_mock_subprocess_invoked = Counter(
+        str(bool(_mock_execution_payload(item).get("subprocess_invoked"))).lower()
+        for item in controlled_execution_results
+    )
+
     chain_ids = _build_chain_ids(
         proposals=proposals,
         approvals=approvals,
@@ -298,6 +315,12 @@ def inspect_retry_governance_trail_from_records(
             controlled_gate_execution_performed
         ),
         "controlled_gate_reasons": dict(controlled_gate_reasons),
+        "controlled_mock_statuses": dict(controlled_mock_statuses),
+        "controlled_mock_reasons": dict(controlled_mock_reasons),
+        "controlled_mock_performed": dict(controlled_mock_performed),
+        "controlled_mock_subprocess_invoked": dict(
+            controlled_mock_subprocess_invoked
+        ),
     }
 
 def _missing_stages(
@@ -406,6 +429,29 @@ def _gate_evaluation(record: Mapping[str, Any]) -> Mapping[str, Any]:
         nested = payload.get("gate_evaluation")
         if isinstance(nested, Mapping):
             return nested
+
+    return {}
+
+
+def _mock_execution(record: Mapping[str, Any]) -> Mapping[str, Any]:
+    mock_execution = record.get("mock_execution")
+    if isinstance(mock_execution, Mapping):
+        return mock_execution
+
+    payload = record.get("payload")
+    if isinstance(payload, Mapping):
+        nested = payload.get("mock_execution")
+        if isinstance(nested, Mapping):
+            return nested
+
+    return {}
+
+
+def _mock_execution_payload(record: Mapping[str, Any]) -> Mapping[str, Any]:
+    mock_execution = _mock_execution(record)
+    nested = mock_execution.get("mock_execution")
+    if isinstance(nested, Mapping):
+        return nested
 
     return {}
 
@@ -596,6 +642,21 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("controlled_gate_reasons"), Mapping)
         else {}
     )
+    controlled_mock_statuses = (
+        summary.get("controlled_mock_statuses")
+        if isinstance(summary.get("controlled_mock_statuses"), Mapping)
+        else {}
+    )
+    controlled_mock_performed = (
+        summary.get("controlled_mock_performed")
+        if isinstance(summary.get("controlled_mock_performed"), Mapping)
+        else {}
+    )
+    controlled_mock_subprocess_invoked = (
+        summary.get("controlled_mock_subprocess_invoked")
+        if isinstance(summary.get("controlled_mock_subprocess_invoked"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -636,6 +697,9 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"gate_would_execute_if_enabled={controlled_gate_would_execute_if_enabled.get('true', 0)} "
         f"gate_execution_performed={controlled_gate_execution_performed.get('true', 0)} "
         f"gate_not_enabled={controlled_gate_reasons.get('controlled_execution_not_enabled', 0)} "
+        f"mock_executed={controlled_mock_statuses.get('mock_executed', 0)} "
+        f"mock_performed={controlled_mock_performed.get('true', 0)} "
+        f"mock_subprocess_invoked={controlled_mock_subprocess_invoked.get('true', 0)} "
     )
 
 
