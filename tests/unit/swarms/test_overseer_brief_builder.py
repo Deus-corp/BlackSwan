@@ -784,6 +784,15 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "security_validation_controlled_execution_mock_subprocess_invoked": {
                 "false": 1,
             },
+            "security_validation_mock_summary_statuses": {
+                "mock_executed": 1,
+            },
+            "security_validation_mock_summary_performed": {
+                "true": 1,
+            },
+            "security_validation_mock_summary_subprocess_invoked": {
+                "false": 1,
+            },
         },
     )
 
@@ -835,3 +844,11 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert brief.key_metrics["security_controlled_mock_executed"] == 1
     assert brief.key_metrics["security_controlled_mock_performed"] == 1
     assert brief.key_metrics["security_controlled_mock_subprocess_invoked"] == 0
+    assert (
+        "Controlled mock execution summary observed: "
+        "mock_executed=1, mock_performed=1, subprocess_invoked=0."
+        in text
+    )
+    assert brief.key_metrics["security_mock_summary_executed"] == 1
+    assert brief.key_metrics["security_mock_summary_performed"] == 1
+    assert brief.key_metrics["security_mock_summary_subprocess_invoked"] == 0

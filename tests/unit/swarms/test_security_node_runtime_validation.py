@@ -127,6 +127,12 @@ def test_security_node_heartbeat_reports_runtime_validation_metrics() -> None:
     assert metrics["security_validation_controlled_execution_mock_statuses"] == {}
     assert metrics["security_validation_controlled_execution_mock_performed"] == {}
     assert metrics["security_validation_controlled_execution_mock_subprocess_invoked"] == {}
+    assert "security_validation_mock_summary_statuses" in metrics
+    assert "security_validation_mock_summary_performed" in metrics
+    assert "security_validation_mock_summary_subprocess_invoked" in metrics
+    assert metrics["security_validation_mock_summary_statuses"] == {}
+    assert metrics["security_validation_mock_summary_performed"] == {}
+    assert metrics["security_validation_mock_summary_subprocess_invoked"] == {}
 
 def make_security_node() -> SecurityNode:
     try:

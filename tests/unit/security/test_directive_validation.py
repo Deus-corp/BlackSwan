@@ -17,6 +17,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_rendered_command_result,
     validate_replay_lifecycle_retry_execution_eligibility,
     validate_replay_lifecycle_retry_controlled_execution_result,
+    validate_replay_lifecycle_retry_mock_execution_summary,
 )
 
 
@@ -1564,3 +1565,94 @@ def test_validate_retry_controlled_execution_result_rejects_mock_payload_execute
 
     assert result["valid"] is False
     assert "mock_execution_must_not_set_payload_executed" in result["reasons"]
+
+
+def _retry_mock_execution_summary(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_mock_execution_summary",
+        "mock_execution_summary_id": "mock-summary-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "source_controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "proposal_id": "proposal-1",
+        "plan_id": "plan-1",
+        "approval_id": "approval-1",
+        "status": "mock_executed",
+        "reason": "mock_execution_completed",
+        "mock_status": "mock_executed",
+        "mock_reason": "mock_execution_completed",
+        "mock_performed": True,
+        "subprocess_invoked": False,
+        "real_execution_enabled": False,
+        "mock_execution_enabled": True,
+        "payload_executed": False,
+        "derived": True,
+        "payload": {
+            "mock_execution_summary_id": "mock-summary-1",
+            "controlled_execution_result_id": "controlled-result-1",
+            "source_controlled_execution_result_id": "controlled-result-1",
+            "rendered_command_id": "rendered-command-1",
+            "proposal_id": "proposal-1",
+            "plan_id": "plan-1",
+            "approval_id": "approval-1",
+            "status": "mock_executed",
+            "reason": "mock_execution_completed",
+            "mock_performed": True,
+            "subprocess_invoked": False,
+            "real_execution_enabled": False,
+            "mock_execution_enabled": True,
+            "payload_executed": False,
+            "executed": False,
+            "derived": True,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_mock_execution_summary_accepts_safe_summary() -> None:
+    result = validate_replay_lifecycle_retry_mock_execution_summary(
+        _retry_mock_execution_summary()
+    )
+
+    assert result["valid"] is True
+    assert result["status"] == "mock_executed"
+    assert result["mock_performed"] is True
+    assert result["subprocess_invoked"] is False
+    assert result["real_execution_enabled"] is False
+    assert result["payload_executed"] is False
+    assert result["derived"] is True
+
+
+def test_validate_retry_mock_execution_summary_rejects_subprocess_invoked() -> None:
+    result = validate_replay_lifecycle_retry_mock_execution_summary(
+        _retry_mock_execution_summary(subprocess_invoked=True)
+    )
+
+    assert result["valid"] is False
+    assert "mock_summary_must_not_invoke_subprocess" in result["reasons"]
+
+
+def test_validate_retry_mock_execution_summary_rejects_real_execution_enabled() -> None:
+    result = validate_replay_lifecycle_retry_mock_execution_summary(
+        _retry_mock_execution_summary(real_execution_enabled=True)
+    )
+
+    assert result["valid"] is False
+    assert "mock_summary_must_not_enable_real_execution" in result["reasons"]
+
+
+def test_security_validation_metrics_counts_retry_mock_execution_summary() -> None:
+    metrics = build_security_validation_heartbeat_metrics(
+        [_retry_mock_execution_summary()]
+    )
+
+    assert metrics["security_validation_record_type_counts"][
+        "replay_lifecycle_retry_mock_execution_summary"
+    ] == 1
+    assert metrics["security_validation_mock_summary_statuses"]["mock_executed"] == 1
+    assert metrics["security_validation_mock_summary_reasons"][
+        "mock_execution_completed"
+    ] == 1
+    assert metrics["security_validation_mock_summary_performed"]["true"] == 1
+    assert metrics["security_validation_mock_summary_subprocess_invoked"]["false"] == 1

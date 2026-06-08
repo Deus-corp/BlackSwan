@@ -1195,6 +1195,15 @@ disabled. Real execution remains disabled.
 
 ---
 
+### Mock execution summary records
+
+Mock execution summary records are derived from controlled execution results and
+are idempotent by `controlled_execution_result_id`. A safe summary reports
+`mock_summary_executed=1`, `mock_summary_performed=1`, and
+`mock_summary_subprocess_invoked=0`.
+
+---
+
 ## Related modules
 
 ```text

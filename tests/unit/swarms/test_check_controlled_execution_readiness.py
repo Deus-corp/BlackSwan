@@ -53,6 +53,15 @@ def _trail_summary(**overrides):
         "controlled_mock_subprocess_invoked": {
             "false": 1,
         },
+        "mock_summary_statuses": {
+            "mock_executed": 1,
+        },
+        "mock_summary_performed": {
+            "true": 1,
+        },
+        "mock_summary_subprocess_invoked": {
+            "false": 1,
+        },
     }
     item.update(overrides)
     return item
@@ -189,3 +198,20 @@ def test_controlled_execution_readiness_checks_fail_when_mock_missing() -> None:
 
     assert "mock_execution_observed" in failed
     assert "mock_execution_performed" in failed
+
+
+def test_controlled_execution_readiness_checks_fail_when_mock_summary_missing() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            mock_summary_statuses={},
+            mock_summary_performed={},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "mock_execution_summary_observed" in failed
+    assert "mock_execution_summary_performed" in failed

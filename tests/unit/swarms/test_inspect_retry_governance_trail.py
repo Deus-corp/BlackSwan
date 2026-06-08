@@ -502,3 +502,50 @@ def test_inspect_retry_governance_trail_counts_mock_subprocess_safety() -> None:
     assert summary["controlled_mock_performed"]["true"] == 1
     assert summary["controlled_mock_subprocess_invoked"]["false"] == 1
     assert summary["controlled_mock_subprocess_invoked"].get("true", 0) == 0
+
+
+def _mock_execution_summary(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_mock_execution_summary",
+        "mock_execution_summary_id": "mock-summary-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "source_controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-1",
+        "proposal_id": "proposal-1",
+        "plan_id": "plan-1",
+        "approval_id": "approval-1",
+        "status": "mock_executed",
+        "reason": "mock_execution_completed",
+        "mock_performed": True,
+        "subprocess_invoked": False,
+        "real_execution_enabled": False,
+        "derived": True,
+        "payload": {
+            "executed": False,
+            "derived": True,
+        },
+    }
+    item.update(overrides)
+    return item
+
+def test_inspect_retry_governance_trail_counts_mock_execution_summary() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _mock_execution_summary(),
+        ]
+    )
+
+    assert summary["counts"]["mock_execution_summaries"] == 1
+    assert summary["chain_ids"]["mock_execution_summary_ids"] == ["mock-summary-1"]
+    assert summary["mock_summary_statuses"]["mock_executed"] == 1
+    assert summary["mock_summary_reasons"]["mock_execution_completed"] == 1
+    assert summary["mock_summary_performed"]["true"] == 1
+    assert summary["mock_summary_subprocess_invoked"]["false"] == 1

@@ -374,6 +374,30 @@ def build_global_swarm_brief(
         security_controlled_mock_subprocess_mapping.get("true"),
         0,
     )
+    security_mock_summary_statuses = _safe_dict(
+        security_validation.get("security_validation_mock_summary_statuses")
+    )
+    security_mock_summary_performed_mapping = _safe_dict(
+        security_validation.get("security_validation_mock_summary_performed")
+    )
+    security_mock_summary_subprocess_mapping = _safe_dict(
+        security_validation.get(
+            "security_validation_mock_summary_subprocess_invoked"
+        )
+    )
+
+    security_mock_summary_executed = _safe_int(
+        security_mock_summary_statuses.get("mock_executed"),
+        0,
+    )
+    security_mock_summary_performed = _safe_int(
+        security_mock_summary_performed_mapping.get("true"),
+        0,
+    )
+    security_mock_summary_subprocess_invoked = _safe_int(
+        security_mock_summary_subprocess_mapping.get("true"),
+        0,
+    )
 
     if gold_candidates > 0:
         opportunities.append(
@@ -840,6 +864,29 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_mock_summary_executed > 0 or security_mock_summary_performed > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Controlled mock execution summary observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Controlled mock execution summary observed: "
+                    f"mock_executed={security_mock_summary_executed}, "
+                    f"mock_performed={security_mock_summary_performed}, "
+                    "subprocess_invoked="
+                    f"{security_mock_summary_subprocess_invoked}."
+                ),
+                payload={
+                    "security_mock_summary_executed": security_mock_summary_executed,
+                    "security_mock_summary_performed": security_mock_summary_performed,
+                    "security_mock_summary_subprocess_invoked": (
+                        security_mock_summary_subprocess_invoked
+                    ),
+                    "recommendation": "keep_mock_summary_derived_and_real_execution_disabled",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -1077,6 +1124,11 @@ def build_global_swarm_brief(
         "security_controlled_mock_subprocess_invoked": (
             security_controlled_mock_subprocess_invoked
         ),
+        "security_mock_summary_executed": security_mock_summary_executed,
+        "security_mock_summary_performed": security_mock_summary_performed,
+        "security_mock_summary_subprocess_invoked": (
+            security_mock_summary_subprocess_invoked
+        ),
     }
 
     summary = _build_summary(
@@ -1153,6 +1205,11 @@ def build_global_swarm_brief(
         security_controlled_mock_performed=security_controlled_mock_performed,
         security_controlled_mock_subprocess_invoked=(
             security_controlled_mock_subprocess_invoked
+        ),
+        security_mock_summary_executed=security_mock_summary_executed,
+        security_mock_summary_performed=security_mock_summary_performed,
+        security_mock_summary_subprocess_invoked=(
+            security_mock_summary_subprocess_invoked
         ),
     )
 
@@ -1240,6 +1297,9 @@ def _build_summary(
     security_controlled_mock_executed: int,
     security_controlled_mock_performed: int,
     security_controlled_mock_subprocess_invoked: int,
+    security_mock_summary_executed: int,
+    security_mock_summary_performed: int,
+    security_mock_summary_subprocess_invoked: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1404,6 +1464,14 @@ def _build_summary(
             f"mock_performed={security_controlled_mock_performed}, "
             f"subprocess_invoked={security_controlled_mock_subprocess_invoked}. "
             "Real execution remains disabled."
+        )
+    
+    if security_mock_summary_executed > 0 or security_mock_summary_performed > 0:
+        parts.append(
+            "Controlled mock execution summary observed: "
+            f"mock_executed={security_mock_summary_executed}, "
+            f"mock_performed={security_mock_summary_performed}, "
+            f"subprocess_invoked={security_mock_summary_subprocess_invoked}."
         )
 
     blocked_execution_disabled = _safe_int(
@@ -1712,6 +1780,9 @@ def _aggregate_security_validation_from_heartbeats(
     controlled_execution_mock_statuses: dict[str, int] = {}
     controlled_execution_mock_performed: dict[str, int] = {}
     controlled_execution_mock_subprocess_invoked: dict[str, int] = {}
+    mock_summary_statuses: dict[str, int] = {}
+    mock_summary_performed: dict[str, int] = {}
+    mock_summary_subprocess_invoked: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1833,6 +1904,18 @@ def _aggregate_security_validation_from_heartbeats(
                 "security_validation_controlled_execution_mock_subprocess_invoked"
             ),
         )
+        _merge_int_counts(
+            mock_summary_statuses,
+            metrics.get("security_validation_mock_summary_statuses"),
+        )
+        _merge_int_counts(
+            mock_summary_performed,
+            metrics.get("security_validation_mock_summary_performed"),
+        )
+        _merge_int_counts(
+            mock_summary_subprocess_invoked,
+            metrics.get("security_validation_mock_summary_subprocess_invoked"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1899,6 +1982,11 @@ def _aggregate_security_validation_from_heartbeats(
     )
     aggregate["security_validation_controlled_execution_mock_subprocess_invoked"] = (
         controlled_execution_mock_subprocess_invoked
+    )
+    aggregate["security_validation_mock_summary_statuses"] = mock_summary_statuses
+    aggregate["security_validation_mock_summary_performed"] = mock_summary_performed
+    aggregate["security_validation_mock_summary_subprocess_invoked"] = (
+        mock_summary_subprocess_invoked
     )
 
     return aggregate

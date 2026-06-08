@@ -26,6 +26,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_execution_eligibility",
     "replay_lifecycle_retry_rendered_command_result",
     "replay_lifecycle_retry_controlled_execution_result",
+    "replay_lifecycle_retry_mock_execution_summary",
 }
 
 
@@ -126,6 +127,11 @@ def inspect_retry_governance_trail_from_records(
     results = [
         item for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_execution_result"
+    ]
+    mock_execution_summaries = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_mock_execution_summary"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -234,6 +240,20 @@ def inspect_retry_governance_trail_from_records(
         str(bool(_mock_execution_payload(item).get("subprocess_invoked"))).lower()
         for item in controlled_execution_results
     )
+    mock_summary_statuses = Counter(
+        _clean_status(item.get("status")) for item in mock_execution_summaries
+    )
+    mock_summary_reasons = Counter(
+        _clean_status(item.get("reason")) for item in mock_execution_summaries
+    )
+    mock_summary_performed = Counter(
+        str(bool(item.get("mock_performed"))).lower()
+        for item in mock_execution_summaries
+    )
+    mock_summary_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in mock_execution_summaries
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -243,6 +263,7 @@ def inspect_retry_governance_trail_from_records(
         rendered_command_results=rendered_command_results,
         eligibilities=eligibilities,
         controlled_execution_results=controlled_execution_results,
+        mock_execution_summaries=mock_execution_summaries,
         results=results,
     )
 
@@ -273,6 +294,7 @@ def inspect_retry_governance_trail_from_records(
             "rendered_command_results": len(rendered_command_results),
             "eligibilities": len(eligibilities),
             "controlled_execution_results": len(controlled_execution_results),
+            "mock_execution_summaries": len(mock_execution_summaries),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -321,6 +343,10 @@ def inspect_retry_governance_trail_from_records(
         "controlled_mock_subprocess_invoked": dict(
             controlled_mock_subprocess_invoked
         ),
+        "mock_summary_statuses": dict(mock_summary_statuses),
+        "mock_summary_reasons": dict(mock_summary_reasons),
+        "mock_summary_performed": dict(mock_summary_performed),
+        "mock_summary_subprocess_invoked": dict(mock_summary_subprocess_invoked),
     }
 
 def _missing_stages(
@@ -465,6 +491,7 @@ def _build_chain_ids(
     rendered_command_results: list[Mapping[str, Any]],
     eligibilities: list[Mapping[str, Any]],
     controlled_execution_results: list[Mapping[str, Any]],
+    mock_execution_summaries: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -475,6 +502,7 @@ def _build_chain_ids(
         + rendered_command_results
         + eligibilities
         + controlled_execution_results
+        + mock_execution_summaries
         + results
     )
 
@@ -495,6 +523,7 @@ def _build_chain_ids(
                 + rendered_command_results
                 + eligibilities
                 + controlled_execution_results
+                + mock_execution_summaries
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -507,6 +536,7 @@ def _build_chain_ids(
                 + rendered_command_results
                 + eligibilities
                 + controlled_execution_results
+                + mock_execution_summaries
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -519,6 +549,7 @@ def _build_chain_ids(
                     + rendered_command_results
                     + eligibilities
                     + controlled_execution_results
+                    + mock_execution_summaries
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -550,6 +581,13 @@ def _build_chain_ids(
                 str(item.get("result_id") or "").strip()
                 for item in results
                 if str(item.get("result_id") or "").strip()
+            }
+        ),
+        "mock_execution_summary_ids": sorted(
+            {
+                str(item.get("mock_execution_summary_id") or "").strip()
+                for item in mock_execution_summaries
+                if str(item.get("mock_execution_summary_id") or "").strip()
             }
         ),
     }
@@ -700,6 +738,10 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"mock_executed={controlled_mock_statuses.get('mock_executed', 0)} "
         f"mock_performed={controlled_mock_performed.get('true', 0)} "
         f"mock_subprocess_invoked={controlled_mock_subprocess_invoked.get('true', 0)} "
+        f"mock_summaries={counts.get('mock_execution_summaries', 0)} "
+        f"mock_summary_executed={mock_summary_statuses.get('mock_executed', 0)} "
+        f"mock_summary_performed={mock_summary_performed.get('true', 0)} "
+        f"mock_summary_subprocess_invoked={mock_summary_subprocess_invoked.get('true', 0)} "
     )
 
 

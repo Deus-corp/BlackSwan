@@ -31,6 +31,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_rendered_command_result",
     "replay_lifecycle_retry_execution_eligibility",
     "replay_lifecycle_retry_controlled_execution_result",
+    "replay_lifecycle_retry_mock_execution_summary",
 }
 
 
@@ -157,6 +158,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_mock_execution_summary":
+            result = validate_replay_lifecycle_retry_mock_execution_summary(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -209,6 +222,10 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     controlled_execution_mock_statuses: dict[str, int] = {}
     controlled_execution_mock_performed: dict[str, int] = {}
     controlled_execution_mock_subprocess_invoked: dict[str, int] = {}
+    mock_summary_statuses: dict[str, int] = {}
+    mock_summary_reasons: dict[str, int] = {}
+    mock_summary_performed: dict[str, int] = {}
+    mock_summary_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -375,6 +392,19 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 + 1
             )
 
+        if record_type == "replay_lifecycle_retry_mock_execution_summary":
+            status = str(item.get("status") or "unknown").strip() or "unknown"
+            reason = str(item.get("reason") or "unknown").strip() or "unknown"
+            performed = str(bool(item.get("mock_performed"))).lower()
+            subprocess_invoked = str(bool(item.get("subprocess_invoked"))).lower()
+
+            mock_summary_statuses[status] = mock_summary_statuses.get(status, 0) + 1
+            mock_summary_reasons[reason] = mock_summary_reasons.get(reason, 0) + 1
+            mock_summary_performed[performed] = mock_summary_performed.get(performed, 0) + 1
+            mock_summary_subprocess_invoked[subprocess_invoked] = (
+                mock_summary_subprocess_invoked.get(subprocess_invoked, 0) + 1
+            )
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -417,6 +447,10 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "controlled_execution_mock_statuses": controlled_execution_mock_statuses,
         "controlled_execution_mock_performed": controlled_execution_mock_performed,
         "controlled_execution_mock_subprocess_invoked": controlled_execution_mock_subprocess_invoked,
+        "mock_summary_statuses": mock_summary_statuses,
+        "mock_summary_reasons": mock_summary_reasons,
+        "mock_summary_performed": mock_summary_performed,
+        "mock_summary_subprocess_invoked": mock_summary_subprocess_invoked,
     }
 
 
@@ -488,6 +522,12 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_controlled_execution_mock_subprocess_invoked": summary[
             "controlled_execution_mock_subprocess_invoked"
         ],
+        "security_validation_mock_summary_statuses": summary["mock_summary_statuses"],
+        "security_validation_mock_summary_reasons": summary["mock_summary_reasons"],
+        "security_validation_mock_summary_performed": summary["mock_summary_performed"],
+        "security_validation_mock_summary_subprocess_invoked": summary[
+            "mock_summary_subprocess_invoked"
+        ],
     }
 
 
@@ -541,6 +581,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
         return str(
             record.get("result_id")
             or record.get("plan_id")
+            or ""
+        ).strip()
+    
+    if record_type == "replay_lifecycle_retry_mock_execution_summary":
+        return str(
+            record.get("mock_execution_summary_id")
+            or record.get("controlled_execution_result_id")
+            or record.get("source_controlled_execution_result_id")
             or ""
         ).strip()
 
@@ -1442,6 +1490,66 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
     }
 
 
+def validate_replay_lifecycle_retry_mock_execution_summary(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate derived controlled mock execution summary records."""
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    summary_id = str(record.get("mock_execution_summary_id") or "").strip()
+    controlled_execution_result_id = str(
+        record.get("controlled_execution_result_id")
+        or record.get("source_controlled_execution_result_id")
+        or ""
+    ).strip()
+    status = str(record.get("status") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    mock_performed = bool(record.get("mock_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    payload_executed = bool(payload_mapping.get("executed"))
+    derived = bool(record.get("derived"))
+
+    reasons: list[str] = []
+
+    if not summary_id:
+        reasons.append("missing_mock_execution_summary_id")
+    if not controlled_execution_result_id:
+        reasons.append("missing_controlled_execution_result_id")
+    if status not in {"mock_executed", "blocked"}:
+        reasons.append("invalid_mock_summary_status")
+    if status == "mock_executed" and reason != "mock_execution_completed":
+        reasons.append("invalid_mock_summary_reason")
+    if status == "mock_executed" and not mock_performed:
+        reasons.append("mock_summary_status_requires_mock_performed")
+    if subprocess_invoked:
+        reasons.append("mock_summary_must_not_invoke_subprocess")
+    if real_execution_enabled:
+        reasons.append("mock_summary_must_not_enable_real_execution")
+    if payload_executed:
+        reasons.append("mock_summary_payload_must_not_execute")
+    if not derived:
+        reasons.append("mock_summary_must_be_derived")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_mock_execution_summary",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": summary_id or controlled_execution_result_id,
+        "status": status,
+        "reason": reason,
+        "mock_performed": mock_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "real_execution_enabled": real_execution_enabled,
+        "payload_executed": payload_executed,
+        "derived": derived,
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -1456,4 +1564,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_rendered_command_result",
     "validate_replay_lifecycle_retry_execution_eligibility",
     "validate_replay_lifecycle_retry_controlled_execution_result",
+    "validate_replay_lifecycle_retry_mock_execution_summary",
 ]
