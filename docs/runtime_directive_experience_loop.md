@@ -1123,6 +1123,14 @@ from controlled execution results. The gate reports `gate_status=blocked`,
 
 ---
 
+### Controlled mock execution adapter
+
+The controlled mock execution adapter produces an execution-shaped envelope
+without invoking subprocesses. It may report `mock_executed`, but real execution
+remains disabled: `payload.executed=false` and `subprocess_invoked=false`.
+
+---
+
 ### Controlled execution readiness report
 
 Before introducing any execution adapter, the controlled execution readiness

@@ -206,6 +206,9 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     controlled_execution_gate_would_execute_if_enabled: dict[str, int] = {}
     controlled_execution_gate_execution_performed: dict[str, int] = {}
     controlled_execution_gate_reasons: dict[str, int] = {}
+    controlled_execution_mock_statuses: dict[str, int] = {}
+    controlled_execution_mock_performed: dict[str, int] = {}
+    controlled_execution_mock_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -353,6 +356,25 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                             controlled_execution_gate_reasons.get(clean_reason, 0) + 1
                         )
 
+            mock_status = str(item.get("mock_execution_status") or "none").strip() or "none"
+            mock_performed = str(bool(item.get("mock_execution_performed"))).lower()
+            mock_subprocess_invoked = str(
+                bool(item.get("mock_subprocess_invoked"))
+            ).lower()
+
+            controlled_execution_mock_statuses[mock_status] = (
+                controlled_execution_mock_statuses.get(mock_status, 0) + 1
+            )
+            controlled_execution_mock_performed[mock_performed] = (
+                controlled_execution_mock_performed.get(mock_performed, 0) + 1
+            )
+            controlled_execution_mock_subprocess_invoked[mock_subprocess_invoked] = (
+                controlled_execution_mock_subprocess_invoked.get(
+                    mock_subprocess_invoked, 0
+                )
+                + 1
+            )
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -392,6 +414,9 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             controlled_execution_gate_execution_performed
         ),
         "controlled_execution_gate_reasons": controlled_execution_gate_reasons,
+        "controlled_execution_mock_statuses": controlled_execution_mock_statuses,
+        "controlled_execution_mock_performed": controlled_execution_mock_performed,
+        "controlled_execution_mock_subprocess_invoked": controlled_execution_mock_subprocess_invoked,
     }
 
 
@@ -453,6 +478,15 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         ],
         "security_validation_controlled_execution_gate_reasons": summary[
             "controlled_execution_gate_reasons"
+        ],
+        "security_validation_controlled_execution_mock_statuses": summary[
+            "controlled_execution_mock_statuses"
+        ],
+        "security_validation_controlled_execution_mock_performed": summary[
+            "controlled_execution_mock_performed"
+        ],
+        "security_validation_controlled_execution_mock_subprocess_invoked": summary[
+            "controlled_execution_mock_subprocess_invoked"
         ],
     }
 
@@ -1287,6 +1321,19 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         if str(item).strip()
     ] if isinstance(gate_reasons, list) else []
 
+    mock_execution = record.get("mock_execution")
+    if not isinstance(mock_execution, Mapping):
+        mock_execution = payload_mapping.get("mock_execution")
+
+    mock_mapping = mock_execution if isinstance(mock_execution, Mapping) else {}
+    mock_status = str(mock_mapping.get("status") or "none").strip() or "none"
+
+    mock_payload = mock_mapping.get("mock_execution")
+    mock_payload_mapping = mock_payload if isinstance(mock_payload, Mapping) else {}
+
+    mock_performed = bool(mock_payload_mapping.get("performed"))
+    mock_subprocess_invoked = bool(mock_payload_mapping.get("subprocess_invoked"))
+
     if not controlled_execution_result_id:
         reasons.append("missing_controlled_execution_result_id")
     if not rendered_command_id:
@@ -1331,6 +1378,12 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
 
     if gate_execution_performed:
         reasons.append("gate_must_not_perform_execution")
+
+    if mock_subprocess_invoked:
+        reasons.append("mock_execution_must_not_invoke_subprocess")
+
+    if mock_performed and payload_executed:
+        reasons.append("mock_execution_must_not_set_payload_executed")
 
     # PR 28.2 skeleton phase: execution is not implemented yet.
     if status == "executed":
@@ -1383,6 +1436,9 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         "gate_would_execute_if_enabled": gate_would_execute_if_enabled,
         "gate_execution_performed": gate_execution_performed,
         "gate_reasons": gate_reason_list,
+        "mock_execution_status": mock_status,
+        "mock_execution_performed": mock_performed,
+        "mock_subprocess_invoked": mock_subprocess_invoked,
     }
 
 

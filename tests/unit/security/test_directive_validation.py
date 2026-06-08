@@ -1268,6 +1268,28 @@ def _retry_controlled_execution_result(**overrides):
         "execution_performed": False,
     }
 
+    mock_execution = {
+        "type": "controlled_retry_mock_execution",
+        "status": "blocked",
+        "reason": "mock_execution_blocked",
+        "mock_execution_enabled": False,
+        "real_execution_enabled": False,
+        "mock_execution": {
+            "performed": False,
+            "adapter": "mock",
+            "subprocess_invoked": False,
+            "exit_code": None,
+            "stdout": "",
+            "stderr": "",
+            "reasons": ["mock_execution_not_enabled"],
+        },
+        "payload": {
+            "executed": False,
+            "mock_executed": False,
+            "subprocess_invoked": False,
+        },
+    }
+
     item = {
         "type": "replay_lifecycle_retry_controlled_execution_result",
         "controlled_execution_result_id": "controlled-result-1",
@@ -1286,6 +1308,7 @@ def _retry_controlled_execution_result(**overrides):
         "command": command,
         "command_parse": dict(command_parse),
         "gate_evaluation": dict(gate_evaluation),
+        "mock_execution": dict(mock_execution),
         "payload": {
             "rendered_command_id": "rendered-command-1",
             "plan_id": "plan-1",
@@ -1303,6 +1326,7 @@ def _retry_controlled_execution_result(**overrides):
             "executed": False,
             "command_parse": dict(command_parse),
             "gate_evaluation": dict(gate_evaluation),
+            "mock_execution": dict(mock_execution),
         },
     }
     item.update(overrides)
@@ -1329,6 +1353,9 @@ def test_validate_retry_controlled_execution_result_accepts_reject_only_skeleton
     assert result["gate_would_execute_if_enabled"] is False
     assert result["gate_execution_performed"] is False
     assert "controlled_execution_not_enabled" in result["gate_reasons"]
+    assert result["mock_execution_status"] == "blocked"
+    assert result["mock_execution_performed"] is False
+    assert result["mock_subprocess_invoked"] is False
     assert result["reasons"] == []
 
 
@@ -1418,6 +1445,15 @@ def test_security_validation_metrics_counts_retry_controlled_execution_results()
     assert metrics["security_validation_controlled_execution_gate_reasons"][
         "controlled_execution_not_enabled"
     ] == 1
+    assert metrics["security_validation_controlled_execution_mock_statuses"][
+        "blocked"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_mock_performed"][
+        "false"
+    ] == 1
+    assert metrics[
+        "security_validation_controlled_execution_mock_subprocess_invoked"
+    ]["false"] == 1
 
 
 def test_validate_retry_controlled_execution_result_accepts_allowlist_match_without_execution() -> None:
@@ -1507,3 +1543,24 @@ def test_validate_retry_controlled_execution_result_rejects_gate_execution_perfo
 
     assert result["valid"] is False
     assert "gate_must_not_perform_execution" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_mock_subprocess_invoked() -> None:
+    record = _retry_controlled_execution_result()
+    record["mock_execution"]["mock_execution"]["subprocess_invoked"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "mock_execution_must_not_invoke_subprocess" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_mock_payload_executed() -> None:
+    record = _retry_controlled_execution_result()
+    record["mock_execution"]["mock_execution"]["performed"] = True
+    record["payload"]["executed"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "mock_execution_must_not_set_payload_executed" in result["reasons"]

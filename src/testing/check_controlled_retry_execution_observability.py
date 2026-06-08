@@ -103,6 +103,15 @@ def _build_checks(
     gate_reasons = _safe_mapping(
         metrics.get("security_validation_controlled_execution_gate_reasons")
     )
+    mock_statuses = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_mock_statuses")
+    )
+    mock_performed = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_mock_performed")
+    )
+    mock_subprocess_invoked = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_mock_subprocess_invoked")
+    )
 
     record_type_counts = _safe_mapping(metrics.get("security_validation_record_type_counts"))
 
@@ -128,6 +137,9 @@ def _build_checks(
         gate_reasons.get("controlled_execution_not_enabled"),
         0,
     )
+    mock_executed = _safe_int(mock_statuses.get("mock_executed"), 0)
+    mock_performed_true = _safe_int(mock_performed.get("true"), 0)
+    mock_subprocess_invoked_true = _safe_int(mock_subprocess_invoked.get("true"), 0)
 
     payload_executed_count = 0
     operator_authorized_count = 0
@@ -221,6 +233,19 @@ def _build_checks(
             "status": "passed" if gate_not_enabled > 0 else "failed",
             "value": gate_not_enabled,
         },
+        {
+            "name": "controlled_mock_execution_observation_optional",
+            "status": "passed",
+            "value": {
+                "mock_executed": mock_executed,
+                "mock_performed": mock_performed_true,
+            },
+        },
+        {
+            "name": "controlled_mock_execution_did_not_invoke_subprocess",
+            "status": "passed" if mock_subprocess_invoked_true == 0 else "failed",
+            "value": mock_subprocess_invoked_true,
+        },
     ]
 
 
@@ -268,6 +293,15 @@ def check_controlled_retry_execution_observability_from_records(
     )
     gate_reasons = _safe_mapping(
         metrics.get("security_validation_controlled_execution_gate_reasons")
+    )
+    mock_statuses = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_mock_statuses")
+    )
+    mock_performed = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_mock_performed")
+    )
+    mock_subprocess_invoked = _safe_mapping(
+        metrics.get("security_validation_controlled_execution_mock_subprocess_invoked")
     )
 
     return {
@@ -377,6 +411,18 @@ def check_controlled_retry_execution_observability_from_records(
                 gate_reasons.get("controlled_execution_not_enabled"),
                 0,
             ),
+            "security_controlled_mock_execution_mock_executed": _safe_int(
+                mock_statuses.get("mock_executed"),
+                0,
+            ),
+            "security_controlled_mock_execution_performed": _safe_int(
+                mock_performed.get("true"),
+                0,
+            ),
+            "security_controlled_mock_execution_subprocess_invoked": _safe_int(
+                mock_subprocess_invoked.get("true"),
+                0,
+            ),
         },
         "controlled_execution_gate_blocked": _safe_int(gate_statuses.get("blocked"), 0),
         "controlled_execution_gate_would_execute": _safe_int(
@@ -393,6 +439,18 @@ def check_controlled_retry_execution_observability_from_records(
         ),
         "controlled_execution_gate_not_enabled": _safe_int(
             gate_reasons.get("controlled_execution_not_enabled"),
+            0,
+        ),
+        "controlled_mock_execution_mock_executed": _safe_int(
+            mock_statuses.get("mock_executed"),
+            0,
+        ),
+        "controlled_mock_execution_performed": _safe_int(
+            mock_performed.get("true"),
+            0,
+        ),
+        "controlled_mock_execution_subprocess_invoked": _safe_int(
+            mock_subprocess_invoked.get("true"),
             0,
         ),
     }
@@ -467,6 +525,9 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"gate_would_execute_if_enabled={result.get('controlled_execution_gate_would_execute_if_enabled', 0)} "
         f"gate_execution_performed={result.get('controlled_execution_gate_execution_performed', 0)} "
         f"gate_not_enabled={result.get('controlled_execution_gate_not_enabled', 0)} "
+        f"mock_executed={result.get('controlled_mock_execution_mock_executed', 0)} "
+        f"mock_performed={result.get('controlled_mock_execution_performed', 0)} "
+        f"mock_subprocess_invoked={result.get('controlled_mock_execution_subprocess_invoked', 0)} "
     )
 
 

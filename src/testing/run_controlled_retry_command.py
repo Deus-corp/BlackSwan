@@ -21,6 +21,10 @@ from src.testing.controlled_retry_execution_gate import (
     evaluate_controlled_retry_execution_gate,
 )
 
+from src.testing.controlled_retry_mock_execution import (
+    build_controlled_retry_mock_execution,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -70,6 +74,7 @@ def build_controlled_retry_command_result(
     *,
     source: str = "controlled-retry-command-runner",
     operator_authorized: bool = False,
+    mock_execution_enabled: bool = False,
 ) -> dict[str, Any]:
     """Build a reject-only controlled execution result for a rendered command."""
     rendered_command_id = _clean(rendered_command.get("rendered_command_id"))
@@ -110,7 +115,7 @@ def build_controlled_retry_command_result(
         + _stable_suffix(rendered_command_id, plan_id, command)
     )
 
-    return {
+    result = {
         "type": CONTROLLED_RESULT_TYPE,
         "controlled_execution_result_id": result_id,
         "rendered_command_id": rendered_command_id,
@@ -149,6 +154,16 @@ def build_controlled_retry_command_result(
         },
     }
 
+    mock_execution = build_controlled_retry_mock_execution(
+        result,
+        mock_execution_enabled=mock_execution_enabled,
+        real_execution_enabled=False,
+    )
+    result["mock_execution"] = mock_execution
+    result["payload"]["mock_execution"] = mock_execution
+
+    return result
+
 
 async def run_controlled_retry_commands(args: argparse.Namespace) -> list[dict[str, Any]]:
     """Publish reject-only controlled execution result records."""
@@ -157,6 +172,7 @@ async def run_controlled_retry_commands(args: argparse.Namespace) -> list[dict[s
     rendered_command_id = _clean(getattr(args, "rendered_command_id", ""))
     plan_id = _clean(getattr(args, "plan_id", ""))
     operator_authorized = bool(getattr(args, "allow_controlled_execution", False))
+    mock_execution_enabled = bool(getattr(args, "mock_execution", False))
 
     crdt = CRDTAdapter(node_id=source, db_path=db_path)
 
@@ -201,6 +217,7 @@ async def run_controlled_retry_commands(args: argparse.Namespace) -> list[dict[s
                 rendered_command,
                 source=source,
                 operator_authorized=operator_authorized,
+                mock_execution_enabled=mock_execution_enabled,
             )
             await crdt.add_genome(result)
             records.append(result)
@@ -255,6 +272,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Record explicit operator authorization intent. "
             "PR 29.3 still does not execute commands."
+        ),
+    )
+    parser.add_argument(
+        "--mock-execution",
+        action="store_true",
+        help=(
+            "Attach a mock execution envelope without invoking subprocesses. "
+            "Real execution remains disabled."
         ),
     )
     return parser

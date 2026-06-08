@@ -62,6 +62,10 @@ def test_build_controlled_retry_command_result_rejects_by_default() -> None:
     assert result["readiness_score"] == 0
     assert result["payload"]["allowlist_matched"] is True
     assert result["payload"]["command_parse"]["valid"] is True
+    assert result["mock_execution"]["status"] == "blocked"
+    assert result["mock_execution"]["mock_execution"]["performed"] is False
+    assert result["mock_execution"]["mock_execution"]["subprocess_invoked"] is False
+    assert result["payload"]["mock_execution"]["payload"]["executed"] is False
 
 
 def test_build_controlled_retry_command_result_rejects_even_when_execution_enabled() -> None:
@@ -98,6 +102,7 @@ async def test_run_controlled_retry_commands_publishes_rejected_result(tmp_path)
             plan_id="",
             json=False,
             allow_controlled_execution=False,
+            mock_execution=False,
         )
     )
 
@@ -134,6 +139,7 @@ async def test_run_controlled_retry_commands_skips_duplicate_for_rendered_comman
             plan_id="",
             json=False,
             allow_controlled_execution=False,
+            mock_execution=False,
         )
     )
     second = await run_controlled_retry_commands(
@@ -144,6 +150,7 @@ async def test_run_controlled_retry_commands_skips_duplicate_for_rendered_comman
             plan_id="",
             json=False,
             allow_controlled_execution=False,
+            mock_execution=False,
         )
     )
 
@@ -175,6 +182,12 @@ def test_build_controlled_retry_command_result_records_operator_authorization_in
     assert result["operator_authorized"] is True
     assert result["payload"]["operator_authorized"] is True
     assert result["payload"]["executed"] is False
+    assert result["mock_execution"]["status"] == "blocked"
+    assert result["mock_execution"]["mock_execution"]["performed"] is False
+    assert (
+        "mock_execution_not_enabled"
+        in result["mock_execution"]["mock_execution"]["reasons"]
+    )
 
 
 @pytest.mark.asyncio
@@ -191,6 +204,7 @@ async def test_run_controlled_retry_commands_records_operator_authorization_flag
             plan_id="",
             json=False,
             allow_controlled_execution=True,
+            mock_execution=False,
         )
     )
 
@@ -202,21 +216,24 @@ async def test_run_controlled_retry_commands_records_operator_authorization_flag
     assert results[0]["payload"]["executed"] is False
 
 
-def test_build_controlled_retry_command_result_records_operator_authorization_intent() -> None:
+def test_build_controlled_retry_command_result_attaches_mock_execution_envelope() -> None:
     result = build_controlled_retry_command_result(
         _rendered_command(),
         operator_authorized=True,
+        mock_execution_enabled=True,
     )
 
     assert result["status"] == "rejected"
     assert result["reason"] == "controlled_execution_not_implemented"
-    assert result["operator_authorized"] is True
-    assert result["payload"]["operator_authorized"] is True
     assert result["payload"]["executed"] is False
+    assert result["mock_execution"]["status"] == "mock_executed"
+    assert result["mock_execution"]["mock_execution"]["performed"] is True
+    assert result["mock_execution"]["mock_execution"]["subprocess_invoked"] is False
+    assert result["payload"]["mock_execution"]["payload"]["mock_executed"] is True
 
 
 @pytest.mark.asyncio
-async def test_run_controlled_retry_commands_records_operator_authorization_flag(tmp_path) -> None:
+async def test_run_controlled_retry_commands_records_mock_execution_envelope(tmp_path) -> None:
     db_path = str(tmp_path / "crdt.db")
     crdt = CRDTAdapter(node_id="seed", db_path=db_path)
     await crdt.add_genome(_rendered_command())
@@ -229,12 +246,16 @@ async def test_run_controlled_retry_commands_records_operator_authorization_flag
             plan_id="",
             json=False,
             allow_controlled_execution=True,
+            mock_execution=True,
         )
     )
 
     assert len(results) == 1
     assert results[0]["status"] == "rejected"
-    assert results[0]["reason"] == "controlled_execution_not_implemented"
-    assert results[0]["operator_authorized"] is True
-    assert results[0]["payload"]["operator_authorized"] is True
     assert results[0]["payload"]["executed"] is False
+    assert results[0]["mock_execution"]["status"] == "mock_executed"
+    assert results[0]["mock_execution"]["mock_execution"]["performed"] is True
+    assert (
+        results[0]["mock_execution"]["mock_execution"]["subprocess_invoked"]
+        is False
+    )

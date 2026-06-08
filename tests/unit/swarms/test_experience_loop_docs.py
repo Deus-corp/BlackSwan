@@ -282,3 +282,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "ready_for_mock_execution=true" in text
     assert "ready_for_real_execution=false" in text
     assert "real_execution_not_supported_yet" in text
+    assert "Controlled mock execution adapter" in text
+    assert "payload.executed=false" in text
+    assert "subprocess_invoked=false" in text
+    assert "mock_executed" in text
