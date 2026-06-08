@@ -291,3 +291,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "mock_performed=1" in text
     assert "mock_subprocess_invoked=0" in text
     assert "Real execution remains disabled" in text
+    assert "automatically derives the" in text
+    assert "replay_lifecycle_retry_mock_execution_summary" in text
+    assert "does not duplicate either record" in text

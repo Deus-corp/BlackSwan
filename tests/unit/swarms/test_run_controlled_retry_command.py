@@ -259,3 +259,109 @@ async def test_run_controlled_retry_commands_records_mock_execution_envelope(tmp
         results[0]["mock_execution"]["mock_execution"]["subprocess_invoked"]
         is False
     )
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    state = getattr(reader, "state", {}) or {}
+    summaries = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type") == "replay_lifecycle_retry_mock_execution_summary"
+        and item.get("rendered_command_id") == "rendered-controlled-1"
+    ]
+
+    assert len(summaries) == 1
+    assert summaries[0]["status"] == "mock_executed"
+    assert summaries[0]["mock_performed"] is True
+    assert summaries[0]["subprocess_invoked"] is False
+    assert summaries[0]["payload"]["executed"] is False
+
+
+@pytest.mark.asyncio
+async def test_run_controlled_retry_commands_does_not_duplicate_mock_summary(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(_rendered_command())
+
+    first = await run_controlled_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="controlled-retry-command-runner-test",
+            rendered_command_id="rendered-controlled-1",
+            plan_id="",
+            json=False,
+            allow_controlled_execution=True,
+            mock_execution=True,
+        )
+    )
+    second = await run_controlled_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="controlled-retry-command-runner-test",
+            rendered_command_id="rendered-controlled-1",
+            plan_id="",
+            json=False,
+            allow_controlled_execution=True,
+            mock_execution=True,
+        )
+    )
+
+    assert len(first) == 1
+    assert len(second) == 0
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    state = getattr(reader, "state", {}) or {}
+    controlled_results = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type") == CONTROLLED_RESULT_TYPE
+        and item.get("rendered_command_id") == "rendered-controlled-1"
+    ]
+    summaries = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type") == "replay_lifecycle_retry_mock_execution_summary"
+        and item.get("rendered_command_id") == "rendered-controlled-1"
+    ]
+
+    assert len(controlled_results) == 1
+    assert len(summaries) == 1
+    assert summaries[0]["controlled_execution_result_id"] == controlled_results[0][
+        "controlled_execution_result_id"
+    ]
+    assert summaries[0]["status"] == "mock_executed"
+    assert summaries[0]["subprocess_invoked"] is False
+
+
+@pytest.mark.asyncio
+async def test_run_controlled_retry_commands_does_not_publish_mock_summary_without_mock_flag(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(_rendered_command())
+
+    results = await run_controlled_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="controlled-retry-command-runner-test",
+            rendered_command_id="rendered-controlled-1",
+            plan_id="",
+            json=False,
+            allow_controlled_execution=True,
+            mock_execution=False,
+        )
+    )
+
+    assert len(results) == 1
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    state = getattr(reader, "state", {}) or {}
+    summaries = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type") == "replay_lifecycle_retry_mock_execution_summary"
+    ]
+
+    assert summaries == []

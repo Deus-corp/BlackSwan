@@ -1204,6 +1204,13 @@ are idempotent by `controlled_execution_result_id`. A safe summary reports
 
 ---
 
+When `run_controlled_retry_command` is invoked with `--mock-execution`, it
+publishes the controlled execution result and automatically derives the
+`replay_lifecycle_retry_mock_execution_summary` record. Re-running the same
+mock path remains idempotent and does not duplicate either record.
+
+---
+
 ## Related modules
 
 ```text

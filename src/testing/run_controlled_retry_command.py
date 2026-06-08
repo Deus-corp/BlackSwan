@@ -25,6 +25,11 @@ from src.testing.controlled_retry_mock_execution import (
     build_controlled_retry_mock_execution,
 )
 
+from src.testing.build_controlled_mock_execution_summary import (
+    MOCK_SUMMARY_TYPE,
+    build_controlled_mock_execution_summary,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -229,6 +234,32 @@ async def run_controlled_retry_commands(args: argparse.Namespace) -> list[dict[s
                 result.get("reason"),
             )
 
+            if mock_execution_enabled:
+                controlled_execution_result_id = _clean(
+                    result.get("controlled_execution_result_id")
+                )
+                if _has_existing_mock_summary(
+                    records,
+                    controlled_execution_result_id=controlled_execution_result_id,
+                ):
+                    logger.info(
+                        "Skipping duplicate controlled mock execution summary: controlled_execution_result_id=%s",
+                        controlled_execution_result_id,
+                    )
+                else:
+                    mock_summary = build_controlled_mock_execution_summary(
+                        result,
+                        source=source,
+                    )
+                    await crdt.add_genome(mock_summary)
+                    records.append(mock_summary)
+                    logger.info(
+                        "Published controlled mock execution summary: controlled_execution_result_id=%s status=%s reason=%s",
+                        controlled_execution_result_id,
+                        mock_summary.get("status"),
+                        mock_summary.get("reason"),
+                    )
+
         logger.info("Controlled retry command runner completed: results=%d", len(results))
         return results
     finally:
@@ -283,6 +314,36 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     return parser
+
+
+def _has_existing_mock_summary(
+    records: list[Mapping[str, Any]],
+    *,
+    controlled_execution_result_id: str,
+) -> bool:
+    if not controlled_execution_result_id:
+        return False
+
+    for record in records:
+        if record.get("type") != "replay_lifecycle_retry_mock_execution_summary":
+            continue
+
+        payload = record.get("payload")
+        payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+        if (
+            _clean(record.get("controlled_execution_result_id"))
+            == controlled_execution_result_id
+            or _clean(record.get("source_controlled_execution_result_id"))
+            == controlled_execution_result_id
+            or _clean(payload_mapping.get("controlled_execution_result_id"))
+            == controlled_execution_result_id
+            or _clean(payload_mapping.get("source_controlled_execution_result_id"))
+            == controlled_execution_result_id
+        ):
+            return True
+
+    return False
 
 
 async def async_main() -> int:
