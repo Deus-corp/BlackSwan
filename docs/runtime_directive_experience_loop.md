@@ -1308,6 +1308,18 @@ before any real execution support can exist.
 
 ---
 
+### Unsupported real adapter observability
+
+Unsupported real adapter observability is surfaced in readiness and Overseer
+briefs. A safe unsupported real adapter state reports
+`real_adapter_supported=false`, `real_adapter_runnable=false`,
+`subprocess_supported=false`, and `requires_explicit_pr=true`.
+
+This keeps the real adapter visible to operators while preserving fail-closed
+behavior until a separate explicit PR introduces real execution support.
+
+---
+
 ## Related modules
 
 ```text

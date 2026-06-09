@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 
 from src.swarms.common.protocols.briefs import BriefScope, BriefStatus
-from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_brief
+from src.swarms.overseer.overseer_core.brief_builder import (
+    build_global_swarm_brief,
+)
 
 
 @dataclass
@@ -882,3 +884,28 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert brief.key_metrics["security_mock_adapter_subprocess_invoked"] == 0
     assert brief.key_metrics["security_mock_adapter_real_execution_enabled"] == 0
     assert brief.key_metrics["security_mock_adapter_payload_executed"] == 0
+
+
+def test_global_brief_surfaces_unsupported_real_adapter_placeholder() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"overseer": 1, "security": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "security_real_adapter_supported": False,
+            "security_real_adapter_runnable": False,
+            "security_real_adapter_subprocess_supported": False,
+            "security_real_adapter_requires_explicit_pr": True,
+        },
+    )
+    text = brief.summary
+
+    assert (
+        "Real controlled retry adapter is unsupported/non-runnable: "
+        "real_adapter_supported=false, real_adapter_runnable=false, "
+        "subprocess_supported=false, requires_explicit_pr=true."
+        in text
+    )
+    assert brief.key_metrics["security_real_adapter_supported"] == 0
+    assert brief.key_metrics["security_real_adapter_runnable"] == 0
+    assert brief.key_metrics["security_real_adapter_subprocess_supported"] == 0
+    assert brief.key_metrics["security_real_adapter_requires_explicit_pr"] == 1

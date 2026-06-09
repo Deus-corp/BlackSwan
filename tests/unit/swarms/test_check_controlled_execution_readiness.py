@@ -226,6 +226,7 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "schema_version": READINESS_SCHEMA_VERSION,
             "real_adapter_supported": False,
             "real_adapter_runnable": False,
+            "real_adapter_requires_explicit_pr": True,
         }
     )
 
@@ -247,6 +248,7 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert f"schema_version={READINESS_SCHEMA_VERSION}" in text
     assert "real_adapter_supported=false" in text
     assert "real_adapter_runnable=false" in text
+    assert "real_adapter_requires_explicit_pr=true" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -397,6 +399,7 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "type": "controlled_execution_readiness_report",
         "schema_version": READINESS_SCHEMA_VERSION,
         "schema_kind": "controlled_execution_readiness",
+        "real_adapter_requires_explicit_pr": True,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "real_execution_supported": False,
@@ -468,6 +471,7 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         },
         "real_adapter_supported": False,
         "real_adapter_runnable": False,
+        "real_adapter_requires_explicit_pr": True,
         "checks": [],
         "exit_codes": {
             "trail": 0,

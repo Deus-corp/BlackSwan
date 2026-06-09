@@ -11,6 +11,7 @@ def _report(**overrides):
         "type": "controlled_execution_readiness_report",
         "schema_version": READINESS_SCHEMA_VERSION,
         "schema_kind": "controlled_execution_readiness",
+        "real_adapter_requires_explicit_pr": True,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -62,6 +63,7 @@ def _report(**overrides):
             "adapter_contract",
             "real_adapter_supported",
             "real_adapter_runnable",
+            "real_adapter_requires_explicit_pr",
         ],
     }
     item.update(overrides)
@@ -129,6 +131,7 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_adapter_runnable",
             "checks",
             "exit_codes",
+            "real_adapter_requires_explicit_pr",
         ]
     )
 
@@ -214,3 +217,12 @@ def test_validate_controlled_execution_readiness_report_schema_rejects_missing_a
     assert result["valid"] is False
     assert "missing_required_field:adapter_contract" in result["reasons"]
     assert "adapter_contract_must_be_mapping" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_real_adapter_without_explicit_pr_requirement() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_adapter_requires_explicit_pr=False)
+    )
+
+    assert result["valid"] is False
+    assert "real_adapter_requires_explicit_pr_must_remain_true" in result["reasons"]

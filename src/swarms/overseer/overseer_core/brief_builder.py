@@ -446,6 +446,18 @@ def build_global_swarm_brief(
         ).get("true"),
         0,
     )
+    security_real_adapter_supported = bool(
+        security_validation.get("security_real_adapter_supported", False)
+    )
+    security_real_adapter_runnable = bool(
+        security_validation.get("security_real_adapter_runnable", False)
+    )
+    security_real_adapter_requires_explicit_pr = bool(
+        security_validation.get("security_real_adapter_requires_explicit_pr", False)
+    )
+    security_real_adapter_subprocess_supported = bool(
+        security_validation.get("security_real_adapter_subprocess_supported", False)
+    )
 
     if gold_candidates > 0:
         opportunities.append(
@@ -970,6 +982,38 @@ def build_global_swarm_brief(
             )
         )
 
+    if (
+        "security_real_adapter_supported" in security_validation
+        or "security_real_adapter_runnable" in security_validation
+        or "security_real_adapter_requires_explicit_pr" in security_validation
+    ):
+        opportunities.append(
+            build_brief_item(
+                title="Real controlled retry adapter is unsupported",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Real controlled retry adapter is unsupported/non-runnable: "
+                    f"real_adapter_supported={str(security_real_adapter_supported).lower()}, "
+                    f"real_adapter_runnable={str(security_real_adapter_runnable).lower()}, "
+                    "subprocess_supported="
+                    f"{str(security_real_adapter_subprocess_supported).lower()}, "
+                    "requires_explicit_pr="
+                    f"{str(security_real_adapter_requires_explicit_pr).lower()}."
+                ),
+                payload={
+                    "security_real_adapter_supported": security_real_adapter_supported,
+                    "security_real_adapter_runnable": security_real_adapter_runnable,
+                    "security_real_adapter_subprocess_supported": (
+                        security_real_adapter_subprocess_supported
+                    ),
+                    "security_real_adapter_requires_explicit_pr": (
+                        security_real_adapter_requires_explicit_pr
+                    ),
+                    "recommendation": "keep_real_adapter_unsupported_until_explicit_pr",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -1224,6 +1268,14 @@ def build_global_swarm_brief(
         "security_mock_adapter_payload_executed": (
             security_mock_adapter_payload_executed
         ),
+        "security_real_adapter_supported": int(security_real_adapter_supported),
+        "security_real_adapter_runnable": int(security_real_adapter_runnable),
+        "security_real_adapter_subprocess_supported": int(
+            security_real_adapter_subprocess_supported
+        ),
+        "security_real_adapter_requires_explicit_pr": int(
+            security_real_adapter_requires_explicit_pr
+        ),
     }
 
     summary = _build_summary(
@@ -1316,6 +1368,14 @@ def build_global_swarm_brief(
             security_mock_adapter_real_execution_enabled
         ),
         security_mock_adapter_payload_executed=security_mock_adapter_payload_executed,
+        security_real_adapter_supported=security_real_adapter_supported,
+        security_real_adapter_runnable=security_real_adapter_runnable,
+        security_real_adapter_subprocess_supported=(
+            security_real_adapter_subprocess_supported
+        ),
+        security_real_adapter_requires_explicit_pr=(
+            security_real_adapter_requires_explicit_pr
+        ),
     )
 
     return build_swarm_brief(
@@ -1411,6 +1471,10 @@ def _build_summary(
     security_mock_adapter_subprocess_invoked: int,
     security_mock_adapter_real_execution_enabled: int,
     security_mock_adapter_payload_executed: int,
+    security_real_adapter_supported: bool,
+    security_real_adapter_runnable: bool,
+    security_real_adapter_subprocess_supported: bool,
+    security_real_adapter_requires_explicit_pr: bool,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1594,6 +1658,19 @@ def _build_summary(
             f"subprocess_invoked={security_mock_adapter_subprocess_invoked}, "
             f"real_execution_enabled={security_mock_adapter_real_execution_enabled}, "
             f"payload_executed={security_mock_adapter_payload_executed}."
+        )
+
+    if security_real_adapter_requires_explicit_pr or (
+        not security_real_adapter_supported and not security_real_adapter_runnable
+    ):
+        parts.append(
+            "Real controlled retry adapter is unsupported/non-runnable: "
+            f"real_adapter_supported={str(security_real_adapter_supported).lower()}, "
+            f"real_adapter_runnable={str(security_real_adapter_runnable).lower()}, "
+            "subprocess_supported="
+            f"{str(security_real_adapter_subprocess_supported).lower()}, "
+            "requires_explicit_pr="
+            f"{str(security_real_adapter_requires_explicit_pr).lower()}."
         )
 
     blocked_execution_disabled = _safe_int(

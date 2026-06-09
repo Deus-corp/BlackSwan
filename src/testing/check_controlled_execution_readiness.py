@@ -138,6 +138,17 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
                 else {}
             ).get("runnable")
         ),
+        "real_adapter_requires_explicit_pr": bool(
+            (
+                (
+                    adapter_contract.get("real_adapter_contract")
+                    if isinstance(
+                        adapter_contract.get("real_adapter_contract"), Mapping
+                    )
+                    else {}
+                )
+            ).get("requires_explicit_pr")
+        ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
         "ready_for_real_execution": ready_for_real_execution,
@@ -187,6 +198,17 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
                     else {}
                 ).get("runnable")
             ),
+            "real_adapter_requires_explicit_pr": bool(
+                (
+                    (
+                        adapter_contract.get("real_adapter_contract")
+                        if isinstance(
+                            adapter_contract.get("real_adapter_contract"), Mapping
+                        )
+                        else {}
+                    )
+                ).get("requires_explicit_pr")
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -205,6 +227,7 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "adapter_contract",
             "real_adapter_supported",
             "real_adapter_runnable",
+            "real_adapter_requires_explicit_pr",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -567,6 +590,7 @@ def validate_controlled_execution_readiness_report_schema(
         "adapter_contract",
         "real_adapter_supported",
         "real_adapter_runnable",
+        "real_adapter_requires_explicit_pr",
     ]
 
     reasons: list[str] = []
@@ -610,6 +634,9 @@ def validate_controlled_execution_readiness_report_schema(
     ):
         if not isinstance(report.get(int_field), int):
             reasons.append(f"{int_field}_must_be_int")
+
+    if report.get("real_adapter_requires_explicit_pr") is not True:
+        reasons.append("real_adapter_requires_explicit_pr_must_remain_true")
 
     if not isinstance(report.get("adapter_contract"), Mapping):
         reasons.append("adapter_contract_must_be_mapping")
@@ -665,6 +692,8 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"{str(bool(result.get('real_adapter_supported'))).lower()} "
         f"real_adapter_runnable="
         f"{str(bool(result.get('real_adapter_runnable'))).lower()} "
+        f"real_adapter_requires_explicit_pr="
+        f"{str(bool(result.get('real_adapter_requires_explicit_pr'))).lower()} "
     )
 
 

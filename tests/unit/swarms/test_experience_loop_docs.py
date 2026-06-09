@@ -328,3 +328,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "real_adapter_supported=false" in text
     assert "real_adapter_runnable=false" in text
     assert "Requesting the `real` adapter fails closed" in text
+    assert "Unsupported real adapter observability" in text
+    assert "real_adapter_supported=false" in text
+    assert "real_adapter_runnable=false" in text
+    assert "requires_explicit_pr=true" in text
+    assert "fail-closed" in text
