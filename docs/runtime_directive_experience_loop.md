@@ -1320,6 +1320,13 @@ behavior until a separate explicit PR introduces real execution support.
 
 ---
 
+Unsupported real adapter metrics are emitted as fail-closed observability values:
+`security_real_adapter_supported=0`, `security_real_adapter_runnable=0`,
+`security_real_adapter_subprocess_supported=0`, and
+`security_real_adapter_requires_explicit_pr=1`.
+
+---
+
 ## Related modules
 
 ```text

@@ -8,6 +8,7 @@ from src.testing.check_retry_governance_observability import (
     _exit_code_for_result,
     check_retry_governance_observability,
     check_retry_governance_observability_from_records,
+    _unsupported_real_adapter_metrics,
 )
 from src.testing.run_rendered_retry_commands import run_rendered_retry_commands
 from src.testing.seed_retry_governance_trail import seed_retry_governance_trail
@@ -438,3 +439,12 @@ def _eligibility(**overrides):
     }
     item.update(overrides)
     return item
+
+
+def test_retry_governance_observability_real_adapter_metrics_are_fail_closed() -> None:
+    metrics = _unsupported_real_adapter_metrics()
+
+    assert metrics["security_real_adapter_supported"] == 0
+    assert metrics["security_real_adapter_runnable"] == 0
+    assert metrics["security_real_adapter_subprocess_supported"] == 0
+    assert metrics["security_real_adapter_requires_explicit_pr"] == 1

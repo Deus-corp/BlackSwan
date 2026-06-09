@@ -16,6 +16,10 @@ from src.swarms.overseer.overseer_core.brief_builder import build_global_swarm_b
 from src.swarms.security.runtime_validation import build_security_validation_heartbeat_metrics
 from swarm_config import config
 
+from src.testing.controlled_retry_execution_adapter import (
+    describe_controlled_retry_execution_adapter_contract,
+)
+
 logger = logging.getLogger(__name__)
 
 REQUIRED_RECORD_TYPES = {
@@ -93,13 +97,17 @@ def check_retry_governance_observability_from_records(
 
     status = "passed" if all(item["status"] == "passed" for item in checks) else "failed"
 
+    brief_key_metrics = dict(getattr(brief, "key_metrics", {}) or {})
+    for key, value in _unsupported_real_adapter_metrics().items():
+        brief_key_metrics.setdefault(key, value)
+
     return {
         "type": "retry_governance_observability_check",
         "status": status,
         "checks": checks,
         "proposal_id": clean_proposal_id or None,
         "security_record_type_counts": dict(record_type_counts),
-        "brief_key_metrics": dict(key_metrics),
+        "brief_key_metrics": brief_key_metrics,
         "brief_summary": brief.summary,
     }
 
@@ -274,6 +282,25 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _unsupported_real_adapter_metrics() -> dict[str, int]:
+    contract = describe_controlled_retry_execution_adapter_contract()
+    real_contract = contract.get("real_adapter_contract")
+    real_mapping = real_contract if isinstance(real_contract, Mapping) else {}
+
+    return {
+        "security_real_adapter_supported": int(
+            bool(contract.get("real_execution_supported"))
+        ),
+        "security_real_adapter_runnable": int(bool(real_mapping.get("runnable"))),
+        "security_real_adapter_subprocess_supported": int(
+            bool(contract.get("subprocess_supported"))
+        ),
+        "security_real_adapter_requires_explicit_pr": int(
+            bool(real_mapping.get("requires_explicit_pr"))
+        ),
+    }
 
 
 def _format_result(result: Mapping[str, Any]) -> str:

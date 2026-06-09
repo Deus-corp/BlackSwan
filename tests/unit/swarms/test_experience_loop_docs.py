@@ -333,3 +333,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "real_adapter_runnable=false" in text
     assert "requires_explicit_pr=true" in text
     assert "fail-closed" in text
+    assert "security_real_adapter_supported=0" in text
+    assert "security_real_adapter_runnable=0" in text
+    assert "security_real_adapter_requires_explicit_pr=1" in text
