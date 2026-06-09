@@ -1238,6 +1238,25 @@ execution envelopes. A safe adapter contract reports `adapter=mock`, `mode=mock`
 
 ---
 
+### Adapter contract readiness gates
+
+The final controlled execution readiness report requires the adapter contract to
+be observed before mock execution is considered ready. The required safe adapter
+gates are:
+
+- `adapter_contract_observed=true`
+- `adapter_mock=1`
+- `adapter_mode_mock=1`
+- `adapter_result_mock_executed=1`
+- `adapter_subprocess_invoked=0`
+- `adapter_real_execution_enabled=0`
+- `adapter_payload_executed=0`
+
+These gates keep mock execution separate from real execution and prevent any
+subprocess-backed adapter from being treated as ready.
+
+---
+
 ## Related modules
 
 ```text

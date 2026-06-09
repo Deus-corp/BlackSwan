@@ -96,6 +96,24 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     mock_summary_subprocess_invoked = _safe_mapping(
         trail_summary.get("mock_summary_subprocess_invoked")
     )
+    controlled_mock_adapter = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter")
+    )
+    controlled_mock_adapter_mode = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_mode")
+    )
+    controlled_mock_adapter_result_statuses = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_result_statuses")
+    )
+    controlled_mock_adapter_subprocess_invoked = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_subprocess_invoked")
+    )
+    controlled_mock_adapter_real_execution_enabled = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_real_execution_enabled")
+    )
+    controlled_mock_adapter_payload_executed = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_payload_executed")
+    )
 
     return {
         "type": "controlled_execution_readiness_report",
@@ -137,6 +155,28 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "mock_summary_subprocess_invoked": _safe_int(
             mock_summary_subprocess_invoked.get("true")
+        ),
+        "adapter_contract_observed": (
+            _safe_int(controlled_mock_adapter.get("mock")) > 0
+            and _safe_int(controlled_mock_adapter_mode.get("mock")) > 0
+            and _safe_int(
+                controlled_mock_adapter_result_statuses.get("mock_executed")
+            )
+            > 0
+        ),
+        "adapter_mock": _safe_int(controlled_mock_adapter.get("mock")),
+        "adapter_mode_mock": _safe_int(controlled_mock_adapter_mode.get("mock")),
+        "adapter_result_mock_executed": _safe_int(
+            controlled_mock_adapter_result_statuses.get("mock_executed")
+        ),
+        "adapter_subprocess_invoked": _safe_int(
+            controlled_mock_adapter_subprocess_invoked.get("true")
+        ),
+        "adapter_real_execution_enabled": _safe_int(
+            controlled_mock_adapter_real_execution_enabled.get("true")
+        ),
+        "adapter_payload_executed": _safe_int(
+            controlled_mock_adapter_payload_executed.get("true")
         ),
     }
 
@@ -188,6 +228,24 @@ def _build_checks(
     mock_summary_performed = _safe_mapping(trail_summary.get("mock_summary_performed"))
     mock_summary_subprocess_invoked = _safe_mapping(
         trail_summary.get("mock_summary_subprocess_invoked")
+    )
+    controlled_mock_adapter = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter")
+    )
+    controlled_mock_adapter_mode = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_mode")
+    )
+    controlled_mock_adapter_result_statuses = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_result_statuses")
+    )
+    controlled_mock_adapter_subprocess_invoked = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_subprocess_invoked")
+    )
+    controlled_mock_adapter_real_execution_enabled = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_real_execution_enabled")
+    )
+    controlled_mock_adapter_payload_executed = _safe_mapping(
+        trail_summary.get("controlled_mock_adapter_payload_executed")
     )
 
     checks = [
@@ -306,6 +364,64 @@ def _build_checks(
             _safe_int(mock_summary_subprocess_invoked.get("true")) == 0,
             _safe_int(mock_summary_subprocess_invoked.get("true")),
         ),
+        _check(
+            "adapter_contract_observed",
+            _safe_int(controlled_mock_adapter.get("mock")) > 0
+            and _safe_int(controlled_mock_adapter_mode.get("mock")) > 0
+            and _safe_int(
+                controlled_mock_adapter_result_statuses.get("mock_executed")
+            )
+            > 0,
+            {
+                "adapter_mock": _safe_int(controlled_mock_adapter.get("mock")),
+                "adapter_mode_mock": _safe_int(
+                    controlled_mock_adapter_mode.get("mock")
+                ),
+                "adapter_result_mock_executed": _safe_int(
+                    controlled_mock_adapter_result_statuses.get("mock_executed")
+                ),
+            },
+        ),
+        _check(
+            "adapter_is_mock",
+            _safe_int(controlled_mock_adapter.get("mock")) > 0,
+            _safe_int(controlled_mock_adapter.get("mock")),
+        ),
+        _check(
+            "adapter_mode_is_mock",
+            _safe_int(controlled_mock_adapter_mode.get("mock")) > 0,
+            _safe_int(controlled_mock_adapter_mode.get("mock")),
+        ),
+        _check(
+            "adapter_result_mock_executed",
+            _safe_int(
+                controlled_mock_adapter_result_statuses.get("mock_executed")
+            )
+            > 0,
+            _safe_int(
+                controlled_mock_adapter_result_statuses.get("mock_executed")
+            ),
+        ),
+        _check(
+            "adapter_subprocess_not_invoked",
+            _safe_int(controlled_mock_adapter_subprocess_invoked.get("true")) == 0,
+            _safe_int(controlled_mock_adapter_subprocess_invoked.get("true")),
+        ),
+        _check(
+            "adapter_real_execution_not_enabled",
+            _safe_int(
+                controlled_mock_adapter_real_execution_enabled.get("true")
+            )
+            == 0,
+            _safe_int(
+                controlled_mock_adapter_real_execution_enabled.get("true")
+            ),
+        ),
+        _check(
+            "adapter_payload_not_executed",
+            _safe_int(controlled_mock_adapter_payload_executed.get("true")) == 0,
+            _safe_int(controlled_mock_adapter_payload_executed.get("true")),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -373,6 +489,14 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"mock_execution_summary_observed={str(bool(result.get('mock_execution_summary_observed'))).lower()} "
         f"mock_execution_summary_performed={result.get('mock_execution_summary_performed', 0)} "
         f"mock_summary_subprocess_invoked={result.get('mock_summary_subprocess_invoked', 0)} "
+        f"adapter_contract_observed="
+        f"{str(bool(result.get('adapter_contract_observed'))).lower()} "
+        f"adapter_mock={result.get('adapter_mock', 0)} "
+        f"adapter_mode_mock={result.get('adapter_mode_mock', 0)} "
+        f"adapter_result_mock_executed={result.get('adapter_result_mock_executed', 0)} "
+        f"adapter_subprocess_invoked={result.get('adapter_subprocess_invoked', 0)} "
+        f"adapter_real_execution_enabled={result.get('adapter_real_execution_enabled', 0)} "
+        f"adapter_payload_executed={result.get('adapter_payload_executed', 0)} "
     )
 
 

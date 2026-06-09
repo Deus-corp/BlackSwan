@@ -62,6 +62,24 @@ def _trail_summary(**overrides):
         "mock_summary_subprocess_invoked": {
             "false": 1,
         },
+        "controlled_mock_adapter": {
+            "mock": 1,
+        },
+        "controlled_mock_adapter_mode": {
+            "mock": 1,
+        },
+        "controlled_mock_adapter_result_statuses": {
+            "mock_executed": 1,
+        },
+        "controlled_mock_adapter_subprocess_invoked": {
+            "false": 1,
+        },
+        "controlled_mock_adapter_real_execution_enabled": {
+            "false": 1,
+        },
+        "controlled_mock_adapter_payload_executed": {
+            "false": 1,
+        },
     }
     item.update(overrides)
     return item
@@ -165,6 +183,13 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "mock_execution_observed": True,
             "mock_execution_performed": 1,
             "mock_subprocess_invoked": 0,
+            "adapter_contract_observed": True,
+            "adapter_mock": 1,
+            "adapter_mode_mock": 1,
+            "adapter_result_mock_executed": 1,
+            "adapter_subprocess_invoked": 0,
+            "adapter_real_execution_enabled": 0,
+            "adapter_payload_executed": 0,
         }
     )
 
@@ -176,6 +201,13 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "mock_execution_observed=true" in text
     assert "mock_execution_performed=1" in text
     assert "mock_subprocess_invoked=0" in text
+    assert "adapter_contract_observed=true" in text
+    assert "adapter_mock=1" in text
+    assert "adapter_mode_mock=1" in text
+    assert "adapter_result_mock_executed=1" in text
+    assert "adapter_subprocess_invoked=0" in text
+    assert "adapter_real_execution_enabled=0" in text
+    assert "adapter_payload_executed=0" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -215,3 +247,53 @@ def test_controlled_execution_readiness_checks_fail_when_mock_summary_missing() 
 
     assert "mock_execution_summary_observed" in failed
     assert "mock_execution_summary_performed" in failed
+
+
+def test_controlled_execution_readiness_checks_fail_when_adapter_contract_missing() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_mock_adapter={},
+            controlled_mock_adapter_mode={},
+            controlled_mock_adapter_result_statuses={},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "adapter_contract_observed" in failed
+    assert "adapter_is_mock" in failed
+    assert "adapter_mode_is_mock" in failed
+    assert "adapter_result_mock_executed" in failed
+
+
+def test_controlled_execution_readiness_checks_fail_when_adapter_invokes_subprocess() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_mock_adapter_subprocess_invoked={"true": 1}
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "adapter_subprocess_not_invoked" in failed
+
+
+def test_controlled_execution_readiness_checks_fail_when_adapter_payload_executed() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_mock_adapter_payload_executed={"true": 1}
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "adapter_payload_not_executed" in failed
