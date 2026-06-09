@@ -453,7 +453,7 @@ def build_global_swarm_brief(
         security_validation.get("security_real_adapter_runnable", False)
     )
     security_real_adapter_requires_explicit_pr = bool(
-        security_validation.get("security_real_adapter_requires_explicit_pr", False)
+        security_validation.get("security_real_adapter_requires_explicit_pr", True)
     )
     security_real_adapter_subprocess_supported = bool(
         security_validation.get("security_real_adapter_subprocess_supported", False)

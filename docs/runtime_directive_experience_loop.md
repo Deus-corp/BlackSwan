@@ -1327,6 +1327,61 @@ Unsupported real adapter metrics are emitted as fail-closed observability values
 
 ---
 
+### Real adapter threat model
+
+Real controlled retry execution is explicitly out of scope until a separate
+implementation PR enables it. The current adapter contract keeps
+`real_execution_supported=false`, `subprocess_supported=false`,
+`real_adapter_supported=false`, `real_adapter_runnable=false`, and
+`real_adapter_requires_explicit_pr=true`.
+
+The threat model for any future real adapter includes:
+
+- Shell injection through command strings or unsafe argument rendering.
+- Path traversal or unexpected working-directory changes.
+- Environment-variable leakage or unsafe inherited process state.
+- Unbounded execution time or hanging subprocesses.
+- Unbounded stdout/stderr capture or log amplification.
+- Executing a command that was not produced by the retry governance trail.
+- Reusing stale readiness/approval evidence after the runtime state changed.
+- Confusing operator authorization intent with explicit real execution approval.
+- Publishing an execution result without before/after audit evidence.
+- Allowing mock-readiness to imply real-readiness.
+
+### Real adapter preflight contract
+
+Before any real controlled retry execution can be implemented, a dedicated
+preflight contract must be satisfied and surfaced in readiness, security
+validation, inspector summaries, and Overseer briefs.
+
+Required preflight gates:
+
+- `shell=false`; `shell=True` is never allowed.
+- Commands must be module-only invocations with strict argv parsing.
+- The parsed module and arguments must match the controlled command allowlist.
+- The working directory must be fixed and validated.
+- The environment must be sanitized through an explicit allowlist.
+- Timeout must use a hard cap derived from the approved timeout profile.
+- stdout and stderr capture must have byte caps.
+- A fresh readiness report must pass schema validation.
+- The adapter contract must be observed with subprocess and real execution still disabled before approval.
+- A separate explicit `real_execution_approval_id` must be present.
+- Operator authorization intent alone is not sufficient for real execution.
+- Audit records must be published before and after any real execution attempt.
+- The real adapter must remain unsupported until the explicit implementation PR changes the adapter contract.
+
+The current fail-closed expected state remains:
+
+- `ready_for_mock_execution=true`
+- `ready_for_real_execution=false`
+- `real_execution_supported=false`
+- `subprocess_supported=false`
+- `real_adapter_supported=false`
+- `real_adapter_runnable=false`
+- `real_adapter_requires_explicit_pr=true`
+
+---
+
 ## Related modules
 
 ```text

@@ -40,6 +40,37 @@ def test_runtime_directive_experience_loop_docs_include_controlled_runner_contra
     assert "must not support arbitrary command execution" in text
 
 
+def test_runtime_directive_experience_loop_docs_include_real_adapter_threat_model() -> None:
+    text = DOC_PATH.read_text(encoding="utf-8")
+
+    assert "Real adapter threat model" in text
+    assert "Shell injection through command strings" in text
+    assert "Path traversal or unexpected working-directory changes" in text
+    assert "Environment-variable leakage" in text
+    assert "Unbounded execution time" in text
+    assert "Unbounded stdout/stderr capture" in text
+    assert "Confusing operator authorization intent" in text
+    assert "Allowing mock-readiness to imply real-readiness" in text
+
+
+def test_runtime_directive_experience_loop_docs_include_real_adapter_preflight_contract() -> None:
+    text = DOC_PATH.read_text(encoding="utf-8")
+
+    assert "Real adapter preflight contract" in text
+    assert "`shell=True` is never allowed" in text
+    assert "module-only invocations with strict argv parsing" in text
+    assert "controlled command allowlist" in text
+    assert "working directory must be fixed and validated" in text
+    assert "environment must be sanitized through an explicit allowlist" in text
+    assert "stdout and stderr capture must have byte caps" in text
+    assert "fresh readiness report must pass schema validation" in text
+    assert "real_execution_approval_id" in text
+    assert "Operator authorization intent alone is not sufficient" in text
+    assert "Audit records must be published before and after" in text
+    assert "ready_for_real_execution=false" in text
+    assert "real_adapter_requires_explicit_pr=true" in text
+
+
 def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> None:
     path = Path("docs/runtime_directive_experience_loop.md")
 

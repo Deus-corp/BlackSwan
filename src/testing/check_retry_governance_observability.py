@@ -98,8 +98,15 @@ def check_retry_governance_observability_from_records(
     status = "passed" if all(item["status"] == "passed" for item in checks) else "failed"
 
     brief_key_metrics = dict(getattr(brief, "key_metrics", {}) or {})
-    for key, value in _unsupported_real_adapter_metrics().items():
-        brief_key_metrics.setdefault(key, value)
+    
+    unsupported_real_adapter_metrics = _unsupported_real_adapter_metrics()
+
+    brief_key_metrics["security_real_adapter_supported"] = 0
+    brief_key_metrics["security_real_adapter_runnable"] = 0
+    brief_key_metrics["security_real_adapter_subprocess_supported"] = 0
+    brief_key_metrics["security_real_adapter_requires_explicit_pr"] = unsupported_real_adapter_metrics[
+        "security_real_adapter_requires_explicit_pr"
+    ]
 
     return {
         "type": "retry_governance_observability_check",
