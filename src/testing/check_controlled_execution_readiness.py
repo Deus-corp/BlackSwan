@@ -29,6 +29,9 @@ from swarm_config import config
 logger = logging.getLogger(__name__)
 
 
+READINESS_SCHEMA_VERSION = "controlled-execution-readiness/v1"
+
+
 def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, Any]:
     """Build a read-only final pre-execution readiness report."""
     db_path = str(args.db_path or config.crdt_db_path)
@@ -117,6 +120,8 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
 
     return {
         "type": "controlled_execution_readiness_report",
+        "schema_version": READINESS_SCHEMA_VERSION,
+        "schema_kind": "controlled_execution_readiness",
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
         "ready_for_real_execution": ready_for_real_execution,
@@ -124,6 +129,52 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         "require_operator_authorized": require_operator_authorized,
         "proposal_id": proposal_id or None,
         "rendered_command_id": rendered_command_id or None,
+        "summary": {
+            "status": "passed" if ready_for_mock_execution else "failed",
+            "ready_for_mock_execution": ready_for_mock_execution,
+            "ready_for_real_execution": ready_for_real_execution,
+            "blocking_reasons": blocking_reasons,
+            "mock_execution_observed": _safe_int(
+                controlled_mock_statuses.get("mock_executed")
+            )
+            > 0,
+            "mock_execution_summary_observed": _safe_int(
+                mock_summary_statuses.get("mock_executed")
+            )
+            > 0,
+            "adapter_contract_observed": (
+                _safe_int(controlled_mock_adapter.get("mock")) > 0
+                and _safe_int(controlled_mock_adapter_mode.get("mock")) > 0
+                and _safe_int(
+                    controlled_mock_adapter_result_statuses.get("mock_executed")
+                )
+                > 0
+            ),
+            "adapter_subprocess_invoked": _safe_int(
+                controlled_mock_adapter_subprocess_invoked.get("true")
+            ),
+            "adapter_real_execution_enabled": _safe_int(
+                controlled_mock_adapter_real_execution_enabled.get("true")
+            ),
+            "adapter_payload_executed": _safe_int(
+                controlled_mock_adapter_payload_executed.get("true")
+            ),
+        },
+        "required_fields": [
+            "schema_version",
+            "schema_kind",
+            "type",
+            "status",
+            "ready_for_mock_execution",
+            "ready_for_real_execution",
+            "blocking_reasons",
+            "adapter_contract_observed",
+            "adapter_subprocess_invoked",
+            "adapter_real_execution_enabled",
+            "adapter_payload_executed",
+            "checks",
+            "exit_codes",
+        ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
         "controlled_observability": controlled_observability,
@@ -464,6 +515,77 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def validate_controlled_execution_readiness_report_schema(
+    report: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate the machine-readable readiness report contract."""
+    required_fields = [
+        "schema_version",
+        "schema_kind",
+        "type",
+        "status",
+        "ready_for_mock_execution",
+        "ready_for_real_execution",
+        "blocking_reasons",
+        "adapter_contract_observed",
+        "adapter_subprocess_invoked",
+        "adapter_real_execution_enabled",
+        "adapter_payload_executed",
+        "checks",
+        "exit_codes",
+    ]
+
+    reasons: list[str] = []
+
+    if report.get("schema_version") != READINESS_SCHEMA_VERSION:
+        reasons.append("invalid_schema_version")
+    if report.get("schema_kind") != "controlled_execution_readiness":
+        reasons.append("invalid_schema_kind")
+    if report.get("type") != "controlled_execution_readiness_report":
+        reasons.append("invalid_report_type")
+    if report.get("status") not in {"passed", "failed"}:
+        reasons.append("invalid_status")
+
+    for field in required_fields:
+        if field not in report:
+            reasons.append(f"missing_required_field:{field}")
+
+    if not isinstance(report.get("ready_for_mock_execution"), bool):
+        reasons.append("ready_for_mock_execution_must_be_bool")
+    if not isinstance(report.get("ready_for_real_execution"), bool):
+        reasons.append("ready_for_real_execution_must_be_bool")
+    if report.get("ready_for_real_execution") is not False:
+        reasons.append("ready_for_real_execution_must_remain_false")
+    if not isinstance(report.get("blocking_reasons"), list):
+        reasons.append("blocking_reasons_must_be_list")
+    if not isinstance(report.get("checks"), list):
+        reasons.append("checks_must_be_list")
+    if not isinstance(report.get("exit_codes"), Mapping):
+        reasons.append("exit_codes_must_be_mapping")
+
+    for bool_field in (
+        "adapter_contract_observed",
+    ):
+        if not isinstance(report.get(bool_field), bool):
+            reasons.append(f"{bool_field}_must_be_bool")
+
+    for int_field in (
+        "adapter_subprocess_invoked",
+        "adapter_real_execution_enabled",
+        "adapter_payload_executed",
+    ):
+        if not isinstance(report.get(int_field), int):
+            reasons.append(f"{int_field}_must_be_int")
+
+    return {
+        "type": "controlled_execution_readiness_schema_validation",
+        "valid": not reasons,
+        "schema_version": report.get("schema_version"),
+        "schema_kind": report.get("schema_kind"),
+        "reasons": reasons,
+    }
+
+
 def _exit_code_for_result(result: Mapping[str, Any]) -> int:
     return 0 if result.get("status") == "passed" else 1
 
@@ -475,6 +597,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
     return (
         "Controlled execution readiness: "
         f"status={result.get('status')} "
+        f"schema_version={result.get('schema_version')} "
         f"ready_for_mock_execution="
         f"{str(bool(result.get('ready_for_mock_execution'))).lower()} "
         f"ready_for_real_execution="
@@ -539,6 +662,8 @@ def main() -> None:
     )
     args = build_parser().parse_args()
     result = check_controlled_execution_readiness(args)
+    schema_validation = validate_controlled_execution_readiness_report_schema(result)
+    result["schema_validation"] = schema_validation
 
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))

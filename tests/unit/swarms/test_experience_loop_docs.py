@@ -316,3 +316,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "adapter_payload_executed=true" in text
     assert "adapter != mock" in text
     assert "mode != mock" in text
+    assert "Controlled execution readiness JSON schema" in text
+    assert "schema_version=controlled-execution-readiness/v1" in text
+    assert "schema_kind=controlled_execution_readiness" in text
+    assert "ready_for_real_execution` must remain `false`" in text

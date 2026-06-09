@@ -4,6 +4,7 @@ from src.testing.check_controlled_execution_readiness import (
     _build_checks,
     _exit_code_for_result,
     _format_result,
+    READINESS_SCHEMA_VERSION,
 )
 
 
@@ -190,6 +191,7 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "adapter_subprocess_invoked": 0,
             "adapter_real_execution_enabled": 0,
             "adapter_payload_executed": 0,
+            "schema_version": READINESS_SCHEMA_VERSION,
         }
     )
 
@@ -208,6 +210,7 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "adapter_subprocess_invoked=0" in text
     assert "adapter_real_execution_enabled=0" in text
     assert "adapter_payload_executed=0" in text
+    assert f"schema_version={READINESS_SCHEMA_VERSION}" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:

@@ -1274,6 +1274,22 @@ execution readiness.
 
 ---
 
+### Controlled execution readiness JSON schema
+
+The controlled execution readiness report exposes a stable machine-readable
+contract with `schema_version=controlled-execution-readiness/v1` and
+`schema_kind=controlled_execution_readiness`.
+
+Required top-level fields include `ready_for_mock_execution`,
+`ready_for_real_execution`, `blocking_reasons`, `adapter_contract_observed`,
+`adapter_subprocess_invoked`, `adapter_real_execution_enabled`,
+`adapter_payload_executed`, `checks`, and `exit_codes`.
+
+`ready_for_real_execution` must remain `false` until a separate real-adapter PR
+explicitly changes the contract.
+
+---
+
 ## Related modules
 
 ```text
