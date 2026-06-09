@@ -1,3 +1,5 @@
+import json
+
 from src.testing.check_controlled_execution_readiness import (
     READINESS_SCHEMA_VERSION,
     validate_controlled_execution_readiness_report_schema,
@@ -24,6 +26,21 @@ def _report(**overrides):
             "controlled_observability": 0,
             "real_execution": 1,
         },
+        "required_fields": [
+            "schema_version",
+            "schema_kind",
+            "type",
+            "status",
+            "ready_for_mock_execution",
+            "ready_for_real_execution",
+            "blocking_reasons",
+            "adapter_contract_observed",
+            "adapter_subprocess_invoked",
+            "adapter_real_execution_enabled",
+            "adapter_payload_executed",
+            "checks",
+            "exit_codes",
+        ],
     }
     item.update(overrides)
     return item
@@ -64,3 +81,82 @@ def test_validate_controlled_execution_readiness_report_schema_rejects_bad_adapt
 
     assert result["valid"] is False
     assert "adapter_subprocess_invoked_must_be_int" in result["reasons"]
+
+
+def test_controlled_execution_readiness_schema_required_fields_snapshot() -> None:
+    report = _report()
+
+    result = validate_controlled_execution_readiness_report_schema(report)
+
+    assert result["valid"] is True
+    assert sorted(report["required_fields"]) == sorted(
+        [
+            "schema_version",
+            "schema_kind",
+            "type",
+            "status",
+            "ready_for_mock_execution",
+            "ready_for_real_execution",
+            "blocking_reasons",
+            "adapter_contract_observed",
+            "adapter_subprocess_invoked",
+            "adapter_real_execution_enabled",
+            "adapter_payload_executed",
+            "checks",
+            "exit_codes",
+        ]
+    )
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_missing_checks() -> None:
+    report = _report()
+    report.pop("checks")
+
+    result = validate_controlled_execution_readiness_report_schema(report)
+
+    assert result["valid"] is False
+    assert "missing_required_field:checks" in result["reasons"]
+    assert "checks_must_be_list" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_missing_exit_codes() -> None:
+    report = _report()
+    report.pop("exit_codes")
+
+    result = validate_controlled_execution_readiness_report_schema(report)
+
+    assert result["valid"] is False
+    assert "missing_required_field:exit_codes" in result["reasons"]
+    assert "exit_codes_must_be_mapping" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_schema_version() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(schema_version="controlled-execution-readiness/v0")
+    )
+
+    assert result["valid"] is False
+    assert "invalid_schema_version" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_schema_kind() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(schema_kind="other")
+    )
+
+    assert result["valid"] is False
+    assert "invalid_schema_kind" in result["reasons"]
+
+
+def test_controlled_execution_readiness_report_schema_snapshot_is_json_serializable() -> None:
+    report = _report()
+
+    payload = json.loads(json.dumps(report, sort_keys=True))
+
+    assert payload["schema_version"] == READINESS_SCHEMA_VERSION
+    assert payload["ready_for_mock_execution"] is True
+    assert payload["ready_for_real_execution"] is False
+    assert payload["adapter_contract_observed"] is True
+    assert payload["adapter_subprocess_invoked"] == 0
+    assert payload["adapter_real_execution_enabled"] == 0
+    assert payload["adapter_payload_executed"] == 0

@@ -1290,6 +1290,12 @@ explicitly changes the contract.
 
 ---
 
+The JSON schema is covered by regression fixtures that snapshot the required
+public fields and verify that `checks`, `exit_codes`, adapter contract counters,
+and `ready_for_real_execution=false` remain present and machine-readable. required public fields.
+
+---
+
 ## Related modules
 
 ```text
@@ -1326,6 +1332,32 @@ python -m src.swarms.runtime.cluster_cli up \
   --simulation-nodes 1 \
   --simulation-heartbeat-interval 5
 ```
+---
+
+```bash
+python -m src.testing.retry_governance_smoke \
+  --proposal-id replay-retry-violation-fixtures-smoke-1 \
+  --approval-id replay-retry-violation-fixtures-approval-1 \
+  --plan-id replay-retry-violation-fixtures-plan-1 \
+  --rendered-command-id replay-retry-violation-fixtures-command-1 \
+  --result-id replay-retry-violation-fixtures-result-1 \
+  --require-clean \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.run_controlled_retry_command \
+  --rendered-command-id replay-retry-violation-fixtures-command-1 \
+  --allow-controlled-execution \
+  --mock-execution \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.check_controlled_execution_readiness \
+  --proposal-id replay-retry-violation-fixtures-smoke-1 \
+  --rendered-command-id replay-retry-violation-fixtures-command-1 \
+  --require-operator-authorized \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+---
 
 Runtime quick check:
 ```bash

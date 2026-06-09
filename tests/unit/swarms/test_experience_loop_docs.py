@@ -320,3 +320,6 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "schema_version=controlled-execution-readiness/v1" in text
     assert "schema_kind=controlled_execution_readiness" in text
     assert "ready_for_real_execution` must remain `false`" in text
+    assert "regression fixtures" in text
+    assert "required public fields" in text
+    assert "ready_for_real_execution=false" in text

@@ -5,6 +5,7 @@ from src.testing.check_controlled_execution_readiness import (
     _exit_code_for_result,
     _format_result,
     READINESS_SCHEMA_VERSION,
+    validate_controlled_execution_readiness_report_schema,
 )
 
 
@@ -102,6 +103,37 @@ def _controlled_observability(**overrides):
     }
     item.update(overrides)
     return item
+
+
+def _report(**overrides):
+    report = {
+        "type": "controlled_execution_readiness_report",
+        "schema_version": READINESS_SCHEMA_VERSION,
+        "schema_kind": "controlled_execution_readiness",
+        "status": "passed",
+        "ready_for_mock_execution": True,
+        "ready_for_real_execution": False,
+        "blocking_reasons": ["real_execution_not_supported_yet"],
+        "mock_execution_observed": True,
+        "mock_execution_performed": 1,
+        "mock_subprocess_invoked": 0,
+        "adapter_contract_observed": True,
+        "adapter_mock": 1,
+        "adapter_mode_mock": 1,
+        "adapter_result_mock_executed": 1,
+        "adapter_subprocess_invoked": 0,
+        "adapter_real_execution_enabled": 0,
+        "adapter_payload_executed": 0,
+        "checks": [],
+        "exit_codes": {
+            "trail": 0,
+            "retry_observability": 0,
+            "controlled_observability": 0,
+            "real_execution": 1,
+        },
+    }
+    report.update(overrides)
+    return report
 
 
 def test_controlled_execution_readiness_checks_pass_for_safe_pre_execution_stack() -> None:
@@ -347,3 +379,57 @@ def test_controlled_execution_readiness_checks_fail_when_adapter_mode_is_not_moc
 
     assert "adapter_contract_observed" in failed
     assert "adapter_mode_is_mock" in failed
+
+
+def test_controlled_execution_readiness_report_contract_shape_from_checks() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+    failed_checks = [item for item in checks if item["status"] != "passed"]
+    report = {
+        "type": "controlled_execution_readiness_report",
+        "schema_version": READINESS_SCHEMA_VERSION,
+        "schema_kind": "controlled_execution_readiness",
+        "status": "passed" if not failed_checks else "failed",
+        "ready_for_mock_execution": not failed_checks,
+        "ready_for_real_execution": False,
+        "blocking_reasons": (
+            ["real_execution_not_supported_yet"]
+            if not failed_checks
+            else [item["name"] for item in failed_checks]
+        ),
+        "adapter_contract_observed": True,
+        "adapter_subprocess_invoked": 0,
+        "adapter_real_execution_enabled": 0,
+        "adapter_payload_executed": 0,
+        "checks": checks,
+        "exit_codes": {
+            "trail": 0,
+            "retry_observability": 0,
+            "controlled_observability": 0,
+            "real_execution": 1,
+        },
+    }
+
+    schema_validation = validate_controlled_execution_readiness_report_schema(report)
+
+    assert failed_checks == []
+    assert schema_validation["valid"] is True
+    assert report["schema_version"] == READINESS_SCHEMA_VERSION
+    assert report["ready_for_real_execution"] is False
+    assert report["blocking_reasons"] == ["real_execution_not_supported_yet"]
+
+
+def test_controlled_execution_readiness_schema_validation_result_shape() -> None:
+    result = validate_controlled_execution_readiness_report_schema(_report())
+
+    assert result == {
+        "type": "controlled_execution_readiness_schema_validation",
+        "valid": True,
+        "schema_version": READINESS_SCHEMA_VERSION,
+        "schema_kind": "controlled_execution_readiness",
+        "reasons": [],
+    }
