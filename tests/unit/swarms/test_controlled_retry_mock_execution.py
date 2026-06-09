@@ -59,6 +59,14 @@ def test_controlled_retry_mock_execution_performs_when_enabled_and_safe() -> Non
     assert result["payload"]["executed"] is False
     assert result["payload"]["mock_executed"] is True
     assert result["payload"]["subprocess_invoked"] is False
+    assert result["mock_execution"]["mode"] == "mock"
+    assert result["mock_execution"]["real_execution_enabled"] is False
+    assert result["mock_execution"]["adapter_result"]["adapter"] == "mock"
+    assert result["mock_execution"]["adapter_result"]["subprocess_invoked"] is False
+    assert result["mock_execution"]["adapter_result"]["payload"]["executed"] is False
+    assert result["payload"]["adapter"] == "mock"
+    assert result["payload"]["adapter_mode"] == "mock"
+    assert result["payload"]["real_execution_enabled"] is False
 
 
 def test_controlled_retry_mock_execution_blocks_when_not_enabled() -> None:

@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from src.testing.controlled_retry_execution_adapter import (
+    get_controlled_retry_execution_adapter,
+)
+
 
 def build_controlled_retry_mock_execution(
     controlled_result: Mapping[str, Any],
@@ -72,6 +76,14 @@ def build_controlled_retry_mock_execution(
 
     mock_performed = not reasons
 
+    adapter_result = None
+    if mock_performed:
+        adapter = get_controlled_retry_execution_adapter("mock")
+        adapter_result = adapter.run(
+            controlled_result,
+            timeout_profile=str(controlled_result.get("timeout_profile") or "standard"),
+        )
+
     return {
         "type": "controlled_retry_mock_execution",
         "status": "mock_executed" if mock_performed else "blocked",
@@ -90,14 +102,33 @@ def build_controlled_retry_mock_execution(
         "mock_execution": {
             "performed": mock_performed,
             "adapter": "mock",
-            "subprocess_invoked": False,
-            "exit_code": 0 if mock_performed else None,
+            "mode": "mock",
+            "subprocess_invoked": bool(
+                adapter_result.get("subprocess_invoked")
+                if isinstance(adapter_result, Mapping)
+                else False
+            ),
+            "real_execution_enabled": bool(
+                adapter_result.get("real_execution_enabled")
+                if isinstance(adapter_result, Mapping)
+                else False
+            ),
+            "exit_code": (
+                adapter_result.get("exit_code")
+                if isinstance(adapter_result, Mapping)
+                else None
+            ),
             "stdout": (
-                "mock controlled retry execution"
-                if mock_performed
+                adapter_result.get("stdout")
+                if isinstance(adapter_result, Mapping)
                 else ""
             ),
-            "stderr": "",
+            "stderr": (
+                adapter_result.get("stderr")
+                if isinstance(adapter_result, Mapping)
+                else ""
+            ),
+            "adapter_result": adapter_result,
             "reasons": reasons,
         },
         "payload": {
@@ -113,6 +144,12 @@ def build_controlled_retry_mock_execution(
             "plan_id": str(controlled_result.get("plan_id") or ""),
             "proposal_id": str(controlled_result.get("proposal_id") or ""),
             "approval_id": str(controlled_result.get("approval_id") or ""),
-            "reasons": reasons,
+            "reasons": reasons,         
+            "adapter": "mock",
+            "adapter_mode": "mock",
+            "real_execution_enabled": False,
+            "executed": False,
+            "mock_executed": mock_performed,
+            "subprocess_invoked": False,
         },
     }

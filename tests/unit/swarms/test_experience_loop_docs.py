@@ -294,3 +294,10 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "automatically derives the" in text
     assert "replay_lifecycle_retry_mock_execution_summary" in text
     assert "does not duplicate either record" in text
+    assert "Controlled retry execution adapter contract" in text
+    assert "The only supported adapter is `mock`" in text
+    assert "Unsupported adapters such as" in text
+    assert "payload.executed=false" in text
+    assert "real_execution_enabled=false" in text
+    assert "adapter=mock" in text
+    assert "mode=mock" in text

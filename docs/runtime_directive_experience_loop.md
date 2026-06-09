@@ -1211,6 +1211,24 @@ mock path remains idempotent and does not duplicate either record.
 
 ---
 
+### Controlled retry execution adapter contract
+
+The controlled retry execution adapter contract is defined before real execution
+support. The only supported adapter is `mock`. Unsupported adapters such as
+`real` or subprocess-backed adapters are rejected.
+
+Required invariants:
+
+- `payload.executed=false`
+- `subprocess_invoked=false`
+- `real_execution_enabled=false`
+
+The mock adapter returns an execution-shaped result with
+`adapter=mock`, `mode=mock`, `status=mock_executed`, and
+`reason=mock_execution_completed`, but it never invokes subprocesses.
+
+---
+
 ## Related modules
 
 ```text
