@@ -1296,6 +1296,18 @@ and `ready_for_real_execution=false` remain present and machine-readable. requir
 
 ---
 
+### Real adapter placeholder
+
+The real controlled retry execution adapter is explicitly represented as an
+unsupported placeholder. The adapter contract reports
+`real_execution_supported=false`, `subprocess_supported=false`,
+`real_adapter_supported=false`, and `real_adapter_runnable=false`.
+
+Requesting the `real` adapter fails closed and requires a separate explicit PR
+before any real execution support can exist.
+
+---
+
 ## Related modules
 
 ```text

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Protocol
 
+class UnsupportedControlledRetryExecutionAdapter(ValueError):
+    """Raised when a controlled retry execution adapter is not supported."""
 
 class ControlledRetryExecutionAdapter(Protocol):
     """Protocol for future controlled retry execution adapters."""
@@ -70,6 +72,30 @@ class MockControlledRetryExecutionAdapter:
         }
 
 
+class UnsupportedRealControlledRetryExecutionAdapter:
+    """Placeholder for a future real adapter.
+
+    This adapter is intentionally not runnable. It documents that real execution
+    requires a separate explicit implementation PR.
+    """
+
+    name = "real"
+    mode = "real"
+    supported = False
+    real_execution_supported = False
+    subprocess_supported = False
+
+    def run(
+        self,
+        controlled_result: Mapping[str, Any],
+        *,
+        timeout_profile: str = "standard",
+    ) -> dict[str, Any]:
+        raise UnsupportedControlledRetryExecutionAdapter(
+            "controlled retry real execution adapter is not supported"
+        )
+
+
 def get_controlled_retry_execution_adapter(
     adapter: str,
 ) -> ControlledRetryExecutionAdapter:
@@ -79,15 +105,24 @@ def get_controlled_retry_execution_adapter(
     if clean_adapter == "mock":
         return MockControlledRetryExecutionAdapter()
 
-    raise ValueError(f"unsupported controlled retry execution adapter: {adapter}")
+    if clean_adapter == "real":
+        raise UnsupportedControlledRetryExecutionAdapter(
+            "controlled retry real execution adapter is not supported"
+        )
+
+    raise UnsupportedControlledRetryExecutionAdapter(
+        f"unsupported controlled retry execution adapter: {adapter}"
+    )
 
 
 def describe_controlled_retry_execution_adapter_contract() -> dict[str, Any]:
     """Return a machine-readable adapter contract summary."""
     return {
         "type": "controlled_retry_execution_adapter_contract",
+        "schema_version": "controlled-retry-execution-adapter/v1",
         "supported_adapters": ["mock"],
         "unsupported_adapters": ["real"],
+        "placeholder_adapters": ["real"],
         "real_execution_supported": False,
         "subprocess_supported": False,
         "required_invariants": {
@@ -110,4 +145,12 @@ def describe_controlled_retry_execution_adapter_contract() -> dict[str, Any]:
             "stderr",
             "payload",
         ],
+        "real_adapter_contract": {
+            "name": "real",
+            "mode": "real",
+            "supported": False,
+            "runnable": False,
+            "requires_explicit_pr": True,
+            "failure_reason": "controlled_retry_real_execution_adapter_not_supported",
+        },
     }

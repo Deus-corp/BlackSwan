@@ -323,3 +323,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "regression fixtures" in text
     assert "required public fields" in text
     assert "ready_for_real_execution=false" in text
+    assert "Real adapter placeholder" in text
+    assert "real_execution_supported=false" in text
+    assert "real_adapter_supported=false" in text
+    assert "real_adapter_runnable=false" in text
+    assert "Requesting the `real` adapter fails closed" in text

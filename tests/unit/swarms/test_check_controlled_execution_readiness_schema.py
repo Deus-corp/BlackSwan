@@ -11,6 +11,25 @@ def _report(**overrides):
         "type": "controlled_execution_readiness_report",
         "schema_version": READINESS_SCHEMA_VERSION,
         "schema_kind": "controlled_execution_readiness",
+        "adapter_contract": {
+            "type": "controlled_retry_execution_adapter_contract",
+            "schema_version": "controlled-retry-execution-adapter/v1",
+            "supported_adapters": ["mock"],
+            "unsupported_adapters": ["real"],
+            "placeholder_adapters": ["real"],
+            "real_execution_supported": False,
+            "subprocess_supported": False,
+            "real_adapter_contract": {
+                "name": "real",
+                "mode": "real",
+                "supported": False,
+                "runnable": False,
+                "requires_explicit_pr": True,
+                "failure_reason": "controlled_retry_real_execution_adapter_not_supported",
+            },
+        },
+        "real_adapter_supported": False,
+        "real_adapter_runnable": False,
         "status": "passed",
         "ready_for_mock_execution": True,
         "ready_for_real_execution": False,
@@ -40,6 +59,9 @@ def _report(**overrides):
             "adapter_payload_executed",
             "checks",
             "exit_codes",
+            "adapter_contract",
+            "real_adapter_supported",
+            "real_adapter_runnable",
         ],
     }
     item.update(overrides)
@@ -102,6 +124,9 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "adapter_subprocess_invoked",
             "adapter_real_execution_enabled",
             "adapter_payload_executed",
+            "adapter_contract",
+            "real_adapter_supported",
+            "real_adapter_runnable",
             "checks",
             "exit_codes",
         ]
@@ -160,3 +185,32 @@ def test_controlled_execution_readiness_report_schema_snapshot_is_json_serializa
     assert payload["adapter_subprocess_invoked"] == 0
     assert payload["adapter_real_execution_enabled"] == 0
     assert payload["adapter_payload_executed"] == 0
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_real_adapter_supported() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_adapter_supported=True)
+    )
+
+    assert result["valid"] is False
+    assert "real_adapter_supported_must_remain_false" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_real_adapter_runnable() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_adapter_runnable=True)
+    )
+
+    assert result["valid"] is False
+    assert "real_adapter_runnable_must_remain_false" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_missing_adapter_contract() -> None:
+    report = _report()
+    report.pop("adapter_contract")
+
+    result = validate_controlled_execution_readiness_report_schema(report)
+
+    assert result["valid"] is False
+    assert "missing_required_field:adapter_contract" in result["reasons"]
+    assert "adapter_contract_must_be_mapping" in result["reasons"]

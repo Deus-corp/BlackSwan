@@ -2,6 +2,8 @@ import pytest
 
 from src.testing.controlled_retry_execution_adapter import (
     MockControlledRetryExecutionAdapter,
+    UnsupportedControlledRetryExecutionAdapter,
+    UnsupportedRealControlledRetryExecutionAdapter,
     describe_controlled_retry_execution_adapter_contract,
     get_controlled_retry_execution_adapter,
 )
@@ -45,12 +47,18 @@ def test_get_controlled_retry_execution_adapter_returns_mock_adapter() -> None:
 
 
 def test_get_controlled_retry_execution_adapter_rejects_real_adapter() -> None:
-    with pytest.raises(ValueError, match="unsupported controlled retry execution adapter"):
+    with pytest.raises(
+        UnsupportedControlledRetryExecutionAdapter,
+        match="real execution adapter is not supported",
+    ):
         get_controlled_retry_execution_adapter("real")
 
 
 def test_get_controlled_retry_execution_adapter_rejects_unknown_adapter() -> None:
-    with pytest.raises(ValueError, match="unsupported controlled retry execution adapter"):
+    with pytest.raises(
+        UnsupportedControlledRetryExecutionAdapter,
+        match="unsupported controlled retry execution adapter",
+    ):
         get_controlled_retry_execution_adapter("subprocess")
 
 
@@ -63,3 +71,29 @@ def test_controlled_retry_execution_adapter_contract_documents_invariants() -> N
     assert contract["required_invariants"]["payload_executed"] is False
     assert contract["required_invariants"]["subprocess_invoked"] is False
     assert contract["required_invariants"]["real_execution_enabled"] is False
+    assert contract["schema_version"] == "controlled-retry-execution-adapter/v1"
+    assert contract["unsupported_adapters"] == ["real"]
+    assert contract["placeholder_adapters"] == ["real"]
+    assert contract["real_adapter_contract"]["supported"] is False
+    assert contract["real_adapter_contract"]["runnable"] is False
+    assert contract["real_adapter_contract"]["requires_explicit_pr"] is True
+    assert (
+        contract["real_adapter_contract"]["failure_reason"]
+        == "controlled_retry_real_execution_adapter_not_supported"
+    )
+
+
+def test_unsupported_real_controlled_retry_execution_adapter_is_not_runnable() -> None:
+    adapter = UnsupportedRealControlledRetryExecutionAdapter()
+
+    assert adapter.name == "real"
+    assert adapter.mode == "real"
+    assert adapter.supported is False
+    assert adapter.real_execution_supported is False
+    assert adapter.subprocess_supported is False
+
+    with pytest.raises(
+        UnsupportedControlledRetryExecutionAdapter,
+        match="real execution adapter is not supported",
+    ):
+        adapter.run(_controlled_result())

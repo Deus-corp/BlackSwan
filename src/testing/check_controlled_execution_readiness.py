@@ -24,6 +24,9 @@ from src.testing.inspect_retry_governance_trail import (
     _exit_code_for_summary as trail_exit_code,
     inspect_retry_governance_trail,
 )
+from src.testing.controlled_retry_execution_adapter import (
+    describe_controlled_retry_execution_adapter_contract,
+)
 from swarm_config import config
 
 logger = logging.getLogger(__name__)
@@ -118,10 +121,23 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         trail_summary.get("controlled_mock_adapter_payload_executed")
     )
 
+    adapter_contract = describe_controlled_retry_execution_adapter_contract()
+
     return {
         "type": "controlled_execution_readiness_report",
         "schema_version": READINESS_SCHEMA_VERSION,
         "schema_kind": "controlled_execution_readiness",
+        "adapter_contract": adapter_contract,
+        "real_adapter_supported": bool(
+            adapter_contract.get("real_execution_supported")
+        ),
+        "real_adapter_runnable": bool(
+            (
+                adapter_contract.get("real_adapter_contract")
+                if isinstance(adapter_contract.get("real_adapter_contract"), Mapping)
+                else {}
+            ).get("runnable")
+        ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
         "ready_for_real_execution": ready_for_real_execution,
@@ -159,6 +175,18 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "adapter_payload_executed": _safe_int(
                 controlled_mock_adapter_payload_executed.get("true")
             ),
+            "real_adapter_supported": bool(
+                adapter_contract.get("real_execution_supported")
+            ),
+            "real_adapter_runnable": bool(
+                (
+                    adapter_contract.get("real_adapter_contract")
+                    if isinstance(
+                        adapter_contract.get("real_adapter_contract"), Mapping
+                    )
+                    else {}
+                ).get("runnable")
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -174,6 +202,9 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "adapter_payload_executed",
             "checks",
             "exit_codes",
+            "adapter_contract",
+            "real_adapter_supported",
+            "real_adapter_runnable",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -533,6 +564,9 @@ def validate_controlled_execution_readiness_report_schema(
         "adapter_payload_executed",
         "checks",
         "exit_codes",
+        "adapter_contract",
+        "real_adapter_supported",
+        "real_adapter_runnable",
     ]
 
     reasons: list[str] = []
@@ -577,6 +611,13 @@ def validate_controlled_execution_readiness_report_schema(
         if not isinstance(report.get(int_field), int):
             reasons.append(f"{int_field}_must_be_int")
 
+    if not isinstance(report.get("adapter_contract"), Mapping):
+        reasons.append("adapter_contract_must_be_mapping")
+    if report.get("real_adapter_supported") is not False:
+        reasons.append("real_adapter_supported_must_remain_false")
+    if report.get("real_adapter_runnable") is not False:
+        reasons.append("real_adapter_runnable_must_remain_false")
+
     return {
         "type": "controlled_execution_readiness_schema_validation",
         "valid": not reasons,
@@ -620,6 +661,10 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"adapter_subprocess_invoked={result.get('adapter_subprocess_invoked', 0)} "
         f"adapter_real_execution_enabled={result.get('adapter_real_execution_enabled', 0)} "
         f"adapter_payload_executed={result.get('adapter_payload_executed', 0)} "
+        f"real_adapter_supported="
+        f"{str(bool(result.get('real_adapter_supported'))).lower()} "
+        f"real_adapter_runnable="
+        f"{str(bool(result.get('real_adapter_runnable'))).lower()} "
     )
 
 

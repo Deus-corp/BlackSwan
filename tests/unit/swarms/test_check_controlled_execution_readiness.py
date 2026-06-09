@@ -224,6 +224,8 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "adapter_real_execution_enabled": 0,
             "adapter_payload_executed": 0,
             "schema_version": READINESS_SCHEMA_VERSION,
+            "real_adapter_supported": False,
+            "real_adapter_runnable": False,
         }
     )
 
@@ -243,6 +245,8 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "adapter_real_execution_enabled=0" in text
     assert "adapter_payload_executed=0" in text
     assert f"schema_version={READINESS_SCHEMA_VERSION}" in text
+    assert "real_adapter_supported=false" in text
+    assert "real_adapter_runnable=false" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -393,6 +397,15 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "type": "controlled_execution_readiness_report",
         "schema_version": READINESS_SCHEMA_VERSION,
         "schema_kind": "controlled_execution_readiness",
+        "adapter_contract": {
+            "type": "controlled_retry_execution_adapter_contract",
+            "real_execution_supported": False,
+            "real_adapter_contract": {
+                "runnable": False,
+            },
+        },
+        "real_adapter_supported": False,
+        "real_adapter_runnable": False,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -424,7 +437,47 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
 
 
 def test_controlled_execution_readiness_schema_validation_result_shape() -> None:
-    result = validate_controlled_execution_readiness_report_schema(_report())
+    report = {
+        "type": "controlled_execution_readiness_report",
+        "schema_version": READINESS_SCHEMA_VERSION,
+        "schema_kind": "controlled_execution_readiness",
+        "status": "passed",
+        "ready_for_mock_execution": True,
+        "ready_for_real_execution": False,
+        "blocking_reasons": ["real_execution_not_supported_yet"],
+        "adapter_contract_observed": True,
+        "adapter_subprocess_invoked": 0,
+        "adapter_real_execution_enabled": 0,
+        "adapter_payload_executed": 0,
+        "adapter_contract": {
+            "type": "controlled_retry_execution_adapter_contract",
+            "schema_version": "controlled-retry-execution-adapter/v1",
+            "supported_adapters": ["mock"],
+            "unsupported_adapters": ["real"],
+            "placeholder_adapters": ["real"],
+            "real_execution_supported": False,
+            "subprocess_supported": False,
+            "real_adapter_contract": {
+                "name": "real",
+                "mode": "real",
+                "supported": False,
+                "runnable": False,
+                "requires_explicit_pr": True,
+                "failure_reason": "controlled_retry_real_execution_adapter_not_supported",
+            },
+        },
+        "real_adapter_supported": False,
+        "real_adapter_runnable": False,
+        "checks": [],
+        "exit_codes": {
+            "trail": 0,
+            "retry_observability": 0,
+            "controlled_observability": 0,
+            "real_execution": 1,
+        },
+    }
+
+    result = validate_controlled_execution_readiness_report_schema(report)
 
     assert result == {
         "type": "controlled_execution_readiness_schema_validation",
