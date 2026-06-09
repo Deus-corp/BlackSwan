@@ -82,6 +82,18 @@ def _trail_summary(**overrides):
         "controlled_mock_adapter_payload_executed": {
             "false": 1,
         },
+        "controlled_real_execution_requested": {
+            "false": 1,
+        },
+        "controlled_real_execution_performed": {
+            "false": 1,
+        },
+        "controlled_real_execution_supported": {
+            "false": 1,
+        },
+        "controlled_subprocess_invoked": {
+            "false": 1,
+        },
     }
     item.update(overrides)
     return item
@@ -227,6 +239,12 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "real_adapter_supported": False,
             "real_adapter_runnable": False,
             "real_adapter_requires_explicit_pr": True,
+            "real_execution_request_observed": True,
+            "real_execution_request_rejected": 1,
+            "real_execution_requested": 1,
+            "real_execution_performed": 0,
+            "real_execution_supported_count": 0,
+            "subprocess_invoked_count": 0,
         }
     )
 
@@ -249,6 +267,12 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "real_adapter_supported=false" in text
     assert "real_adapter_runnable=false" in text
     assert "real_adapter_requires_explicit_pr=true" in text
+    assert "real_execution_request_observed=true" in text
+    assert "real_execution_request_rejected=1" in text
+    assert "real_execution_requested=1" in text
+    assert "real_execution_performed=0" in text
+    assert "real_execution_supported_count=0" in text
+    assert "subprocess_invoked_count=0" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -409,6 +433,8 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         },
         "real_adapter_supported": False,
         "real_adapter_runnable": False,
+        "real_execution_request_observed": False,
+        "real_execution_request_rejected": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -472,6 +498,8 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_adapter_supported": False,
         "real_adapter_runnable": False,
         "real_adapter_requires_explicit_pr": True,
+        "real_execution_request_observed": False,
+        "real_execution_request_rejected": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -490,3 +518,58 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "schema_kind": "controlled_execution_readiness",
         "reasons": [],
     }
+
+
+def test_controlled_execution_readiness_observes_rejected_real_execution_request() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_execution_result_reasons={
+                "real_execution_not_supported": 1,
+            },
+            controlled_real_execution_requested={
+                "true": 1,
+            },
+            controlled_real_execution_performed={
+                "false": 1,
+            },
+            controlled_real_execution_supported={
+                "false": 1,
+            },
+            controlled_subprocess_invoked={
+                "false": 1,
+            },
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_execution_request_rejected_if_observed" not in failed
+    assert "real_execution_request_did_not_execute" not in failed
+    assert "real_execution_request_did_not_enable_support" not in failed
+    assert "real_execution_request_did_not_invoke_subprocess" not in failed
+
+
+def test_controlled_execution_readiness_fails_if_real_request_performed() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_execution_result_reasons={
+                "real_execution_not_supported": 1,
+            },
+            controlled_real_execution_requested={
+                "true": 1,
+            },
+            controlled_real_execution_performed={
+                "true": 1,
+            },
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_execution_request_did_not_execute" in failed

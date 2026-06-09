@@ -1395,6 +1395,19 @@ validates the real adapter preflight contract.
 
 ---
 
+### Real execution request observability
+
+Real execution request observability surfaces audit-only real execution intent.
+A safe rejected real execution request reports
+`real_execution_request_observed=true`, `real_execution_request_rejected=1`,
+`real_execution_requested=1`, `real_execution_performed=0`,
+`real_execution_supported_count=0`, and `subprocess_invoked_count=0`.
+
+Inspector, Security, Overseer, and readiness reports must agree that the request
+was observed, rejected as unsupported, and did not execute.
+
+---
+
 ## Related modules
 
 ```text
@@ -1431,6 +1444,22 @@ python -m src.swarms.runtime.cluster_cli up \
   --simulation-nodes 1 \
   --simulation-heartbeat-interval 5
 ```
+---
+
+```bash
+python -m src.testing.inspect_retry_governance_trail \
+  --proposal-id replay-retry-real-flag-smoke-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.check_controlled_execution_readiness \
+  --proposal-id replay-retry-real-flag-smoke-1 \
+  --rendered-command-id replay-retry-real-flag-command-1 \
+  --require-operator-authorized \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
 ---
 
 ```bash

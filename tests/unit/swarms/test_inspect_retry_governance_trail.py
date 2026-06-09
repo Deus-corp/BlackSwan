@@ -415,6 +415,10 @@ def _controlled_execution_result(**overrides):
         "command_parse": dict(command_parse),
         "gate_evaluation": dict(gate_evaluation),
         "mock_execution": dict(mock_execution),
+        "real_execution_requested": False,
+        "real_execution_performed": False,
+        "real_execution_supported": False,
+        "subprocess_invoked": False,
         "payload": {
             "executed": False,
             "operator_authorized": False,
@@ -422,6 +426,10 @@ def _controlled_execution_result(**overrides):
             "command_parse": dict(command_parse),
             "gate_evaluation": dict(gate_evaluation),
             "mock_execution": dict(mock_execution),
+            "real_execution_requested": False,
+            "real_execution_performed": False,
+            "real_execution_supported": False,
+            "subprocess_invoked": False,
         },
     }
     item.update(overrides)
@@ -475,6 +483,10 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["controlled_mock_adapter_subprocess_invoked"]["false"] == 1
     assert summary["controlled_mock_adapter_real_execution_enabled"]["false"] == 1
     assert summary["controlled_mock_adapter_payload_executed"]["false"] == 1
+    assert summary["controlled_real_execution_requested"]["false"] == 1
+    assert summary["controlled_real_execution_performed"]["false"] == 1
+    assert summary["controlled_real_execution_supported"]["false"] == 1
+    assert summary["controlled_subprocess_invoked"]["false"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -579,3 +591,30 @@ def test_inspect_retry_governance_trail_counts_mock_execution_summary() -> None:
     assert summary["mock_summary_reasons"]["mock_execution_completed"] == 1
     assert summary["mock_summary_performed"]["true"] == 1
     assert summary["mock_summary_subprocess_invoked"]["false"] == 1
+
+
+def test_inspect_retry_governance_trail_counts_real_execution_request_intent() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(
+                reason="real_execution_not_supported",
+                real_execution_requested=True,
+            ),
+        ]
+    )
+
+    assert summary["chain_complete"] is True
+    assert summary["controlled_execution_result_reasons"][
+        "real_execution_not_supported"
+    ] == 1
+    assert summary["controlled_real_execution_requested"]["true"] == 1
+    assert summary["controlled_real_execution_performed"]["false"] == 1
+    assert summary["controlled_real_execution_supported"]["false"] == 1
+    assert summary["controlled_subprocess_invoked"]["false"] == 1

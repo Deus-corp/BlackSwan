@@ -446,6 +446,38 @@ def build_global_swarm_brief(
         ).get("true"),
         0,
     )
+    security_controlled_real_execution_requested = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_real_requested"
+            )
+        ).get("true"),
+        0,
+    )
+    security_controlled_real_execution_performed = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_real_performed"
+            )
+        ).get("true"),
+        0,
+    )
+    security_controlled_real_execution_supported = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_real_supported"
+            )
+        ).get("true"),
+        0,
+    )
+    security_controlled_subprocess_invoked = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_subprocess_invoked"
+            )
+        ).get("true"),
+        0,
+    )
     security_real_adapter_supported = bool(
         security_validation.get("security_real_adapter_supported", False)
     )
@@ -1014,6 +1046,36 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_controlled_real_execution_requested > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Real controlled retry execution request rejected",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Real controlled retry execution request observed and rejected: "
+                    f"requested={security_controlled_real_execution_requested}, "
+                    f"performed={security_controlled_real_execution_performed}, "
+                    f"supported={security_controlled_real_execution_supported}, "
+                    f"subprocess_invoked={security_controlled_subprocess_invoked}."
+                ),
+                payload={
+                    "security_controlled_real_execution_requested": (
+                        security_controlled_real_execution_requested
+                    ),
+                    "security_controlled_real_execution_performed": (
+                        security_controlled_real_execution_performed
+                    ),
+                    "security_controlled_real_execution_supported": (
+                        security_controlled_real_execution_supported
+                    ),
+                    "security_controlled_subprocess_invoked": (
+                        security_controlled_subprocess_invoked
+                    ),
+                    "recommendation": "keep_real_execution_requests_audit_only_until_preflight_pr",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -1276,6 +1338,18 @@ def build_global_swarm_brief(
         "security_real_adapter_requires_explicit_pr": int(
             security_real_adapter_requires_explicit_pr
         ),
+        "security_controlled_real_execution_requested": (
+            security_controlled_real_execution_requested
+        ),
+        "security_controlled_real_execution_performed": (
+            security_controlled_real_execution_performed
+        ),
+        "security_controlled_real_execution_supported": (
+            security_controlled_real_execution_supported
+        ),
+        "security_controlled_subprocess_invoked": (
+            security_controlled_subprocess_invoked
+        ),
     }
 
     summary = _build_summary(
@@ -1376,6 +1450,18 @@ def build_global_swarm_brief(
         security_real_adapter_requires_explicit_pr=(
             security_real_adapter_requires_explicit_pr
         ),
+        security_controlled_real_execution_requested=(
+            security_controlled_real_execution_requested
+        ),
+        security_controlled_real_execution_performed=(
+            security_controlled_real_execution_performed
+        ),
+        security_controlled_real_execution_supported=(
+            security_controlled_real_execution_supported
+        ),
+        security_controlled_subprocess_invoked=(
+            security_controlled_subprocess_invoked
+        ),
     )
 
     return build_swarm_brief(
@@ -1475,6 +1561,10 @@ def _build_summary(
     security_real_adapter_runnable: bool,
     security_real_adapter_subprocess_supported: bool,
     security_real_adapter_requires_explicit_pr: bool,
+    security_controlled_real_execution_requested: int,
+    security_controlled_real_execution_performed: int,
+    security_controlled_real_execution_supported: int,
+    security_controlled_subprocess_invoked: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1671,6 +1761,15 @@ def _build_summary(
             f"{str(security_real_adapter_subprocess_supported).lower()}, "
             "requires_explicit_pr="
             f"{str(security_real_adapter_requires_explicit_pr).lower()}."
+        )
+    
+    if security_controlled_real_execution_requested > 0:
+        parts.append(
+            "Real controlled retry execution request observed and rejected: "
+            f"requested={security_controlled_real_execution_requested}, "
+            f"performed={security_controlled_real_execution_performed}, "
+            f"supported={security_controlled_real_execution_supported}, "
+            f"subprocess_invoked={security_controlled_subprocess_invoked}."
         )
 
     blocked_execution_disabled = _safe_int(
@@ -1988,6 +2087,10 @@ def _aggregate_security_validation_from_heartbeats(
     controlled_execution_mock_adapter_subprocess_invoked: dict[str, int] = {}
     controlled_execution_mock_adapter_real_execution_enabled: dict[str, int] = {}
     controlled_execution_mock_adapter_payload_executed: dict[str, int] = {}
+    controlled_execution_real_requested: dict[str, int] = {}
+    controlled_execution_real_performed: dict[str, int] = {}
+    controlled_execution_real_supported: dict[str, int] = {}
+    controlled_execution_subprocess_invoked: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -2153,6 +2256,22 @@ def _aggregate_security_validation_from_heartbeats(
                 "security_validation_controlled_execution_mock_adapter_payload_executed"
             ),
         )
+        _merge_int_counts(
+            controlled_execution_real_requested,
+            metrics.get("security_validation_controlled_execution_real_requested"),
+        )
+        _merge_int_counts(
+            controlled_execution_real_performed,
+            metrics.get("security_validation_controlled_execution_real_performed"),
+        )
+        _merge_int_counts(
+            controlled_execution_real_supported,
+            metrics.get("security_validation_controlled_execution_real_supported"),
+        )
+        _merge_int_counts(
+            controlled_execution_subprocess_invoked,
+            metrics.get("security_validation_controlled_execution_subprocess_invoked"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -2243,6 +2362,18 @@ def _aggregate_security_validation_from_heartbeats(
     aggregate[
         "security_validation_controlled_execution_mock_adapter_payload_executed"
     ] = controlled_execution_mock_adapter_payload_executed
+    aggregate["security_validation_controlled_execution_real_requested"] = (
+        controlled_execution_real_requested
+    )
+    aggregate["security_validation_controlled_execution_real_performed"] = (
+        controlled_execution_real_performed
+    )
+    aggregate["security_validation_controlled_execution_real_supported"] = (
+        controlled_execution_real_supported
+    )
+    aggregate["security_validation_controlled_execution_subprocess_invoked"] = (
+        controlled_execution_subprocess_invoked
+    )
 
     return aggregate
 

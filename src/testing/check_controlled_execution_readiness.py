@@ -120,6 +120,21 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     controlled_mock_adapter_payload_executed = _safe_mapping(
         trail_summary.get("controlled_mock_adapter_payload_executed")
     )
+    controlled_real_execution_requested = _safe_mapping(
+        trail_summary.get("controlled_real_execution_requested")
+    )
+    controlled_real_execution_performed = _safe_mapping(
+        trail_summary.get("controlled_real_execution_performed")
+    )
+    controlled_real_execution_supported = _safe_mapping(
+        trail_summary.get("controlled_real_execution_supported")
+    )
+    controlled_subprocess_invoked = _safe_mapping(
+        trail_summary.get("controlled_subprocess_invoked")
+    )
+    controlled_reasons = _safe_mapping(
+        trail_summary.get("controlled_execution_result_reasons")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -209,6 +224,13 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
                     )
                 ).get("requires_explicit_pr")
             ),
+            "real_execution_request_observed": _safe_int(
+                controlled_real_execution_requested.get("true")
+            )
+            > 0,
+            "real_execution_request_rejected": _safe_int(
+                controlled_reasons.get("real_execution_not_supported")
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -283,6 +305,25 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         "adapter_payload_executed": _safe_int(
             controlled_mock_adapter_payload_executed.get("true")
         ),
+        "real_execution_request_observed": _safe_int(
+            controlled_real_execution_requested.get("true")
+        )
+        > 0,
+        "real_execution_request_rejected": _safe_int(
+            controlled_reasons.get("real_execution_not_supported")
+        ),
+        "real_execution_requested": _safe_int(
+            controlled_real_execution_requested.get("true")
+        ),
+        "real_execution_performed": _safe_int(
+            controlled_real_execution_performed.get("true")
+        ),
+        "real_execution_supported_count": _safe_int(
+            controlled_real_execution_supported.get("true")
+        ),
+        "subprocess_invoked_count": _safe_int(
+            controlled_subprocess_invoked.get("true")
+        ),
     }
 
 
@@ -351,6 +392,18 @@ def _build_checks(
     )
     controlled_mock_adapter_payload_executed = _safe_mapping(
         trail_summary.get("controlled_mock_adapter_payload_executed")
+    )
+    controlled_real_execution_requested = _safe_mapping(
+        trail_summary.get("controlled_real_execution_requested")
+    )
+    controlled_real_execution_performed = _safe_mapping(
+        trail_summary.get("controlled_real_execution_performed")
+    )
+    controlled_real_execution_supported = _safe_mapping(
+        trail_summary.get("controlled_real_execution_supported")
+    )
+    controlled_subprocess_invoked = _safe_mapping(
+        trail_summary.get("controlled_subprocess_invoked")
     )
 
     checks = [
@@ -527,6 +580,34 @@ def _build_checks(
             _safe_int(controlled_mock_adapter_payload_executed.get("true")) == 0,
             _safe_int(controlled_mock_adapter_payload_executed.get("true")),
         ),
+        _check(
+            "real_execution_request_rejected_if_observed",
+            _safe_int(controlled_real_execution_requested.get("true")) == 0
+            or _safe_int(controlled_reasons.get("real_execution_not_supported")) > 0,
+            {
+                "requested": _safe_int(
+                    controlled_real_execution_requested.get("true")
+                ),
+                "rejected": _safe_int(
+                    controlled_reasons.get("real_execution_not_supported")
+                ),
+            },
+        ),
+        _check(
+            "real_execution_request_did_not_execute",
+            _safe_int(controlled_real_execution_performed.get("true")) == 0,
+            _safe_int(controlled_real_execution_performed.get("true")),
+        ),
+        _check(
+            "real_execution_request_did_not_enable_support",
+            _safe_int(controlled_real_execution_supported.get("true")) == 0,
+            _safe_int(controlled_real_execution_supported.get("true")),
+        ),
+        _check(
+            "real_execution_request_did_not_invoke_subprocess",
+            _safe_int(controlled_subprocess_invoked.get("true")) == 0,
+            _safe_int(controlled_subprocess_invoked.get("true")),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -591,6 +672,8 @@ def validate_controlled_execution_readiness_report_schema(
         "real_adapter_supported",
         "real_adapter_runnable",
         "real_adapter_requires_explicit_pr",
+        "real_execution_request_observed",
+        "real_execution_request_rejected",
     ]
 
     reasons: list[str] = []
@@ -645,6 +728,11 @@ def validate_controlled_execution_readiness_report_schema(
     if report.get("real_adapter_runnable") is not False:
         reasons.append("real_adapter_runnable_must_remain_false")
 
+    if not isinstance(report.get("real_execution_request_observed"), bool):
+        reasons.append("real_execution_request_observed_must_be_bool")
+    if not isinstance(report.get("real_execution_request_rejected"), int):
+        reasons.append("real_execution_request_rejected_must_be_int")
+
     return {
         "type": "controlled_execution_readiness_schema_validation",
         "valid": not reasons,
@@ -694,6 +782,13 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"{str(bool(result.get('real_adapter_runnable'))).lower()} "
         f"real_adapter_requires_explicit_pr="
         f"{str(bool(result.get('real_adapter_requires_explicit_pr'))).lower()} "
+        f"real_execution_request_observed="
+        f"{str(bool(result.get('real_execution_request_observed'))).lower()} "
+        f"real_execution_request_rejected={result.get('real_execution_request_rejected', 0)} "
+        f"real_execution_requested={result.get('real_execution_requested', 0)} "
+        f"real_execution_performed={result.get('real_execution_performed', 0)} "
+        f"real_execution_supported_count={result.get('real_execution_supported_count', 0)} "
+        f"subprocess_invoked_count={result.get('subprocess_invoked_count', 0)} "
     )
 
 

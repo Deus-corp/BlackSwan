@@ -909,3 +909,35 @@ def test_global_brief_surfaces_unsupported_real_adapter_placeholder() -> None:
     assert brief.key_metrics["security_real_adapter_runnable"] == 0
     assert brief.key_metrics["security_real_adapter_subprocess_supported"] == 0
     assert brief.key_metrics["security_real_adapter_requires_explicit_pr"] == 1
+
+
+def test_global_brief_surfaces_rejected_real_execution_request() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"overseer": 1, "security": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "security_validation_controlled_execution_real_requested": {
+                "true": 1,
+            },
+            "security_validation_controlled_execution_real_performed": {
+                "false": 1,
+            },
+            "security_validation_controlled_execution_real_supported": {
+                "false": 1,
+            },
+            "security_validation_controlled_execution_subprocess_invoked": {
+                "false": 1,
+            },
+        },
+    )
+    text = brief.summary
+
+    assert (
+        "Real controlled retry execution request observed and rejected: "
+        "requested=1, performed=0, supported=0, subprocess_invoked=0."
+        in text
+    )
+    assert brief.key_metrics["security_controlled_real_execution_requested"] == 1
+    assert brief.key_metrics["security_controlled_real_execution_performed"] == 0
+    assert brief.key_metrics["security_controlled_real_execution_supported"] == 0
+    assert brief.key_metrics["security_controlled_subprocess_invoked"] == 0

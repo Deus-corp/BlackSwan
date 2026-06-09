@@ -39,6 +39,8 @@ def _report(**overrides):
         "adapter_subprocess_invoked": 0,
         "adapter_real_execution_enabled": 0,
         "adapter_payload_executed": 0,
+        "real_execution_request_observed": False,
+        "real_execution_request_rejected": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -226,3 +228,21 @@ def test_validate_controlled_execution_readiness_report_schema_rejects_real_adap
 
     assert result["valid"] is False
     assert "real_adapter_requires_explicit_pr_must_remain_true" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_request_observed_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_execution_request_observed="false")
+    )
+
+    assert result["valid"] is False
+    assert "real_execution_request_observed_must_be_bool" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_request_rejected_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_execution_request_rejected="0")
+    )
+
+    assert result["valid"] is False
+    assert "real_execution_request_rejected_must_be_int" in result["reasons"]

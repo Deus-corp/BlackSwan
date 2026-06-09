@@ -286,6 +286,22 @@ def inspect_retry_governance_trail_from_records(
         ).lower()
         for item in controlled_execution_results
     )
+    controlled_real_execution_requested = Counter(
+        str(bool(item.get("real_execution_requested"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_real_execution_performed = Counter(
+        str(bool(item.get("real_execution_performed"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_real_execution_supported = Counter(
+        str(bool(item.get("real_execution_supported"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in controlled_execution_results
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -393,6 +409,16 @@ def inspect_retry_governance_trail_from_records(
         "controlled_mock_adapter_payload_executed": dict(
             controlled_mock_adapter_payload_executed
         ),
+        "controlled_real_execution_requested": dict(
+            controlled_real_execution_requested
+        ),
+        "controlled_real_execution_performed": dict(
+            controlled_real_execution_performed
+        ),
+        "controlled_real_execution_supported": dict(
+            controlled_real_execution_supported
+        ),
+        "controlled_subprocess_invoked": dict(controlled_subprocess_invoked),
     }
 
 def _missing_stages(
@@ -779,6 +805,26 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("controlled_mock_adapter_payload_executed"), Mapping)
         else {}
     )
+    controlled_real_execution_requested = (
+        summary.get("controlled_real_execution_requested")
+        if isinstance(summary.get("controlled_real_execution_requested"), Mapping)
+        else {}
+    )
+    controlled_real_execution_performed = (
+        summary.get("controlled_real_execution_performed")
+        if isinstance(summary.get("controlled_real_execution_performed"), Mapping)
+        else {}
+    )
+    controlled_real_execution_supported = (
+        summary.get("controlled_real_execution_supported")
+        if isinstance(summary.get("controlled_real_execution_supported"), Mapping)
+        else {}
+    )
+    controlled_subprocess_invoked = (
+        summary.get("controlled_subprocess_invoked")
+        if isinstance(summary.get("controlled_subprocess_invoked"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -831,6 +877,10 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"adapter_subprocess_invoked={controlled_mock_adapter_subprocess_invoked.get('true', 0)} "
         f"adapter_real_execution_enabled={controlled_mock_adapter_real_execution_enabled.get('true', 0)} "
         f"adapter_payload_executed={controlled_mock_adapter_payload_executed.get('true', 0)} "
+        f"real_execution_requested={controlled_real_execution_requested.get('true', 0)} "
+        f"real_execution_performed={controlled_real_execution_performed.get('true', 0)} "
+        f"real_execution_supported={controlled_real_execution_supported.get('true', 0)} "
+        f"subprocess_invoked={controlled_subprocess_invoked.get('true', 0)} "
     )
 
 

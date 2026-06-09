@@ -375,3 +375,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "subprocess_invoked=false" in text
     assert "payload.executed=false" in text
     assert "audit-only" in text
+    assert "Real execution request observability" in text
+    assert "real_execution_request_observed=true" in text
+    assert "real_execution_request_rejected=1" in text
+    assert "real_execution_performed=0" in text
+    assert "subprocess_invoked_count=0" in text
+    assert "rejected as unsupported" in text
