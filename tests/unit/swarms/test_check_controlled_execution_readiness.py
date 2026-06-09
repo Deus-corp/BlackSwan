@@ -297,3 +297,50 @@ def test_controlled_execution_readiness_checks_fail_when_adapter_payload_execute
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "adapter_payload_not_executed" in failed
+
+
+def test_controlled_execution_readiness_checks_fail_when_adapter_real_execution_enabled() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_mock_adapter_real_execution_enabled={"true": 1}
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "adapter_real_execution_not_enabled" in failed
+
+
+def test_controlled_execution_readiness_checks_fail_when_adapter_is_not_mock() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_mock_adapter={"real": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "adapter_contract_observed" in failed
+    assert "adapter_is_mock" in failed
+
+
+def test_controlled_execution_readiness_checks_fail_when_adapter_mode_is_not_mock() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            controlled_mock_adapter_mode={"real": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "adapter_contract_observed" in failed
+    assert "adapter_mode_is_mock" in failed

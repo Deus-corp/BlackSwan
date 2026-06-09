@@ -310,3 +310,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "adapter_result_mock_executed=1" in text
     assert "adapter_real_execution_enabled=0" in text
     assert "adapter_payload_executed=0" in text
+    assert "Adapter contract violation fixtures" in text
+    assert "adapter_subprocess_invoked=true" in text
+    assert "adapter_real_execution_enabled=true" in text
+    assert "adapter_payload_executed=true" in text
+    assert "adapter != mock" in text
+    assert "mode != mock" in text

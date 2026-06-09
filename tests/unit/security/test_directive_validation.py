@@ -1735,3 +1735,23 @@ def test_validate_retry_controlled_execution_result_rejects_mock_adapter_payload
 
     assert result["valid"] is False
     assert "mock_adapter_result_payload_must_not_execute" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_non_mock_adapter() -> None:
+    record = _retry_controlled_execution_result()
+    record["mock_execution"]["mock_execution"]["adapter_result"]["adapter"] = "real"
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "mock_adapter_result_must_use_mock_adapter" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_non_mock_adapter_mode() -> None:
+    record = _retry_controlled_execution_result()
+    record["mock_execution"]["mock_execution"]["adapter_result"]["mode"] = "real"
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "mock_adapter_result_must_use_mock_mode" in result["reasons"]

@@ -1257,6 +1257,23 @@ subprocess-backed adapter from being treated as ready.
 
 ---
 
+### Adapter contract violation fixtures
+
+Adapter contract violation fixtures prove that the readiness report fails closed.
+The controlled execution readiness gate fails if any adapter contract violation is
+observed:
+
+- `adapter_subprocess_invoked=true`
+- `adapter_real_execution_enabled=true`
+- `adapter_payload_executed=true`
+- `adapter != mock`
+- `mode != mock`
+
+These negative fixtures ensure that mock readiness cannot be confused with real
+execution readiness.
+
+---
+
 ## Related modules
 
 ```text
