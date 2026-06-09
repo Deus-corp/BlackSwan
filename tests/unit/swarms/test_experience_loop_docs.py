@@ -381,3 +381,10 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "real_execution_performed=0" in text
     assert "subprocess_invoked_count=0" in text
     assert "rejected as unsupported" in text
+    assert "Real execution preflight records" in text
+    assert "replay_lifecycle_retry_real_execution_preflight" in text
+    assert "status=blocked" in text
+    assert "would_execute=false" in text
+    assert "execution_performed=false" in text
+    assert "subprocess_invoked=false" in text
+    assert "real_adapter_requires_explicit_pr=true" in text

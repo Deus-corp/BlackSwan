@@ -18,6 +18,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_execution_eligibility,
     validate_replay_lifecycle_retry_controlled_execution_result,
     validate_replay_lifecycle_retry_mock_execution_summary,
+    validate_replay_lifecycle_retry_real_execution_preflight,
 )
 
 
@@ -1677,6 +1678,45 @@ def _retry_mock_execution_summary(**overrides):
     return item
 
 
+def _real_execution_preflight(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_preflight",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "status": "blocked",
+        "reason": "real_execution_not_supported",
+        "reasons": [
+            "real_execution_not_supported",
+            "subprocess_not_supported",
+            "real_adapter_not_runnable",
+            "real_adapter_requires_explicit_pr",
+        ],
+        "real_execution_requested": True,
+        "operator_authorized": True,
+        "allowlist_matched": True,
+        "command_parse_valid": True,
+        "command_parse_allowlist_matched": True,
+        "would_execute": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "real_execution_supported": False,
+        "subprocess_supported": False,
+        "real_adapter_runnable": False,
+        "real_adapter_requires_explicit_pr": True,
+        "payload": {
+            "would_execute": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
 def test_validate_retry_mock_execution_summary_accepts_safe_summary() -> None:
     result = validate_replay_lifecycle_retry_mock_execution_summary(
         _retry_mock_execution_summary()
@@ -1825,3 +1865,34 @@ def test_validate_retry_controlled_execution_result_rejects_real_request_with_wr
 
     assert result["valid"] is False
     assert "real_execution_request_must_be_rejected_as_not_supported" in result["reasons"]
+
+
+def test_validate_retry_real_execution_preflight_accepts_blocked_preflight() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_preflight(
+        _real_execution_preflight()
+    )
+
+    assert result["valid"] is True
+    assert result["status"] == "blocked"
+    assert result["would_execute"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+    assert result["real_adapter_requires_explicit_pr"] is True
+
+
+def test_validate_retry_real_execution_preflight_rejects_would_execute() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_preflight(
+        _real_execution_preflight(would_execute=True)
+    )
+
+    assert result["valid"] is False
+    assert "real_preflight_must_not_would_execute" in result["reasons"]
+
+
+def test_validate_retry_real_execution_preflight_rejects_subprocess_invoked() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_preflight(
+        _real_execution_preflight(subprocess_invoked=True)
+    )
+
+    assert result["valid"] is False
+    assert "real_preflight_must_not_invoke_subprocess" in result["reasons"]

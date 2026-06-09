@@ -12,6 +12,10 @@ def _report(**overrides):
         "schema_version": READINESS_SCHEMA_VERSION,
         "schema_kind": "controlled_execution_readiness",
         "real_adapter_requires_explicit_pr": True,
+        "real_execution_request_observed": False,
+        "real_execution_request_rejected": 0,
+        "real_preflight_observed": True,
+        "real_preflight_blocked": 1,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -39,8 +43,6 @@ def _report(**overrides):
         "adapter_subprocess_invoked": 0,
         "adapter_real_execution_enabled": 0,
         "adapter_payload_executed": 0,
-        "real_execution_request_observed": False,
-        "real_execution_request_rejected": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -66,6 +68,10 @@ def _report(**overrides):
             "real_adapter_supported",
             "real_adapter_runnable",
             "real_adapter_requires_explicit_pr",
+            "real_execution_request_observed",
+            "real_execution_request_rejected",
+            "real_preflight_observed",
+            "real_preflight_blocked",
         ],
     }
     item.update(overrides)
@@ -131,9 +137,13 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "adapter_contract",
             "real_adapter_supported",
             "real_adapter_runnable",
+            "real_adapter_requires_explicit_pr",
+            "real_execution_request_observed",
+            "real_execution_request_rejected",
+            "real_preflight_observed",
+            "real_preflight_blocked",
             "checks",
             "exit_codes",
-            "real_adapter_requires_explicit_pr",
         ]
     )
 
@@ -246,3 +256,21 @@ def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_
 
     assert result["valid"] is False
     assert "real_execution_request_rejected_must_be_int" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_preflight_observed_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_preflight_observed="true")
+    )
+
+    assert result["valid"] is False
+    assert "real_preflight_observed_must_be_bool" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_preflight_blocked_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_preflight_blocked="1")
+    )
+
+    assert result["valid"] is False
+    assert "real_preflight_blocked_must_be_int" in result["reasons"]

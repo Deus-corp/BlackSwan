@@ -1408,6 +1408,20 @@ was observed, rejected as unsupported, and did not execute.
 
 ---
 
+### Real execution preflight records
+
+Real execution preflight records are read-only audit records for future real
+execution requests. They are published as
+`replay_lifecycle_retry_real_execution_preflight` with `status=blocked`,
+`would_execute=false`, `execution_performed=false`, `subprocess_invoked=false`,
+and `real_adapter_requires_explicit_pr=true`.
+
+The preflight evaluator does not invoke subprocesses and does not make real
+execution runnable. It only records why a future real execution attempt remains
+blocked.
+
+---
+
 ## Related modules
 
 ```text
@@ -1482,6 +1496,38 @@ python -m src.testing.check_controlled_execution_readiness \
   --proposal-id replay-retry-violation-fixtures-smoke-1 \
   --rendered-command-id replay-retry-violation-fixtures-command-1 \
   --require-operator-authorized \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+---
+
+```bash
+python -m src.testing.retry_governance_smoke \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --approval-id replay-retry-real-observe-approval-1 \
+  --plan-id replay-retry-real-observe-plan-1 \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --result-id replay-retry-real-observe-result-1 \
+  --require-clean \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.run_controlled_retry_command \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --allow-controlled-execution \
+  --real-execution \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.inspect_retry_governance_trail \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.check_controlled_execution_readiness \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --require-operator-authorized \
+  --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
 

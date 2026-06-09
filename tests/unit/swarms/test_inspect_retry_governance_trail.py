@@ -436,6 +436,27 @@ def _controlled_execution_result(**overrides):
     return item
 
 
+def _real_preflight(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_preflight",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "status": "blocked",
+        "reason": "real_execution_not_supported",
+        "real_execution_requested": True,
+        "would_execute": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "real_adapter_requires_explicit_pr": True,
+    }
+    item.update(overrides)
+    return item
+
+
 def test_inspect_retry_governance_trail_counts_controlled_execution_extension() -> None:
     summary = inspect_retry_governance_trail_from_records(
         [
@@ -447,12 +468,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _eligibility(),
             _result(),
             _controlled_execution_result(),
+            _real_preflight(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 8
+    assert summary["total_records"] == 9
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -487,6 +509,16 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["controlled_real_execution_performed"]["false"] == 1
     assert summary["controlled_real_execution_supported"]["false"] == 1
     assert summary["controlled_subprocess_invoked"]["false"] == 1
+    assert summary["counts"]["real_execution_preflights"] == 1
+    assert summary["chain_ids"]["real_execution_preflight_ids"] == [
+        "real-preflight-1"
+    ]
+    assert summary["real_preflight_statuses"]["blocked"] == 1
+    assert summary["real_preflight_reasons"]["real_execution_not_supported"] == 1
+    assert summary["real_preflight_would_execute"]["false"] == 1
+    assert summary["real_preflight_execution_performed"]["false"] == 1
+    assert summary["real_preflight_subprocess_invoked"]["false"] == 1
+    assert summary["real_preflight_requires_explicit_pr"]["true"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:

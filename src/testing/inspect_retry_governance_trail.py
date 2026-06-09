@@ -27,6 +27,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_rendered_command_result",
     "replay_lifecycle_retry_controlled_execution_result",
     "replay_lifecycle_retry_mock_execution_summary",
+    "replay_lifecycle_retry_real_execution_preflight",
 }
 
 
@@ -132,6 +133,11 @@ def inspect_retry_governance_trail_from_records(
         item
         for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_mock_execution_summary"
+    ]
+    real_preflights = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_real_execution_preflight"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -302,6 +308,33 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in controlled_execution_results
     )
+    real_preflight_statuses = Counter(
+        _clean_status(item.get("status")) for item in real_preflights
+    )
+    real_preflight_reasons = Counter(
+        str(item.get("reason") or "unknown").strip() or "unknown"
+        for item in real_preflights
+    )
+    real_preflight_requested = Counter(
+        str(bool(item.get("real_execution_requested"))).lower()
+        for item in real_preflights
+    )
+    real_preflight_would_execute = Counter(
+        str(bool(item.get("would_execute"))).lower()
+        for item in real_preflights
+    )
+    real_preflight_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_preflights
+    )
+    real_preflight_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_preflights
+    )
+    real_preflight_requires_explicit_pr = Counter(
+        str(bool(item.get("real_adapter_requires_explicit_pr"))).lower()
+        for item in real_preflights
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -312,6 +345,7 @@ def inspect_retry_governance_trail_from_records(
         eligibilities=eligibilities,
         controlled_execution_results=controlled_execution_results,
         mock_execution_summaries=mock_execution_summaries,
+        real_preflights=real_preflights,
         results=results,
     )
 
@@ -343,6 +377,7 @@ def inspect_retry_governance_trail_from_records(
             "eligibilities": len(eligibilities),
             "controlled_execution_results": len(controlled_execution_results),
             "mock_execution_summaries": len(mock_execution_summaries),
+            "real_execution_preflights": len(real_preflights),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -419,6 +454,19 @@ def inspect_retry_governance_trail_from_records(
             controlled_real_execution_supported
         ),
         "controlled_subprocess_invoked": dict(controlled_subprocess_invoked),
+        "real_preflight_statuses": dict(real_preflight_statuses),
+        "real_preflight_reasons": dict(real_preflight_reasons),
+        "real_preflight_requested": dict(real_preflight_requested),
+        "real_preflight_would_execute": dict(real_preflight_would_execute),
+        "real_preflight_execution_performed": dict(
+            real_preflight_execution_performed
+        ),
+        "real_preflight_subprocess_invoked": dict(
+            real_preflight_subprocess_invoked
+        ),
+        "real_preflight_requires_explicit_pr": dict(
+            real_preflight_requires_explicit_pr
+        ),
     }
 
 def _missing_stages(
@@ -573,6 +621,7 @@ def _build_chain_ids(
     eligibilities: list[Mapping[str, Any]],
     controlled_execution_results: list[Mapping[str, Any]],
     mock_execution_summaries: list[Mapping[str, Any]],
+    real_preflights: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -584,6 +633,7 @@ def _build_chain_ids(
         + eligibilities
         + controlled_execution_results
         + mock_execution_summaries
+        + real_preflights
         + results
     )
 
@@ -605,6 +655,7 @@ def _build_chain_ids(
                 + eligibilities
                 + controlled_execution_results
                 + mock_execution_summaries
+                + real_preflights
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -618,6 +669,7 @@ def _build_chain_ids(
                 + eligibilities
                 + controlled_execution_results
                 + mock_execution_summaries
+                + real_preflights
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -631,6 +683,7 @@ def _build_chain_ids(
                     + eligibilities
                     + controlled_execution_results
                     + mock_execution_summaries
+                    + real_preflights
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -669,6 +722,13 @@ def _build_chain_ids(
                 str(item.get("mock_execution_summary_id") or "").strip()
                 for item in mock_execution_summaries
                 if str(item.get("mock_execution_summary_id") or "").strip()
+            }
+        ),
+        "real_execution_preflight_ids": sorted(
+            {
+                str(item.get("real_execution_preflight_id") or "").strip()
+                for item in real_preflights
+                if str(item.get("real_execution_preflight_id") or "").strip()
             }
         ),
     }
@@ -825,6 +885,31 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("controlled_subprocess_invoked"), Mapping)
         else {}
     )
+    real_preflight_statuses = (
+        summary.get("real_preflight_statuses")
+        if isinstance(summary.get("real_preflight_statuses"), Mapping)
+        else {}
+    )
+    real_preflight_would_execute = (
+        summary.get("real_preflight_would_execute")
+        if isinstance(summary.get("real_preflight_would_execute"), Mapping)
+        else {}
+    )
+    real_preflight_execution_performed = (
+        summary.get("real_preflight_execution_performed")
+        if isinstance(summary.get("real_preflight_execution_performed"), Mapping)
+        else {}
+    )
+    real_preflight_subprocess_invoked = (
+        summary.get("real_preflight_subprocess_invoked")
+        if isinstance(summary.get("real_preflight_subprocess_invoked"), Mapping)
+        else {}
+    )
+    real_preflight_requires_explicit_pr = (
+        summary.get("real_preflight_requires_explicit_pr")
+        if isinstance(summary.get("real_preflight_requires_explicit_pr"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -881,6 +966,12 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"real_execution_performed={controlled_real_execution_performed.get('true', 0)} "
         f"real_execution_supported={controlled_real_execution_supported.get('true', 0)} "
         f"subprocess_invoked={controlled_subprocess_invoked.get('true', 0)} "
+        f"real_preflights={counts.get('real_execution_preflights', 0)} "
+        f"real_preflight_blocked={real_preflight_statuses.get('blocked', 0)} "
+        f"real_preflight_would_execute={real_preflight_would_execute.get('true', 0)} "
+        f"real_preflight_execution_performed={real_preflight_execution_performed.get('true', 0)} "
+        f"real_preflight_subprocess_invoked={real_preflight_subprocess_invoked.get('true', 0)} "
+        f"real_preflight_requires_explicit_pr={real_preflight_requires_explicit_pr.get('true', 0)} "
     )
 
 
