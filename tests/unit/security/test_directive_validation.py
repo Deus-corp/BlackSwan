@@ -1334,6 +1334,10 @@ def _retry_controlled_execution_result(**overrides):
         "command_parse": dict(command_parse),
         "gate_evaluation": dict(gate_evaluation),
         "mock_execution": dict(mock_execution),
+        "real_execution_requested": False,
+        "real_execution_performed": False,
+        "real_execution_supported": False,
+        "subprocess_invoked": False,
         "payload": {
             "rendered_command_id": "rendered-command-1",
             "plan_id": "plan-1",
@@ -1352,6 +1356,10 @@ def _retry_controlled_execution_result(**overrides):
             "command_parse": dict(command_parse),
             "gate_evaluation": dict(gate_evaluation),
             "mock_execution": dict(mock_execution),
+            "real_execution_requested": False,
+            "real_execution_performed": False,
+            "real_execution_supported": False,
+            "subprocess_invoked": False,
         },
     }
     item.update(overrides)
@@ -1381,6 +1389,10 @@ def test_validate_retry_controlled_execution_result_accepts_reject_only_skeleton
     assert result["mock_execution_status"] == "blocked"
     assert result["mock_execution_performed"] is False
     assert result["mock_subprocess_invoked"] is False
+    assert result["real_execution_requested"] is False
+    assert result["real_execution_performed"] is False
+    assert result["real_execution_supported"] is False
+    assert result["subprocess_invoked"] is False
     assert result["reasons"] == []
 
 
@@ -1498,6 +1510,18 @@ def test_security_validation_metrics_counts_retry_controlled_execution_results()
     assert metrics[
         "security_validation_controlled_execution_mock_adapter_payload_executed"
     ]["false"] == 1
+    assert metrics["security_validation_controlled_execution_real_requested"][
+        "false"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_real_performed"][
+        "false"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_real_supported"][
+        "false"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_subprocess_invoked"][
+        "false"
+    ] == 1
 
 
 def test_validate_retry_controlled_execution_result_accepts_allowlist_match_without_execution() -> None:
@@ -1755,3 +1779,49 @@ def test_validate_retry_controlled_execution_result_rejects_non_mock_adapter_mod
 
     assert result["valid"] is False
     assert "mock_adapter_result_must_use_mock_mode" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_accepts_rejected_real_execution_request() -> None:
+    record = _retry_controlled_execution_result(
+        reason="real_execution_not_supported",
+        real_execution_requested=True,
+    )
+    record["payload"]["reason"] = "real_execution_not_supported"
+    record["payload"]["real_execution_requested"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is True
+    assert result["real_execution_requested"] is True
+    assert result["real_execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_controlled_execution_result_rejects_real_execution_performed() -> None:
+    record = _retry_controlled_execution_result(real_execution_performed=True)
+    record["payload"]["real_execution_performed"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "real_execution_must_not_be_performed" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_subprocess_invoked() -> None:
+    record = _retry_controlled_execution_result(subprocess_invoked=True)
+    record["payload"]["subprocess_invoked"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "controlled_execution_must_not_invoke_subprocess" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_real_request_with_wrong_reason() -> None:
+    record = _retry_controlled_execution_result(real_execution_requested=True)
+    record["payload"]["real_execution_requested"] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "real_execution_request_must_be_rejected_as_not_supported" in result["reasons"]

@@ -367,3 +367,11 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "security_real_adapter_supported=0" in text
     assert "security_real_adapter_runnable=0" in text
     assert "security_real_adapter_requires_explicit_pr=1" in text
+    assert "Real execution CLI scaffold" in text
+    assert "`run_controlled_retry_command --real-execution`" in text
+    assert "reason=real_execution_not_supported" in text
+    assert "real_execution_requested=true" in text
+    assert "real_execution_performed=false" in text
+    assert "subprocess_invoked=false" in text
+    assert "payload.executed=false" in text
+    assert "audit-only" in text

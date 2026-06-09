@@ -232,6 +232,10 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     controlled_execution_mock_adapter_subprocess_invoked: dict[str, int] = {}
     controlled_execution_mock_adapter_real_execution_enabled: dict[str, int] = {}
     controlled_execution_mock_adapter_payload_executed: dict[str, int] = {}
+    controlled_execution_real_requested: dict[str, int] = {}
+    controlled_execution_real_performed: dict[str, int] = {}
+    controlled_execution_real_supported: dict[str, int] = {}
+    controlled_execution_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -454,6 +458,23 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 )
                 + 1
             )
+            real_requested = str(bool(item.get("real_execution_requested"))).lower()
+            real_performed = str(bool(item.get("real_execution_performed"))).lower()
+            real_supported = str(bool(item.get("real_execution_supported"))).lower()
+            subprocess_invoked = str(bool(item.get("subprocess_invoked"))).lower()
+
+            controlled_execution_real_requested[real_requested] = (
+                controlled_execution_real_requested.get(real_requested, 0) + 1
+            )
+            controlled_execution_real_performed[real_performed] = (
+                controlled_execution_real_performed.get(real_performed, 0) + 1
+            )
+            controlled_execution_real_supported[real_supported] = (
+                controlled_execution_real_supported.get(real_supported, 0) + 1
+            )
+            controlled_execution_subprocess_invoked[subprocess_invoked] = (
+                controlled_execution_subprocess_invoked.get(subprocess_invoked, 0) + 1
+            )
 
         if record_type == "replay_lifecycle_retry_mock_execution_summary":
             status = str(item.get("status") or "unknown").strip() or "unknown"
@@ -528,6 +549,10 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "controlled_execution_mock_adapter_payload_executed": (
             controlled_execution_mock_adapter_payload_executed
         ),
+        "controlled_execution_real_requested": controlled_execution_real_requested,
+        "controlled_execution_real_performed": controlled_execution_real_performed,
+        "controlled_execution_real_supported": controlled_execution_real_supported,
+        "controlled_execution_subprocess_invoked": controlled_execution_subprocess_invoked,
     }
 
 
@@ -622,6 +647,18 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         ],
         "security_validation_controlled_execution_mock_adapter_payload_executed": summary[
             "controlled_execution_mock_adapter_payload_executed"
+        ],
+        "security_validation_controlled_execution_real_requested": summary[
+            "controlled_execution_real_requested"
+        ],
+        "security_validation_controlled_execution_real_performed": summary[
+            "controlled_execution_real_performed"
+        ],
+        "security_validation_controlled_execution_real_supported": summary[
+            "controlled_execution_real_supported"
+        ],
+        "security_validation_controlled_execution_subprocess_invoked": summary[
+            "controlled_execution_subprocess_invoked"
         ],
     }
 
@@ -1501,6 +1538,22 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         adapter_result_payload_mapping.get("executed")
     )
 
+    real_execution_requested = bool(record.get("real_execution_requested"))
+    real_execution_performed = bool(record.get("real_execution_performed"))
+    real_execution_supported = bool(record.get("real_execution_supported"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload_real_execution_requested = bool(
+        payload_mapping.get("real_execution_requested")
+    )
+    payload_real_execution_performed = bool(
+        payload_mapping.get("real_execution_performed")
+    )
+    payload_real_execution_supported = bool(
+        payload_mapping.get("real_execution_supported")
+    )
+    payload_subprocess_invoked = bool(payload_mapping.get("subprocess_invoked"))
+
     if not controlled_execution_result_id:
         reasons.append("missing_controlled_execution_result_id")
     if not rendered_command_id:
@@ -1528,6 +1581,7 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         "readiness_not_passed",
         "command_not_allowlisted",
         "duplicate_controlled_execution_result",
+        "real_execution_not_supported",
     }:
         reasons.append("invalid_reason")
 
@@ -1566,6 +1620,20 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
             reasons.append("mock_adapter_result_must_not_enable_real_execution")
         if adapter_result_payload_executed:
             reasons.append("mock_adapter_result_payload_must_not_execute")
+
+    if real_execution_performed or payload_real_execution_performed:
+        reasons.append("real_execution_must_not_be_performed")
+    if real_execution_supported or payload_real_execution_supported:
+        reasons.append("real_execution_must_not_be_supported")
+    if subprocess_invoked or payload_subprocess_invoked:
+        reasons.append("controlled_execution_must_not_invoke_subprocess")
+    if real_execution_requested and reason != "real_execution_not_supported":
+        reasons.append("real_execution_request_must_be_rejected_as_not_supported")
+    if (
+        payload_real_execution_requested
+        and payload_mapping.get("reason") != "real_execution_not_supported"
+    ):
+        reasons.append("payload_real_execution_request_must_be_rejected_as_not_supported")
 
     # PR 28.2 skeleton phase: execution is not implemented yet.
     if status == "executed":
@@ -1627,6 +1695,10 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         "mock_adapter_subprocess_invoked": adapter_result_subprocess_invoked,
         "mock_adapter_real_execution_enabled": adapter_result_real_execution_enabled,
         "mock_adapter_payload_executed": adapter_result_payload_executed,
+        "real_execution_requested": real_execution_requested,
+        "real_execution_performed": real_execution_performed,
+        "real_execution_supported": real_execution_supported,
+        "subprocess_invoked": subprocess_invoked,
     }
 
 

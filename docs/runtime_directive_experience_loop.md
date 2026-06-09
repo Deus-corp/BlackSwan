@@ -1382,6 +1382,19 @@ The current fail-closed expected state remains:
 
 ---
 
+### Real execution CLI scaffold
+
+`run_controlled_retry_command --real-execution` is a scaffolded operator intent
+flag. It does not enable real execution. Real execution requests are rejected
+with `reason=real_execution_not_supported`, `real_execution_requested=true`,
+`real_execution_performed=false`, `real_execution_supported=false`,
+`subprocess_invoked=false`, and `payload.executed=false`.
+
+The flag is intentionally audit-only until a separate explicit PR implements and
+validates the real adapter preflight contract.
+
+---
+
 ## Related modules
 
 ```text

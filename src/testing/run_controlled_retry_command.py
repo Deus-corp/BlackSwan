@@ -80,6 +80,7 @@ def build_controlled_retry_command_result(
     source: str = "controlled-retry-command-runner",
     operator_authorized: bool = False,
     mock_execution_enabled: bool = False,
+    real_execution_requested: bool = False,
 ) -> dict[str, Any]:
     """Build a reject-only controlled execution result for a rendered command."""
     rendered_command_id = _clean(rendered_command.get("rendered_command_id"))
@@ -94,6 +95,13 @@ def build_controlled_retry_command_result(
     timeout_profile = _clean(rendered_command.get("timeout_profile")) or "unknown"
     decision_mode = _clean(rendered_command.get("decision_mode")) or "unknown"
     execution_enabled = bool(rendered_command.get("execution_enabled"))
+
+    status = "rejected"
+    reason = (
+        "real_execution_not_supported"
+        if real_execution_requested
+        else "controlled_execution_not_implemented"
+    )
 
     provisional_result = {
         "status": "rejected",
@@ -127,8 +135,8 @@ def build_controlled_retry_command_result(
         "plan_id": plan_id,
         "proposal_id": proposal_id,
         "approval_id": approval_id,
-        "status": "rejected",
-        "reason": "controlled_execution_not_implemented",
+        "status": status,
+        "reason": reason,
         "source": source,
         "execution_enabled": execution_enabled,
         "operator_authorized": bool(operator_authorized),
@@ -139,13 +147,17 @@ def build_controlled_retry_command_result(
         "command": command,
         "command_parse": parse_result,
         "gate_evaluation": gate_evaluation,
+        "real_execution_requested": real_execution_requested,
+        "real_execution_performed": False,
+        "real_execution_supported": False,
+        "subprocess_invoked": False,
         "payload": {
             "rendered_command_id": rendered_command_id,
             "plan_id": plan_id,
             "proposal_id": proposal_id,
             "approval_id": approval_id,
             "status": "rejected",
-            "reason": "controlled_execution_not_implemented",
+            "reason": reason,
             "execution_enabled": execution_enabled,
             "operator_authorized": bool(operator_authorized),
             "allowlist_matched": bool(parse_result.get("allowlist_matched")),
@@ -156,6 +168,10 @@ def build_controlled_retry_command_result(
             "command_parse": parse_result,
             "gate_evaluation": gate_evaluation,
             "executed": False,
+            "real_execution_requested": real_execution_requested,
+            "real_execution_performed": False,
+            "real_execution_supported": False,
+            "subprocess_invoked": False,
         },
     }
 
@@ -178,6 +194,7 @@ async def run_controlled_retry_commands(args: argparse.Namespace) -> list[dict[s
     plan_id = _clean(getattr(args, "plan_id", ""))
     operator_authorized = bool(getattr(args, "allow_controlled_execution", False))
     mock_execution_enabled = bool(getattr(args, "mock_execution", False))
+    real_execution_requested = bool(getattr(args, "real_execution", False))
 
     crdt = CRDTAdapter(node_id=source, db_path=db_path)
 
@@ -223,6 +240,7 @@ async def run_controlled_retry_commands(args: argparse.Namespace) -> list[dict[s
                 source=source,
                 operator_authorized=operator_authorized,
                 mock_execution_enabled=mock_execution_enabled,
+                real_execution_requested=real_execution_requested,
             )
             await crdt.add_genome(result)
             records.append(result)
@@ -313,6 +331,15 @@ def build_parser() -> argparse.ArgumentParser:
             "Real execution remains disabled."
         ),
     )
+    parser.add_argument(
+        "--real-execution",
+        action="store_true",
+        help=(
+            "Request real controlled retry execution. "
+            "Currently unsupported and always rejected without subprocess execution."
+        ),
+    )
+
     return parser
 
 

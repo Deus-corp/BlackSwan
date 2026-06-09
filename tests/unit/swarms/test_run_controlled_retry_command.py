@@ -365,3 +365,64 @@ async def test_run_controlled_retry_commands_does_not_publish_mock_summary_witho
     ]
 
     assert summaries == []
+
+
+def test_build_controlled_retry_command_result_rejects_real_execution_request() -> None:
+    result = build_controlled_retry_command_result(
+        _rendered_command(),
+        operator_authorized=True,
+        real_execution_requested=True,
+    )
+
+    assert result["status"] == "rejected"
+    assert result["reason"] == "real_execution_not_supported"
+    assert result["real_execution_requested"] is True
+    assert result["real_execution_performed"] is False
+    assert result["real_execution_supported"] is False
+    assert result["subprocess_invoked"] is False
+    assert result["payload"]["real_execution_requested"] is True
+    assert result["payload"]["real_execution_performed"] is False
+    assert result["payload"]["real_execution_supported"] is False
+    assert result["payload"]["subprocess_invoked"] is False
+    assert result["payload"]["executed"] is False
+
+
+@pytest.mark.asyncio
+async def test_run_controlled_retry_commands_rejects_real_execution_request(tmp_path) -> None:
+    db_path = str(tmp_path / "crdt.db")
+    crdt = CRDTAdapter(node_id="seed", db_path=db_path)
+    await crdt.add_genome(_rendered_command())
+
+    results = await run_controlled_retry_commands(
+        argparse.Namespace(
+            db_path=db_path,
+            source="controlled-retry-command-runner-test",
+            rendered_command_id="rendered-controlled-1",
+            plan_id="",
+            json=False,
+            allow_controlled_execution=True,
+            mock_execution=False,
+            real_execution=True,
+        )
+    )
+
+    assert len(results) == 1
+    assert results[0]["status"] == "rejected"
+    assert results[0]["reason"] == "real_execution_not_supported"
+    assert results[0]["real_execution_requested"] is True
+    assert results[0]["real_execution_performed"] is False
+    assert results[0]["subprocess_invoked"] is False
+
+    reader = CRDTAdapter(node_id="reader", db_path=db_path)
+    state = getattr(reader, "state", {}) or {}
+    stored = [
+        item
+        for item in state.values()
+        if isinstance(item, dict)
+        and item.get("type") == CONTROLLED_RESULT_TYPE
+        and item.get("rendered_command_id") == "rendered-controlled-1"
+    ]
+
+    assert len(stored) == 1
+    assert stored[0]["reason"] == "real_execution_not_supported"
+    assert stored[0]["payload"]["executed"] is False
