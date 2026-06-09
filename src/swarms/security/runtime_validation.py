@@ -226,6 +226,12 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     mock_summary_reasons: dict[str, int] = {}
     mock_summary_performed: dict[str, int] = {}
     mock_summary_subprocess_invoked: dict[str, int] = {}
+    controlled_execution_mock_adapter: dict[str, int] = {}
+    controlled_execution_mock_adapter_mode: dict[str, int] = {}
+    controlled_execution_mock_adapter_result_statuses: dict[str, int] = {}
+    controlled_execution_mock_adapter_subprocess_invoked: dict[str, int] = {}
+    controlled_execution_mock_adapter_real_execution_enabled: dict[str, int] = {}
+    controlled_execution_mock_adapter_payload_executed: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -392,6 +398,63 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 + 1
             )
 
+            mock_adapter = str(item.get("mock_adapter") or "none").strip() or "none"
+            mock_adapter_mode = (
+                str(item.get("mock_adapter_mode") or "none").strip() or "none"
+            )
+            mock_adapter_result_status = (
+                str(item.get("mock_adapter_result_status") or "none").strip()
+                or "none"
+            )
+            mock_adapter_subprocess_invoked = str(
+                bool(item.get("mock_adapter_subprocess_invoked"))
+            ).lower()
+            mock_adapter_real_execution_enabled = str(
+                bool(item.get("mock_adapter_real_execution_enabled"))
+            ).lower()
+            mock_adapter_payload_executed = str(
+                bool(item.get("mock_adapter_payload_executed"))
+            ).lower()
+
+            controlled_execution_mock_adapter[mock_adapter] = (
+                controlled_execution_mock_adapter.get(mock_adapter, 0) + 1
+            )
+            controlled_execution_mock_adapter_mode[mock_adapter_mode] = (
+                controlled_execution_mock_adapter_mode.get(mock_adapter_mode, 0) + 1
+            )
+            controlled_execution_mock_adapter_result_statuses[
+                mock_adapter_result_status
+            ] = (
+                controlled_execution_mock_adapter_result_statuses.get(
+                    mock_adapter_result_status, 0
+                )
+                + 1
+            )
+            controlled_execution_mock_adapter_subprocess_invoked[
+                mock_adapter_subprocess_invoked
+            ] = (
+                controlled_execution_mock_adapter_subprocess_invoked.get(
+                    mock_adapter_subprocess_invoked, 0
+                )
+                + 1
+            )
+            controlled_execution_mock_adapter_real_execution_enabled[
+                mock_adapter_real_execution_enabled
+            ] = (
+                controlled_execution_mock_adapter_real_execution_enabled.get(
+                    mock_adapter_real_execution_enabled, 0
+                )
+                + 1
+            )
+            controlled_execution_mock_adapter_payload_executed[
+                mock_adapter_payload_executed
+            ] = (
+                controlled_execution_mock_adapter_payload_executed.get(
+                    mock_adapter_payload_executed, 0
+                )
+                + 1
+            )
+
         if record_type == "replay_lifecycle_retry_mock_execution_summary":
             status = str(item.get("status") or "unknown").strip() or "unknown"
             reason = str(item.get("reason") or "unknown").strip() or "unknown"
@@ -451,6 +514,20 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "mock_summary_reasons": mock_summary_reasons,
         "mock_summary_performed": mock_summary_performed,
         "mock_summary_subprocess_invoked": mock_summary_subprocess_invoked,
+        "controlled_execution_mock_adapter": controlled_execution_mock_adapter,
+        "controlled_execution_mock_adapter_mode": controlled_execution_mock_adapter_mode,
+        "controlled_execution_mock_adapter_result_statuses": (
+            controlled_execution_mock_adapter_result_statuses
+        ),
+        "controlled_execution_mock_adapter_subprocess_invoked": (
+            controlled_execution_mock_adapter_subprocess_invoked
+        ),
+        "controlled_execution_mock_adapter_real_execution_enabled": (
+            controlled_execution_mock_adapter_real_execution_enabled
+        ),
+        "controlled_execution_mock_adapter_payload_executed": (
+            controlled_execution_mock_adapter_payload_executed
+        ),
     }
 
 
@@ -527,6 +604,24 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_mock_summary_performed": summary["mock_summary_performed"],
         "security_validation_mock_summary_subprocess_invoked": summary[
             "mock_summary_subprocess_invoked"
+        ],
+        "security_validation_controlled_execution_mock_adapter": summary[
+            "controlled_execution_mock_adapter"
+        ],
+        "security_validation_controlled_execution_mock_adapter_mode": summary[
+            "controlled_execution_mock_adapter_mode"
+        ],
+        "security_validation_controlled_execution_mock_adapter_result_statuses": summary[
+            "controlled_execution_mock_adapter_result_statuses"
+        ],
+        "security_validation_controlled_execution_mock_adapter_subprocess_invoked": summary[
+            "controlled_execution_mock_adapter_subprocess_invoked"
+        ],
+        "security_validation_controlled_execution_mock_adapter_real_execution_enabled": summary[
+            "controlled_execution_mock_adapter_real_execution_enabled"
+        ],
+        "security_validation_controlled_execution_mock_adapter_payload_executed": summary[
+            "controlled_execution_mock_adapter_payload_executed"
         ],
     }
 
@@ -1382,6 +1477,30 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
     mock_performed = bool(mock_payload_mapping.get("performed"))
     mock_subprocess_invoked = bool(mock_payload_mapping.get("subprocess_invoked"))
 
+    adapter_result = mock_payload_mapping.get("adapter_result")
+    adapter_result_mapping = (
+        adapter_result if isinstance(adapter_result, Mapping) else {}
+    )
+    adapter_result_payload = adapter_result_mapping.get("payload")
+    adapter_result_payload_mapping = (
+        adapter_result_payload if isinstance(adapter_result_payload, Mapping) else {}
+    )
+
+    adapter_name = str(adapter_result_mapping.get("adapter") or "none").strip() or "none"
+    adapter_mode = str(adapter_result_mapping.get("mode") or "none").strip() or "none"
+    adapter_result_status = (
+        str(adapter_result_mapping.get("status") or "none").strip() or "none"
+    )
+    adapter_result_subprocess_invoked = bool(
+        adapter_result_mapping.get("subprocess_invoked")
+    )
+    adapter_result_real_execution_enabled = bool(
+        adapter_result_mapping.get("real_execution_enabled")
+    )
+    adapter_result_payload_executed = bool(
+        adapter_result_payload_mapping.get("executed")
+    )
+
     if not controlled_execution_result_id:
         reasons.append("missing_controlled_execution_result_id")
     if not rendered_command_id:
@@ -1432,6 +1551,21 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
 
     if mock_performed and payload_executed:
         reasons.append("mock_execution_must_not_set_payload_executed")
+
+    if mock_performed and not adapter_result_mapping:
+        reasons.append("missing_mock_adapter_result")
+
+    if adapter_result_mapping:
+        if adapter_name != "mock":
+            reasons.append("mock_adapter_result_must_use_mock_adapter")
+        if adapter_mode != "mock":
+            reasons.append("mock_adapter_result_must_use_mock_mode")
+        if adapter_result_subprocess_invoked:
+            reasons.append("mock_adapter_result_must_not_invoke_subprocess")
+        if adapter_result_real_execution_enabled:
+            reasons.append("mock_adapter_result_must_not_enable_real_execution")
+        if adapter_result_payload_executed:
+            reasons.append("mock_adapter_result_payload_must_not_execute")
 
     # PR 28.2 skeleton phase: execution is not implemented yet.
     if status == "executed":
@@ -1487,6 +1621,12 @@ def validate_replay_lifecycle_retry_controlled_execution_result(
         "mock_execution_status": mock_status,
         "mock_execution_performed": mock_performed,
         "mock_subprocess_invoked": mock_subprocess_invoked,
+        "mock_adapter": adapter_name,
+        "mock_adapter_mode": adapter_mode,
+        "mock_adapter_result_status": adapter_result_status,
+        "mock_adapter_subprocess_invoked": adapter_result_subprocess_invoked,
+        "mock_adapter_real_execution_enabled": adapter_result_real_execution_enabled,
+        "mock_adapter_payload_executed": adapter_result_payload_executed,
     }
 
 

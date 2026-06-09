@@ -398,6 +398,54 @@ def build_global_swarm_brief(
         security_mock_summary_subprocess_mapping.get("true"),
         0,
     )
+    security_mock_adapter = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_mock_adapter"
+            )
+        ).get("mock"),
+        0,
+    )
+    security_mock_adapter_mode = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_mock_adapter_mode"
+            )
+        ).get("mock"),
+        0,
+    )
+    security_mock_adapter_result_status = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_mock_adapter_result_statuses"
+            )
+        ).get("mock_executed"),
+        0,
+    )
+    security_mock_adapter_subprocess_invoked = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_mock_adapter_subprocess_invoked"
+            )
+        ).get("true"),
+        0,
+    )
+    security_mock_adapter_real_execution_enabled = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_mock_adapter_real_execution_enabled"
+            )
+        ).get("true"),
+        0,
+    )
+    security_mock_adapter_payload_executed = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_controlled_execution_mock_adapter_payload_executed"
+            )
+        ).get("true"),
+        0,
+    )
 
     if gold_candidates > 0:
         opportunities.append(
@@ -887,6 +935,41 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_mock_adapter > 0 or security_mock_adapter_result_status > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Controlled mock adapter contract observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Controlled mock adapter contract observed: "
+                    f"adapter=mock:{security_mock_adapter}, "
+                    f"mode=mock:{security_mock_adapter_mode}, "
+                    f"mock_executed={security_mock_adapter_result_status}, "
+                    f"subprocess_invoked={security_mock_adapter_subprocess_invoked}, "
+                    "real_execution_enabled="
+                    f"{security_mock_adapter_real_execution_enabled}, "
+                    f"payload_executed={security_mock_adapter_payload_executed}."
+                ),
+                payload={
+                    "security_mock_adapter": security_mock_adapter,
+                    "security_mock_adapter_mode": security_mock_adapter_mode,
+                    "security_mock_adapter_result_status": (
+                        security_mock_adapter_result_status
+                    ),
+                    "security_mock_adapter_subprocess_invoked": (
+                        security_mock_adapter_subprocess_invoked
+                    ),
+                    "security_mock_adapter_real_execution_enabled": (
+                        security_mock_adapter_real_execution_enabled
+                    ),
+                    "security_mock_adapter_payload_executed": (
+                        security_mock_adapter_payload_executed
+                    ),
+                    "recommendation": "keep_real_adapter_disabled_until_explicit_pr",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -1129,6 +1212,18 @@ def build_global_swarm_brief(
         "security_mock_summary_subprocess_invoked": (
             security_mock_summary_subprocess_invoked
         ),
+        "security_mock_adapter": security_mock_adapter,
+        "security_mock_adapter_mode": security_mock_adapter_mode,
+        "security_mock_adapter_result_status": security_mock_adapter_result_status,
+        "security_mock_adapter_subprocess_invoked": (
+            security_mock_adapter_subprocess_invoked
+        ),
+        "security_mock_adapter_real_execution_enabled": (
+            security_mock_adapter_real_execution_enabled
+        ),
+        "security_mock_adapter_payload_executed": (
+            security_mock_adapter_payload_executed
+        ),
     }
 
     summary = _build_summary(
@@ -1211,6 +1306,16 @@ def build_global_swarm_brief(
         security_mock_summary_subprocess_invoked=(
             security_mock_summary_subprocess_invoked
         ),
+        security_mock_adapter=security_mock_adapter,
+        security_mock_adapter_mode=security_mock_adapter_mode,
+        security_mock_adapter_result_status=security_mock_adapter_result_status,
+        security_mock_adapter_subprocess_invoked=(
+            security_mock_adapter_subprocess_invoked
+        ),
+        security_mock_adapter_real_execution_enabled=(
+            security_mock_adapter_real_execution_enabled
+        ),
+        security_mock_adapter_payload_executed=security_mock_adapter_payload_executed,
     )
 
     return build_swarm_brief(
@@ -1300,6 +1405,12 @@ def _build_summary(
     security_mock_summary_executed: int,
     security_mock_summary_performed: int,
     security_mock_summary_subprocess_invoked: int,
+    security_mock_adapter: int,
+    security_mock_adapter_mode: int,
+    security_mock_adapter_result_status: int,
+    security_mock_adapter_subprocess_invoked: int,
+    security_mock_adapter_real_execution_enabled: int,
+    security_mock_adapter_payload_executed: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1472,6 +1583,17 @@ def _build_summary(
             f"mock_executed={security_mock_summary_executed}, "
             f"mock_performed={security_mock_summary_performed}, "
             f"subprocess_invoked={security_mock_summary_subprocess_invoked}."
+        )
+
+    if security_mock_adapter > 0 or security_mock_adapter_result_status > 0:
+        parts.append(
+            "Controlled mock adapter contract observed: "
+            f"adapter=mock:{security_mock_adapter}, "
+            f"mode=mock:{security_mock_adapter_mode}, "
+            f"mock_executed={security_mock_adapter_result_status}, "
+            f"subprocess_invoked={security_mock_adapter_subprocess_invoked}, "
+            f"real_execution_enabled={security_mock_adapter_real_execution_enabled}, "
+            f"payload_executed={security_mock_adapter_payload_executed}."
         )
 
     blocked_execution_disabled = _safe_int(
@@ -1783,6 +1905,12 @@ def _aggregate_security_validation_from_heartbeats(
     mock_summary_statuses: dict[str, int] = {}
     mock_summary_performed: dict[str, int] = {}
     mock_summary_subprocess_invoked: dict[str, int] = {}
+    controlled_execution_mock_adapter: dict[str, int] = {}
+    controlled_execution_mock_adapter_mode: dict[str, int] = {}
+    controlled_execution_mock_adapter_result_statuses: dict[str, int] = {}
+    controlled_execution_mock_adapter_subprocess_invoked: dict[str, int] = {}
+    controlled_execution_mock_adapter_real_execution_enabled: dict[str, int] = {}
+    controlled_execution_mock_adapter_payload_executed: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -1916,6 +2044,38 @@ def _aggregate_security_validation_from_heartbeats(
             mock_summary_subprocess_invoked,
             metrics.get("security_validation_mock_summary_subprocess_invoked"),
         )
+        _merge_int_counts(
+            controlled_execution_mock_adapter,
+            metrics.get("security_validation_controlled_execution_mock_adapter"),
+        )
+        _merge_int_counts(
+            controlled_execution_mock_adapter_mode,
+            metrics.get("security_validation_controlled_execution_mock_adapter_mode"),
+        )
+        _merge_int_counts(
+            controlled_execution_mock_adapter_result_statuses,
+            metrics.get(
+                "security_validation_controlled_execution_mock_adapter_result_statuses"
+            ),
+        )
+        _merge_int_counts(
+            controlled_execution_mock_adapter_subprocess_invoked,
+            metrics.get(
+                "security_validation_controlled_execution_mock_adapter_subprocess_invoked"
+            ),
+        )
+        _merge_int_counts(
+            controlled_execution_mock_adapter_real_execution_enabled,
+            metrics.get(
+                "security_validation_controlled_execution_mock_adapter_real_execution_enabled"
+            ),
+        )
+        _merge_int_counts(
+            controlled_execution_mock_adapter_payload_executed,
+            metrics.get(
+                "security_validation_controlled_execution_mock_adapter_payload_executed"
+            ),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -1988,6 +2148,24 @@ def _aggregate_security_validation_from_heartbeats(
     aggregate["security_validation_mock_summary_subprocess_invoked"] = (
         mock_summary_subprocess_invoked
     )
+    aggregate["security_validation_controlled_execution_mock_adapter"] = (
+        controlled_execution_mock_adapter
+    )
+    aggregate["security_validation_controlled_execution_mock_adapter_mode"] = (
+        controlled_execution_mock_adapter_mode
+    )
+    aggregate[
+        "security_validation_controlled_execution_mock_adapter_result_statuses"
+    ] = controlled_execution_mock_adapter_result_statuses
+    aggregate[
+        "security_validation_controlled_execution_mock_adapter_subprocess_invoked"
+    ] = controlled_execution_mock_adapter_subprocess_invoked
+    aggregate[
+        "security_validation_controlled_execution_mock_adapter_real_execution_enabled"
+    ] = controlled_execution_mock_adapter_real_execution_enabled
+    aggregate[
+        "security_validation_controlled_execution_mock_adapter_payload_executed"
+    ] = controlled_execution_mock_adapter_payload_executed
 
     return aggregate
 

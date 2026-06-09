@@ -301,3 +301,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "real_execution_enabled=false" in text
     assert "adapter=mock" in text
     assert "mode=mock" in text
+    assert "Adapter contract observability" in text
+    assert "adapter=mock" in text
+    assert "mode=mock" in text
+    assert "payload_executed=0" in text

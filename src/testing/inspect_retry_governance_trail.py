@@ -254,6 +254,38 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in mock_execution_summaries
     )
+    controlled_mock_adapter = Counter(
+        str(_mock_adapter_result(item).get("adapter") or "none").strip() or "none"
+        for item in controlled_execution_results
+    )
+    controlled_mock_adapter_mode = Counter(
+        str(_mock_adapter_result(item).get("mode") or "none").strip() or "none"
+        for item in controlled_execution_results
+    )
+    controlled_mock_adapter_result_statuses = Counter(
+        str(_mock_adapter_result(item).get("status") or "none").strip() or "none"
+        for item in controlled_execution_results
+    )
+    controlled_mock_adapter_subprocess_invoked = Counter(
+        str(bool(_mock_adapter_result(item).get("subprocess_invoked"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_mock_adapter_real_execution_enabled = Counter(
+        str(bool(_mock_adapter_result(item).get("real_execution_enabled"))).lower()
+        for item in controlled_execution_results
+    )
+    controlled_mock_adapter_payload_executed = Counter(
+        str(
+            bool(
+                (
+                    _mock_adapter_result(item).get("payload")
+                    if isinstance(_mock_adapter_result(item).get("payload"), Mapping)
+                    else {}
+                ).get("executed")
+            )
+        ).lower()
+        for item in controlled_execution_results
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -347,6 +379,20 @@ def inspect_retry_governance_trail_from_records(
         "mock_summary_reasons": dict(mock_summary_reasons),
         "mock_summary_performed": dict(mock_summary_performed),
         "mock_summary_subprocess_invoked": dict(mock_summary_subprocess_invoked),
+        "controlled_mock_adapter": dict(controlled_mock_adapter),
+        "controlled_mock_adapter_mode": dict(controlled_mock_adapter_mode),
+        "controlled_mock_adapter_result_statuses": dict(
+            controlled_mock_adapter_result_statuses
+        ),
+        "controlled_mock_adapter_subprocess_invoked": dict(
+            controlled_mock_adapter_subprocess_invoked
+        ),
+        "controlled_mock_adapter_real_execution_enabled": dict(
+            controlled_mock_adapter_real_execution_enabled
+        ),
+        "controlled_mock_adapter_payload_executed": dict(
+            controlled_mock_adapter_payload_executed
+        ),
     }
 
 def _missing_stages(
@@ -478,6 +524,15 @@ def _mock_execution_payload(record: Mapping[str, Any]) -> Mapping[str, Any]:
     nested = mock_execution.get("mock_execution")
     if isinstance(nested, Mapping):
         return nested
+
+    return {}
+
+
+def _mock_adapter_result(record: Mapping[str, Any]) -> Mapping[str, Any]:
+    mock_payload = _mock_execution_payload(record)
+    adapter_result = mock_payload.get("adapter_result")
+    if isinstance(adapter_result, Mapping):
+        return adapter_result
 
     return {}
 
@@ -695,6 +750,35 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("controlled_mock_subprocess_invoked"), Mapping)
         else {}
     )
+    controlled_mock_adapter = (
+        summary.get("controlled_mock_adapter")
+        if isinstance(summary.get("controlled_mock_adapter"), Mapping)
+        else {}
+    )
+    controlled_mock_adapter_mode = (
+        summary.get("controlled_mock_adapter_mode")
+        if isinstance(summary.get("controlled_mock_adapter_mode"), Mapping)
+        else {}
+    )
+    controlled_mock_adapter_subprocess_invoked = (
+        summary.get("controlled_mock_adapter_subprocess_invoked")
+        if isinstance(
+            summary.get("controlled_mock_adapter_subprocess_invoked"), Mapping
+        )
+        else {}
+    )
+    controlled_mock_adapter_real_execution_enabled = (
+        summary.get("controlled_mock_adapter_real_execution_enabled")
+        if isinstance(
+            summary.get("controlled_mock_adapter_real_execution_enabled"), Mapping
+        )
+        else {}
+    )
+    controlled_mock_adapter_payload_executed = (
+        summary.get("controlled_mock_adapter_payload_executed")
+        if isinstance(summary.get("controlled_mock_adapter_payload_executed"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -742,6 +826,11 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"mock_summary_executed={mock_summary_statuses.get('mock_executed', 0)} "
         f"mock_summary_performed={mock_summary_performed.get('true', 0)} "
         f"mock_summary_subprocess_invoked={mock_summary_subprocess_invoked.get('true', 0)} "
+        f"adapter_mock={controlled_mock_adapter.get('mock', 0)} "
+        f"adapter_mode_mock={controlled_mock_adapter_mode.get('mock', 0)} "
+        f"adapter_subprocess_invoked={controlled_mock_adapter_subprocess_invoked.get('true', 0)} "
+        f"adapter_real_execution_enabled={controlled_mock_adapter_real_execution_enabled.get('true', 0)} "
+        f"adapter_payload_executed={controlled_mock_adapter_payload_executed.get('true', 0)} "
     )
 
 

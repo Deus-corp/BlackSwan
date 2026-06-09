@@ -1229,6 +1229,15 @@ The mock adapter returns an execution-shaped result with
 
 ---
 
+### Adapter contract observability
+
+Adapter contract observability surfaces the nested adapter result from mock
+execution envelopes. A safe adapter contract reports `adapter=mock`, `mode=mock`,
+`mock_executed=1`, `subprocess_invoked=0`, `real_execution_enabled=0`, and
+`payload_executed=0`.
+
+---
+
 ## Related modules
 
 ```text

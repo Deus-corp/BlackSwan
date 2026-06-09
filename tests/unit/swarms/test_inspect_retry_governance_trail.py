@@ -361,6 +361,30 @@ def _controlled_execution_result(**overrides):
         "mock_execution_enabled": True,
         "real_execution_enabled": False,
         "mock_execution": {
+            "adapter_result": {
+                "type": "controlled_retry_execution_adapter_result",
+                "adapter": "mock",
+                "mode": "mock",
+                "status": "mock_executed",
+                "reason": "mock_execution_completed",
+                "controlled_execution_result_id": "controlled-result-1",
+                "rendered_command_id": "rendered-1",
+                "timeout_profile": "standard",
+                "subprocess_invoked": False,
+                "real_execution_enabled": False,
+                "exit_code": 0,
+                "stdout": "mock controlled retry execution",
+                "stderr": "",
+                "payload": {
+                    "executed": False,
+                    "mock_executed": True,
+                    "subprocess_invoked": False,
+                    "real_execution_enabled": False,
+                    "adapter": "mock",
+                    "mode": "mock",
+                    "timeout_profile": "standard",
+                },
+            },
             "performed": True,
             "adapter": "mock",
             "subprocess_invoked": False,
@@ -445,6 +469,12 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["controlled_mock_reasons"]["mock_execution_completed"] == 1
     assert summary["controlled_mock_performed"]["true"] == 1
     assert summary["controlled_mock_subprocess_invoked"]["false"] == 1
+    assert summary["controlled_mock_adapter"]["mock"] == 1
+    assert summary["controlled_mock_adapter_mode"]["mock"] == 1
+    assert summary["controlled_mock_adapter_result_statuses"]["mock_executed"] == 1
+    assert summary["controlled_mock_adapter_subprocess_invoked"]["false"] == 1
+    assert summary["controlled_mock_adapter_real_execution_enabled"]["false"] == 1
+    assert summary["controlled_mock_adapter_payload_executed"]["false"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:

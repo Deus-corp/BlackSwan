@@ -1276,6 +1276,30 @@ def _retry_controlled_execution_result(**overrides):
         "mock_execution_enabled": False,
         "real_execution_enabled": False,
         "mock_execution": {
+            "adapter_result": {
+                "type": "controlled_retry_execution_adapter_result",
+                "adapter": "mock",
+                "mode": "mock",
+                "status": "mock_executed",
+                "reason": "mock_execution_completed",
+                "controlled_execution_result_id": "controlled-result-1",
+                "rendered_command_id": "rendered-command-1",
+                "timeout_profile": "standard",
+                "subprocess_invoked": False,
+                "real_execution_enabled": False,
+                "exit_code": 0,
+                "stdout": "mock controlled retry execution",
+                "stderr": "",
+                "payload": {
+                    "executed": False,
+                    "mock_executed": True,
+                    "subprocess_invoked": False,
+                    "real_execution_enabled": False,
+                    "adapter": "mock",
+                    "mode": "mock",
+                    "timeout_profile": "standard",
+                },
+            },
             "performed": False,
             "adapter": "mock",
             "subprocess_invoked": False,
@@ -1454,6 +1478,25 @@ def test_security_validation_metrics_counts_retry_controlled_execution_results()
     ] == 1
     assert metrics[
         "security_validation_controlled_execution_mock_subprocess_invoked"
+    ]["false"] == 1
+
+    assert metrics["security_validation_controlled_execution_mock_adapter"][
+        "mock"
+    ] == 1
+    assert metrics["security_validation_controlled_execution_mock_adapter_mode"][
+        "mock"
+    ] == 1
+    assert metrics[
+        "security_validation_controlled_execution_mock_adapter_result_statuses"
+    ]["mock_executed"] == 1
+    assert metrics[
+        "security_validation_controlled_execution_mock_adapter_subprocess_invoked"
+    ]["false"] == 1
+    assert metrics[
+        "security_validation_controlled_execution_mock_adapter_real_execution_enabled"
+    ]["false"] == 1
+    assert metrics[
+        "security_validation_controlled_execution_mock_adapter_payload_executed"
     ]["false"] == 1
 
 
@@ -1656,3 +1699,39 @@ def test_security_validation_metrics_counts_retry_mock_execution_summary() -> No
     ] == 1
     assert metrics["security_validation_mock_summary_performed"]["true"] == 1
     assert metrics["security_validation_mock_summary_subprocess_invoked"]["false"] == 1
+
+
+def test_validate_retry_controlled_execution_result_rejects_mock_adapter_subprocess_invoked() -> None:
+    record = _retry_controlled_execution_result()
+    record["mock_execution"]["mock_execution"]["adapter_result"][
+        "subprocess_invoked"
+    ] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "mock_adapter_result_must_not_invoke_subprocess" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_mock_adapter_real_execution_enabled() -> None:
+    record = _retry_controlled_execution_result()
+    record["mock_execution"]["mock_execution"]["adapter_result"][
+        "real_execution_enabled"
+    ] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "mock_adapter_result_must_not_enable_real_execution" in result["reasons"]
+
+
+def test_validate_retry_controlled_execution_result_rejects_mock_adapter_payload_executed() -> None:
+    record = _retry_controlled_execution_result()
+    record["mock_execution"]["mock_execution"]["adapter_result"]["payload"][
+        "executed"
+    ] = True
+
+    result = validate_replay_lifecycle_retry_controlled_execution_result(record)
+
+    assert result["valid"] is False
+    assert "mock_adapter_result_payload_must_not_execute" in result["reasons"]

@@ -793,6 +793,24 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "security_validation_mock_summary_subprocess_invoked": {
                 "false": 1,
             },
+            "security_validation_controlled_execution_mock_adapter": {
+                "mock": 1,
+            },
+            "security_validation_controlled_execution_mock_adapter_mode": {
+                "mock": 1,
+            },
+            "security_validation_controlled_execution_mock_adapter_result_statuses": {
+                "mock_executed": 1,
+            },
+            "security_validation_controlled_execution_mock_adapter_subprocess_invoked": {
+                "false": 1,
+            },
+            "security_validation_controlled_execution_mock_adapter_real_execution_enabled": {
+                "false": 1,
+            },
+            "security_validation_controlled_execution_mock_adapter_payload_executed": {
+                "false": 1,
+            },
         },
     )
 
@@ -852,3 +870,15 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert brief.key_metrics["security_mock_summary_executed"] == 1
     assert brief.key_metrics["security_mock_summary_performed"] == 1
     assert brief.key_metrics["security_mock_summary_subprocess_invoked"] == 0
+    assert (
+        "Controlled mock adapter contract observed: "
+        "adapter=mock:1, mode=mock:1, mock_executed=1, "
+        "subprocess_invoked=0, real_execution_enabled=0, payload_executed=0."
+        in text
+    )
+    assert brief.key_metrics["security_mock_adapter"] == 1
+    assert brief.key_metrics["security_mock_adapter_mode"] == 1
+    assert brief.key_metrics["security_mock_adapter_result_status"] == 1
+    assert brief.key_metrics["security_mock_adapter_subprocess_invoked"] == 0
+    assert brief.key_metrics["security_mock_adapter_real_execution_enabled"] == 0
+    assert brief.key_metrics["security_mock_adapter_payload_executed"] == 0
