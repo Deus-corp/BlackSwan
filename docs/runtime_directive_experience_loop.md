@@ -1448,6 +1448,20 @@ Operator authorization alone is insufficient for real execution.
 
 ---
 
+### Final real execution gate
+
+`replay_lifecycle_retry_real_execution_final_gate` is the last fail-closed
+gate before any future dry-run execution envelope. It requires an approved
+real execution approval transition, but still reports
+`ready_for_real_execution=false`, `would_execute=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`execution_performed=false`, and `subprocess_invoked=false`.
+
+The gate remains blocked until a separate explicit execution PR enables a
+supported real adapter and subprocess boundary.
+
+---
+
 ## Related modules
 
 ```text

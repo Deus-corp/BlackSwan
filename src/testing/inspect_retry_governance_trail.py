@@ -30,6 +30,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_preflight",
     "replay_lifecycle_retry_real_execution_approval",
     "replay_lifecycle_retry_real_execution_approval_transition",
+    "replay_lifecycle_retry_real_execution_final_gate",
 }
 
 
@@ -151,6 +152,11 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_approval_transition"
+    ]
+    real_final_gates = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_real_execution_final_gate"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -388,6 +394,34 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in real_approval_transitions
     )
+    real_final_gate_statuses = Counter(
+        str(item.get("gate_status") or "unknown").strip() or "unknown"
+        for item in real_final_gates
+    )
+    real_final_gate_would_execute = Counter(
+        str(bool(item.get("would_execute"))).lower()
+        for item in real_final_gates
+    )
+    real_final_gate_ready = Counter(
+        str(bool(item.get("ready_for_real_execution"))).lower()
+        for item in real_final_gates
+    )
+    real_final_gate_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_final_gates
+    )
+    real_final_gate_subprocess_enabled = Counter(
+        str(bool(item.get("subprocess_enabled"))).lower()
+        for item in real_final_gates
+    )
+    real_final_gate_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_final_gates
+    )
+    real_final_gate_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_final_gates
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -401,6 +435,7 @@ def inspect_retry_governance_trail_from_records(
         real_preflights=real_preflights,
         real_approvals=real_approvals,
         real_approval_transitions=real_approval_transitions,
+        real_final_gates=real_final_gates,
         results=results,
     )
 
@@ -441,6 +476,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_preflights": len(real_preflights),
             "real_execution_approvals": len(real_approvals),
             "real_execution_approval_transitions": len(real_approval_transitions),
+            "real_execution_final_gates": len(real_final_gates),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -568,6 +604,21 @@ def inspect_retry_governance_trail_from_records(
         "real_approval_latest_status": _real_approval_latest_status(
             real_approvals=real_approvals,
             real_approval_transitions=real_approval_transitions,
+        ),
+        "real_final_gate_statuses": dict(real_final_gate_statuses),
+        "real_final_gate_would_execute": dict(real_final_gate_would_execute),
+        "real_final_gate_ready": dict(real_final_gate_ready),
+        "real_final_gate_real_execution_enabled": dict(
+            real_final_gate_real_execution_enabled
+        ),
+        "real_final_gate_subprocess_enabled": dict(
+            real_final_gate_subprocess_enabled
+        ),
+        "real_final_gate_execution_performed": dict(
+            real_final_gate_execution_performed
+        ),
+        "real_final_gate_subprocess_invoked": dict(
+            real_final_gate_subprocess_invoked
         ),
     }
 
@@ -726,6 +777,7 @@ def _build_chain_ids(
     real_preflights: list[Mapping[str, Any]],
     real_approvals: list[Mapping[str, Any]],
     real_approval_transitions: list[Mapping[str, Any]],
+    real_final_gates: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -740,6 +792,7 @@ def _build_chain_ids(
         + real_preflights
         + real_approvals
         + real_approval_transitions
+        + real_final_gates
         + results
     )
 
@@ -764,6 +817,7 @@ def _build_chain_ids(
                 + real_preflights
                 + real_approvals
                 + real_approval_transitions
+                + real_final_gates
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -780,6 +834,7 @@ def _build_chain_ids(
                 + real_preflights
                 + real_approvals
                 + real_approval_transitions
+                + real_final_gates
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -796,6 +851,7 @@ def _build_chain_ids(
                     + real_preflights
                     + real_approvals
                     + real_approval_transitions
+                    + real_final_gates
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -855,6 +911,13 @@ def _build_chain_ids(
                 str(item.get("real_execution_approval_transition_id") or "").strip()
                 for item in real_approval_transitions
                 if str(item.get("real_execution_approval_transition_id") or "").strip()
+            }
+        ),
+        "real_execution_final_gate_ids": sorted(
+            {
+                str(item.get("real_execution_final_gate_id") or "").strip()
+                for item in real_final_gates
+                if str(item.get("real_execution_final_gate_id") or "").strip()
             }
         ),
     }

@@ -21,6 +21,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_preflight,
     validate_replay_lifecycle_retry_real_execution_approval,
     validate_replay_lifecycle_retry_real_execution_approval_transition,
+    validate_replay_lifecycle_retry_real_execution_final_gate,
 )
 
 
@@ -2054,3 +2055,88 @@ def test_validate_retry_real_execution_approval_transition_rejects_non_pending_f
 
     assert result["valid"] is False
     assert "real_approval_transition_must_start_from_pending" in result["reasons"]
+
+
+def _real_execution_final_gate(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_final_gate",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "from_status": "pending",
+        "to_status": "approved",
+        "gate_status": "blocked",
+        "would_execute": False,
+        "ready_for_real_execution": False,
+        "real_adapter_supported": False,
+        "real_adapter_runnable": False,
+        "subprocess_supported": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reasons": [
+            "real_adapter_not_supported",
+            "subprocess_not_supported",
+            "explicit_execution_pr_required",
+        ],
+        "payload": {
+            "would_execute": False,
+            "ready_for_real_execution": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_final_gate_accepts_blocked_disabled() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_final_gate(
+        _real_execution_final_gate()
+    )
+
+    assert result["valid"] is True
+    assert result["gate_status"] == "blocked"
+    assert result["would_execute"] is False
+    assert result["ready_for_real_execution"] is False
+    assert result["real_execution_enabled"] is False
+    assert result["subprocess_enabled"] is False
+
+
+def test_validate_retry_real_execution_final_gate_rejects_ready() -> None:
+    record = _real_execution_final_gate(ready_for_real_execution=True)
+    record["payload"]["ready_for_real_execution"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_final_gate(record)
+
+    assert result["valid"] is False
+    assert "real_final_gate_must_not_be_ready" in result["reasons"]
+
+
+def test_validate_retry_real_execution_final_gate_rejects_would_execute() -> None:
+    record = _real_execution_final_gate(would_execute=True)
+    record["payload"]["would_execute"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_final_gate(record)
+
+    assert result["valid"] is False
+    assert "real_final_gate_would_execute_must_remain_false" in result["reasons"]
+
+
+def test_validate_retry_real_execution_final_gate_rejects_subprocess_invoked() -> None:
+    record = _real_execution_final_gate(subprocess_invoked=True)
+    record["payload"]["subprocess_invoked"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_final_gate(record)
+
+    assert result["valid"] is False
+    assert "real_final_gate_must_not_invoke_subprocess" in result["reasons"]

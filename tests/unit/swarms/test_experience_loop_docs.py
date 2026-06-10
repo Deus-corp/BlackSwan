@@ -401,3 +401,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "real_execution_enabled=false" in text
     assert "subprocess_enabled=false" in text
     assert "Operator authorization alone is insufficient" in text
+    assert "Final real execution gate" in text
+    assert "replay_lifecycle_retry_real_execution_final_gate" in text
+    assert "ready_for_real_execution=false" in text
+    assert "would_execute=false" in text
+    assert "explicit execution PR" in text

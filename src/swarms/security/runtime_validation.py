@@ -35,6 +35,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_preflight",
     "replay_lifecycle_retry_real_execution_approval",
     "replay_lifecycle_retry_real_execution_approval_transition",
+    "replay_lifecycle_retry_real_execution_final_gate",
 }
 
 
@@ -211,6 +212,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_final_gate":
+            result = validate_replay_lifecycle_retry_real_execution_final_gate(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -294,6 +307,13 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_approval_transition_subprocess_enabled: dict[str, int] = {}
     real_approval_transition_execution_performed: dict[str, int] = {}
     real_approval_transition_subprocess_invoked: dict[str, int] = {}
+    real_final_gate_statuses: dict[str, int] = {}
+    real_final_gate_would_execute: dict[str, int] = {}
+    real_final_gate_ready: dict[str, int] = {}
+    real_final_gate_real_execution_enabled: dict[str, int] = {}
+    real_final_gate_subprocess_enabled: dict[str, int] = {}
+    real_final_gate_execution_performed: dict[str, int] = {}
+    real_final_gate_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -600,6 +620,23 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 value = str(bool(item.get(key))).lower()
                 target[value] = target.get(value, 0) + 1
 
+        if record_type == "replay_lifecycle_retry_real_execution_final_gate":
+            gate_status = str(item.get("gate_status") or "unknown").strip() or "unknown"
+            real_final_gate_statuses[gate_status] = (
+                real_final_gate_statuses.get(gate_status, 0) + 1
+            )
+
+            for target, key in (
+                (real_final_gate_would_execute, "would_execute"),
+                (real_final_gate_ready, "ready_for_real_execution"),
+                (real_final_gate_real_execution_enabled, "real_execution_enabled"),
+                (real_final_gate_subprocess_enabled, "subprocess_enabled"),
+                (real_final_gate_execution_performed, "execution_performed"),
+                (real_final_gate_subprocess_invoked, "subprocess_invoked"),
+            ):
+                value = str(bool(item.get(key))).lower()
+                target[value] = target.get(value, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -681,6 +718,13 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_approval_transition_subprocess_enabled": real_approval_transition_subprocess_enabled,
         "real_approval_transition_execution_performed": real_approval_transition_execution_performed,
         "real_approval_transition_subprocess_invoked": real_approval_transition_subprocess_invoked,
+        "real_final_gate_statuses": real_final_gate_statuses,
+        "real_final_gate_would_execute": real_final_gate_would_execute,
+        "real_final_gate_ready": real_final_gate_ready,
+        "real_final_gate_real_execution_enabled": real_final_gate_real_execution_enabled,
+        "real_final_gate_subprocess_enabled": real_final_gate_subprocess_enabled,
+        "real_final_gate_execution_performed": real_final_gate_execution_performed,
+        "real_final_gate_subprocess_invoked": real_final_gate_subprocess_invoked,
     }
 
 
@@ -821,6 +865,27 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_real_approval_transition_subprocess_invoked": summary[
             "real_approval_transition_subprocess_invoked"
         ],
+        "security_validation_real_final_gate_statuses": summary[
+            "real_final_gate_statuses"
+        ],
+        "security_validation_real_final_gate_would_execute": summary[
+            "real_final_gate_would_execute"
+        ],
+        "security_validation_real_final_gate_ready": summary[
+            "real_final_gate_ready"
+        ],
+        "security_validation_real_final_gate_real_execution_enabled": summary[
+            "real_final_gate_real_execution_enabled"
+        ],
+        "security_validation_real_final_gate_subprocess_enabled": summary[
+            "real_final_gate_subprocess_enabled"
+        ],
+        "security_validation_real_final_gate_execution_performed": summary[
+            "real_final_gate_execution_performed"
+        ],
+        "security_validation_real_final_gate_subprocess_invoked": summary[
+            "real_final_gate_subprocess_invoked"
+        ],
     }
 
 
@@ -908,6 +973,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_preflight_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_final_gate":
+        return str(
+            record.get("real_execution_final_gate_id")
+            or record.get("real_execution_approval_transition_id")
+            or record.get("real_execution_approval_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -937,6 +1010,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_preflight_id",
         "real_execution_approval_id",
         "real_execution_approval_transition_id",
+        "real_execution_final_gate_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -963,6 +1037,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_preflight_id",
             "real_execution_approval_id",
             "real_execution_approval_transition_id",
+            "real_execution_final_gate_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -2197,6 +2272,122 @@ def validate_replay_lifecycle_retry_real_execution_approval_transition(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_final_gate(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate fail-closed final real execution gate records."""
+    reasons: list[str] = []
+
+    final_gate_id = str(record.get("real_execution_final_gate_id") or "").strip()
+    transition_id = str(
+        record.get("real_execution_approval_transition_id") or ""
+    ).strip()
+    real_execution_approval_id = str(
+        record.get("real_execution_approval_id") or ""
+    ).strip()
+    real_execution_preflight_id = str(
+        record.get("real_execution_preflight_id") or ""
+    ).strip()
+    controlled_execution_result_id = str(
+        record.get("controlled_execution_result_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    gate_status = str(record.get("gate_status") or "").strip()
+    from_status = str(record.get("from_status") or "").strip().lower()
+    to_status = str(record.get("to_status") or "").strip().lower()
+
+    would_execute = bool(record.get("would_execute"))
+    ready_for_real_execution = bool(record.get("ready_for_real_execution"))
+    real_adapter_supported = bool(record.get("real_adapter_supported"))
+    real_adapter_runnable = bool(record.get("real_adapter_runnable"))
+    subprocess_supported = bool(record.get("subprocess_supported"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    gate_reasons_raw = record.get("reasons")
+    gate_reasons = [
+        str(item).strip()
+        for item in gate_reasons_raw
+        if str(item).strip()
+    ] if isinstance(gate_reasons_raw, list) else []
+
+    if not final_gate_id:
+        reasons.append("missing_real_execution_final_gate_id")
+    if not transition_id:
+        reasons.append("missing_real_execution_approval_transition_id")
+    if not real_execution_approval_id:
+        reasons.append("missing_real_execution_approval_id")
+    if not real_execution_preflight_id:
+        reasons.append("missing_real_execution_preflight_id")
+    if not controlled_execution_result_id:
+        reasons.append("missing_controlled_execution_result_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if from_status != "pending":
+        reasons.append("real_final_gate_requires_pending_source_transition")
+    if to_status != "approved":
+        reasons.append("real_final_gate_requires_approved_transition")
+
+    if gate_status != "blocked":
+        reasons.append("real_final_gate_must_remain_blocked")
+    if would_execute or bool(payload_mapping.get("would_execute")):
+        reasons.append("real_final_gate_would_execute_must_remain_false")
+    if ready_for_real_execution or bool(
+        payload_mapping.get("ready_for_real_execution")
+    ):
+        reasons.append("real_final_gate_must_not_be_ready")
+    if real_adapter_supported or bool(payload_mapping.get("real_adapter_supported")):
+        reasons.append("real_final_gate_must_not_support_real_adapter")
+    if real_adapter_runnable or bool(payload_mapping.get("real_adapter_runnable")):
+        reasons.append("real_final_gate_must_not_make_real_adapter_runnable")
+    if subprocess_supported or bool(payload_mapping.get("subprocess_supported")):
+        reasons.append("real_final_gate_must_not_support_subprocess")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("real_final_gate_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("real_final_gate_must_not_enable_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("real_final_gate_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("real_final_gate_must_not_invoke_subprocess")
+
+    for required_reason in (
+        "real_adapter_not_supported",
+        "subprocess_not_supported",
+        "explicit_execution_pr_required",
+    ):
+        if required_reason not in gate_reasons:
+            reasons.append(f"missing_real_final_gate_reason:{required_reason}")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_final_gate",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": final_gate_id or transition_id,
+        "gate_status": gate_status or "unknown",
+        "from_status": from_status or "unknown",
+        "to_status": to_status or "unknown",
+        "would_execute": would_execute,
+        "ready_for_real_execution": ready_for_real_execution,
+        "real_adapter_supported": real_adapter_supported,
+        "real_adapter_runnable": real_adapter_runnable,
+        "subprocess_supported": subprocess_supported,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "gate_reasons": gate_reasons,
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -2215,4 +2406,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_preflight",
     "validate_replay_lifecycle_retry_real_execution_approval",
     "validate_replay_lifecycle_retry_real_execution_approval_transition",
+    "validate_replay_lifecycle_retry_real_execution_final_gate",
 ]

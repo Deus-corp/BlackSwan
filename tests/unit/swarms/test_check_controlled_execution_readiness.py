@@ -114,6 +114,13 @@ def _trail_summary(**overrides):
         "real_approval_transition_execution_performed": {"false": 1},
         "real_approval_transition_subprocess_invoked": {"false": 1},
         "real_approval_latest_status": "approved",
+        "real_final_gate_statuses": {"blocked": 1},
+        "real_final_gate_would_execute": {"false": 1},
+        "real_final_gate_ready": {"false": 1},
+        "real_final_gate_real_execution_enabled": {"false": 1},
+        "real_final_gate_subprocess_enabled": {"false": 1},
+        "real_final_gate_execution_performed": {"false": 1},
+        "real_final_gate_subprocess_invoked": {"false": 1},
     }
     item.update(overrides)
     return item
@@ -492,6 +499,8 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_approval_transition_subprocess_enabled": 0,
         "real_approval_transition_execution_performed": 0,
         "real_approval_transition_subprocess_invoked": 0,
+        "real_final_gate_observed": True,
+        "real_final_gate_blocked": 1,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -571,6 +580,8 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_approval_transition_subprocess_enabled": 0,
         "real_approval_transition_execution_performed": 0,
         "real_approval_transition_subprocess_invoked": 0,
+        "real_final_gate_observed": True,
+        "real_final_gate_blocked": 1,
         "checks": [],
         "exit_codes": {
             "trail": 0,

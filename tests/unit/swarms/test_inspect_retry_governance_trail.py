@@ -515,12 +515,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_preflight(),
             _real_approval(),
             _real_approval_transition(),
+            _real_final_gate(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 11
+    assert summary["total_records"] == 12
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -592,6 +593,17 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_approval_transition_execution_performed"]["false"] == 1
     assert summary["real_approval_transition_subprocess_invoked"]["false"] == 1
     assert summary["real_approval_latest_status"] == "approved"
+    assert summary["counts"]["real_execution_final_gates"] == 1
+    assert summary["chain_ids"]["real_execution_final_gate_ids"] == [
+        "real-final-gate-1"
+    ]
+    assert summary["real_final_gate_statuses"]["blocked"] == 1
+    assert summary["real_final_gate_would_execute"]["false"] == 1
+    assert summary["real_final_gate_ready"]["false"] == 1
+    assert summary["real_final_gate_real_execution_enabled"]["false"] == 1
+    assert summary["real_final_gate_subprocess_enabled"]["false"] == 1
+    assert summary["real_final_gate_execution_performed"]["false"] == 1
+    assert summary["real_final_gate_subprocess_invoked"]["false"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -743,3 +755,29 @@ def test_inspect_retry_governance_trail_counts_real_approval_orphan() -> None:
 
     assert summary["real_linkage_complete"] is False
     assert summary["real_approval_orphans"] == 1
+
+
+def _real_final_gate(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_final_gate",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "from_status": "pending",
+        "to_status": "approved",
+        "gate_status": "blocked",
+        "would_execute": False,
+        "ready_for_real_execution": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+    }
+    item.update(overrides)
+    return item
