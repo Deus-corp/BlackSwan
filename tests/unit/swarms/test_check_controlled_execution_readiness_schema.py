@@ -18,6 +18,16 @@ def _report(**overrides):
         "real_preflight_blocked": 1,
         "real_approval_observed": True,
         "real_approval_records": 1,
+        "real_linkage_complete": True,
+        "real_preflight_orphans": 0,
+        "real_approval_orphans": 0,
+        "real_approval_transition_observed": True,
+        "real_approval_transition_records": 1,
+        "real_approval_latest_status": "approved",
+        "real_approval_transition_enabled": 0,
+        "real_approval_transition_subprocess_enabled": 0,
+        "real_approval_transition_execution_performed": 0,
+        "real_approval_transition_subprocess_invoked": 0,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -76,6 +86,12 @@ def _report(**overrides):
             "real_preflight_blocked",
             "real_approval_observed",
             "real_approval_records",
+            "real_linkage_complete",
+            "real_preflight_orphans",
+            "real_approval_orphans",
+            "real_approval_transition_observed",
+            "real_approval_transition_records",
+            "real_approval_latest_status",
         ],
     }
     item.update(overrides)
@@ -148,6 +164,12 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_preflight_blocked",
             "real_approval_observed",
             "real_approval_records",
+            "real_linkage_complete",
+            "real_preflight_orphans",
+            "real_approval_orphans",
+            "real_approval_transition_observed",
+            "real_approval_transition_records",
+            "real_approval_latest_status",
             "checks",
             "exit_codes",
         ]
@@ -298,3 +320,30 @@ def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_
 
     assert result["valid"] is False
     assert "real_approval_records_must_be_int" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_linkage_complete_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_linkage_complete="true")
+    )
+
+    assert result["valid"] is False
+    assert "real_linkage_complete_must_be_bool" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_preflight_orphans_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_preflight_orphans="0")
+    )
+
+    assert result["valid"] is False
+    assert "real_preflight_orphans_must_be_int" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_approval_orphans_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_approval_orphans="0")
+    )
+
+    assert result["valid"] is False
+    assert "real_approval_orphans_must_be_int" in result["reasons"]

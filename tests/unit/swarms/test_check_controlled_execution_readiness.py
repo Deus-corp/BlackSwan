@@ -105,6 +105,15 @@ def _trail_summary(**overrides):
         "real_approval_subprocess_enabled": {"false": 1},
         "real_approval_execution_performed": {"false": 1},
         "real_approval_subprocess_invoked": {"false": 1},
+        "real_linkage_complete": True,
+        "real_preflight_orphans": 0,
+        "real_approval_orphans": 0,
+        "real_approval_transition_statuses": {"approved": 1},
+        "real_approval_transition_enabled": {"false": 1},
+        "real_approval_transition_subprocess_enabled": {"false": 1},
+        "real_approval_transition_execution_performed": {"false": 1},
+        "real_approval_transition_subprocess_invoked": {"false": 1},
+        "real_approval_latest_status": "approved",
     }
     item.update(overrides)
     return item
@@ -473,6 +482,16 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_preflight_blocked": 1,
         "real_approval_observed": True,
         "real_approval_records": 1,
+        "real_linkage_complete": True,
+        "real_preflight_orphans": 0,
+        "real_approval_orphans": 0,
+        "real_approval_transition_observed": True,
+        "real_approval_transition_records": 1,
+        "real_approval_latest_status": "approved",
+        "real_approval_transition_enabled": 0,
+        "real_approval_transition_subprocess_enabled": 0,
+        "real_approval_transition_execution_performed": 0,
+        "real_approval_transition_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -542,6 +561,16 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_preflight_blocked": 1,
         "real_approval_observed": True,
         "real_approval_records": 1,
+        "real_linkage_complete": True,
+        "real_preflight_orphans": 0,
+        "real_approval_orphans": 0,
+        "real_approval_transition_observed": True,
+        "real_approval_transition_records": 1,
+        "real_approval_latest_status": "approved",
+        "real_approval_transition_enabled": 0,
+        "real_approval_transition_subprocess_enabled": 0,
+        "real_approval_transition_execution_performed": 0,
+        "real_approval_transition_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -645,3 +674,35 @@ def test_controlled_execution_readiness_fails_if_real_approval_enables_execution
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_approval_does_not_enable_real_execution" in failed
+
+
+def test_controlled_execution_readiness_fails_for_real_approval_orphan() -> None:
+    trail_summary = _trail_summary(real_approval_orphans=1)
+    trail_summary["counts"]["real_execution_approvals"] = 1
+
+    checks = _build_checks(
+        trail_summary=trail_summary,
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_approval_links_to_preflight" in failed
+
+
+def test_controlled_execution_readiness_fails_for_real_preflight_orphan() -> None:
+    trail_summary = _trail_summary(real_preflight_orphans=1)
+    trail_summary["counts"]["real_execution_preflights"] = 1
+
+    checks = _build_checks(
+        trail_summary=trail_summary,
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_preflight_links_to_controlled_result" in failed

@@ -168,6 +168,21 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_approval_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_approval_subprocess_invoked")
     )
+    real_approval_transition_statuses = _safe_mapping(
+        trail_summary.get("real_approval_transition_statuses")
+    )
+    real_approval_transition_enabled = _safe_mapping(
+        trail_summary.get("real_approval_transition_enabled")
+    )
+    real_approval_transition_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_approval_transition_subprocess_enabled")
+    )
+    real_approval_transition_execution_performed = _safe_mapping(
+        trail_summary.get("real_approval_transition_execution_performed")
+    )
+    real_approval_transition_subprocess_invoked = _safe_mapping(
+       trail_summary.get("real_approval_transition_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -218,6 +233,36 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_approval_subprocess_invoked": _safe_int(
             real_approval_subprocess_invoked.get("true")
+        ),
+        "real_linkage_complete": bool(trail_summary.get("real_linkage_complete")),
+        "real_preflight_orphans": _safe_int(
+            trail_summary.get("real_preflight_orphans")
+        ),
+        "real_approval_orphans": _safe_int(
+            trail_summary.get("real_approval_orphans")
+        ),
+        "real_approval_transition_observed": sum(
+            _safe_int(value, 0)
+            for value in real_approval_transition_statuses.values()
+        ) > 0,
+        "real_approval_transition_records": sum(
+            _safe_int(value, 0)
+            for value in real_approval_transition_statuses.values()
+        ),
+        "real_approval_latest_status": str(
+            trail_summary.get("real_approval_latest_status") or "unknown"
+        ),
+        "real_approval_transition_enabled": _safe_int(
+            real_approval_transition_enabled.get("true"), 0
+        ),
+        "real_approval_transition_subprocess_enabled": _safe_int(
+            real_approval_transition_subprocess_enabled.get("true"), 0
+        ),
+        "real_approval_transition_execution_performed": _safe_int(
+            real_approval_transition_execution_performed.get("true"), 0
+        ),
+        "real_approval_transition_subprocess_invoked": _safe_int(
+            real_approval_transition_subprocess_invoked.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -316,6 +361,36 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_approval_subprocess_invoked": _safe_int(
                 real_approval_subprocess_invoked.get("true")
             ),
+            "real_linkage_complete": bool(trail_summary.get("real_linkage_complete")),
+            "real_preflight_orphans": _safe_int(
+                trail_summary.get("real_preflight_orphans")
+            ),
+            "real_approval_orphans": _safe_int(
+                trail_summary.get("real_approval_orphans")
+            ),
+            "real_approval_transition_observed": sum(
+                _safe_int(value, 0)
+                for value in real_approval_transition_statuses.values()
+            ) > 0,
+            "real_approval_transition_records": sum(
+                _safe_int(value, 0)
+                for value in real_approval_transition_statuses.values()
+            ),
+            "real_approval_latest_status": str(
+                trail_summary.get("real_approval_latest_status") or "unknown"
+            ),
+            "real_approval_transition_enabled": _safe_int(
+                real_approval_transition_enabled.get("true"), 0
+            ),
+            "real_approval_transition_subprocess_enabled": _safe_int(
+                real_approval_transition_subprocess_enabled.get("true"), 0
+            ),
+            "real_approval_transition_execution_performed": _safe_int(
+                real_approval_transition_execution_performed.get("true"), 0
+            ),
+            "real_approval_transition_subprocess_invoked": _safe_int(
+                real_approval_transition_subprocess_invoked.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -341,6 +416,12 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_preflight_blocked",
             "real_approval_observed",
             "real_approval_records",
+            "real_linkage_complete",
+            "real_preflight_orphans",
+            "real_approval_orphans",
+            "real_approval_transition_observed",
+            "real_approval_transition_records",
+            "real_approval_latest_status",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -512,6 +593,21 @@ def _build_checks(
     )
     real_approval_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_approval_subprocess_invoked")
+    )
+    real_approval_transition_statuses = _safe_mapping(
+        trail_summary.get("real_approval_transition_statuses")
+    )
+    real_approval_transition_enabled = _safe_mapping(
+        trail_summary.get("real_approval_transition_enabled")
+    )
+    real_approval_transition_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_approval_transition_subprocess_enabled")
+    )
+    real_approval_transition_execution_performed = _safe_mapping(
+        trail_summary.get("real_approval_transition_execution_performed")
+    )
+    real_approval_transition_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_approval_transition_subprocess_invoked")
     )
 
     checks = [
@@ -782,6 +878,52 @@ def _build_checks(
             _safe_int(real_approval_subprocess_invoked.get("true")) == 0,
             _safe_int(real_approval_subprocess_invoked.get("true")),
         ),
+        _check(
+            "real_preflight_links_to_controlled_result",
+            _safe_int(counts.get("real_execution_preflights"), 0) == 0
+            or _safe_int(trail_summary.get("real_preflight_orphans"), 0) == 0,
+            {
+                "real_execution_preflights": _safe_int(
+                    counts.get("real_execution_preflights"), 0
+                ),
+                "real_preflight_orphans": _safe_int(
+                    trail_summary.get("real_preflight_orphans"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_approval_links_to_preflight",
+            _safe_int(counts.get("real_execution_approvals"), 0) == 0
+            or _safe_int(trail_summary.get("real_approval_orphans"), 0) == 0,
+            {
+                "real_execution_approvals": _safe_int(
+                    counts.get("real_execution_approvals"), 0
+                ),
+                "real_approval_orphans": _safe_int(
+                    trail_summary.get("real_approval_orphans"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_approval_transition_does_not_enable_real_execution",
+            _safe_int(real_approval_transition_enabled.get("true"), 0) == 0,
+            _safe_int(real_approval_transition_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_approval_transition_does_not_enable_subprocess",
+            _safe_int(real_approval_transition_subprocess_enabled.get("true"), 0) == 0,
+            _safe_int(real_approval_transition_subprocess_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_approval_transition_does_not_execute",
+            _safe_int(real_approval_transition_execution_performed.get("true"), 0) == 0,
+            _safe_int(real_approval_transition_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "real_approval_transition_does_not_invoke_subprocess",
+            _safe_int(real_approval_transition_subprocess_invoked.get("true"), 0) == 0,
+            _safe_int(real_approval_transition_subprocess_invoked.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -852,6 +994,9 @@ def validate_controlled_execution_readiness_report_schema(
         "real_preflight_blocked",
         "real_approval_observed",
         "real_approval_records",
+        "real_linkage_complete",
+        "real_preflight_orphans",
+        "real_approval_orphans",
     ]
 
     reasons: list[str] = []
@@ -921,6 +1066,25 @@ def validate_controlled_execution_readiness_report_schema(
     if not isinstance(report.get("real_approval_records"), int):
         reasons.append("real_approval_records_must_be_int")
 
+    if not isinstance(report.get("real_linkage_complete"), bool):
+        reasons.append("real_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_preflight_orphans"), int):
+        reasons.append("real_preflight_orphans_must_be_int")
+    if not isinstance(report.get("real_approval_orphans"), int):
+        reasons.append("real_approval_orphans_must_be_int")
+
+    if not isinstance(report.get("real_approval_transition_observed"), bool):
+        reasons.append("real_approval_transition_observed_must_be_bool")
+    if not isinstance(report.get("real_approval_transition_records"), int):
+        reasons.append("real_approval_transition_records_must_be_int")
+    if str(report.get("real_approval_latest_status") or "") not in {
+        "unknown",
+        "pending",
+        "approved",
+        "rejected",
+    }:
+        reasons.append("invalid_real_approval_latest_status")
+
     return {
         "type": "controlled_execution_readiness_schema_validation",
         "valid": not reasons,
@@ -988,6 +1152,16 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_approval_subprocess_enabled={result.get('real_approval_subprocess_enabled', 0)} "
         f"real_approval_execution_performed={result.get('real_approval_execution_performed', 0)} "
         f"real_approval_subprocess_invoked={result.get('real_approval_subprocess_invoked', 0)} "
+        f"real_linkage_complete={str(bool(result.get('real_linkage_complete'))).lower()} "
+        f"real_preflight_orphans={result.get('real_preflight_orphans', 0)} "
+        f"real_approval_orphans={result.get('real_approval_orphans', 0)} "
+        f"real_approval_transition_observed={str(bool(result.get('real_approval_transition_observed'))).lower()} "
+        f"real_approval_transition_records={result.get('real_approval_transition_records', 0)} "
+        f"real_approval_latest_status={result.get('real_approval_latest_status', 'unknown')} "
+        f"real_approval_transition_enabled={result.get('real_approval_transition_enabled', 0)} "
+        f"real_approval_transition_subprocess_enabled={result.get('real_approval_transition_subprocess_enabled', 0)} "
+        f"real_approval_transition_execution_performed={result.get('real_approval_transition_execution_performed', 0)} "
+        f"real_approval_transition_subprocess_invoked={result.get('real_approval_transition_subprocess_invoked', 0)} "
     )
 
 

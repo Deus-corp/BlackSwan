@@ -20,6 +20,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_mock_execution_summary,
     validate_replay_lifecycle_retry_real_execution_preflight,
     validate_replay_lifecycle_retry_real_execution_approval,
+    validate_replay_lifecycle_retry_real_execution_approval_transition,
 )
 
 
@@ -1748,6 +1749,35 @@ def _real_execution_approval(**overrides):
     return item
 
 
+def _real_execution_approval_transition(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_approval_transition",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "from_status": "pending",
+        "to_status": "approved",
+        "reason": "real_execution_approval_transition_recorded",
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "payload": {
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
 def test_validate_retry_mock_execution_summary_accepts_safe_summary() -> None:
     result = validate_replay_lifecycle_retry_mock_execution_summary(
         _retry_mock_execution_summary()
@@ -1974,3 +2004,53 @@ def test_validate_retry_real_execution_approval_rejects_subprocess_enabled() -> 
 
     assert result["valid"] is False
     assert "real_execution_approval_must_not_enable_subprocess" in result["reasons"]
+
+
+def test_validate_retry_real_execution_approval_transition_accepts_approved_disabled() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_approval_transition(
+        _real_execution_approval_transition()
+    )
+
+    assert result["valid"] is True
+    assert result["from_status"] == "pending"
+    assert result["to_status"] == "approved"
+    assert result["real_execution_enabled"] is False
+    assert result["subprocess_enabled"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_approval_transition_rejects_real_execution_enabled() -> None:
+    record = _real_execution_approval_transition(real_execution_enabled=True)
+    record["payload"]["real_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_approval_transition(
+        record
+    )
+
+    assert result["valid"] is False
+    assert (
+        "real_approval_transition_must_not_enable_real_execution"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_approval_transition_rejects_subprocess_enabled() -> None:
+    record = _real_execution_approval_transition(subprocess_enabled=True)
+    record["payload"]["subprocess_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_approval_transition(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "real_approval_transition_must_not_enable_subprocess" in result["reasons"]
+
+
+def test_validate_retry_real_execution_approval_transition_rejects_non_pending_from_status() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_approval_transition(
+        _real_execution_approval_transition(from_status="approved", to_status="rejected")
+    )
+
+    assert result["valid"] is False
+    assert "real_approval_transition_must_start_from_pending" in result["reasons"]

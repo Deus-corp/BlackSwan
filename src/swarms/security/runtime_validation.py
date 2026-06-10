@@ -34,6 +34,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_mock_execution_summary",
     "replay_lifecycle_retry_real_execution_preflight",
     "replay_lifecycle_retry_real_execution_approval",
+    "replay_lifecycle_retry_real_execution_approval_transition",
 }
 
 
@@ -196,6 +197,20 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_approval_transition":
+            result = validate_replay_lifecycle_retry_real_execution_approval_transition(
+                record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -274,6 +289,11 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_approval_subprocess_enabled: dict[str, int] = {}
     real_approval_execution_performed: dict[str, int] = {}
     real_approval_subprocess_invoked: dict[str, int] = {}
+    real_approval_transition_statuses: dict[str, int] = {}
+    real_approval_transition_enabled: dict[str, int] = {}
+    real_approval_transition_subprocess_enabled: dict[str, int] = {}
+    real_approval_transition_execution_performed: dict[str, int] = {}
+    real_approval_transition_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -556,6 +576,30 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 value = str(bool(item.get(key))).lower()
                 target[value] = target.get(value, 0) + 1
 
+        if record_type == "replay_lifecycle_retry_real_execution_approval_transition":
+            to_status = str(item.get("to_status") or "unknown").strip() or "unknown"
+            real_approval_transition_statuses[to_status] = (
+                real_approval_transition_statuses.get(to_status, 0) + 1
+            )
+
+            for target, key in (
+                (real_approval_transition_enabled, "real_execution_enabled"),
+                (
+                    real_approval_transition_subprocess_enabled,
+                    "subprocess_enabled",
+                ),
+                (
+                    real_approval_transition_execution_performed,
+                    "execution_performed",
+                ),
+                (
+                    real_approval_transition_subprocess_invoked,
+                    "subprocess_invoked",
+                ),
+            ):
+                value = str(bool(item.get(key))).lower()
+                target[value] = target.get(value, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -632,6 +676,11 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_approval_subprocess_enabled": real_approval_subprocess_enabled,
         "real_approval_execution_performed": real_approval_execution_performed,
         "real_approval_subprocess_invoked": real_approval_subprocess_invoked,
+        "real_approval_transition_statuses": real_approval_transition_statuses,
+        "real_approval_transition_enabled": real_approval_transition_enabled,
+        "real_approval_transition_subprocess_enabled": real_approval_transition_subprocess_enabled,
+        "real_approval_transition_execution_performed": real_approval_transition_execution_performed,
+        "real_approval_transition_subprocess_invoked": real_approval_transition_subprocess_invoked,
     }
 
 
@@ -757,6 +806,21 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_real_approval_subprocess_invoked": summary[
             "real_approval_subprocess_invoked"
         ],
+        "security_validation_real_approval_transition_statuses": summary[
+            "real_approval_transition_statuses"
+        ],
+        "security_validation_real_approval_transition_enabled": summary[
+            "real_approval_transition_enabled"
+        ],
+        "security_validation_real_approval_transition_subprocess_enabled": summary[
+            "real_approval_transition_subprocess_enabled"
+        ],
+        "security_validation_real_approval_transition_execution_performed": summary[
+            "real_approval_transition_execution_performed"
+        ],
+        "security_validation_real_approval_transition_subprocess_invoked": summary[
+            "real_approval_transition_subprocess_invoked"
+        ],
     }
 
 
@@ -836,6 +900,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("controlled_execution_result_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_approval_transition":
+        return str(
+            record.get("real_execution_approval_transition_id")
+            or record.get("real_execution_approval_id")
+            or record.get("real_execution_preflight_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -862,8 +934,9 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "approval_id",
         "proposal_id",
         "controlled_execution_result_id",
-        "real_execution_preflight_id"
-        "real_execution_approval_id"
+        "real_execution_preflight_id",
+        "real_execution_approval_id",
+        "real_execution_approval_transition_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -887,8 +960,9 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "approval_id",
             "proposal_id",
             "controlled_execution_result_id",
-            "real_execution_preflight_id"
-            "real_execution_approval_id"
+            "real_execution_preflight_id",
+            "real_execution_approval_id",
+            "real_execution_approval_transition_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -2046,6 +2120,83 @@ def validate_replay_lifecycle_retry_real_execution_approval(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_approval_transition(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate immutable fail-closed real execution approval transitions."""
+    reasons: list[str] = []
+
+    transition_id = str(
+        record.get("real_execution_approval_transition_id") or ""
+    ).strip()
+    real_execution_approval_id = str(
+        record.get("real_execution_approval_id") or ""
+    ).strip()
+    real_execution_preflight_id = str(
+        record.get("real_execution_preflight_id") or ""
+    ).strip()
+    controlled_execution_result_id = str(
+        record.get("controlled_execution_result_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    from_status = str(record.get("from_status") or "").strip().lower()
+    to_status = str(record.get("to_status") or "").strip().lower()
+    reason = str(record.get("reason") or "").strip()
+
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not transition_id:
+        reasons.append("missing_real_execution_approval_transition_id")
+    if not real_execution_approval_id:
+        reasons.append("missing_real_execution_approval_id")
+    if not real_execution_preflight_id:
+        reasons.append("missing_real_execution_preflight_id")
+    if not controlled_execution_result_id:
+        reasons.append("missing_controlled_execution_result_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if from_status != "pending":
+        reasons.append("real_approval_transition_must_start_from_pending")
+    if to_status not in {"approved", "rejected"}:
+        reasons.append("invalid_real_approval_transition_to_status")
+    if from_status == to_status:
+        reasons.append("real_approval_transition_must_change_status")
+    if reason != "real_execution_approval_transition_recorded":
+        reasons.append("invalid_real_approval_transition_reason")
+
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("real_approval_transition_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("real_approval_transition_must_not_enable_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("real_approval_transition_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("real_approval_transition_must_not_invoke_subprocess")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_approval_transition",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": transition_id or real_execution_approval_id,
+        "from_status": from_status or "unknown",
+        "to_status": to_status or "unknown",
+        "reason": reason or "unknown",
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -2063,4 +2214,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_mock_execution_summary",
     "validate_replay_lifecycle_retry_real_execution_preflight",
     "validate_replay_lifecycle_retry_real_execution_approval",
+    "validate_replay_lifecycle_retry_real_execution_approval_transition",
 ]
