@@ -1422,6 +1422,20 @@ blocked.
 
 ---
 
+### Real preflight observability
+
+Real preflight observability surfaces fail-closed preflight records in readiness
+and Overseer summaries. A safe preflight reports `real_preflight_observed=true`,
+`real_preflight_blocked=1`, `real_preflight_would_execute=0`,
+`real_preflight_execution_performed=0`,
+`real_preflight_subprocess_invoked=0`, and
+`real_preflight_requires_explicit_pr=1`.
+
+Overseer briefs report the same state as:
+`Real execution preflight remains blocked`.
+
+---
+
 ## Related modules
 
 ```text

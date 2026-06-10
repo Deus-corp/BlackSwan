@@ -941,3 +941,40 @@ def test_global_brief_surfaces_rejected_real_execution_request() -> None:
     assert brief.key_metrics["security_controlled_real_execution_performed"] == 0
     assert brief.key_metrics["security_controlled_real_execution_supported"] == 0
     assert brief.key_metrics["security_controlled_subprocess_invoked"] == 0
+
+
+def test_global_brief_surfaces_blocked_real_execution_preflight() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"overseer": 1, "security": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "security_validation_real_preflight_statuses": {
+                "blocked": 1,
+            },
+            "security_validation_real_preflight_would_execute": {
+                "false": 1,
+            },
+            "security_validation_real_preflight_execution_performed": {
+                "false": 1,
+            },
+            "security_validation_real_preflight_subprocess_invoked": {
+                "false": 1,
+            },
+            "security_validation_real_preflight_requires_explicit_pr": {
+                "true": 1,
+            },
+        },
+    )
+    text = brief.summary
+
+    assert (
+        "Real execution preflight remains blocked: "
+        "blocked=1, would_execute=0, execution_performed=0, "
+        "subprocess_invoked=0, requires_explicit_pr=1."
+        in text
+    )
+    assert brief.key_metrics["security_real_preflight_blocked"] == 1
+    assert brief.key_metrics["security_real_preflight_would_execute"] == 0
+    assert brief.key_metrics["security_real_preflight_execution_performed"] == 0
+    assert brief.key_metrics["security_real_preflight_subprocess_invoked"] == 0
+    assert brief.key_metrics["security_real_preflight_requires_explicit_pr"] == 1

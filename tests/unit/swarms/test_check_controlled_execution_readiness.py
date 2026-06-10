@@ -251,6 +251,12 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "real_execution_performed": 0,
             "real_execution_supported_count": 0,
             "subprocess_invoked_count": 0,
+            "real_preflight_observed": True,
+            "real_preflight_blocked": 1,
+            "real_preflight_would_execute": 0,
+            "real_preflight_execution_performed": 0,
+            "real_preflight_subprocess_invoked": 0,
+            "real_preflight_requires_explicit_pr": 1,
         }
     )
 
@@ -279,6 +285,11 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "real_execution_performed=0" in text
     assert "real_execution_supported_count=0" in text
     assert "subprocess_invoked_count=0" in text
+    assert "real_preflight_observed=true" in text
+    assert "real_preflight_blocked=1" in text
+    assert "real_preflight_would_execute=0" in text
+    assert "real_preflight_execution_performed=0" in text
+    assert "real_preflight_subprocess_invoked=0" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:

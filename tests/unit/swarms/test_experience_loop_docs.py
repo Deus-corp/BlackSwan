@@ -388,3 +388,11 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "execution_performed=false" in text
     assert "subprocess_invoked=false" in text
     assert "real_adapter_requires_explicit_pr=true" in text
+    assert "Real preflight observability" in text
+    assert "real_preflight_observed=true" in text
+    assert "real_preflight_blocked=1" in text
+    assert "real_preflight_would_execute=0" in text
+    assert "real_preflight_execution_performed=0" in text
+    assert "real_preflight_subprocess_invoked=0" in text
+    assert "real_preflight_requires_explicit_pr=1" in text
+    assert "Real execution preflight remains blocked" in text

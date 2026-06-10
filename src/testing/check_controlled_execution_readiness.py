@@ -245,6 +245,18 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             ),
             "real_preflight_observed": _safe_int(real_preflight_statuses.get("blocked")) > 0,
             "real_preflight_blocked": _safe_int(real_preflight_statuses.get("blocked")),
+            "real_preflight_would_execute": _safe_int(
+                real_preflight_would_execute.get("true")
+            ),
+            "real_preflight_execution_performed": _safe_int(
+                real_preflight_execution_performed.get("true")
+            ),
+            "real_preflight_subprocess_invoked": _safe_int(
+                real_preflight_subprocess_invoked.get("true")
+            ),
+            "real_preflight_requires_explicit_pr": _safe_int(
+                real_preflight_requires_explicit_pr.get("true")
+            ),
         },
         "required_fields": [
             "schema_version",

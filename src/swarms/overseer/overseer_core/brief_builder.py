@@ -478,6 +478,42 @@ def build_global_swarm_brief(
         ).get("true"),
         0,
     )
+    security_real_preflight_blocked = _safe_int(
+        _safe_dict(
+            security_validation.get("security_validation_real_preflight_statuses")
+        ).get("blocked"),
+        0,
+    )
+    security_real_preflight_would_execute = _safe_int(
+        _safe_dict(
+            security_validation.get("security_validation_real_preflight_would_execute")
+        ).get("true"),
+        0,
+    )
+    security_real_preflight_execution_performed = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_preflight_execution_performed"
+            )
+        ).get("true"),
+        0,
+    )
+    security_real_preflight_subprocess_invoked = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_preflight_subprocess_invoked"
+            )
+        ).get("true"),
+        0,
+    )
+    security_real_preflight_requires_explicit_pr = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_preflight_requires_explicit_pr"
+            )
+        ).get("true"),
+        0,
+    )
     security_real_adapter_supported = bool(
         security_validation.get("security_real_adapter_supported", False)
     )
@@ -1076,6 +1112,42 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_real_preflight_blocked > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Real execution preflight remains blocked",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Real execution preflight remains blocked: "
+                    f"blocked={security_real_preflight_blocked}, "
+                    f"would_execute={security_real_preflight_would_execute}, "
+                    "execution_performed="
+                    f"{security_real_preflight_execution_performed}, "
+                    f"subprocess_invoked={security_real_preflight_subprocess_invoked}, "
+                    "requires_explicit_pr="
+                    f"{security_real_preflight_requires_explicit_pr}."
+                ),
+                payload={
+                    "security_real_preflight_blocked": (
+                        security_real_preflight_blocked
+                    ),
+                    "security_real_preflight_would_execute": (
+                        security_real_preflight_would_execute
+                    ),
+                    "security_real_preflight_execution_performed": (
+                        security_real_preflight_execution_performed
+                    ),
+                    "security_real_preflight_subprocess_invoked": (
+                        security_real_preflight_subprocess_invoked
+                    ),
+                    "security_real_preflight_requires_explicit_pr": (
+                        security_real_preflight_requires_explicit_pr
+                    ),
+                    "recommendation": "keep_real_execution_preflight_blocked_until_explicit_approval_schema",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -1350,6 +1422,19 @@ def build_global_swarm_brief(
         "security_controlled_subprocess_invoked": (
             security_controlled_subprocess_invoked
         ),
+        "security_real_preflight_blocked": security_real_preflight_blocked,
+        "security_real_preflight_would_execute": (
+            security_real_preflight_would_execute
+        ),
+        "security_real_preflight_execution_performed": (
+            security_real_preflight_execution_performed
+        ),
+        "security_real_preflight_subprocess_invoked": (
+            security_real_preflight_subprocess_invoked
+        ),
+        "security_real_preflight_requires_explicit_pr": (
+            security_real_preflight_requires_explicit_pr
+        ),
     }
 
     summary = _build_summary(
@@ -1462,6 +1547,19 @@ def build_global_swarm_brief(
         security_controlled_subprocess_invoked=(
             security_controlled_subprocess_invoked
         ),
+        security_real_preflight_blocked=security_real_preflight_blocked,
+        security_real_preflight_would_execute=(
+            security_real_preflight_would_execute
+        ),
+        security_real_preflight_execution_performed=(
+            security_real_preflight_execution_performed
+        ),
+        security_real_preflight_subprocess_invoked=(
+            security_real_preflight_subprocess_invoked
+        ),
+        security_real_preflight_requires_explicit_pr=(
+            security_real_preflight_requires_explicit_pr
+        ),
     )
 
     return build_swarm_brief(
@@ -1565,6 +1663,11 @@ def _build_summary(
     security_controlled_real_execution_performed: int,
     security_controlled_real_execution_supported: int,
     security_controlled_subprocess_invoked: int,
+    security_real_preflight_blocked: int,
+    security_real_preflight_would_execute: int,
+    security_real_preflight_execution_performed: int,
+    security_real_preflight_subprocess_invoked: int,
+    security_real_preflight_requires_explicit_pr: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1770,6 +1873,16 @@ def _build_summary(
             f"performed={security_controlled_real_execution_performed}, "
             f"supported={security_controlled_real_execution_supported}, "
             f"subprocess_invoked={security_controlled_subprocess_invoked}."
+        )
+    
+    if security_real_preflight_blocked > 0:
+        parts.append(
+            "Real execution preflight remains blocked: "
+            f"blocked={security_real_preflight_blocked}, "
+            f"would_execute={security_real_preflight_would_execute}, "
+            f"execution_performed={security_real_preflight_execution_performed}, "
+            f"subprocess_invoked={security_real_preflight_subprocess_invoked}, "
+            f"requires_explicit_pr={security_real_preflight_requires_explicit_pr}."
         )
 
     blocked_execution_disabled = _safe_int(
@@ -2091,6 +2204,11 @@ def _aggregate_security_validation_from_heartbeats(
     controlled_execution_real_performed: dict[str, int] = {}
     controlled_execution_real_supported: dict[str, int] = {}
     controlled_execution_subprocess_invoked: dict[str, int] = {}
+    real_preflight_statuses: dict[str, int] = {}
+    real_preflight_would_execute: dict[str, int] = {}
+    real_preflight_execution_performed: dict[str, int] = {}
+    real_preflight_subprocess_invoked: dict[str, int] = {}
+    real_preflight_requires_explicit_pr: dict[str, int] = {}
 
     for heartbeat in heartbeats:
         metrics = heartbeat.get("metrics")
@@ -2272,6 +2390,26 @@ def _aggregate_security_validation_from_heartbeats(
             controlled_execution_subprocess_invoked,
             metrics.get("security_validation_controlled_execution_subprocess_invoked"),
         )
+        _merge_int_counts(
+            real_preflight_statuses,
+            metrics.get("security_validation_real_preflight_statuses"),
+        )
+        _merge_int_counts(
+            real_preflight_would_execute,
+            metrics.get("security_validation_real_preflight_would_execute"),
+        )
+        _merge_int_counts(
+            real_preflight_execution_performed,
+            metrics.get("security_validation_real_preflight_execution_performed"),
+        )
+        _merge_int_counts(
+            real_preflight_subprocess_invoked,
+            metrics.get("security_validation_real_preflight_subprocess_invoked"),
+        )
+        _merge_int_counts(
+            real_preflight_requires_explicit_pr,
+            metrics.get("security_validation_real_preflight_requires_explicit_pr"),
+        )
 
     aggregate["security_validation_invalid_reasons"] = invalid_reasons
     aggregate["security_validation_warning_reasons"] = warning_reasons
@@ -2373,6 +2511,21 @@ def _aggregate_security_validation_from_heartbeats(
     )
     aggregate["security_validation_controlled_execution_subprocess_invoked"] = (
         controlled_execution_subprocess_invoked
+    )
+    aggregate["security_validation_real_preflight_statuses"] = (
+        real_preflight_statuses
+    )
+    aggregate["security_validation_real_preflight_would_execute"] = (
+        real_preflight_would_execute
+    )
+    aggregate["security_validation_real_preflight_execution_performed"] = (
+        real_preflight_execution_performed
+    )
+    aggregate["security_validation_real_preflight_subprocess_invoked"] = (
+        real_preflight_subprocess_invoked
+    )
+    aggregate["security_validation_real_preflight_requires_explicit_pr"] = (
+        real_preflight_requires_explicit_pr
     )
 
     return aggregate
