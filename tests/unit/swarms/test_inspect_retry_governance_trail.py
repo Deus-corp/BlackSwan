@@ -457,6 +457,27 @@ def _real_preflight(**overrides):
     return item
 
 
+def _real_approval(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_approval",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "approval_status": "pending",
+        "reason": "real_execution_explicit_approval_required",
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+    }
+    item.update(overrides)
+    return item
+
+
 def test_inspect_retry_governance_trail_counts_controlled_execution_extension() -> None:
     summary = inspect_retry_governance_trail_from_records(
         [
@@ -469,12 +490,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _result(),
             _controlled_execution_result(),
             _real_preflight(),
+            _real_approval(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 9
+    assert summary["total_records"] == 10
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -519,6 +541,15 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_preflight_execution_performed"]["false"] == 1
     assert summary["real_preflight_subprocess_invoked"]["false"] == 1
     assert summary["real_preflight_requires_explicit_pr"]["true"] == 1
+    assert summary["counts"]["real_execution_approvals"] == 1
+    assert summary["chain_ids"]["real_execution_approval_ids"] == [
+        "real-approval-1"
+    ]
+    assert summary["real_approval_statuses"]["pending"] == 1
+    assert summary["real_approval_enabled"]["false"] == 1
+    assert summary["real_approval_subprocess_enabled"]["false"] == 1
+    assert summary["real_approval_execution_performed"]["false"] == 1
+    assert summary["real_approval_subprocess_invoked"]["false"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:

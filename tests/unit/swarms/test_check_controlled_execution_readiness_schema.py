@@ -16,6 +16,8 @@ def _report(**overrides):
         "real_execution_request_rejected": 0,
         "real_preflight_observed": True,
         "real_preflight_blocked": 1,
+        "real_approval_observed": True,
+        "real_approval_records": 1,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -72,6 +74,8 @@ def _report(**overrides):
             "real_execution_request_rejected",
             "real_preflight_observed",
             "real_preflight_blocked",
+            "real_approval_observed",
+            "real_approval_records",
         ],
     }
     item.update(overrides)
@@ -142,6 +146,8 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_execution_request_rejected",
             "real_preflight_observed",
             "real_preflight_blocked",
+            "real_approval_observed",
+            "real_approval_records",
             "checks",
             "exit_codes",
         ]
@@ -274,3 +280,21 @@ def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_
 
     assert result["valid"] is False
     assert "real_preflight_blocked_must_be_int" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_approval_observed_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_approval_observed="true")
+    )
+
+    assert result["valid"] is False
+    assert "real_approval_observed_must_be_bool" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_approval_records_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_approval_records="1")
+    )
+
+    assert result["valid"] is False
+    assert "real_approval_records_must_be_int" in result["reasons"]

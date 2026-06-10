@@ -100,6 +100,11 @@ def _trail_summary(**overrides):
         "real_preflight_execution_performed": {"false": 1},
         "real_preflight_subprocess_invoked": {"false": 1},
         "real_preflight_requires_explicit_pr": {"true": 1},
+        "real_approval_statuses": {"pending": 1},
+        "real_approval_enabled": {"false": 1},
+        "real_approval_subprocess_enabled": {"false": 1},
+        "real_approval_execution_performed": {"false": 1},
+        "real_approval_subprocess_invoked": {"false": 1},
     }
     item.update(overrides)
     return item
@@ -257,6 +262,12 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "real_preflight_execution_performed": 0,
             "real_preflight_subprocess_invoked": 0,
             "real_preflight_requires_explicit_pr": 1,
+            "real_approval_observed": True,
+            "real_approval_records": 1,
+            "real_approval_enabled": 0,
+            "real_approval_subprocess_enabled": 0,
+            "real_approval_execution_performed": 0,
+            "real_approval_subprocess_invoked": 0,
         }
     )
 
@@ -290,6 +301,12 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "real_preflight_would_execute=0" in text
     assert "real_preflight_execution_performed=0" in text
     assert "real_preflight_subprocess_invoked=0" in text
+    assert "real_approval_observed=true" in text
+    assert "real_approval_records=1" in text
+    assert "real_approval_enabled=0" in text
+    assert "real_approval_subprocess_enabled=0" in text
+    assert "real_approval_execution_performed=0" in text
+    assert "real_approval_subprocess_invoked=0" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -454,6 +471,8 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_execution_request_rejected": 0,
         "real_preflight_observed": True,
         "real_preflight_blocked": 1,
+        "real_approval_observed": True,
+        "real_approval_records": 1,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -521,7 +540,8 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_execution_request_rejected": 0,
         "real_preflight_observed": True,
         "real_preflight_blocked": 1,
-        "checks": [],
+        "real_approval_observed": True,
+        "real_approval_records": 1,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -610,3 +630,18 @@ def test_controlled_execution_readiness_fails_if_real_preflight_executes() -> No
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_preflight_does_not_execute" in failed
+
+
+def test_controlled_execution_readiness_fails_if_real_approval_enables_execution() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_approval_enabled={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_approval_does_not_enable_real_execution" in failed

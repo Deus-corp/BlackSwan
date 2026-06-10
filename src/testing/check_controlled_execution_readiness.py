@@ -135,12 +135,39 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     controlled_reasons = _safe_mapping(
         trail_summary.get("controlled_execution_result_reasons")
     )
-    real_preflight_statuses = _safe_mapping(trail_summary.get("real_preflight_statuses"))
-    real_preflight_reasons = _safe_mapping(trail_summary.get("real_preflight_reasons"))
-    real_preflight_would_execute = _safe_mapping(trail_summary.get("real_preflight_would_execute"))
-    real_preflight_execution_performed = _safe_mapping(trail_summary.get("real_preflight_execution_performed"))
-    real_preflight_subprocess_invoked = _safe_mapping(trail_summary.get("real_preflight_subprocess_invoked"))
-    real_preflight_requires_explicit_pr = _safe_mapping(trail_summary.get("real_preflight_requires_explicit_pr"))
+    real_preflight_statuses = _safe_mapping(
+        trail_summary.get("real_preflight_statuses")
+    )
+    real_preflight_reasons = _safe_mapping(
+        trail_summary.get("real_preflight_reasons")
+    )
+    real_preflight_would_execute = _safe_mapping(
+        trail_summary.get("real_preflight_would_execute")
+    )
+    real_preflight_execution_performed = _safe_mapping(
+        trail_summary.get("real_preflight_execution_performed")
+    )
+    real_preflight_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_preflight_subprocess_invoked")
+    )
+    real_preflight_requires_explicit_pr = _safe_mapping(
+        trail_summary.get("real_preflight_requires_explicit_pr")
+    )
+    real_approval_statuses = _safe_mapping(
+        trail_summary.get("real_approval_statuses")
+    )
+    real_approval_enabled = _safe_mapping(
+        trail_summary.get("real_approval_enabled")
+    )
+    real_approval_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_approval_subprocess_enabled")
+    )
+    real_approval_execution_performed = _safe_mapping(
+        trail_summary.get("real_approval_execution_performed")
+    )
+    real_approval_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_approval_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -176,6 +203,22 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         "real_preflight_execution_performed": _safe_int(real_preflight_execution_performed.get("true")),
         "real_preflight_subprocess_invoked": _safe_int(real_preflight_subprocess_invoked.get("true")),
         "real_preflight_requires_explicit_pr": _safe_int(real_preflight_requires_explicit_pr.get("true")),
+        "real_approval_observed": sum(
+            _safe_int(value) for value in real_approval_statuses.values()
+        ) > 0,
+        "real_approval_records": sum(
+            _safe_int(value) for value in real_approval_statuses.values()
+        ),
+        "real_approval_enabled": _safe_int(real_approval_enabled.get("true")),
+        "real_approval_subprocess_enabled": _safe_int(
+            real_approval_subprocess_enabled.get("true")
+        ),
+        "real_approval_execution_performed": _safe_int(
+            real_approval_execution_performed.get("true")
+        ),
+        "real_approval_subprocess_invoked": _safe_int(
+            real_approval_subprocess_invoked.get("true")
+        ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
         "ready_for_real_execution": ready_for_real_execution,
@@ -257,6 +300,22 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_preflight_requires_explicit_pr": _safe_int(
                 real_preflight_requires_explicit_pr.get("true")
             ),
+            "real_approval_observed": sum(
+                _safe_int(value) for value in real_approval_statuses.values()
+            ) > 0,
+            "real_approval_records": sum(
+                _safe_int(value) for value in real_approval_statuses.values()
+            ),
+            "real_approval_enabled": _safe_int(real_approval_enabled.get("true")),
+            "real_approval_subprocess_enabled": _safe_int(
+                real_approval_subprocess_enabled.get("true")
+            ),
+            "real_approval_execution_performed": _safe_int(
+                real_approval_execution_performed.get("true")
+            ),
+            "real_approval_subprocess_invoked": _safe_int(
+                real_approval_subprocess_invoked.get("true")
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -280,6 +339,8 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_execution_request_rejected",
             "real_preflight_observed",
             "real_preflight_blocked",
+            "real_approval_observed",
+            "real_approval_records",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -441,6 +502,17 @@ def _build_checks(
     real_preflight_execution_performed = _safe_mapping(trail_summary.get("real_preflight_execution_performed"))
     real_preflight_subprocess_invoked = _safe_mapping(trail_summary.get("real_preflight_subprocess_invoked"))
     real_preflight_requires_explicit_pr = _safe_mapping(trail_summary.get("real_preflight_requires_explicit_pr"))
+    real_approval_statuses = _safe_mapping(trail_summary.get("real_approval_statuses"))
+    real_approval_enabled = _safe_mapping(trail_summary.get("real_approval_enabled"))
+    real_approval_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_approval_subprocess_enabled")
+    )
+    real_approval_execution_performed = _safe_mapping(
+        trail_summary.get("real_approval_execution_performed")
+    )
+    real_approval_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_approval_subprocess_invoked")
+    )
 
     checks = [
         _check(
@@ -679,6 +751,37 @@ def _build_checks(
             or _safe_int(controlled_real_execution_requested.get("true")) == 0,
             _safe_int(real_preflight_requires_explicit_pr.get("true")),
         ),
+        _check(
+            "real_approval_observed_if_preflight_observed",
+            _safe_int(real_preflight_statuses.get("blocked")) == 0
+            or sum(_safe_int(value) for value in real_approval_statuses.values()) > 0,
+            {
+                "real_preflight_blocked": _safe_int(real_preflight_statuses.get("blocked")),
+                "real_approval_records": sum(
+                    _safe_int(value) for value in real_approval_statuses.values()
+                ),
+            },
+        ),
+        _check(
+            "real_approval_does_not_enable_real_execution",
+            _safe_int(real_approval_enabled.get("true")) == 0,
+            _safe_int(real_approval_enabled.get("true")),
+        ),
+        _check(
+            "real_approval_does_not_enable_subprocess",
+            _safe_int(real_approval_subprocess_enabled.get("true")) == 0,
+            _safe_int(real_approval_subprocess_enabled.get("true")),
+        ),
+        _check(
+            "real_approval_does_not_execute",
+            _safe_int(real_approval_execution_performed.get("true")) == 0,
+            _safe_int(real_approval_execution_performed.get("true")),
+        ),
+        _check(
+            "real_approval_does_not_invoke_subprocess",
+            _safe_int(real_approval_subprocess_invoked.get("true")) == 0,
+            _safe_int(real_approval_subprocess_invoked.get("true")),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -745,6 +848,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_adapter_requires_explicit_pr",
         "real_execution_request_observed",
         "real_execution_request_rejected",
+        "real_preflight_observed",
+        "real_preflight_blocked",
+        "real_approval_observed",
+        "real_approval_records",
     ]
 
     reasons: list[str] = []
@@ -809,6 +916,11 @@ def validate_controlled_execution_readiness_report_schema(
     if not isinstance(report.get("real_preflight_blocked"), int):
         reasons.append("real_preflight_blocked_must_be_int")
 
+    if not isinstance(report.get("real_approval_observed"), bool):
+        reasons.append("real_approval_observed_must_be_bool")
+    if not isinstance(report.get("real_approval_records"), int):
+        reasons.append("real_approval_records_must_be_int")
+
     return {
         "type": "controlled_execution_readiness_schema_validation",
         "valid": not reasons,
@@ -870,6 +982,12 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_preflight_would_execute={result.get('real_preflight_would_execute', 0)} "
         f"real_preflight_execution_performed={result.get('real_preflight_execution_performed', 0)} "
         f"real_preflight_subprocess_invoked={result.get('real_preflight_subprocess_invoked', 0)} "
+        f"real_approval_observed={str(bool(result.get('real_approval_observed'))).lower()} "
+        f"real_approval_records={result.get('real_approval_records', 0)} "
+        f"real_approval_enabled={result.get('real_approval_enabled', 0)} "
+        f"real_approval_subprocess_enabled={result.get('real_approval_subprocess_enabled', 0)} "
+        f"real_approval_execution_performed={result.get('real_approval_execution_performed', 0)} "
+        f"real_approval_subprocess_invoked={result.get('real_approval_subprocess_invoked', 0)} "
     )
 
 

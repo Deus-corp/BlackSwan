@@ -28,6 +28,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_controlled_execution_result",
     "replay_lifecycle_retry_mock_execution_summary",
     "replay_lifecycle_retry_real_execution_preflight",
+    "replay_lifecycle_retry_real_execution_approval",
 }
 
 
@@ -138,6 +139,11 @@ def inspect_retry_governance_trail_from_records(
         item
         for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_real_execution_preflight"
+    ]
+    real_approvals = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_real_execution_approval"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -335,6 +341,26 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("real_adapter_requires_explicit_pr"))).lower()
         for item in real_preflights
     )
+    real_approval_statuses = Counter(
+        str(item.get("approval_status") or "unknown").strip() or "unknown"
+        for item in real_approvals
+    )
+    real_approval_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_approvals
+    )
+    real_approval_subprocess_enabled = Counter(
+        str(bool(item.get("subprocess_enabled"))).lower()
+        for item in real_approvals
+    )
+    real_approval_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_approvals
+    )
+    real_approval_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_approvals
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -346,6 +372,7 @@ def inspect_retry_governance_trail_from_records(
         controlled_execution_results=controlled_execution_results,
         mock_execution_summaries=mock_execution_summaries,
         real_preflights=real_preflights,
+        real_approvals=real_approvals,
         results=results,
     )
 
@@ -378,6 +405,7 @@ def inspect_retry_governance_trail_from_records(
             "controlled_execution_results": len(controlled_execution_results),
             "mock_execution_summaries": len(mock_execution_summaries),
             "real_execution_preflights": len(real_preflights),
+            "real_execution_approvals": len(real_approvals),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -467,6 +495,11 @@ def inspect_retry_governance_trail_from_records(
         "real_preflight_requires_explicit_pr": dict(
             real_preflight_requires_explicit_pr
         ),
+        "real_approval_statuses": dict(real_approval_statuses),
+        "real_approval_enabled": dict(real_approval_enabled),
+        "real_approval_subprocess_enabled": dict(real_approval_subprocess_enabled),
+        "real_approval_execution_performed": dict(real_approval_execution_performed),
+        "real_approval_subprocess_invoked": dict(real_approval_subprocess_invoked),
     }
 
 def _missing_stages(
@@ -622,6 +655,7 @@ def _build_chain_ids(
     controlled_execution_results: list[Mapping[str, Any]],
     mock_execution_summaries: list[Mapping[str, Any]],
     real_preflights: list[Mapping[str, Any]],
+    real_approvals: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -634,6 +668,7 @@ def _build_chain_ids(
         + controlled_execution_results
         + mock_execution_summaries
         + real_preflights
+        + real_approvals
         + results
     )
 
@@ -656,6 +691,7 @@ def _build_chain_ids(
                 + controlled_execution_results
                 + mock_execution_summaries
                 + real_preflights
+                + real_approvals
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -670,6 +706,7 @@ def _build_chain_ids(
                 + controlled_execution_results
                 + mock_execution_summaries
                 + real_preflights
+                + real_approvals
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -684,6 +721,7 @@ def _build_chain_ids(
                     + controlled_execution_results
                     + mock_execution_summaries
                     + real_preflights
+                    + real_approvals
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -729,6 +767,13 @@ def _build_chain_ids(
                 str(item.get("real_execution_preflight_id") or "").strip()
                 for item in real_preflights
                 if str(item.get("real_execution_preflight_id") or "").strip()
+            }
+        ),
+        "real_execution_approval_ids": sorted(
+            {
+                str(item.get("real_execution_approval_id") or "").strip()
+                for item in real_approvals
+                if str(item.get("real_execution_approval_id") or "").strip()
             }
         ),
     }
@@ -910,6 +955,31 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         if isinstance(summary.get("real_preflight_requires_explicit_pr"), Mapping)
         else {}
     )
+    real_approval_statuses = (
+        summary.get("real_approval_statuses")
+        if isinstance(summary.get("real_approval_statuses"), Mapping)
+        else {}
+    )
+    real_approval_enabled = (
+        summary.get("real_approval_enabled")
+        if isinstance(summary.get("real_approval_enabled"), Mapping)
+        else {}
+    )
+    real_approval_subprocess_enabled = (
+        summary.get("real_approval_subprocess_enabled")
+        if isinstance(summary.get("real_approval_subprocess_enabled"), Mapping)
+        else {}
+    )
+    real_approval_execution_performed = (
+        summary.get("real_approval_execution_performed")
+        if isinstance(summary.get("real_approval_execution_performed"), Mapping)
+        else {}
+    )
+    real_approval_subprocess_invoked = (
+        summary.get("real_approval_subprocess_invoked")
+        if isinstance(summary.get("real_approval_subprocess_invoked"), Mapping)
+        else {}
+    )
 
     chain_complete = bool(summary.get("chain_complete"))
     missing_stages = summary.get("missing_stages")
@@ -972,6 +1042,14 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"real_preflight_execution_performed={real_preflight_execution_performed.get('true', 0)} "
         f"real_preflight_subprocess_invoked={real_preflight_subprocess_invoked.get('true', 0)} "
         f"real_preflight_requires_explicit_pr={real_preflight_requires_explicit_pr.get('true', 0)} "
+        f"real_approvals={counts.get('real_execution_approvals', 0)} "
+        f"real_approval_pending={real_approval_statuses.get('pending', 0)} "
+        f"real_approval_approved={real_approval_statuses.get('approved', 0)} "
+        f"real_approval_rejected={real_approval_statuses.get('rejected', 0)} "
+        f"real_approval_enabled={real_approval_enabled.get('true', 0)} "
+        f"real_approval_subprocess_enabled={real_approval_subprocess_enabled.get('true', 0)} "
+        f"real_approval_execution_performed={real_approval_execution_performed.get('true', 0)} "
+        f"real_approval_subprocess_invoked={real_approval_subprocess_invoked.get('true', 0)} "
     )
 
 

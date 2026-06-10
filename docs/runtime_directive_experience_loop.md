@@ -1436,6 +1436,18 @@ Overseer briefs report the same state as:
 
 ---
 
+### Explicit real execution approval records
+
+`replay_lifecycle_retry_real_execution_approval` separates operator authorization
+intent from future real execution approval. The record may be pending, approved,
+or rejected, but in this phase it always reports `real_execution_enabled=false`,
+`subprocess_enabled=false`, `execution_performed=false`, and
+`subprocess_invoked=false`.
+
+Operator authorization alone is insufficient for real execution.
+
+---
+
 ## Related modules
 
 ```text

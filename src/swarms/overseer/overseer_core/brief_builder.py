@@ -514,6 +514,36 @@ def build_global_swarm_brief(
         ).get("true"),
         0,
     )
+    security_real_approval_records = sum(
+        _safe_int(value, 0)
+        for value in _safe_dict(
+            security_validation.get("security_validation_real_approval_statuses")
+        ).values()
+    )
+    security_real_approval_enabled = _safe_int(
+        _safe_dict(
+            security_validation.get("security_validation_real_approval_enabled")
+        ).get("true"),
+        0,
+    )
+    security_real_approval_subprocess_enabled = _safe_int(
+        _safe_dict(
+            security_validation.get("security_validation_real_approval_subprocess_enabled")
+        ).get("true"),
+        0,
+    )
+    security_real_approval_execution_performed = _safe_int(
+        _safe_dict(
+            security_validation.get("security_validation_real_approval_execution_performed")
+        ).get("true"),
+        0,
+    )
+    security_real_approval_subprocess_invoked = _safe_int(
+        _safe_dict(
+            security_validation.get("security_validation_real_approval_subprocess_invoked")
+        ).get("true"),
+        0,
+    )
     security_real_adapter_supported = bool(
         security_validation.get("security_real_adapter_supported", False)
     )
@@ -1148,6 +1178,36 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_real_approval_records > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Explicit real execution approval observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Explicit real execution approval observed: "
+                    f"records={security_real_approval_records}, "
+                    f"real_execution_enabled={security_real_approval_enabled}, "
+                    f"subprocess_enabled={security_real_approval_subprocess_enabled}, "
+                    f"execution_performed={security_real_approval_execution_performed}, "
+                    f"subprocess_invoked={security_real_approval_subprocess_invoked}."
+                ),
+                payload={
+                    "security_real_approval_records": security_real_approval_records,
+                    "security_real_approval_enabled": security_real_approval_enabled,
+                    "security_real_approval_subprocess_enabled": (
+                        security_real_approval_subprocess_enabled
+                    ),
+                    "security_real_approval_execution_performed": (
+                        security_real_approval_execution_performed
+                    ),
+                    "security_real_approval_subprocess_invoked": (
+                        security_real_approval_subprocess_invoked
+                    ),
+                    "recommendation": "keep_real_execution_disabled_until_explicit_real_adapter_pr",
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -1435,6 +1495,11 @@ def build_global_swarm_brief(
         "security_real_preflight_requires_explicit_pr": (
             security_real_preflight_requires_explicit_pr
         ),
+        "security_real_approval_records": security_real_approval_records,
+        "security_real_approval_enabled": security_real_approval_enabled,
+        "security_real_approval_subprocess_enabled": security_real_approval_subprocess_enabled,
+        "security_real_approval_execution_performed": security_real_approval_execution_performed,
+        "security_real_approval_subprocess_invoked": security_real_approval_subprocess_invoked,
     }
 
     summary = _build_summary(
@@ -1560,6 +1625,17 @@ def build_global_swarm_brief(
         security_real_preflight_requires_explicit_pr=(
             security_real_preflight_requires_explicit_pr
         ),
+        security_real_approval_records=security_real_approval_records,
+        security_real_approval_enabled=security_real_approval_enabled,
+        security_real_approval_subprocess_enabled=(
+            security_real_approval_subprocess_enabled
+        ),
+        security_real_approval_execution_performed=(
+            security_real_approval_execution_performed
+        ),
+        security_real_approval_subprocess_invoked=(
+            security_real_approval_subprocess_invoked
+        ),
     )
 
     return build_swarm_brief(
@@ -1668,6 +1744,11 @@ def _build_summary(
     security_real_preflight_execution_performed: int,
     security_real_preflight_subprocess_invoked: int,
     security_real_preflight_requires_explicit_pr: int,
+    security_real_approval_records: int,
+    security_real_approval_enabled: int,
+    security_real_approval_subprocess_enabled: int,
+    security_real_approval_execution_performed: int,
+    security_real_approval_subprocess_invoked: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1883,6 +1964,16 @@ def _build_summary(
             f"execution_performed={security_real_preflight_execution_performed}, "
             f"subprocess_invoked={security_real_preflight_subprocess_invoked}, "
             f"requires_explicit_pr={security_real_preflight_requires_explicit_pr}."
+        )
+    
+    if security_real_approval_records > 0:
+        parts.append(
+            "Explicit real execution approval observed: "
+            f"records={security_real_approval_records}, "
+            f"real_execution_enabled={security_real_approval_enabled}, "
+            f"subprocess_enabled={security_real_approval_subprocess_enabled}, "
+            f"execution_performed={security_real_approval_execution_performed}, "
+            f"subprocess_invoked={security_real_approval_subprocess_invoked}."
         )
 
     blocked_execution_disabled = _safe_int(

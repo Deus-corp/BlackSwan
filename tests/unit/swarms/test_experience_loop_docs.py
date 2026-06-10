@@ -396,3 +396,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "real_preflight_subprocess_invoked=0" in text
     assert "real_preflight_requires_explicit_pr=1" in text
     assert "Real execution preflight remains blocked" in text
+    assert "Explicit real execution approval records" in text
+    assert "replay_lifecycle_retry_real_execution_approval" in text
+    assert "real_execution_enabled=false" in text
+    assert "subprocess_enabled=false" in text
+    assert "Operator authorization alone is insufficient" in text
