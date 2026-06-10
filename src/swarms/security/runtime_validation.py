@@ -36,6 +36,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_approval",
     "replay_lifecycle_retry_real_execution_approval_transition",
     "replay_lifecycle_retry_real_execution_final_gate",
+    "replay_lifecycle_retry_real_execution_dry_run_envelope",
 }
 
 
@@ -224,6 +225,20 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_dry_run_envelope":
+            result = validate_replay_lifecycle_retry_real_execution_dry_run_envelope(
+                record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -314,6 +329,13 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_final_gate_subprocess_enabled: dict[str, int] = {}
     real_final_gate_execution_performed: dict[str, int] = {}
     real_final_gate_subprocess_invoked: dict[str, int] = {}
+    real_dry_run_envelope_dry_run_only: dict[str, int] = {}
+    real_dry_run_envelope_would_execute: dict[str, int] = {}
+    real_dry_run_envelope_ready: dict[str, int] = {}
+    real_dry_run_envelope_real_execution_enabled: dict[str, int] = {}
+    real_dry_run_envelope_subprocess_enabled: dict[str, int] = {}
+    real_dry_run_envelope_execution_performed: dict[str, int] = {}
+    real_dry_run_envelope_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -637,6 +659,22 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 value = str(bool(item.get(key))).lower()
                 target[value] = target.get(value, 0) + 1
 
+        if record_type == "replay_lifecycle_retry_real_execution_dry_run_envelope":
+            for target, key in (
+                (real_dry_run_envelope_dry_run_only, "dry_run_only"),
+                (real_dry_run_envelope_would_execute, "would_execute"),
+                (real_dry_run_envelope_ready, "ready_for_real_execution"),
+                (
+                    real_dry_run_envelope_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (real_dry_run_envelope_subprocess_enabled, "subprocess_enabled"),
+                (real_dry_run_envelope_execution_performed, "execution_performed"),
+                (real_dry_run_envelope_subprocess_invoked, "subprocess_invoked"),
+            ):
+                value = str(bool(item.get(key))).lower()
+                target[value] = target.get(value, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -725,6 +763,21 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_final_gate_subprocess_enabled": real_final_gate_subprocess_enabled,
         "real_final_gate_execution_performed": real_final_gate_execution_performed,
         "real_final_gate_subprocess_invoked": real_final_gate_subprocess_invoked,
+        "real_dry_run_envelope_dry_run_only": real_dry_run_envelope_dry_run_only,
+        "real_dry_run_envelope_would_execute": real_dry_run_envelope_would_execute,
+        "real_dry_run_envelope_ready": real_dry_run_envelope_ready,
+        "real_dry_run_envelope_real_execution_enabled": (
+            real_dry_run_envelope_real_execution_enabled
+        ),
+        "real_dry_run_envelope_subprocess_enabled": (
+            real_dry_run_envelope_subprocess_enabled
+        ),
+        "real_dry_run_envelope_execution_performed": (
+            real_dry_run_envelope_execution_performed
+        ),
+        "real_dry_run_envelope_subprocess_invoked": (
+            real_dry_run_envelope_subprocess_invoked
+        ),
     }
 
 
@@ -886,6 +939,27 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_real_final_gate_subprocess_invoked": summary[
             "real_final_gate_subprocess_invoked"
         ],
+        "security_validation_real_dry_run_envelope_dry_run_only": summary[
+            "real_dry_run_envelope_dry_run_only"
+        ],
+        "security_validation_real_dry_run_envelope_would_execute": summary[
+            "real_dry_run_envelope_would_execute"
+        ],
+        "security_validation_real_dry_run_envelope_ready": summary[
+            "real_dry_run_envelope_ready"
+        ],
+        "security_validation_real_dry_run_envelope_real_execution_enabled": summary[
+            "real_dry_run_envelope_real_execution_enabled"
+        ],
+        "security_validation_real_dry_run_envelope_subprocess_enabled": summary[
+            "real_dry_run_envelope_subprocess_enabled"
+        ],
+        "security_validation_real_dry_run_envelope_execution_performed": summary[
+            "real_dry_run_envelope_execution_performed"
+        ],
+        "security_validation_real_dry_run_envelope_subprocess_invoked": summary[
+            "real_dry_run_envelope_subprocess_invoked"
+        ],
     }
 
 
@@ -981,6 +1055,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_approval_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_dry_run_envelope":
+        return str(
+            record.get("real_execution_dry_run_envelope_id")
+            or record.get("real_execution_final_gate_id")
+            or record.get("real_execution_approval_transition_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -1011,6 +1093,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_approval_id",
         "real_execution_approval_transition_id",
         "real_execution_final_gate_id",
+        "real_execution_dry_run_envelope_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -1038,6 +1121,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_approval_id",
             "real_execution_approval_transition_id",
             "real_execution_final_gate_id",
+            "real_execution_dry_run_envelope_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -2388,6 +2472,121 @@ def validate_replay_lifecycle_retry_real_execution_final_gate(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_dry_run_envelope(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate no-subprocess real execution dry-run envelope records."""
+    reasons: list[str] = []
+
+    envelope_id = str(
+        record.get("real_execution_dry_run_envelope_id") or ""
+    ).strip()
+    final_gate_id = str(record.get("real_execution_final_gate_id") or "").strip()
+    transition_id = str(
+        record.get("real_execution_approval_transition_id") or ""
+    ).strip()
+    approval_id = str(record.get("real_execution_approval_id") or "").strip()
+    preflight_id = str(record.get("real_execution_preflight_id") or "").strip()
+    controlled_result_id = str(
+        record.get("controlled_execution_result_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    command = str(record.get("command") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    argv = record.get("argv")
+    cwd = record.get("cwd")
+    env_keys = record.get("env_keys")
+
+    dry_run_only = bool(record.get("dry_run_only"))
+    would_execute = bool(record.get("would_execute"))
+    ready_for_real_execution = bool(record.get("ready_for_real_execution"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not envelope_id:
+        reasons.append("missing_real_execution_dry_run_envelope_id")
+    if not final_gate_id:
+        reasons.append("missing_real_execution_final_gate_id")
+    if not transition_id:
+        reasons.append("missing_real_execution_approval_transition_id")
+    if not approval_id:
+        reasons.append("missing_real_execution_approval_id")
+    if not preflight_id:
+        reasons.append("missing_real_execution_preflight_id")
+    if not controlled_result_id:
+        reasons.append("missing_controlled_execution_result_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+    if not command:
+        reasons.append("missing_command")
+
+    if not isinstance(argv, list) or not argv:
+        reasons.append("dry_run_envelope_argv_must_be_non_empty_list")
+    if not isinstance(cwd, str) or not cwd.strip():
+        reasons.append("dry_run_envelope_cwd_must_be_non_empty_string")
+    if not isinstance(env_keys, list):
+        reasons.append("dry_run_envelope_env_keys_must_be_list")
+
+    forbidden_env_fragments = (
+        "TOKEN",
+        "SECRET",
+        "PASSWORD",
+        "KEY",
+        "CREDENTIAL",
+    )
+    if isinstance(env_keys, list):
+        for key in env_keys:
+            key_text = str(key or "").upper()
+            if any(fragment in key_text for fragment in forbidden_env_fragments):
+                reasons.append("dry_run_envelope_env_keys_must_not_include_secrets")
+                break
+
+    if reason != "real_execution_dry_run_envelope_recorded":
+        reasons.append("invalid_dry_run_envelope_reason")
+
+    if not dry_run_only or not bool(payload_mapping.get("dry_run_only", True)):
+        reasons.append("dry_run_envelope_must_remain_dry_run_only")
+    if would_execute or bool(payload_mapping.get("would_execute")):
+        reasons.append("dry_run_envelope_would_execute_must_remain_false")
+    if ready_for_real_execution or bool(
+        payload_mapping.get("ready_for_real_execution")
+    ):
+        reasons.append("dry_run_envelope_must_not_be_ready")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("dry_run_envelope_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("dry_run_envelope_must_not_enable_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("dry_run_envelope_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("dry_run_envelope_must_not_invoke_subprocess")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_dry_run_envelope",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": envelope_id or final_gate_id,
+        "dry_run_only": dry_run_only,
+        "would_execute": would_execute,
+        "ready_for_real_execution": ready_for_real_execution,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "argv_len": len(argv) if isinstance(argv, list) else 0,
+        "env_key_count": len(env_keys) if isinstance(env_keys, list) else 0,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -2407,4 +2606,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_approval",
     "validate_replay_lifecycle_retry_real_execution_approval_transition",
     "validate_replay_lifecycle_retry_real_execution_final_gate",
+    "validate_replay_lifecycle_retry_real_execution_dry_run_envelope",
 ]

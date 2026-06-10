@@ -121,6 +121,13 @@ def _trail_summary(**overrides):
         "real_final_gate_subprocess_enabled": {"false": 1},
         "real_final_gate_execution_performed": {"false": 1},
         "real_final_gate_subprocess_invoked": {"false": 1},
+        "real_dry_run_envelope_dry_run_only": {"true": 1},
+        "real_dry_run_envelope_would_execute": {"false": 1},
+        "real_dry_run_envelope_ready": {"false": 1},
+        "real_dry_run_envelope_real_execution_enabled": {"false": 1},
+        "real_dry_run_envelope_subprocess_enabled": {"false": 1},
+        "real_dry_run_envelope_execution_performed": {"false": 1},
+        "real_dry_run_envelope_subprocess_invoked": {"false": 1},
     }
     item.update(overrides)
     return item
@@ -284,6 +291,14 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "real_approval_subprocess_enabled": 0,
             "real_approval_execution_performed": 0,
             "real_approval_subprocess_invoked": 0,
+            "real_dry_run_envelope_observed": True,
+            "real_dry_run_envelope_records": 1,
+            "real_dry_run_envelope_would_execute": 0,
+            "real_dry_run_envelope_ready": 0,
+            "real_dry_run_envelope_real_execution_enabled": 0,
+            "real_dry_run_envelope_subprocess_enabled": 0,
+            "real_dry_run_envelope_execution_performed": 0,
+            "real_dry_run_envelope_subprocess_invoked": 0,
         }
     )
 
@@ -323,6 +338,10 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "real_approval_subprocess_enabled=0" in text
     assert "real_approval_execution_performed=0" in text
     assert "real_approval_subprocess_invoked=0" in text
+    assert "real_dry_run_envelope_observed=true" in text
+    assert "real_dry_run_envelope_records=1" in text
+    assert "real_dry_run_envelope_would_execute=0" in text
+    assert "real_dry_run_envelope_subprocess_invoked=0" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -501,6 +520,14 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_approval_transition_subprocess_invoked": 0,
         "real_final_gate_observed": True,
         "real_final_gate_blocked": 1,
+        "real_dry_run_envelope_observed": True,
+        "real_dry_run_envelope_records": 1,
+        "real_dry_run_envelope_would_execute": 0,
+        "real_dry_run_envelope_ready": 0,
+        "real_dry_run_envelope_real_execution_enabled": 0,
+        "real_dry_run_envelope_subprocess_enabled": 0,
+        "real_dry_run_envelope_execution_performed": 0,
+        "real_dry_run_envelope_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -582,6 +609,14 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_approval_transition_subprocess_invoked": 0,
         "real_final_gate_observed": True,
         "real_final_gate_blocked": 1,
+        "real_dry_run_envelope_observed": True,
+        "real_dry_run_envelope_records": 1,
+        "real_dry_run_envelope_would_execute": 0,
+        "real_dry_run_envelope_ready": 0,
+        "real_dry_run_envelope_real_execution_enabled": 0,
+        "real_dry_run_envelope_subprocess_enabled": 0,
+        "real_dry_run_envelope_execution_performed": 0,
+        "real_dry_run_envelope_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,

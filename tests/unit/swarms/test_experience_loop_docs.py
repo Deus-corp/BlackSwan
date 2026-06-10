@@ -406,3 +406,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "ready_for_real_execution=false" in text
     assert "would_execute=false" in text
     assert "explicit execution PR" in text
+    assert "Real execution dry-run envelope" in text
+    assert "replay_lifecycle_retry_real_execution_dry_run_envelope" in text
+    assert "dry_run_only=true" in text
+    assert "subprocess_invoked=false" in text
+    assert "does not execute commands" in text

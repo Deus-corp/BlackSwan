@@ -31,6 +31,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_approval",
     "replay_lifecycle_retry_real_execution_approval_transition",
     "replay_lifecycle_retry_real_execution_final_gate",
+    "replay_lifecycle_retry_real_execution_dry_run_envelope",
 }
 
 
@@ -157,6 +158,12 @@ def inspect_retry_governance_trail_from_records(
         item
         for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_real_execution_final_gate"
+    ]
+    real_dry_run_envelopes = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_dry_run_envelope"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -422,6 +429,34 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in real_final_gates
     )
+    real_dry_run_envelope_dry_run_only = Counter(
+        str(bool(item.get("dry_run_only"))).lower()
+        for item in real_dry_run_envelopes
+    )
+    real_dry_run_envelope_would_execute = Counter(
+        str(bool(item.get("would_execute"))).lower()
+        for item in real_dry_run_envelopes
+    )
+    real_dry_run_envelope_ready = Counter(
+        str(bool(item.get("ready_for_real_execution"))).lower()
+        for item in real_dry_run_envelopes
+    )
+    real_dry_run_envelope_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_dry_run_envelopes
+    )
+    real_dry_run_envelope_subprocess_enabled = Counter(
+        str(bool(item.get("subprocess_enabled"))).lower()
+        for item in real_dry_run_envelopes
+    )
+    real_dry_run_envelope_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_dry_run_envelopes
+    )
+    real_dry_run_envelope_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_dry_run_envelopes
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -436,6 +471,7 @@ def inspect_retry_governance_trail_from_records(
         real_approvals=real_approvals,
         real_approval_transitions=real_approval_transitions,
         real_final_gates=real_final_gates,
+        real_dry_run_envelopes=real_dry_run_envelopes,
         results=results,
     )
 
@@ -477,6 +513,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_approvals": len(real_approvals),
             "real_execution_approval_transitions": len(real_approval_transitions),
             "real_execution_final_gates": len(real_final_gates),
+            "real_execution_dry_run_envelopes": len(real_dry_run_envelopes),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -619,6 +656,25 @@ def inspect_retry_governance_trail_from_records(
         ),
         "real_final_gate_subprocess_invoked": dict(
             real_final_gate_subprocess_invoked
+        ),
+        "real_dry_run_envelope_dry_run_only": dict(
+            real_dry_run_envelope_dry_run_only
+        ),
+        "real_dry_run_envelope_would_execute": dict(
+            real_dry_run_envelope_would_execute
+        ),
+        "real_dry_run_envelope_ready": dict(real_dry_run_envelope_ready),
+        "real_dry_run_envelope_real_execution_enabled": dict(
+            real_dry_run_envelope_real_execution_enabled
+        ),
+        "real_dry_run_envelope_subprocess_enabled": dict(
+            real_dry_run_envelope_subprocess_enabled
+        ),
+        "real_dry_run_envelope_execution_performed": dict(
+            real_dry_run_envelope_execution_performed
+        ),
+        "real_dry_run_envelope_subprocess_invoked": dict(
+            real_dry_run_envelope_subprocess_invoked
         ),
     }
 
@@ -778,6 +834,7 @@ def _build_chain_ids(
     real_approvals: list[Mapping[str, Any]],
     real_approval_transitions: list[Mapping[str, Any]],
     real_final_gates: list[Mapping[str, Any]],
+    real_dry_run_envelopes: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -793,6 +850,7 @@ def _build_chain_ids(
         + real_approvals
         + real_approval_transitions
         + real_final_gates
+        + real_dry_run_envelopes
         + results
     )
 
@@ -818,6 +876,7 @@ def _build_chain_ids(
                 + real_approvals
                 + real_approval_transitions
                 + real_final_gates
+                + real_dry_run_envelopes
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -835,6 +894,7 @@ def _build_chain_ids(
                 + real_approvals
                 + real_approval_transitions
                 + real_final_gates
+                + real_dry_run_envelopes
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -852,6 +912,7 @@ def _build_chain_ids(
                     + real_approvals
                     + real_approval_transitions
                     + real_final_gates
+                    + real_dry_run_envelopes
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -918,6 +979,13 @@ def _build_chain_ids(
                 str(item.get("real_execution_final_gate_id") or "").strip()
                 for item in real_final_gates
                 if str(item.get("real_execution_final_gate_id") or "").strip()
+            }
+        ),
+        "real_execution_dry_run_envelope_ids": sorted(
+            {
+                str(item.get("real_execution_dry_run_envelope_id") or "").strip()
+                for item in real_dry_run_envelopes
+                if str(item.get("real_execution_dry_run_envelope_id") or "").strip()
             }
         ),
     }

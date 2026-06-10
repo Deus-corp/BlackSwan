@@ -22,6 +22,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_approval,
     validate_replay_lifecycle_retry_real_execution_approval_transition,
     validate_replay_lifecycle_retry_real_execution_final_gate,
+    validate_replay_lifecycle_retry_real_execution_dry_run_envelope,
 )
 
 
@@ -2140,3 +2141,97 @@ def test_validate_retry_real_execution_final_gate_rejects_subprocess_invoked() -
 
     assert result["valid"] is False
     assert "real_final_gate_must_not_invoke_subprocess" in result["reasons"]
+
+
+def _real_execution_dry_run_envelope(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_dry_run_envelope",
+        "real_execution_dry_run_envelope_id": "real-dry-run-envelope-1",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "command": "python -m src.testing.run_replay_evidence_check --scenario-id s --directive-id d --timeout-profile standard",
+        "argv": [
+            "python",
+            "-m",
+            "src.testing.run_replay_evidence_check",
+            "--scenario-id",
+            "s",
+            "--directive-id",
+            "d",
+            "--timeout-profile",
+            "standard",
+        ],
+        "cwd": "/workspaces/BlackSwan",
+        "env_keys": ["PATH", "PYTHONPATH", "PWD"],
+        "timeout_profile": "standard",
+        "decision_mode": "manual",
+        "dry_run_only": True,
+        "would_execute": False,
+        "ready_for_real_execution": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "real_execution_dry_run_envelope_recorded",
+        "payload": {
+            "dry_run_only": True,
+            "would_execute": False,
+            "ready_for_real_execution": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_dry_run_envelope_accepts_safe_envelope() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_dry_run_envelope(
+        _real_execution_dry_run_envelope()
+    )
+
+    assert result["valid"] is True
+    assert result["dry_run_only"] is True
+    assert result["would_execute"] is False
+    assert result["ready_for_real_execution"] is False
+    assert result["subprocess_invoked"] is False
+    assert result["argv_len"] > 0
+    assert result["env_key_count"] > 0
+
+
+def test_validate_retry_real_execution_dry_run_envelope_rejects_would_execute() -> None:
+    record = _real_execution_dry_run_envelope(would_execute=True)
+    record["payload"]["would_execute"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_dry_run_envelope(record)
+
+    assert result["valid"] is False
+    assert "dry_run_envelope_would_execute_must_remain_false" in result["reasons"]
+
+
+def test_validate_retry_real_execution_dry_run_envelope_rejects_subprocess_invoked() -> None:
+    record = _real_execution_dry_run_envelope(subprocess_invoked=True)
+    record["payload"]["subprocess_invoked"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_dry_run_envelope(record)
+
+    assert result["valid"] is False
+    assert "dry_run_envelope_must_not_invoke_subprocess" in result["reasons"]
+
+
+def test_validate_retry_real_execution_dry_run_envelope_rejects_secret_env_keys() -> None:
+    record = _real_execution_dry_run_envelope(env_keys=["PATH", "API_TOKEN"])
+
+    result = validate_replay_lifecycle_retry_real_execution_dry_run_envelope(record)
+
+    assert result["valid"] is False
+    assert "dry_run_envelope_env_keys_must_not_include_secrets" in result["reasons"]

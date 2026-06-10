@@ -30,6 +30,8 @@ def _report(**overrides):
         "real_approval_transition_subprocess_invoked": 0,
         "real_final_gate_observed": True,
         "real_final_gate_blocked": 1,
+        "real_dry_run_envelope_observed": True,
+        "real_dry_run_envelope_records": 1,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -96,6 +98,8 @@ def _report(**overrides):
             "real_approval_latest_status",
             "real_final_gate_observed",
             "real_final_gate_blocked",
+            "real_dry_run_envelope_observed",
+            "real_dry_run_envelope_records",
         ],
     }
     item.update(overrides)
@@ -176,6 +180,8 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_approval_latest_status",
             "real_final_gate_observed",
             "real_final_gate_blocked",
+            "real_dry_run_envelope_observed",
+            "real_dry_run_envelope_records",
             "checks",
             "exit_codes",
         ]

@@ -204,6 +204,27 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_final_gate_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_final_gate_subprocess_invoked")
     )
+    real_dry_run_envelope_dry_run_only = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_dry_run_only")
+    )
+    real_dry_run_envelope_would_execute = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_would_execute")
+    )
+    real_dry_run_envelope_ready = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_ready")
+    )
+    real_dry_run_envelope_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_real_execution_enabled")
+    )
+    real_dry_run_envelope_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_subprocess_enabled")
+    )
+    real_dry_run_envelope_execution_performed = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_execution_performed")
+    )
+    real_dry_run_envelope_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -308,6 +329,30 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_final_gate_subprocess_invoked": _safe_int(
             real_final_gate_subprocess_invoked.get("true"), 0
+        ),
+        "real_dry_run_envelope_observed": _safe_int(
+            real_dry_run_envelope_dry_run_only.get("true"), 0
+        ) > 0,
+        "real_dry_run_envelope_records": _safe_int(
+            real_dry_run_envelope_dry_run_only.get("true"), 0
+        ),
+        "real_dry_run_envelope_would_execute": _safe_int(
+            real_dry_run_envelope_would_execute.get("true"), 0
+        ),
+        "real_dry_run_envelope_ready": _safe_int(
+            real_dry_run_envelope_ready.get("true"), 0
+        ),
+        "real_dry_run_envelope_real_execution_enabled": _safe_int(
+            real_dry_run_envelope_real_execution_enabled.get("true"), 0
+        ),
+        "real_dry_run_envelope_subprocess_enabled": _safe_int(
+            real_dry_run_envelope_subprocess_enabled.get("true"), 0
+        ),
+        "real_dry_run_envelope_execution_performed": _safe_int(
+            real_dry_run_envelope_execution_performed.get("true"), 0
+        ),
+        "real_dry_run_envelope_subprocess_invoked": _safe_int(
+            real_dry_run_envelope_subprocess_invoked.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -460,6 +505,30 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_final_gate_subprocess_invoked": _safe_int(
                 real_final_gate_subprocess_invoked.get("true"), 0
             ),
+            "real_dry_run_envelope_observed": _safe_int(
+                real_dry_run_envelope_dry_run_only.get("true"), 0
+            ) > 0,
+            "real_dry_run_envelope_records": _safe_int(
+                real_dry_run_envelope_dry_run_only.get("true"), 0
+            ),
+            "real_dry_run_envelope_would_execute": _safe_int(
+                real_dry_run_envelope_would_execute.get("true"), 0
+            ),
+            "real_dry_run_envelope_ready": _safe_int(
+                real_dry_run_envelope_ready.get("true"), 0
+            ),
+            "real_dry_run_envelope_real_execution_enabled": _safe_int(
+                real_dry_run_envelope_real_execution_enabled.get("true"), 0
+            ),
+            "real_dry_run_envelope_subprocess_enabled": _safe_int(
+                real_dry_run_envelope_subprocess_enabled.get("true"), 0
+            ),
+            "real_dry_run_envelope_execution_performed": _safe_int(
+                real_dry_run_envelope_execution_performed.get("true"), 0
+            ),
+            "real_dry_run_envelope_subprocess_invoked": _safe_int(
+                real_dry_run_envelope_subprocess_invoked.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -493,6 +562,8 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_approval_latest_status",
             "real_final_gate_observed",
             "real_final_gate_blocked",
+            "real_dry_run_envelope_observed",
+            "real_dry_run_envelope_records",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -700,6 +771,27 @@ def _build_checks(
     )
     real_final_gate_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_final_gate_subprocess_invoked")
+    )
+    real_dry_run_envelope_dry_run_only = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_dry_run_only")
+    )
+    real_dry_run_envelope_would_execute = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_would_execute")
+    )
+    real_dry_run_envelope_ready = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_ready")
+    )
+    real_dry_run_envelope_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_real_execution_enabled")
+    )
+    real_dry_run_envelope_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_subprocess_enabled")
+    )
+    real_dry_run_envelope_execution_performed = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_execution_performed")
+    )
+    real_dry_run_envelope_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_dry_run_envelope_subprocess_invoked")
     )
 
     checks = [
@@ -1064,6 +1156,54 @@ def _build_checks(
             _safe_int(real_final_gate_subprocess_invoked.get("true"), 0) == 0,
             _safe_int(real_final_gate_subprocess_invoked.get("true"), 0),
         ),
+        _check(
+            "real_dry_run_envelope_observed_after_final_gate",
+            _safe_int(real_final_gate_statuses.get("blocked"), 0) == 0
+            or _safe_int(real_dry_run_envelope_dry_run_only.get("true"), 0) > 0,
+            {
+                "blocked_final_gates": _safe_int(
+                    real_final_gate_statuses.get("blocked"), 0
+                ),
+                "dry_run_envelopes": _safe_int(
+                    real_dry_run_envelope_dry_run_only.get("true"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_dry_run_envelope_is_dry_run_only",
+            _safe_int(real_dry_run_envelope_dry_run_only.get("true"), 0) > 0,
+            _safe_int(real_dry_run_envelope_dry_run_only.get("true"), 0),
+        ),
+        _check(
+            "real_dry_run_envelope_would_not_execute",
+            _safe_int(real_dry_run_envelope_would_execute.get("true"), 0) == 0,
+            _safe_int(real_dry_run_envelope_would_execute.get("true"), 0),
+        ),
+        _check(
+            "real_dry_run_envelope_not_ready",
+            _safe_int(real_dry_run_envelope_ready.get("true"), 0) == 0,
+            _safe_int(real_dry_run_envelope_ready.get("true"), 0),
+        ),
+        _check(
+            "real_dry_run_envelope_does_not_enable_real_execution",
+            _safe_int(real_dry_run_envelope_real_execution_enabled.get("true"), 0) == 0,
+            _safe_int(real_dry_run_envelope_real_execution_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_dry_run_envelope_does_not_enable_subprocess",
+            _safe_int(real_dry_run_envelope_subprocess_enabled.get("true"), 0) == 0,
+            _safe_int(real_dry_run_envelope_subprocess_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_dry_run_envelope_does_not_execute",
+            _safe_int(real_dry_run_envelope_execution_performed.get("true"), 0) == 0,
+            _safe_int(real_dry_run_envelope_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "real_dry_run_envelope_does_not_invoke_subprocess",
+            _safe_int(real_dry_run_envelope_subprocess_invoked.get("true"), 0) == 0,
+            _safe_int(real_dry_run_envelope_subprocess_invoked.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -1139,6 +1279,8 @@ def validate_controlled_execution_readiness_report_schema(
         "real_approval_orphans",
         "real_final_gate_observed",
         "real_final_gate_blocked",
+        "real_dry_run_envelope_observed",
+        "real_dry_run_envelope_records",
     ]
 
     reasons: list[str] = []
@@ -1231,6 +1373,11 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_final_gate_observed_must_be_bool")
     if not isinstance(report.get("real_final_gate_blocked"), int):
         reasons.append("real_final_gate_blocked_must_be_int")
+    
+    if not isinstance(report.get("real_dry_run_envelope_observed"), bool):
+        reasons.append("real_dry_run_envelope_observed_must_be_bool")
+    if not isinstance(report.get("real_dry_run_envelope_records"), int):
+        reasons.append("real_dry_run_envelope_records_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -1317,6 +1464,14 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_final_gate_subprocess_enabled={result.get('real_final_gate_subprocess_enabled', 0)} "
         f"real_final_gate_execution_performed={result.get('real_final_gate_execution_performed', 0)} "
         f"real_final_gate_subprocess_invoked={result.get('real_final_gate_subprocess_invoked', 0)} "
+        f"real_dry_run_envelope_observed={str(bool(result.get('real_dry_run_envelope_observed'))).lower()} "
+        f"real_dry_run_envelope_records={result.get('real_dry_run_envelope_records', 0)} "
+        f"real_dry_run_envelope_would_execute={result.get('real_dry_run_envelope_would_execute', 0)} "
+        f"real_dry_run_envelope_ready={result.get('real_dry_run_envelope_ready', 0)} "
+        f"real_dry_run_envelope_real_execution_enabled={result.get('real_dry_run_envelope_real_execution_enabled', 0)} "
+        f"real_dry_run_envelope_subprocess_enabled={result.get('real_dry_run_envelope_subprocess_enabled', 0)} "
+        f"real_dry_run_envelope_execution_performed={result.get('real_dry_run_envelope_execution_performed', 0)} "
+        f"real_dry_run_envelope_subprocess_invoked={result.get('real_dry_run_envelope_subprocess_invoked', 0)} "
     )
 
 

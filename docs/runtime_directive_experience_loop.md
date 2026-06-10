@@ -1462,6 +1462,19 @@ supported real adapter and subprocess boundary.
 
 ---
 
+### Real execution dry-run envelope
+
+`replay_lifecycle_retry_real_execution_dry_run_envelope` captures the future
+execution envelope without invoking subprocesses. It records argv, cwd, and a
+sanitized env key list while keeping `dry_run_only=true`,
+`would_execute=false`, `ready_for_real_execution=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`execution_performed=false`, and `subprocess_invoked=false`.
+
+The envelope is an audit artifact only. It does not execute commands.
+
+---
+
 ## Related modules
 
 ```text
@@ -1501,25 +1514,8 @@ python -m src.swarms.runtime.cluster_cli up \
 ---
 
 ```bash
-python -m src.testing.build_real_execution_preflight \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.build_real_execution_approval \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --approval-status pending \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-```
-
----
-
-runtime chain:
-
-```bash
 python -m src.testing.retry_governance_smoke \
-  --proposal-id \
+  --proposal-id replay-retry-real-observe-smoke-1 \
   --approval-id replay-retry-real-observe-approval-1 \
   --plan-id replay-retry-real-observe-plan-1 \
   --rendered-command-id replay-retry-real-observe-command-1 \
@@ -1544,7 +1540,7 @@ python -m src.testing.run_controlled_retry_command \
 
 ---
 
-PR 34.4:
+real gate chain:
 
 ```bash
 python -m src.testing.build_real_execution_preflight \
@@ -1566,6 +1562,20 @@ python -m src.testing.build_real_execution_approval_transition \
 
 python -m src.testing.build_real_execution_final_gate \
   --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.build_real_execution_dry_run_envelope \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+---
+
+```bash
+python -m src.testing.inspect_retry_governance_trail \
+  --proposal-id replay-retry-real-observe-smoke-1 \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
