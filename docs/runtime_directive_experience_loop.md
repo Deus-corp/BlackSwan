@@ -1501,72 +1501,71 @@ python -m src.swarms.runtime.cluster_cli up \
 ---
 
 ```bash
-python -m src.testing.inspect_retry_governance_trail \
-  --proposal-id replay-retry-real-flag-smoke-1 \
+python -m src.testing.build_real_execution_preflight \
+  --rendered-command-id replay-retry-real-observe-command-1 \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 
-python -m src.testing.check_controlled_execution_readiness \
-  --proposal-id replay-retry-real-flag-smoke-1 \
-  --rendered-command-id replay-retry-real-flag-command-1 \
-  --require-operator-authorized \
+python -m src.testing.build_real_execution_approval \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --approval-status pending \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
 
 ---
 
-```bash
-python -m src.testing.retry_governance_smoke \
-  --proposal-id replay-retry-violation-fixtures-smoke-1 \
-  --approval-id replay-retry-violation-fixtures-approval-1 \
-  --plan-id replay-retry-violation-fixtures-plan-1 \
-  --rendered-command-id replay-retry-violation-fixtures-command-1 \
-  --result-id replay-retry-violation-fixtures-result-1 \
-  --require-clean \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.run_controlled_retry_command \
-  --rendered-command-id replay-retry-violation-fixtures-command-1 \
-  --allow-controlled-execution \
-  --mock-execution \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.check_controlled_execution_readiness \
-  --proposal-id replay-retry-violation-fixtures-smoke-1 \
-  --rendered-command-id replay-retry-violation-fixtures-command-1 \
-  --require-operator-authorized \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-```
-
----
+runtime chain:
 
 ```bash
 python -m src.testing.retry_governance_smoke \
-  --proposal-id replay-retry-real-observe-smoke-1 \
+  --proposal-id \
   --approval-id replay-retry-real-observe-approval-1 \
   --plan-id replay-retry-real-observe-plan-1 \
   --rendered-command-id replay-retry-real-observe-command-1 \
   --result-id replay-retry-real-observe-result-1 \
-  --require-clean \
+  --timeout-profile standard \
+  --decision-mode manual \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
 
+---
+
+controlled real-request result:
+
+```bash
 python -m src.testing.run_controlled_retry_command \
   --rendered-command-id replay-retry-real-observe-command-1 \
   --allow-controlled-execution \
   --real-execution \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
 
-python -m src.testing.inspect_retry_governance_trail \
-  --proposal-id replay-retry-real-observe-smoke-1 \
+---
+
+PR 34.4:
+
+```bash
+python -m src.testing.build_real_execution_preflight \
+  --rendered-command-id replay-retry-real-observe-command-1 \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 
-python -m src.testing.check_controlled_execution_readiness \
-  --proposal-id replay-retry-real-observe-smoke-1 \
+python -m src.testing.build_real_execution_approval \
   --rendered-command-id replay-retry-real-observe-command-1 \
-  --require-operator-authorized \
+  --approval-status pending \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.build_real_execution_approval_transition \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --to-status approved \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.build_real_execution_final_gate \
+  --rendered-command-id replay-retry-real-observe-command-1 \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
