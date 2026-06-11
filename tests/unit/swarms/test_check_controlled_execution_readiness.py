@@ -137,6 +137,9 @@ def _trail_summary(**overrides):
         "real_noop_result_subprocess_invoked": {"true": 1},
         "real_noop_result_execution_performed": {"true": 1},
         "real_noop_result_exit_codes": {"0": 1},
+        "real_noop_result_stdout_marker_observed": {"true": 1},
+        "real_noop_linkage_complete": True,
+        "real_noop_result_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -318,6 +321,9 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "real_noop_result_subprocess_invoked": 1,
             "real_noop_result_execution_performed": 1,
             "real_noop_result_exit_code_zero": 1,
+            "real_noop_linkage_complete": True,
+            "real_noop_result_orphans": 0,
+            "real_noop_result_stdout_marker_observed": 1,
         }
     )
 
@@ -365,6 +371,9 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "real_noop_result_records=1" in text
     assert "real_noop_result_subprocess_invoked=1" in text
     assert "real_noop_result_exit_code_zero=1" in text
+    assert "real_noop_linkage_complete=true" in text
+    assert "real_noop_result_orphans=0" in text
+    assert "real_noop_result_stdout_marker_observed=1" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -561,6 +570,9 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_noop_result_subprocess_invoked": 1,
         "real_noop_result_execution_performed": 1,
         "real_noop_result_exit_code_zero": 1,
+        "real_noop_linkage_complete": True,
+        "real_noop_result_orphans": 0,
+        "real_noop_result_stdout_marker_observed": 1,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -660,6 +672,9 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_noop_result_subprocess_invoked": 1,
         "real_noop_result_execution_performed": 1,
         "real_noop_result_exit_code_zero": 1,
+        "real_noop_linkage_complete": True,
+        "real_noop_result_orphans": 0,
+        "real_noop_result_stdout_marker_observed": 1,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -810,3 +825,33 @@ def test_controlled_execution_readiness_fails_for_real_dry_run_envelope_orphan()
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_dry_run_envelope_links_to_final_gate" in failed
+
+
+def test_controlled_execution_readiness_fails_for_real_noop_result_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_noop_result_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_noop_result_links_to_dry_run_envelope" in failed
+
+
+def test_controlled_execution_readiness_fails_without_real_noop_stdout_marker() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_noop_result_stdout_marker_observed={"false": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_noop_result_stdout_marker_observed" in failed

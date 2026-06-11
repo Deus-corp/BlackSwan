@@ -631,6 +631,10 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_noop_result_subprocess_invoked"]["true"] == 1
     assert summary["real_noop_result_execution_performed"]["true"] == 1
     assert summary["real_noop_result_exit_codes"]["0"] == 1
+    assert summary["real_noop_result_stdout_marker_observed"]["true"] == 1
+    assert summary["real_noop_linkage_complete"] is True
+    assert summary["real_noop_result_dry_run_envelope_matches"] == 1
+    assert summary["real_noop_result_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -889,3 +893,29 @@ def _real_noop_result(**overrides):
     }
     item.update(overrides)
     return item
+
+
+def test_inspect_retry_governance_trail_counts_real_noop_result_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(),
+            _real_noop_result(
+                real_execution_dry_run_envelope_id="missing-dry-run-envelope"
+            ),
+        ]
+    )
+
+    assert summary["real_noop_linkage_complete"] is False
+    assert summary["real_noop_result_orphans"] == 1

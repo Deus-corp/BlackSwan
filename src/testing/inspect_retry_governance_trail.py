@@ -491,6 +491,10 @@ def inspect_retry_governance_trail_from_records(
         str(item.get("exit_code"))
         for item in real_noop_results
     )
+    real_noop_result_stdout_marker_observed = Counter(
+        str("controlled-noop-ok" in str(item.get("stdout") or "")).lower()
+        for item in real_noop_results
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -529,6 +533,11 @@ def inspect_retry_governance_trail_from_records(
     real_dry_run_linkage = _real_dry_run_linkage_summary(
         real_final_gates=real_final_gates,
         real_dry_run_envelopes=real_dry_run_envelopes,
+    )
+
+    real_noop_linkage = _real_noop_linkage_summary(
+        real_dry_run_envelopes=real_dry_run_envelopes,
+        real_noop_results=real_noop_results,
     )
 
     return {
@@ -744,6 +753,19 @@ def inspect_retry_governance_trail_from_records(
             real_noop_result_execution_performed
         ),
         "real_noop_result_exit_codes": dict(real_noop_result_exit_codes),
+        "real_noop_result_stdout_marker_observed": dict(
+            real_noop_result_stdout_marker_observed
+        ),
+        "real_noop_linkage": real_noop_linkage,
+        "real_noop_linkage_complete": bool(
+            real_noop_linkage.get("real_noop_linkage_complete")
+        ),
+        "real_noop_result_dry_run_envelope_matches": real_noop_linkage.get(
+            "real_noop_result_dry_run_envelope_matches", 0
+        ),
+        "real_noop_result_orphans": real_noop_linkage.get(
+            "real_noop_result_orphans", 0
+        ),
     }
 
 def _missing_stages(
@@ -1347,6 +1369,8 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"real_approval_orphans={summary.get('real_approval_orphans', 0)} "
         f"real_dry_run_linkage_complete={str(bool(summary.get('real_dry_run_linkage_complete'))).lower()} "
         f"real_dry_run_envelope_orphans={summary.get('real_dry_run_envelope_orphans', 0)} "
+        f"real_noop_linkage_complete={str(bool(summary.get('real_noop_linkage_complete'))).lower()} "
+        f"real_noop_result_orphans={summary.get('real_noop_result_orphans', 0)} "
     )
 
 
@@ -1474,6 +1498,39 @@ def _real_dry_run_linkage_summary(
             bool(real_dry_run_envelopes)
             and envelope_orphans == 0
         ),
+    }
+
+
+def _real_noop_linkage_summary(
+    *,
+    real_dry_run_envelopes: list[Mapping[str, Any]],
+    real_noop_results: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    dry_run_envelope_ids = {
+        clean(item.get("real_execution_dry_run_envelope_id"))
+        for item in real_dry_run_envelopes
+        if clean(item.get("real_execution_dry_run_envelope_id"))
+    }
+
+    noop_dry_run_matches = 0
+    noop_orphans = 0
+
+    for noop_result in real_noop_results:
+        envelope_id = clean(noop_result.get("real_execution_dry_run_envelope_id"))
+
+        if envelope_id and envelope_id in dry_run_envelope_ids:
+            noop_dry_run_matches += 1
+        else:
+            noop_orphans += 1
+
+    return {
+        "real_noop_result_dry_run_envelope_matches": noop_dry_run_matches,
+        "real_noop_result_orphans": noop_orphans,
+        "real_noop_linkage_complete": bool(real_noop_results)
+        and noop_orphans == 0,
     }
 
 

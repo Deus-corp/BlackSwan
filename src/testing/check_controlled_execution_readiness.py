@@ -225,6 +225,9 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_dry_run_envelope_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_dry_run_envelope_subprocess_invoked")
     )
+    real_noop_result_stdout_marker_observed = _safe_mapping(
+        trail_summary.get("real_noop_result_stdout_marker_observed")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -383,6 +386,15 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_noop_result_exit_code_zero": _safe_int(
             real_noop_result_exit_codes.get("0"), 0
+        ),
+        "real_noop_linkage_complete": bool(
+            trail_summary.get("real_noop_linkage_complete")
+        ),
+        "real_noop_result_orphans": _safe_int(
+            trail_summary.get("real_noop_result_orphans"), 0
+        ),
+        "real_noop_result_stdout_marker_observed": _safe_int(
+            real_noop_result_stdout_marker_observed.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -589,6 +601,15 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_noop_result_exit_code_zero": _safe_int(
                 real_noop_result_exit_codes.get("0"), 0
             ),
+            "real_noop_linkage_complete": bool(
+                trail_summary.get("real_noop_linkage_complete")
+            ),
+            "real_noop_result_orphans": _safe_int(
+                trail_summary.get("real_noop_result_orphans"), 0
+            ),
+            "real_noop_result_stdout_marker_observed": _safe_int(
+                real_noop_result_stdout_marker_observed.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -628,6 +649,9 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_dry_run_envelope_orphans",
             "real_noop_result_observed",
             "real_noop_result_records",
+            "real_noop_linkage_complete",
+            "real_noop_result_orphans",
+            "real_noop_result_stdout_marker_observed",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -877,6 +901,9 @@ def _build_checks(
     )
     real_noop_result_exit_codes = _safe_mapping(
         trail_summary.get("real_noop_result_exit_codes")
+    )
+    real_noop_result_stdout_marker_observed = _safe_mapping(
+        trail_summary.get("real_noop_result_stdout_marker_observed")
     )
 
     checks = [
@@ -1350,6 +1377,24 @@ def _build_checks(
             _safe_int(real_noop_result_exit_codes.get("0"), 0) == 1,
             real_noop_result_exit_codes,
         ),
+        _check(
+            "real_noop_result_links_to_dry_run_envelope",
+            _safe_int(real_noop_result_noop_only.get("true"), 0) == 0
+            or _safe_int(trail_summary.get("real_noop_result_orphans"), 0) == 0,
+            {
+                "noop_results": _safe_int(
+                    real_noop_result_noop_only.get("true"), 0
+                ),
+                "real_noop_result_orphans": _safe_int(
+                    trail_summary.get("real_noop_result_orphans"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_noop_result_stdout_marker_observed",
+            _safe_int(real_noop_result_stdout_marker_observed.get("true"), 0) == 1,
+            _safe_int(real_noop_result_stdout_marker_observed.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -1431,6 +1476,9 @@ def validate_controlled_execution_readiness_report_schema(
         "real_dry_run_envelope_orphans",
         "real_noop_result_observed",
         "real_noop_result_records",
+        "real_noop_linkage_complete",
+        "real_noop_result_orphans",
+        "real_noop_result_stdout_marker_observed",
     ]
 
     reasons: list[str] = []
@@ -1539,6 +1587,13 @@ def validate_controlled_execution_readiness_report_schema(
     if not isinstance(report.get("real_noop_result_records"), int):
         reasons.append("real_noop_result_records_must_be_int")
 
+    if not isinstance(report.get("real_noop_linkage_complete"), bool):
+        reasons.append("real_noop_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_noop_result_orphans"), int):
+        reasons.append("real_noop_result_orphans_must_be_int")
+    if not isinstance(report.get("real_noop_result_stdout_marker_observed"), int):
+        reasons.append("real_noop_result_stdout_marker_observed_must_be_int")
+
     return {
         "type": "controlled_execution_readiness_schema_validation",
         "valid": not reasons,
@@ -1642,6 +1697,9 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_noop_result_subprocess_invoked={result.get('real_noop_result_subprocess_invoked', 0)} "
         f"real_noop_result_execution_performed={result.get('real_noop_result_execution_performed', 0)} "
         f"real_noop_result_exit_code_zero={result.get('real_noop_result_exit_code_zero', 0)} "
+        f"real_noop_linkage_complete={str(bool(result.get('real_noop_linkage_complete'))).lower()} "
+        f"real_noop_result_orphans={result.get('real_noop_result_orphans', 0)} "
+        f"real_noop_result_stdout_marker_observed={result.get('real_noop_result_stdout_marker_observed', 0)} "
     )
 
 
