@@ -1617,8 +1617,18 @@ python -m src.testing.build_real_execution_dry_run_envelope \
 ---
 
 ```bash
-python -m src.testing.inspect_retry_governance_trail \
-  --proposal-id replay-retry-real-observe-smoke-1 \
+python -m src.testing.run_real_execution_noop_harness \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.build_real_execution_read_only_promotion \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python -m src.testing.build_real_execution_read_only_final_gate \
+  --rendered-command-id replay-retry-real-observe-command-1 \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
