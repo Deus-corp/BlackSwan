@@ -1503,6 +1503,21 @@ read-only command. does not execute the read-only command.
 
 ---
 
+### Read-only execution final gate
+
+`replay_lifecycle_retry_real_execution_read_only_final_gate` is a fail-closed
+gate after read-only promotion. It records that promotion preconditions were
+satisfied, but keeps `gate_status=blocked`,
+`ready_for_read_only_execution=false`, `read_only_execution_enabled=false`,
+`subprocess_enabled=false`, `subprocess_invoked=false`,
+`execution_performed=false`, `rendered_command_executed=false`, and
+`dry_run_envelope_command_executed=false`.
+
+The gate requires a separate PR before any read-only command execution can be
+enabled.
+
+---
+
 ## Related modules
 
 ```text
