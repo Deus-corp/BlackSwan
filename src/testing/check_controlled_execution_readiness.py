@@ -261,6 +261,30 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_read_only_final_gate_dry_run_command_executed = _safe_mapping(
         trail_summary.get("real_read_only_final_gate_dry_run_command_executed")
     )
+    real_read_only_approval_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_approval_statuses")
+    )
+    real_read_only_approval_read_only_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_approval_read_only_execution_enabled")
+    )
+    real_read_only_approval_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_approval_real_execution_enabled")
+    )
+    real_read_only_approval_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_approval_subprocess_enabled")
+    )
+    real_read_only_approval_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_approval_subprocess_invoked")
+    )
+    real_read_only_approval_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_approval_execution_performed")
+    )
+    real_read_only_approval_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_approval_rendered_command_executed")
+    )
+    real_read_only_approval_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_approval_dry_run_command_executed")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -509,6 +533,42 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_read_only_final_gate_dry_run_command_executed": _safe_int(
             real_read_only_final_gate_dry_run_command_executed.get("true"), 0
+        ),
+        "real_read_only_approval_observed": _safe_int(
+            real_read_only_approval_statuses.get("pending"), 0
+        ) > 0,
+        "real_read_only_approval_records": _safe_int(
+            real_read_only_approval_statuses.get("pending"), 0
+        ),
+        "real_read_only_approval_linkage_complete": bool(
+            trail_summary.get("real_read_only_approval_linkage_complete")
+        ),
+        "real_read_only_approval_orphans": _safe_int(
+            trail_summary.get("real_read_only_approval_orphans"), 0
+        ),
+        "real_read_only_approval_pending": _safe_int(
+            real_read_only_approval_statuses.get("pending"), 0
+        ),
+        "real_read_only_approval_read_only_execution_enabled": _safe_int(
+            real_read_only_approval_read_only_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_approval_real_execution_enabled": _safe_int(
+            real_read_only_approval_real_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_approval_subprocess_enabled": _safe_int(
+            real_read_only_approval_subprocess_enabled.get("true"), 0
+        ),
+        "real_read_only_approval_subprocess_invoked": _safe_int(
+            real_read_only_approval_subprocess_invoked.get("true"), 0
+        ),
+        "real_read_only_approval_execution_performed": _safe_int(
+            real_read_only_approval_execution_performed.get("true"), 0
+        ),
+        "real_read_only_approval_rendered_command_executed": _safe_int(
+            real_read_only_approval_rendered_command_executed.get("true"), 0
+        ),
+        "real_read_only_approval_dry_run_command_executed": _safe_int(
+            real_read_only_approval_dry_run_command_executed.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -805,6 +865,42 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_final_gate_dry_run_command_executed": _safe_int(
                 real_read_only_final_gate_dry_run_command_executed.get("true"), 0
             ),
+            "real_read_only_approval_observed": _safe_int(
+                real_read_only_approval_statuses.get("pending"), 0
+            ) > 0,
+            "real_read_only_approval_records": _safe_int(
+                real_read_only_approval_statuses.get("pending"), 0
+            ),
+            "real_read_only_approval_linkage_complete": bool(
+                trail_summary.get("real_read_only_approval_linkage_complete")
+            ),
+            "real_read_only_approval_orphans": _safe_int(
+                trail_summary.get("real_read_only_approval_orphans"), 0
+            ),
+            "real_read_only_approval_pending": _safe_int(
+                real_read_only_approval_statuses.get("pending"), 0
+            ),
+            "real_read_only_approval_read_only_execution_enabled": _safe_int(
+                real_read_only_approval_read_only_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_approval_real_execution_enabled": _safe_int(
+                real_read_only_approval_real_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_approval_subprocess_enabled": _safe_int(
+                real_read_only_approval_subprocess_enabled.get("true"), 0
+            ),
+            "real_read_only_approval_subprocess_invoked": _safe_int(
+                real_read_only_approval_subprocess_invoked.get("true"), 0
+            ),
+            "real_read_only_approval_execution_performed": _safe_int(
+                real_read_only_approval_execution_performed.get("true"), 0
+            ),
+            "real_read_only_approval_rendered_command_executed": _safe_int(
+                real_read_only_approval_rendered_command_executed.get("true"), 0
+            ),
+            "real_read_only_approval_dry_run_command_executed": _safe_int(
+                real_read_only_approval_dry_run_command_executed.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -855,6 +951,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_final_gate_records",
             "real_read_only_final_gate_linkage_complete",
             "real_read_only_final_gate_orphans",
+            "real_read_only_approval_observed",
+            "real_read_only_approval_records",
+            "real_read_only_approval_linkage_complete",
+            "real_read_only_approval_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -1170,6 +1270,30 @@ def _build_checks(
     )
     real_read_only_final_gate_dry_run_command_executed = _safe_mapping(
         trail_summary.get("real_read_only_final_gate_dry_run_command_executed")
+    )
+    real_read_only_approval_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_approval_statuses")
+    )
+    real_read_only_approval_read_only_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_approval_read_only_execution_enabled")
+    )
+    real_read_only_approval_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_approval_real_execution_enabled")
+    )
+    real_read_only_approval_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_approval_subprocess_enabled")
+    )
+    real_read_only_approval_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_approval_subprocess_invoked")
+    )
+    real_read_only_approval_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_approval_execution_performed")
+    )
+    real_read_only_approval_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_approval_rendered_command_executed")
+    )
+    real_read_only_approval_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_approval_dry_run_command_executed")
     )
 
     checks = [
@@ -1873,6 +1997,94 @@ def _build_checks(
                 real_read_only_final_gate_dry_run_command_executed.get("true"), 0
             ),
         ),
+        _check(
+            "real_read_only_approval_observed_after_final_gate",
+            _safe_int(real_read_only_final_gate_statuses.get("blocked"), 0) == 0
+            or _safe_int(real_read_only_approval_statuses.get("pending"), 0) > 0,
+            {
+                "final_gates": _safe_int(
+                    real_read_only_final_gate_statuses.get("blocked"), 0
+                ),
+                "approvals": _safe_int(
+                    real_read_only_approval_statuses.get("pending"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_read_only_approval_links_to_final_gate",
+            _safe_int(real_read_only_approval_statuses.get("pending"), 0) == 0
+            or _safe_int(
+                trail_summary.get("real_read_only_approval_orphans"), 0
+            )
+            == 0,
+            {
+                "approvals": _safe_int(
+                    real_read_only_approval_statuses.get("pending"), 0
+                ),
+                "orphans": _safe_int(
+                    trail_summary.get("real_read_only_approval_orphans"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_read_only_approval_is_pending",
+            _safe_int(real_read_only_approval_statuses.get("pending"), 0) == 1,
+            _safe_int(real_read_only_approval_statuses.get("pending"), 0),
+        ),
+        _check(
+            "real_read_only_approval_does_not_enable_read_only_execution",
+            _safe_int(
+                real_read_only_approval_read_only_execution_enabled.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_approval_read_only_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_approval_does_not_enable_real_execution",
+            _safe_int(real_read_only_approval_real_execution_enabled.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_approval_real_execution_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_approval_does_not_enable_subprocess",
+            _safe_int(real_read_only_approval_subprocess_enabled.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_approval_subprocess_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_approval_does_not_invoke_subprocess",
+            _safe_int(real_read_only_approval_subprocess_invoked.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_approval_subprocess_invoked.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_approval_does_not_execute",
+            _safe_int(real_read_only_approval_execution_performed.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_approval_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_approval_did_not_execute_rendered_command",
+            _safe_int(
+                real_read_only_approval_rendered_command_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_approval_rendered_command_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_approval_did_not_execute_dry_run_command",
+            _safe_int(
+                real_read_only_approval_dry_run_command_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_approval_dry_run_command_executed.get("true"), 0
+            ),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -1965,6 +2177,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_read_only_final_gate_records",
         "real_read_only_final_gate_linkage_complete",
         "real_read_only_final_gate_orphans",
+        "real_read_only_approval_observed",
+        "real_read_only_approval_records",
+        "real_read_only_approval_linkage_complete",
+        "real_read_only_approval_orphans",
     ]
 
     reasons: list[str] = []
@@ -2097,6 +2313,15 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_read_only_final_gate_linkage_complete_must_be_bool")
     if not isinstance(report.get("real_read_only_final_gate_orphans"), int):
         reasons.append("real_read_only_final_gate_orphans_must_be_int")
+
+    if not isinstance(report.get("real_read_only_approval_observed"), bool):
+        reasons.append("real_read_only_approval_observed_must_be_bool")
+    if not isinstance(report.get("real_read_only_approval_records"), int):
+        reasons.append("real_read_only_approval_records_must_be_int")
+    if not isinstance(report.get("real_read_only_approval_linkage_complete"), bool):
+        reasons.append("real_read_only_approval_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_read_only_approval_orphans"), int):
+        reasons.append("real_read_only_approval_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -2231,6 +2456,18 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_read_only_final_gate_execution_performed={result.get('real_read_only_final_gate_execution_performed', 0)} "
         f"real_read_only_final_gate_rendered_command_executed={result.get('real_read_only_final_gate_rendered_command_executed', 0)} "
         f"real_read_only_final_gate_dry_run_command_executed={result.get('real_read_only_final_gate_dry_run_command_executed', 0)} "
+        f"real_read_only_approval_observed={str(bool(result.get('real_read_only_approval_observed'))).lower()} "
+        f"real_read_only_approval_records={result.get('real_read_only_approval_records', 0)} "
+        f"real_read_only_approval_linkage_complete={str(bool(result.get('real_read_only_approval_linkage_complete'))).lower()} "
+        f"real_read_only_approval_orphans={result.get('real_read_only_approval_orphans', 0)} "
+        f"real_read_only_approval_pending={result.get('real_read_only_approval_pending', 0)} "
+        f"real_read_only_approval_read_only_execution_enabled={result.get('real_read_only_approval_read_only_execution_enabled', 0)} "
+        f"real_read_only_approval_real_execution_enabled={result.get('real_read_only_approval_real_execution_enabled', 0)} "
+        f"real_read_only_approval_subprocess_enabled={result.get('real_read_only_approval_subprocess_enabled', 0)} "
+        f"real_read_only_approval_subprocess_invoked={result.get('real_read_only_approval_subprocess_invoked', 0)} "
+        f"real_read_only_approval_execution_performed={result.get('real_read_only_approval_execution_performed', 0)} "
+        f"real_read_only_approval_rendered_command_executed={result.get('real_read_only_approval_rendered_command_executed', 0)} "
+        f"real_read_only_approval_dry_run_command_executed={result.get('real_read_only_approval_dry_run_command_executed', 0)} "
     )
 
 

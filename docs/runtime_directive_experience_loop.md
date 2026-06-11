@@ -1518,6 +1518,21 @@ enabled.
 
 ---
 
+### Read-only execution approval scaffold
+
+`replay_lifecycle_retry_real_execution_read_only_approval` records explicit
+approval intent for future read-only execution. The record may be pending,
+approved, or rejected, but it must keep `read_only_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`subprocess_invoked=false`, `execution_performed=false`,
+`rendered_command_executed=false`, and
+`dry_run_envelope_command_executed=false`.
+
+This approval scaffold is an audit artifact only and does not execute the
+read-only command.
+
+---
+
 ## Related modules
 
 ```text

@@ -35,6 +35,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_noop_result",
     "replay_lifecycle_retry_real_execution_read_only_promotion",
     "replay_lifecycle_retry_real_execution_read_only_final_gate",
+    "replay_lifecycle_retry_real_execution_read_only_approval",
 }
 
 
@@ -184,6 +185,12 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_read_only_final_gate"
+    ]
+    real_read_only_approvals = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_read_only_approval"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -593,6 +600,38 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("dry_run_envelope_command_executed"))).lower()
         for item in real_read_only_final_gates
     )
+    real_read_only_approval_statuses = Counter(
+        str(item.get("approval_status") or "unknown").strip() or "unknown"
+        for item in real_read_only_approvals
+    )
+    real_read_only_approval_read_only_execution_enabled = Counter(
+        str(bool(item.get("read_only_execution_enabled"))).lower()
+        for item in real_read_only_approvals
+    )
+    real_read_only_approval_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_read_only_approvals
+    )
+    real_read_only_approval_subprocess_enabled = Counter(
+        str(bool(item.get("subprocess_enabled"))).lower()
+        for item in real_read_only_approvals
+    )
+    real_read_only_approval_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_read_only_approvals
+    )
+    real_read_only_approval_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_read_only_approvals
+    )
+    real_read_only_approval_rendered_command_executed = Counter(
+        str(bool(item.get("rendered_command_executed"))).lower()
+        for item in real_read_only_approvals
+    )
+    real_read_only_approval_dry_run_command_executed = Counter(
+        str(bool(item.get("dry_run_envelope_command_executed"))).lower()
+        for item in real_read_only_approvals
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -611,6 +650,7 @@ def inspect_retry_governance_trail_from_records(
         real_noop_results=real_noop_results,
         real_read_only_promotions=real_read_only_promotions,
         real_read_only_final_gates=real_read_only_final_gates,
+        real_read_only_approvals=real_read_only_approvals,
         results=results,
     )
 
@@ -654,6 +694,11 @@ def inspect_retry_governance_trail_from_records(
         )
     )
 
+    real_read_only_approval_linkage = _real_read_only_approval_linkage_summary(
+        real_read_only_final_gates=real_read_only_final_gates,
+        real_read_only_approvals=real_read_only_approvals,
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -680,6 +725,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_noop_results": len(real_noop_results),
             "real_execution_read_only_promotions": len(real_read_only_promotions),
             "real_execution_read_only_final_gates": len(real_read_only_final_gates),
+            "real_execution_read_only_approvals": len(real_read_only_approvals),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -975,6 +1021,46 @@ def inspect_retry_governance_trail_from_records(
                 "real_read_only_final_gate_orphans", 0
             )
         ),
+        "real_read_only_approval_statuses": dict(
+            real_read_only_approval_statuses
+        ),
+        "real_read_only_approval_read_only_execution_enabled": dict(
+            real_read_only_approval_read_only_execution_enabled
+        ),
+        "real_read_only_approval_real_execution_enabled": dict(
+            real_read_only_approval_real_execution_enabled
+        ),
+        "real_read_only_approval_subprocess_enabled": dict(
+            real_read_only_approval_subprocess_enabled
+        ),
+        "real_read_only_approval_subprocess_invoked": dict(
+            real_read_only_approval_subprocess_invoked
+        ),
+        "real_read_only_approval_execution_performed": dict(
+            real_read_only_approval_execution_performed
+        ),
+        "real_read_only_approval_rendered_command_executed": dict(
+            real_read_only_approval_rendered_command_executed
+        ),
+        "real_read_only_approval_dry_run_command_executed": dict(
+            real_read_only_approval_dry_run_command_executed
+        ),
+        "real_read_only_approval_linkage": real_read_only_approval_linkage,
+        "real_read_only_approval_linkage_complete": bool(
+            real_read_only_approval_linkage.get(
+                "real_read_only_approval_linkage_complete"
+            )
+        ),
+        "real_read_only_approval_final_gate_matches": (
+            real_read_only_approval_linkage.get(
+                "real_read_only_approval_final_gate_matches", 0
+            )
+        ),
+        "real_read_only_approval_orphans": (
+            real_read_only_approval_linkage.get(
+                "real_read_only_approval_orphans", 0
+            )
+        ),
     }
 
 def _missing_stages(
@@ -1137,6 +1223,7 @@ def _build_chain_ids(
     real_noop_results: list[Mapping[str, Any]],
     real_read_only_promotions: list[Mapping[str, Any]],
     real_read_only_final_gates: list[Mapping[str, Any]],
+    real_read_only_approvals: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -1156,6 +1243,7 @@ def _build_chain_ids(
         + real_noop_results
         + real_read_only_promotions
         + real_read_only_final_gates
+        + real_read_only_approvals
         + results
     )
 
@@ -1185,6 +1273,7 @@ def _build_chain_ids(
                 + real_noop_results
                 + real_read_only_promotions
                 + real_read_only_final_gates
+                + real_read_only_approvals
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -1206,6 +1295,7 @@ def _build_chain_ids(
                 + real_noop_results
                 + real_read_only_promotions
                 + real_read_only_final_gates
+                + real_read_only_approvals
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -1227,6 +1317,7 @@ def _build_chain_ids(
                     + real_noop_results
                     + real_read_only_promotions
                     + real_read_only_final_gates
+                    + real_read_only_approvals
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -1325,6 +1416,13 @@ def _build_chain_ids(
                 str(item.get("real_execution_read_only_final_gate_id") or "").strip()
                 for item in real_read_only_final_gates
                 if str(item.get("real_execution_read_only_final_gate_id") or "").strip()
+            }
+        ),
+        "real_execution_read_only_approval_ids": sorted(
+            {
+                str(item.get("real_execution_read_only_approval_id") or "").strip()
+                for item in real_read_only_approvals
+                if str(item.get("real_execution_read_only_approval_id") or "").strip()
             }
         ),
     }
@@ -1861,6 +1959,39 @@ def _real_read_only_final_gate_linkage_summary(
             real_read_only_final_gates
         )
         and gate_orphans == 0,
+    }
+
+
+def _real_read_only_approval_linkage_summary(
+    *,
+    real_read_only_final_gates: list[Mapping[str, Any]],
+    real_read_only_approvals: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    final_gate_ids = {
+        clean(item.get("real_execution_read_only_final_gate_id"))
+        for item in real_read_only_final_gates
+        if clean(item.get("real_execution_read_only_final_gate_id"))
+    }
+
+    approval_final_gate_matches = 0
+    approval_orphans = 0
+
+    for approval in real_read_only_approvals:
+        final_gate_id = clean(approval.get("real_execution_read_only_final_gate_id"))
+
+        if final_gate_id and final_gate_id in final_gate_ids:
+            approval_final_gate_matches += 1
+        else:
+            approval_orphans += 1
+
+    return {
+        "real_read_only_approval_final_gate_matches": approval_final_gate_matches,
+        "real_read_only_approval_orphans": approval_orphans,
+        "real_read_only_approval_linkage_complete": bool(real_read_only_approvals)
+        and approval_orphans == 0,
     }
 
 

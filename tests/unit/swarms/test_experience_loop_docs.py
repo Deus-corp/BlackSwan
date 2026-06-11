@@ -427,3 +427,7 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "ready_for_read_only_execution=false" in text
     assert "read_only_execution_enabled=false" in text
     assert "requires a separate PR" in text
+    assert "Read-only execution approval scaffold" in text
+    assert "replay_lifecycle_retry_real_execution_read_only_approval" in text
+    assert "read_only_execution_enabled=false" in text
+    assert "does not execute the read-only command" in text
