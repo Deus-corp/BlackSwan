@@ -1533,6 +1533,20 @@ read-only command.
 
 ---
 
+### Read-only execution approval transition
+
+`replay_lifecycle_retry_real_execution_read_only_approval_transition` records an
+immutable read-only execution approval status transition, such as
+`from_status=pending` to `to_status=approved` or `to_status=rejected`.
+
+The transition is an audit artifact only. Even when approved it must keep
+`read_only_execution_enabled=false`, `real_execution_enabled=false`,
+`subprocess_enabled=false`, `subprocess_invoked=false`,
+`execution_performed=false`, `rendered_command_executed=false`, and
+`dry_run_envelope_command_executed=false`.
+
+---
+
 ## Related modules
 
 ```text

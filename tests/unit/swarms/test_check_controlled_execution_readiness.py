@@ -175,6 +175,18 @@ def _trail_summary(**overrides):
         "real_read_only_approval_dry_run_command_executed": {"false": 1},
         "real_read_only_approval_linkage_complete": True,
         "real_read_only_approval_orphans": 0,
+        "real_read_only_approval_transition_from_statuses": {"pending": 1},
+        "real_read_only_approval_transition_to_statuses": {"approved": 1},
+        "real_read_only_approval_transition_read_only_execution_enabled": {"false": 1},
+        "real_read_only_approval_transition_real_execution_enabled": {"false": 1},
+        "real_read_only_approval_transition_subprocess_enabled": {"false": 1},
+        "real_read_only_approval_transition_subprocess_invoked": {"false": 1},
+        "real_read_only_approval_transition_execution_performed": {"false": 1},
+        "real_read_only_approval_transition_rendered_command_executed": {"false": 1},
+        "real_read_only_approval_transition_dry_run_command_executed": {"false": 1},
+        "real_read_only_approval_latest_status": "approved",
+        "real_read_only_approval_transition_linkage_complete": True,
+        "real_read_only_approval_transition_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -701,6 +713,21 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_read_only_approval_execution_performed": 0,
         "real_read_only_approval_rendered_command_executed": 0,
         "real_read_only_approval_dry_run_command_executed": 0,
+        "real_read_only_approval_transition_observed": True,
+        "real_read_only_approval_transition_records": 1,
+        "real_read_only_approval_transition_linkage_complete": True,
+        "real_read_only_approval_transition_orphans": 0,
+        "real_read_only_approval_latest_status": "approved",
+        "real_read_only_approval_transition_from_pending": 1,
+        "real_read_only_approval_transition_approved": 1,
+        "real_read_only_approval_transition_rejected": 0,
+        "real_read_only_approval_transition_read_only_execution_enabled": 0,
+        "real_read_only_approval_transition_real_execution_enabled": 0,
+        "real_read_only_approval_transition_subprocess_enabled": 0,
+        "real_read_only_approval_transition_subprocess_invoked": 0,
+        "real_read_only_approval_transition_execution_performed": 0,
+        "real_read_only_approval_transition_rendered_command_executed": 0,
+        "real_read_only_approval_transition_dry_run_command_executed": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -842,6 +869,21 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_read_only_approval_execution_performed": 0,
         "real_read_only_approval_rendered_command_executed": 0,
         "real_read_only_approval_dry_run_command_executed": 0,
+        "real_read_only_approval_transition_observed": True,
+        "real_read_only_approval_transition_records": 1,
+        "real_read_only_approval_transition_linkage_complete": True,
+        "real_read_only_approval_transition_orphans": 0,
+        "real_read_only_approval_latest_status": "approved",
+        "real_read_only_approval_transition_from_pending": 1,
+        "real_read_only_approval_transition_approved": 1,
+        "real_read_only_approval_transition_rejected": 0,
+        "real_read_only_approval_transition_read_only_execution_enabled": 0,
+        "real_read_only_approval_transition_real_execution_enabled": 0,
+        "real_read_only_approval_transition_subprocess_enabled": 0,
+        "real_read_only_approval_transition_subprocess_invoked": 0,
+        "real_read_only_approval_transition_execution_performed": 0,
+        "real_read_only_approval_transition_rendered_command_executed": 0,
+        "real_read_only_approval_transition_dry_run_command_executed": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -1112,3 +1154,33 @@ def test_controlled_execution_readiness_fails_when_read_only_approval_invokes_su
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_read_only_approval_does_not_invoke_subprocess" in failed
+
+
+def test_controlled_execution_readiness_fails_for_read_only_approval_transition_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_approval_transition_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_approval_transition_links_to_approval" in failed
+
+
+def test_controlled_execution_readiness_fails_when_read_only_approval_transition_invokes_subprocess() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_approval_transition_subprocess_invoked={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_approval_transition_does_not_invoke_subprocess" in failed

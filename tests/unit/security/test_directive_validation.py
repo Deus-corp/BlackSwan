@@ -27,6 +27,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_promotion,
     validate_replay_lifecycle_retry_real_execution_read_only_final_gate,
     validate_replay_lifecycle_retry_real_execution_read_only_approval,
+    validate_replay_lifecycle_retry_real_execution_read_only_approval_transition,
 )
 
 
@@ -2638,3 +2639,124 @@ def test_validate_retry_real_execution_read_only_approval_rejects_subprocess_inv
 
     assert result["valid"] is False
     assert "read_only_approval_must_not_invoke_subprocess" in result["reasons"]
+
+
+def _real_execution_read_only_approval_transition(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_approval_transition",
+        "real_execution_read_only_approval_transition_id": "read-only-transition-1",
+        "real_execution_read_only_approval_id": "read-only-approval-1",
+        "real_execution_read_only_final_gate_id": "read-only-final-gate-1",
+        "real_execution_read_only_promotion_id": "read-only-promotion-1",
+        "real_execution_noop_result_id": "noop-result-1",
+        "real_execution_dry_run_envelope_id": "dry-run-envelope-1",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "from_status": "pending",
+        "to_status": "approved",
+        "read_only_module": "src.testing.run_replay_evidence_check",
+        "read_only_argv": ["python", "-m", "src.testing.run_replay_evidence_check"],
+        "read_only_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "subprocess_invoked": False,
+        "execution_performed": False,
+        "rendered_command_executed": False,
+        "dry_run_envelope_command_executed": False,
+        "reason": "read_only_execution_approval_transition_recorded",
+        "payload": {
+            "read_only_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "subprocess_invoked": False,
+            "execution_performed": False,
+            "rendered_command_executed": False,
+            "dry_run_envelope_command_executed": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_read_only_approval_transition_accepts_approved_disabled() -> None:
+    result = (
+        validate_replay_lifecycle_retry_real_execution_read_only_approval_transition(
+            _real_execution_read_only_approval_transition()
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["from_status"] == "pending"
+    assert result["to_status"] == "approved"
+    assert result["read_only_execution_enabled"] is False
+    assert result["subprocess_invoked"] is False
+    assert result["execution_performed"] is False
+
+
+def test_validate_retry_real_execution_read_only_approval_transition_accepts_rejected_disabled() -> None:
+    result = (
+        validate_replay_lifecycle_retry_real_execution_read_only_approval_transition(
+            _real_execution_read_only_approval_transition(to_status="rejected")
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["to_status"] == "rejected"
+    assert result["read_only_execution_enabled"] is False
+
+
+def test_validate_retry_real_execution_read_only_approval_transition_rejects_non_pending_from_status() -> None:
+    result = (
+        validate_replay_lifecycle_retry_real_execution_read_only_approval_transition(
+            _real_execution_read_only_approval_transition(from_status="approved")
+        )
+    )
+
+    assert result["valid"] is False
+    assert (
+        "read_only_approval_transition_from_status_must_be_pending"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_read_only_approval_transition_rejects_subprocess_invoked() -> None:
+    record = _real_execution_read_only_approval_transition(subprocess_invoked=True)
+    record["payload"]["subprocess_invoked"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_read_only_approval_transition(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert (
+        "read_only_approval_transition_must_not_invoke_subprocess"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_read_only_approval_transition_rejects_read_only_execution_enabled() -> None:
+    record = _real_execution_read_only_approval_transition(
+        read_only_execution_enabled=True
+    )
+    record["payload"]["read_only_execution_enabled"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_read_only_approval_transition(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert (
+        "read_only_approval_transition_must_not_enable_read_only_execution"
+        in result["reasons"]
+    )

@@ -41,6 +41,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_promotion",
     "replay_lifecycle_retry_real_execution_read_only_final_gate",
     "replay_lifecycle_retry_real_execution_read_only_approval",
+    "replay_lifecycle_retry_real_execution_read_only_approval_transition",
 }
 
 
@@ -303,6 +304,25 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_read_only_approval_transition"
+        ):
+            result = (
+                validate_replay_lifecycle_retry_real_execution_read_only_approval_transition(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -436,6 +456,15 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_read_only_approval_execution_performed: dict[str, int] = {}
     real_read_only_approval_rendered_command_executed: dict[str, int] = {}
     real_read_only_approval_dry_run_command_executed: dict[str, int] = {}
+    real_read_only_approval_transition_from_statuses: dict[str, int] = {}
+    real_read_only_approval_transition_to_statuses: dict[str, int] = {}
+    real_read_only_approval_transition_read_only_execution_enabled: dict[str, int] = {}
+    real_read_only_approval_transition_real_execution_enabled: dict[str, int] = {}
+    real_read_only_approval_transition_subprocess_enabled: dict[str, int] = {}
+    real_read_only_approval_transition_subprocess_invoked: dict[str, int] = {}
+    real_read_only_approval_transition_execution_performed: dict[str, int] = {}
+    real_read_only_approval_transition_rendered_command_executed: dict[str, int] = {}
+    real_read_only_approval_transition_dry_run_command_executed: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -930,6 +959,55 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 value = str(bool(item.get(key))).lower()
                 target[value] = target.get(value, 0) + 1
 
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_read_only_approval_transition"
+        ):
+            from_status = str(item.get("from_status") or "unknown").strip() or "unknown"
+            to_status = str(item.get("to_status") or "unknown").strip() or "unknown"
+
+            real_read_only_approval_transition_from_statuses[from_status] = (
+                real_read_only_approval_transition_from_statuses.get(from_status, 0)
+                + 1
+            )
+            real_read_only_approval_transition_to_statuses[to_status] = (
+                real_read_only_approval_transition_to_statuses.get(to_status, 0)
+                + 1
+            )
+
+            for target, key in (
+                (
+                    real_read_only_approval_transition_read_only_execution_enabled,
+                    "read_only_execution_enabled",
+                ),
+                (
+                    real_read_only_approval_transition_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (
+                    real_read_only_approval_transition_subprocess_enabled,
+                    "subprocess_enabled",
+                ),
+                (
+                    real_read_only_approval_transition_subprocess_invoked,
+                    "subprocess_invoked",
+                ),
+                (
+                    real_read_only_approval_transition_execution_performed,
+                    "execution_performed",
+                ),
+                (
+                    real_read_only_approval_transition_rendered_command_executed,
+                    "rendered_command_executed",
+                ),
+                (
+                    real_read_only_approval_transition_dry_run_command_executed,
+                    "dry_run_envelope_command_executed",
+                ),
+            ):
+                value = str(bool(item.get(key))).lower()
+                target[value] = target.get(value, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -1118,6 +1196,33 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         ),
         "real_read_only_approval_dry_run_command_executed": (
             real_read_only_approval_dry_run_command_executed
+        ),
+        "real_read_only_approval_transition_from_statuses": (
+            real_read_only_approval_transition_from_statuses
+        ),
+        "real_read_only_approval_transition_to_statuses": (
+            real_read_only_approval_transition_to_statuses
+        ),
+        "real_read_only_approval_transition_read_only_execution_enabled": (
+            real_read_only_approval_transition_read_only_execution_enabled
+        ),
+        "real_read_only_approval_transition_real_execution_enabled": (
+            real_read_only_approval_transition_real_execution_enabled
+        ),
+        "real_read_only_approval_transition_subprocess_enabled": (
+            real_read_only_approval_transition_subprocess_enabled
+        ),
+        "real_read_only_approval_transition_subprocess_invoked": (
+            real_read_only_approval_transition_subprocess_invoked
+        ),
+        "real_read_only_approval_transition_execution_performed": (
+            real_read_only_approval_transition_execution_performed
+        ),
+        "real_read_only_approval_transition_rendered_command_executed": (
+            real_read_only_approval_transition_rendered_command_executed
+        ),
+        "real_read_only_approval_transition_dry_run_command_executed": (
+            real_read_only_approval_transition_dry_run_command_executed
         ),
     }
 
@@ -1508,6 +1613,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_read_only_promotion_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_read_only_approval_transition":
+        return str(
+            record.get("real_execution_read_only_approval_transition_id")
+            or record.get("real_execution_read_only_approval_id")
+            or record.get("real_execution_read_only_final_gate_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -1543,6 +1656,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_read_only_promotion_id",
         "real_execution_read_only_final_gate_id",
         "real_execution_read_only_approval_id",
+        "real_execution_read_only_approval_transition_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -1575,6 +1689,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_read_only_promotion_id",
             "real_execution_read_only_final_gate_id",
             "real_execution_read_only_approval_id",
+            "real_execution_read_only_approval_transition_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -3528,6 +3643,124 @@ def validate_replay_lifecycle_retry_real_execution_read_only_approval(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_read_only_approval_transition(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate immutable read-only execution approval transition records."""
+    reasons: list[str] = []
+
+    transition_id = str(
+        record.get("real_execution_read_only_approval_transition_id") or ""
+    ).strip()
+    approval_id = str(
+        record.get("real_execution_read_only_approval_id") or ""
+    ).strip()
+    final_gate_id = str(
+        record.get("real_execution_read_only_final_gate_id") or ""
+    ).strip()
+    promotion_id = str(
+        record.get("real_execution_read_only_promotion_id") or ""
+    ).strip()
+    noop_result_id = str(record.get("real_execution_noop_result_id") or "").strip()
+    envelope_id = str(
+        record.get("real_execution_dry_run_envelope_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    from_status = str(record.get("from_status") or "").strip()
+    to_status = str(record.get("to_status") or "").strip()
+    read_only_module = str(record.get("read_only_module") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+    read_only_argv = record.get("read_only_argv")
+
+    read_only_execution_enabled = bool(record.get("read_only_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    rendered_command_executed = bool(record.get("rendered_command_executed"))
+    dry_run_command_executed = bool(
+        record.get("dry_run_envelope_command_executed")
+    )
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not transition_id:
+        reasons.append("missing_real_execution_read_only_approval_transition_id")
+    if not approval_id:
+        reasons.append("missing_real_execution_read_only_approval_id")
+    if not final_gate_id:
+        reasons.append("missing_real_execution_read_only_final_gate_id")
+    if not promotion_id:
+        reasons.append("missing_real_execution_read_only_promotion_id")
+    if not noop_result_id:
+        reasons.append("missing_real_execution_noop_result_id")
+    if not envelope_id:
+        reasons.append("missing_real_execution_dry_run_envelope_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if from_status != "pending":
+        reasons.append("read_only_approval_transition_from_status_must_be_pending")
+    if to_status not in {"approved", "rejected"}:
+        reasons.append("invalid_read_only_approval_transition_to_status")
+    if reason != "read_only_execution_approval_transition_recorded":
+        reasons.append("invalid_read_only_approval_transition_reason")
+    if read_only_module != "src.testing.run_replay_evidence_check":
+        reasons.append("read_only_approval_transition_module_must_be_allowlisted")
+    if not isinstance(read_only_argv, list) or not read_only_argv:
+        reasons.append("read_only_approval_transition_argv_must_be_non_empty_list")
+
+    if read_only_execution_enabled or bool(
+        payload_mapping.get("read_only_execution_enabled")
+    ):
+        reasons.append(
+            "read_only_approval_transition_must_not_enable_read_only_execution"
+        )
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("read_only_approval_transition_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("read_only_approval_transition_must_not_enable_subprocess")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("read_only_approval_transition_must_not_invoke_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("read_only_approval_transition_must_not_execute")
+    if rendered_command_executed or bool(
+        payload_mapping.get("rendered_command_executed")
+    ):
+        reasons.append(
+            "read_only_approval_transition_must_not_execute_rendered_command"
+        )
+    if dry_run_command_executed or bool(
+        payload_mapping.get("dry_run_envelope_command_executed")
+    ):
+        reasons.append(
+            "read_only_approval_transition_must_not_execute_dry_run_command"
+        )
+
+    return {
+        "type": "security_validation_result",
+        "record_type": (
+            "replay_lifecycle_retry_real_execution_read_only_approval_transition"
+        ),
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": transition_id or approval_id,
+        "from_status": from_status or "unknown",
+        "to_status": to_status or "unknown",
+        "read_only_execution_enabled": read_only_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "subprocess_invoked": subprocess_invoked,
+        "execution_performed": execution_performed,
+        "rendered_command_executed": rendered_command_executed,
+        "dry_run_envelope_command_executed": dry_run_command_executed,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -3552,4 +3785,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_read_only_promotion",
     "validate_replay_lifecycle_retry_real_execution_read_only_final_gate",
     "validate_replay_lifecycle_retry_real_execution_read_only_approval",
+    "validate_replay_lifecycle_retry_real_execution_read_only_approval_transition",
 ]

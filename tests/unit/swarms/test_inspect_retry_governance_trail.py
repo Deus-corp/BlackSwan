@@ -521,12 +521,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_read_only_promotion(),
             _real_read_only_final_gate(),
             _real_read_only_approval(),
+            _real_read_only_approval_transition(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 17
+    assert summary["total_records"] == 18
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -688,6 +689,32 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_read_only_approval_linkage_complete"] is True
     assert summary["real_read_only_approval_final_gate_matches"] == 1
     assert summary["real_read_only_approval_orphans"] == 0
+    assert summary["counts"]["real_execution_read_only_approval_transitions"] == 1
+    assert summary["chain_ids"]["real_execution_read_only_approval_transition_ids"] == [
+        "read-only-transition-1"
+    ]
+    assert summary["real_read_only_approval_transition_from_statuses"]["pending"] == 1
+    assert summary["real_read_only_approval_transition_to_statuses"]["approved"] == 1
+    assert (
+        summary["real_read_only_approval_transition_read_only_execution_enabled"]["false"]
+        == 1
+    )
+    assert summary["real_read_only_approval_transition_real_execution_enabled"]["false"] == 1
+    assert summary["real_read_only_approval_transition_subprocess_enabled"]["false"] == 1
+    assert summary["real_read_only_approval_transition_subprocess_invoked"]["false"] == 1
+    assert summary["real_read_only_approval_transition_execution_performed"]["false"] == 1
+    assert (
+        summary["real_read_only_approval_transition_rendered_command_executed"]["false"]
+        == 1
+    )
+    assert (
+        summary["real_read_only_approval_transition_dry_run_command_executed"]["false"]
+        == 1
+    )
+    assert summary["real_read_only_approval_latest_status"] == "approved"
+    assert summary["real_read_only_approval_transition_linkage_complete"] is True
+    assert summary["real_read_only_approval_transition_approval_matches"] == 1
+    assert summary["real_read_only_approval_transition_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -1162,3 +1189,65 @@ def test_inspect_retry_governance_trail_counts_real_read_only_approval_orphan() 
 
     assert summary["real_read_only_approval_linkage_complete"] is False
     assert summary["real_read_only_approval_orphans"] == 1
+
+
+def _real_read_only_approval_transition(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_approval_transition",
+        "real_execution_read_only_approval_transition_id": "read-only-transition-1",
+        "real_execution_read_only_approval_id": "read-only-approval-1",
+        "real_execution_read_only_final_gate_id": "real-read-only-final-gate-1",
+        "real_execution_read_only_promotion_id": "real-read-only-promotion-1",
+        "real_execution_noop_result_id": "real-noop-result-1",
+        "real_execution_dry_run_envelope_id": "real-dry-run-envelope-1",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "from_status": "pending",
+        "to_status": "approved",
+        "read_only_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "subprocess_invoked": False,
+        "execution_performed": False,
+        "rendered_command_executed": False,
+        "dry_run_envelope_command_executed": False,
+    }
+    item.update(overrides)
+    return item
+
+
+def test_inspect_retry_governance_trail_counts_real_read_only_approval_transition_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(),
+            _real_noop_result(),
+            _real_read_only_promotion(),
+            _real_read_only_final_gate(),
+            _real_read_only_approval(),
+            _real_read_only_approval_transition(
+                real_execution_read_only_approval_id="missing-approval"
+            ),
+        ]
+    )
+
+    assert summary["real_read_only_approval_transition_linkage_complete"] is False
+    assert summary["real_read_only_approval_transition_orphans"] == 1
