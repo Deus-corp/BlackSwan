@@ -24,6 +24,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_final_gate,
     validate_replay_lifecycle_retry_real_execution_dry_run_envelope,
     validate_replay_lifecycle_retry_real_execution_noop_result,
+    validate_replay_lifecycle_retry_real_execution_read_only_promotion,
 )
 
 
@@ -2329,3 +2330,123 @@ def test_validate_retry_real_execution_noop_result_rejects_non_zero_exit_code() 
 
     assert result["valid"] is False
     assert "noop_result_exit_code_must_be_zero" in result["reasons"]
+
+
+def _real_execution_read_only_promotion(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_promotion",
+        "real_execution_read_only_promotion_id": "real-read-only-promotion-1",
+        "real_execution_noop_result_id": "real-noop-result-1",
+        "real_execution_dry_run_envelope_id": "real-dry-run-envelope-1",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "promotion_status": "promoted",
+        "read_only_candidate": True,
+        "read_only_module": "src.testing.run_replay_evidence_check",
+        "read_only_command": (
+            "python -m src.testing.run_replay_evidence_check "
+            "--scenario-id s --action REDUCE_RISK --directive-id d "
+            "--timeout-profile standard"
+        ),
+        "read_only_argv": [
+            "python",
+            "-m",
+            "src.testing.run_replay_evidence_check",
+            "--scenario-id",
+            "s",
+            "--action",
+            "REDUCE_RISK",
+            "--directive-id",
+            "d",
+            "--timeout-profile",
+            "standard",
+        ],
+        "command_parse_valid": True,
+        "stdout_marker_observed": True,
+        "noop_exit_code": 0,
+        "noop_only": True,
+        "rendered_command_executed": False,
+        "dry_run_envelope_command_executed": False,
+        "real_execution_enabled": False,
+        "subprocess_invoked": False,
+        "execution_performed": False,
+        "reason": "real_execution_read_only_promotion_recorded",
+        "payload": {
+            "promotion_status": "promoted",
+            "read_only_candidate": True,
+            "command_parse_valid": True,
+            "stdout_marker_observed": True,
+            "noop_exit_code": 0,
+            "noop_only": True,
+            "rendered_command_executed": False,
+            "dry_run_envelope_command_executed": False,
+            "real_execution_enabled": False,
+            "subprocess_invoked": False,
+            "execution_performed": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_read_only_promotion_accepts_safe_promotion() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_promotion(
+        _real_execution_read_only_promotion()
+    )
+
+    assert result["valid"] is True
+    assert result["promotion_status"] == "promoted"
+    assert result["read_only_candidate"] is True
+    assert result["command_parse_valid"] is True
+    assert result["stdout_marker_observed"] is True
+    assert result["noop_exit_code"] == 0
+    assert result["subprocess_invoked"] is False
+    assert result["execution_performed"] is False
+
+
+def test_validate_retry_real_execution_read_only_promotion_rejects_blocked_status() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_promotion(
+        _real_execution_read_only_promotion(promotion_status="blocked")
+    )
+
+    assert result["valid"] is False
+    assert "read_only_promotion_must_be_promoted" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_promotion_rejects_subprocess_invoked() -> None:
+    record = _real_execution_read_only_promotion(subprocess_invoked=True)
+    record["payload"]["subprocess_invoked"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_promotion(record)
+
+    assert result["valid"] is False
+    assert "read_only_promotion_must_not_invoke_subprocess" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_promotion_rejects_rendered_command_execution() -> None:
+    record = _real_execution_read_only_promotion(rendered_command_executed=True)
+    record["payload"]["rendered_command_executed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_promotion(record)
+
+    assert result["valid"] is False
+    assert (
+        "read_only_promotion_must_not_execute_rendered_command"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_read_only_promotion_rejects_bad_module() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_promotion(
+        _real_execution_read_only_promotion(read_only_module="os")
+    )
+
+    assert result["valid"] is False
+    assert "read_only_promotion_module_must_be_allowlisted" in result["reasons"]

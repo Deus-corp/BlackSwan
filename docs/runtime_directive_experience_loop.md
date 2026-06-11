@@ -1488,6 +1488,21 @@ This validates subprocess plumbing without enabling real execution.
 
 ---
 
+### Read-only evidence command promotion
+
+`replay_lifecycle_retry_real_execution_read_only_promotion` promotes a
+dry-run envelope command to a read-only candidate only after a successful
+guarded noop harness result. It validates the allowlisted
+`src.testing.run_replay_evidence_check` command shape while keeping
+`subprocess_invoked=false`, `execution_performed=false`,
+`rendered_command_executed=false`, `dry_run_envelope_command_executed=false`,
+and `real_execution_enabled=false`.
+
+Promotion is an audit/readiness artifact only. It does not execute the
+read-only command. does not execute the read-only command.
+
+---
+
 ## Related modules
 
 ```text

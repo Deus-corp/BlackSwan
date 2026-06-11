@@ -396,6 +396,45 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         "real_noop_result_stdout_marker_observed": _safe_int(
             real_noop_result_stdout_marker_observed.get("true"), 0
         ),
+        "real_read_only_promotion_observed": _safe_int(
+            real_read_only_promotion_statuses.get("promoted"), 0
+        ) > 0,
+        "real_read_only_promotion_records": _safe_int(
+            real_read_only_promotion_statuses.get("promoted"), 0
+        ),
+        "real_read_only_promotion_linkage_complete": bool(
+            trail_summary.get("real_read_only_promotion_linkage_complete")
+        ),
+        "real_read_only_promotion_orphans": _safe_int(
+            trail_summary.get("real_read_only_promotion_orphans"), 0
+        ),
+        "real_read_only_promotion_candidate": _safe_int(
+            real_read_only_promotion_candidates.get("true"), 0
+        ),
+        "real_read_only_promotion_command_parse_valid": _safe_int(
+            real_read_only_promotion_command_parse_valid.get("true"), 0
+        ),
+        "real_read_only_promotion_stdout_marker_observed": _safe_int(
+            real_read_only_promotion_stdout_marker_observed.get("true"), 0
+        ),
+        "real_read_only_promotion_noop_exit_code_zero": _safe_int(
+            real_read_only_promotion_noop_exit_codes.get("0"), 0
+        ),
+        "real_read_only_promotion_rendered_command_executed": _safe_int(
+            real_read_only_promotion_rendered_command_executed.get("true"), 0
+        ),
+        "real_read_only_promotion_dry_run_command_executed": _safe_int(
+            real_read_only_promotion_dry_run_command_executed.get("true"), 0
+        ),
+        "real_read_only_promotion_real_execution_enabled": _safe_int(
+            real_read_only_promotion_real_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_promotion_subprocess_invoked": _safe_int(
+            real_read_only_promotion_subprocess_invoked.get("true"), 0
+        ),
+        "real_read_only_promotion_execution_performed": _safe_int(
+            real_read_only_promotion_execution_performed.get("true"), 0
+        ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
         "ready_for_real_execution": ready_for_real_execution,
@@ -610,6 +649,45 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_noop_result_stdout_marker_observed": _safe_int(
                 real_noop_result_stdout_marker_observed.get("true"), 0
             ),
+            "real_read_only_promotion_observed": _safe_int(
+                real_read_only_promotion_statuses.get("promoted"), 0
+            ) > 0,
+            "real_read_only_promotion_records": _safe_int(
+                real_read_only_promotion_statuses.get("promoted"), 0
+            ),
+            "real_read_only_promotion_linkage_complete": bool(
+                trail_summary.get("real_read_only_promotion_linkage_complete")
+            ),
+            "real_read_only_promotion_orphans": _safe_int(
+                trail_summary.get("real_read_only_promotion_orphans"), 0
+            ),
+            "real_read_only_promotion_candidate": _safe_int(
+                real_read_only_promotion_candidates.get("true"), 0
+            ),
+            "real_read_only_promotion_command_parse_valid": _safe_int(
+                real_read_only_promotion_command_parse_valid.get("true"), 0
+            ),
+            "real_read_only_promotion_stdout_marker_observed": _safe_int(
+                real_read_only_promotion_stdout_marker_observed.get("true"), 0
+            ),
+            "real_read_only_promotion_noop_exit_code_zero": _safe_int(
+                real_read_only_promotion_noop_exit_codes.get("0"), 0
+            ),
+            "real_read_only_promotion_rendered_command_executed": _safe_int(
+                real_read_only_promotion_rendered_command_executed.get("true"), 0
+            ),
+            "real_read_only_promotion_dry_run_command_executed": _safe_int(
+                real_read_only_promotion_dry_run_command_executed.get("true"), 0
+            ),
+            "real_read_only_promotion_real_execution_enabled": _safe_int(
+                real_read_only_promotion_real_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_promotion_subprocess_invoked": _safe_int(
+                real_read_only_promotion_subprocess_invoked.get("true"), 0
+            ),
+            "real_read_only_promotion_execution_performed": _safe_int(
+                real_read_only_promotion_execution_performed.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -652,6 +730,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_noop_linkage_complete",
             "real_noop_result_orphans",
             "real_noop_result_stdout_marker_observed",
+            "real_read_only_promotion_observed",
+            "real_read_only_promotion_records",
+            "real_read_only_promotion_linkage_complete",
+            "real_read_only_promotion_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -904,6 +986,36 @@ def _build_checks(
     )
     real_noop_result_stdout_marker_observed = _safe_mapping(
         trail_summary.get("real_noop_result_stdout_marker_observed")
+    )
+    real_read_only_promotion_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_statuses")
+    )
+    real_read_only_promotion_candidates = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_candidates")
+    )
+    real_read_only_promotion_command_parse_valid = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_command_parse_valid")
+    )
+    real_read_only_promotion_stdout_marker_observed = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_stdout_marker_observed")
+    )
+    real_read_only_promotion_noop_exit_codes = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_noop_exit_codes")
+    )
+    real_read_only_promotion_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_rendered_command_executed")
+    )
+    real_read_only_promotion_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_dry_run_command_executed")
+    )
+    real_read_only_promotion_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_real_execution_enabled")
+    )
+    real_read_only_promotion_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_subprocess_invoked")
+    )
+    real_read_only_promotion_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_execution_performed")
     )
 
     checks = [
@@ -1395,6 +1507,106 @@ def _build_checks(
             _safe_int(real_noop_result_stdout_marker_observed.get("true"), 0) == 1,
             _safe_int(real_noop_result_stdout_marker_observed.get("true"), 0),
         ),
+        _check(
+            "real_read_only_promotion_observed_after_noop_result",
+            _safe_int(real_noop_result_noop_only.get("true"), 0) == 0
+            or _safe_int(real_read_only_promotion_statuses.get("promoted"), 0) > 0,
+            {
+                "noop_results": _safe_int(real_noop_result_noop_only.get("true"), 0),
+                "promotions": _safe_int(
+                    real_read_only_promotion_statuses.get("promoted"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_read_only_promotion_links_to_noop_result",
+            _safe_int(real_read_only_promotion_statuses.get("promoted"), 0) == 0
+            or _safe_int(
+                trail_summary.get("real_read_only_promotion_orphans"), 0
+            )
+            == 0,
+            {
+                "promotions": _safe_int(
+                    real_read_only_promotion_statuses.get("promoted"), 0
+                ),
+                "orphans": _safe_int(
+                    trail_summary.get("real_read_only_promotion_orphans"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_read_only_promotion_is_promoted",
+            _safe_int(real_read_only_promotion_statuses.get("promoted"), 0) == 1,
+            _safe_int(real_read_only_promotion_statuses.get("promoted"), 0),
+        ),
+        _check(
+            "real_read_only_promotion_candidate",
+            _safe_int(real_read_only_promotion_candidates.get("true"), 0) == 1,
+            _safe_int(real_read_only_promotion_candidates.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_promotion_command_parse_valid",
+            _safe_int(real_read_only_promotion_command_parse_valid.get("true"), 0)
+            == 1,
+            _safe_int(real_read_only_promotion_command_parse_valid.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_promotion_stdout_marker_observed",
+            _safe_int(
+                real_read_only_promotion_stdout_marker_observed.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                real_read_only_promotion_stdout_marker_observed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_promotion_noop_exit_code_zero",
+            _safe_int(real_read_only_promotion_noop_exit_codes.get("0"), 0) == 1,
+            real_read_only_promotion_noop_exit_codes,
+        ),
+        _check(
+            "real_read_only_promotion_did_not_execute_rendered_command",
+            _safe_int(
+                real_read_only_promotion_rendered_command_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_promotion_rendered_command_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_promotion_did_not_execute_dry_run_command",
+            _safe_int(
+                real_read_only_promotion_dry_run_command_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_promotion_dry_run_command_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_promotion_does_not_enable_real_execution",
+            _safe_int(
+                real_read_only_promotion_real_execution_enabled.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_promotion_real_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_promotion_does_not_invoke_subprocess",
+            _safe_int(real_read_only_promotion_subprocess_invoked.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_promotion_subprocess_invoked.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_promotion_does_not_execute",
+            _safe_int(real_read_only_promotion_execution_performed.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_promotion_execution_performed.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -1479,6 +1691,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_noop_linkage_complete",
         "real_noop_result_orphans",
         "real_noop_result_stdout_marker_observed",
+        "real_read_only_promotion_observed",
+        "real_read_only_promotion_records",
+        "real_read_only_promotion_linkage_complete",
+        "real_read_only_promotion_orphans",
     ]
 
     reasons: list[str] = []
@@ -1594,6 +1810,15 @@ def validate_controlled_execution_readiness_report_schema(
     if not isinstance(report.get("real_noop_result_stdout_marker_observed"), int):
         reasons.append("real_noop_result_stdout_marker_observed_must_be_int")
 
+    if not isinstance(report.get("real_read_only_promotion_observed"), bool):
+        reasons.append("real_read_only_promotion_observed_must_be_bool")
+    if not isinstance(report.get("real_read_only_promotion_records"), int):
+        reasons.append("real_read_only_promotion_records_must_be_int")
+    if not isinstance(report.get("real_read_only_promotion_linkage_complete"), bool):
+        reasons.append("real_read_only_promotion_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_read_only_promotion_orphans"), int):
+        reasons.append("real_read_only_promotion_orphans_must_be_int")
+
     return {
         "type": "controlled_execution_readiness_schema_validation",
         "valid": not reasons,
@@ -1700,6 +1925,19 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_noop_linkage_complete={str(bool(result.get('real_noop_linkage_complete'))).lower()} "
         f"real_noop_result_orphans={result.get('real_noop_result_orphans', 0)} "
         f"real_noop_result_stdout_marker_observed={result.get('real_noop_result_stdout_marker_observed', 0)} "
+        f"real_read_only_promotion_observed={str(bool(result.get('real_read_only_promotion_observed'))).lower()} "
+        f"real_read_only_promotion_records={result.get('real_read_only_promotion_records', 0)} "
+        f"real_read_only_promotion_linkage_complete={str(bool(result.get('real_read_only_promotion_linkage_complete'))).lower()} "
+        f"real_read_only_promotion_orphans={result.get('real_read_only_promotion_orphans', 0)} "
+        f"real_read_only_promotion_candidate={result.get('real_read_only_promotion_candidate', 0)} "
+        f"real_read_only_promotion_command_parse_valid={result.get('real_read_only_promotion_command_parse_valid', 0)} "
+        f"real_read_only_promotion_stdout_marker_observed={result.get('real_read_only_promotion_stdout_marker_observed', 0)} "
+        f"real_read_only_promotion_noop_exit_code_zero={result.get('real_read_only_promotion_noop_exit_code_zero', 0)} "
+        f"real_read_only_promotion_rendered_command_executed={result.get('real_read_only_promotion_rendered_command_executed', 0)} "
+        f"real_read_only_promotion_dry_run_command_executed={result.get('real_read_only_promotion_dry_run_command_executed', 0)} "
+        f"real_read_only_promotion_real_execution_enabled={result.get('real_read_only_promotion_real_execution_enabled', 0)} "
+        f"real_read_only_promotion_subprocess_invoked={result.get('real_read_only_promotion_subprocess_invoked', 0)} "
+        f"real_read_only_promotion_execution_performed={result.get('real_read_only_promotion_execution_performed', 0)} "
     )
 
 

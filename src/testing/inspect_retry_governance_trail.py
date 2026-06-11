@@ -33,6 +33,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_final_gate",
     "replay_lifecycle_retry_real_execution_dry_run_envelope",
     "replay_lifecycle_retry_real_execution_noop_result",
+    "replay_lifecycle_retry_real_execution_read_only_promotion",
 }
 
 
@@ -170,6 +171,12 @@ def inspect_retry_governance_trail_from_records(
         item
         for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_real_execution_noop_result"
+    ]
+    real_read_only_promotions = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_read_only_promotion"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -495,6 +502,46 @@ def inspect_retry_governance_trail_from_records(
         str("controlled-noop-ok" in str(item.get("stdout") or "")).lower()
         for item in real_noop_results
     )
+    real_read_only_promotion_statuses = Counter(
+        str(item.get("promotion_status") or "unknown").strip() or "unknown"
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_candidates = Counter(
+        str(bool(item.get("read_only_candidate"))).lower()
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_command_parse_valid = Counter(
+        str(bool(item.get("command_parse_valid"))).lower()
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_stdout_marker_observed = Counter(
+        str(bool(item.get("stdout_marker_observed"))).lower()
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_noop_exit_codes = Counter(
+        str(item.get("noop_exit_code"))
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_rendered_command_executed = Counter(
+        str(bool(item.get("rendered_command_executed"))).lower()
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_dry_run_command_executed = Counter(
+        str(bool(item.get("dry_run_envelope_command_executed"))).lower()
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_read_only_promotions
+    )
+    real_read_only_promotion_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_read_only_promotions
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -511,6 +558,7 @@ def inspect_retry_governance_trail_from_records(
         real_final_gates=real_final_gates,
         real_dry_run_envelopes=real_dry_run_envelopes,
         real_noop_results=real_noop_results,
+        real_read_only_promotions=real_read_only_promotions,
         results=results,
     )
 
@@ -540,6 +588,13 @@ def inspect_retry_governance_trail_from_records(
         real_noop_results=real_noop_results,
     )
 
+    real_read_only_promotion_linkage = (
+        _real_read_only_promotion_linkage_summary(
+            real_noop_results=real_noop_results,
+            real_read_only_promotions=real_read_only_promotions,
+        )
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -564,6 +619,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_final_gates": len(real_final_gates),
             "real_execution_dry_run_envelopes": len(real_dry_run_envelopes),
             "real_execution_noop_results": len(real_noop_results),
+            "real_execution_read_only_promotions": len(real_read_only_promotions),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -766,6 +822,52 @@ def inspect_retry_governance_trail_from_records(
         "real_noop_result_orphans": real_noop_linkage.get(
             "real_noop_result_orphans", 0
         ),
+        "real_read_only_promotion_statuses": dict(
+            real_read_only_promotion_statuses
+        ),
+        "real_read_only_promotion_candidates": dict(
+            real_read_only_promotion_candidates
+        ),
+        "real_read_only_promotion_command_parse_valid": dict(
+            real_read_only_promotion_command_parse_valid
+        ),
+        "real_read_only_promotion_stdout_marker_observed": dict(
+            real_read_only_promotion_stdout_marker_observed
+        ),
+        "real_read_only_promotion_noop_exit_codes": dict(
+            real_read_only_promotion_noop_exit_codes
+        ),
+        "real_read_only_promotion_rendered_command_executed": dict(
+            real_read_only_promotion_rendered_command_executed
+        ),
+        "real_read_only_promotion_dry_run_command_executed": dict(
+            real_read_only_promotion_dry_run_command_executed
+        ),
+        "real_read_only_promotion_real_execution_enabled": dict(
+            real_read_only_promotion_real_execution_enabled
+        ),
+        "real_read_only_promotion_subprocess_invoked": dict(
+            real_read_only_promotion_subprocess_invoked
+        ),
+        "real_read_only_promotion_execution_performed": dict(
+            real_read_only_promotion_execution_performed
+        ),
+        "real_read_only_promotion_linkage": real_read_only_promotion_linkage,
+        "real_read_only_promotion_linkage_complete": bool(
+            real_read_only_promotion_linkage.get(
+                "real_read_only_promotion_linkage_complete"
+            )
+        ),
+        "real_read_only_promotion_noop_matches": (
+            real_read_only_promotion_linkage.get(
+                "real_read_only_promotion_noop_matches", 0
+            )
+        ),
+        "real_read_only_promotion_orphans": (
+            real_read_only_promotion_linkage.get(
+                "real_read_only_promotion_orphans", 0
+            )
+        ),
     }
 
 def _missing_stages(
@@ -926,6 +1028,7 @@ def _build_chain_ids(
     real_final_gates: list[Mapping[str, Any]],
     real_dry_run_envelopes: list[Mapping[str, Any]],
     real_noop_results: list[Mapping[str, Any]],
+    real_read_only_promotions: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -943,6 +1046,7 @@ def _build_chain_ids(
         + real_final_gates
         + real_dry_run_envelopes
         + real_noop_results
+        + real_read_only_promotions
         + results
     )
 
@@ -970,6 +1074,7 @@ def _build_chain_ids(
                 + real_final_gates
                 + real_dry_run_envelopes
                 + real_noop_results
+                + real_read_only_promotions
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -989,6 +1094,7 @@ def _build_chain_ids(
                 + real_final_gates
                 + real_dry_run_envelopes
                 + real_noop_results
+                + real_read_only_promotions
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -1008,6 +1114,7 @@ def _build_chain_ids(
                     + real_final_gates
                     + real_dry_run_envelopes
                     + real_noop_results
+                    + real_read_only_promotions
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -1088,6 +1195,17 @@ def _build_chain_ids(
                 str(item.get("real_execution_noop_result_id") or "").strip()
                 for item in real_noop_results
                 if str(item.get("real_execution_noop_result_id") or "").strip()
+            }
+        ),
+        "real_execution_read_only_promotion_ids": sorted(
+            {
+                str(
+                    item.get("real_execution_read_only_promotion_id") or ""
+                ).strip()
+                for item in real_read_only_promotions
+                if str(
+                    item.get("real_execution_read_only_promotion_id") or ""
+                ).strip()
             }
         ),
     }
@@ -1531,6 +1649,41 @@ def _real_noop_linkage_summary(
         "real_noop_result_orphans": noop_orphans,
         "real_noop_linkage_complete": bool(real_noop_results)
         and noop_orphans == 0,
+    }
+
+
+def _real_read_only_promotion_linkage_summary(
+    *,
+    real_noop_results: list[Mapping[str, Any]],
+    real_read_only_promotions: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    noop_result_ids = {
+        clean(item.get("real_execution_noop_result_id"))
+        for item in real_noop_results
+        if clean(item.get("real_execution_noop_result_id"))
+    }
+
+    promotion_noop_matches = 0
+    promotion_orphans = 0
+
+    for promotion in real_read_only_promotions:
+        noop_result_id = clean(promotion.get("real_execution_noop_result_id"))
+
+        if noop_result_id and noop_result_id in noop_result_ids:
+            promotion_noop_matches += 1
+        else:
+            promotion_orphans += 1
+
+    return {
+        "real_read_only_promotion_noop_matches": promotion_noop_matches,
+        "real_read_only_promotion_orphans": promotion_orphans,
+        "real_read_only_promotion_linkage_complete": bool(
+            real_read_only_promotions
+        )
+        and promotion_orphans == 0,
     }
 
 

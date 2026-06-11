@@ -140,6 +140,18 @@ def _trail_summary(**overrides):
         "real_noop_result_stdout_marker_observed": {"true": 1},
         "real_noop_linkage_complete": True,
         "real_noop_result_orphans": 0,
+        "real_read_only_promotion_statuses": {"promoted": 1},
+        "real_read_only_promotion_candidates": {"true": 1},
+        "real_read_only_promotion_command_parse_valid": {"true": 1},
+        "real_read_only_promotion_stdout_marker_observed": {"true": 1},
+        "real_read_only_promotion_noop_exit_codes": {"0": 1},
+        "real_read_only_promotion_rendered_command_executed": {"false": 1},
+        "real_read_only_promotion_dry_run_command_executed": {"false": 1},
+        "real_read_only_promotion_real_execution_enabled": {"false": 1},
+        "real_read_only_promotion_subprocess_invoked": {"false": 1},
+        "real_read_only_promotion_execution_performed": {"false": 1},
+        "real_read_only_promotion_linkage_complete": True,
+        "real_read_only_promotion_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -324,6 +336,19 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "real_noop_linkage_complete": True,
             "real_noop_result_orphans": 0,
             "real_noop_result_stdout_marker_observed": 1,
+            "real_read_only_promotion_observed": True,
+            "real_read_only_promotion_records": 1,
+            "real_read_only_promotion_linkage_complete": True,
+            "real_read_only_promotion_orphans": 0,
+            "real_read_only_promotion_candidate": 1,
+            "real_read_only_promotion_command_parse_valid": 1,
+            "real_read_only_promotion_stdout_marker_observed": 1,
+            "real_read_only_promotion_noop_exit_code_zero": 1,
+            "real_read_only_promotion_rendered_command_executed": 0,
+            "real_read_only_promotion_dry_run_command_executed": 0,
+            "real_read_only_promotion_real_execution_enabled": 0,
+            "real_read_only_promotion_subprocess_invoked": 0,
+            "real_read_only_promotion_execution_performed": 0,
         }
     )
 
@@ -374,6 +399,19 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "real_noop_linkage_complete=true" in text
     assert "real_noop_result_orphans=0" in text
     assert "real_noop_result_stdout_marker_observed=1" in text
+    assert "real_read_only_promotion_observed=true" in text
+    assert "real_read_only_promotion_records=1" in text
+    assert "real_read_only_promotion_linkage_complete=true" in text
+    assert "real_read_only_promotion_orphans=0" in text
+    assert "real_read_only_promotion_candidate=1" in text
+    assert "real_read_only_promotion_command_parse_valid=1" in text
+    assert "real_read_only_promotion_stdout_marker_observed=1" in text
+    assert "real_read_only_promotion_noop_exit_code_zero=1" in text
+    assert "real_read_only_promotion_rendered_command_executed=0" in text
+    assert "real_read_only_promotion_dry_run_command_executed=0" in text
+    assert "real_read_only_promotion_real_execution_enabled=0" in text
+    assert "real_read_only_promotion_subprocess_invoked=0" in text
+    assert "real_read_only_promotion_execution_performed=0" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -573,6 +611,19 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_noop_linkage_complete": True,
         "real_noop_result_orphans": 0,
         "real_noop_result_stdout_marker_observed": 1,
+        "real_read_only_promotion_observed": True,
+        "real_read_only_promotion_records": 1,
+        "real_read_only_promotion_linkage_complete": True,
+        "real_read_only_promotion_orphans": 0,
+        "real_read_only_promotion_candidate": 1,
+        "real_read_only_promotion_command_parse_valid": 1,
+        "real_read_only_promotion_stdout_marker_observed": 1,
+        "real_read_only_promotion_noop_exit_code_zero": 1,
+        "real_read_only_promotion_rendered_command_executed": 0,
+        "real_read_only_promotion_dry_run_command_executed": 0,
+        "real_read_only_promotion_real_execution_enabled": 0,
+        "real_read_only_promotion_subprocess_invoked": 0,
+        "real_read_only_promotion_execution_performed": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -675,6 +726,19 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_noop_linkage_complete": True,
         "real_noop_result_orphans": 0,
         "real_noop_result_stdout_marker_observed": 1,
+        "real_read_only_promotion_observed": True,
+        "real_read_only_promotion_records": 1,
+        "real_read_only_promotion_linkage_complete": True,
+        "real_read_only_promotion_orphans": 0,
+        "real_read_only_promotion_candidate": 1,
+        "real_read_only_promotion_command_parse_valid": 1,
+        "real_read_only_promotion_stdout_marker_observed": 1,
+        "real_read_only_promotion_noop_exit_code_zero": 1,
+        "real_read_only_promotion_rendered_command_executed": 0,
+        "real_read_only_promotion_dry_run_command_executed": 0,
+        "real_read_only_promotion_real_execution_enabled": 0,
+        "real_read_only_promotion_subprocess_invoked": 0,
+        "real_read_only_promotion_execution_performed": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -855,3 +919,33 @@ def test_controlled_execution_readiness_fails_without_real_noop_stdout_marker() 
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_noop_result_stdout_marker_observed" in failed
+
+
+def test_controlled_execution_readiness_fails_for_read_only_promotion_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_promotion_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_promotion_links_to_noop_result" in failed
+
+
+def test_controlled_execution_readiness_fails_when_read_only_promotion_invokes_subprocess() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_promotion_subprocess_invoked={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_promotion_does_not_invoke_subprocess" in failed

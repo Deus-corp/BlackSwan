@@ -417,3 +417,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "rendered_command_executed=false" in text
     assert "dry_run_envelope_command_executed=false" in text
     assert "subprocess_invoked=true" in text
+    assert "Read-only evidence command promotion" in text
+    assert "replay_lifecycle_retry_real_execution_read_only_promotion" in text
+    assert "src.testing.run_replay_evidence_check" in text
+    assert "subprocess_invoked=false" in text
+    assert "does not execute the read-only command" in text

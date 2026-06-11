@@ -518,12 +518,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_final_gate(),
             _real_dry_run_envelope(),
             _real_noop_result(),
+            _real_read_only_promotion(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 14
+    assert summary["total_records"] == 15
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -635,6 +636,23 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_noop_linkage_complete"] is True
     assert summary["real_noop_result_dry_run_envelope_matches"] == 1
     assert summary["real_noop_result_orphans"] == 0
+    assert summary["counts"]["real_execution_read_only_promotions"] == 1
+    assert summary["chain_ids"]["real_execution_read_only_promotion_ids"] == [
+        "real-read-only-promotion-1"
+    ]
+    assert summary["real_read_only_promotion_statuses"]["promoted"] == 1
+    assert summary["real_read_only_promotion_candidates"]["true"] == 1
+    assert summary["real_read_only_promotion_command_parse_valid"]["true"] == 1
+    assert summary["real_read_only_promotion_stdout_marker_observed"]["true"] == 1
+    assert summary["real_read_only_promotion_noop_exit_codes"]["0"] == 1
+    assert summary["real_read_only_promotion_rendered_command_executed"]["false"] == 1
+    assert summary["real_read_only_promotion_dry_run_command_executed"]["false"] == 1
+    assert summary["real_read_only_promotion_real_execution_enabled"]["false"] == 1
+    assert summary["real_read_only_promotion_subprocess_invoked"]["false"] == 1
+    assert summary["real_read_only_promotion_execution_performed"]["false"] == 1
+    assert summary["real_read_only_promotion_linkage_complete"] is True
+    assert summary["real_read_only_promotion_noop_matches"] == 1
+    assert summary["real_read_only_promotion_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -895,6 +913,49 @@ def _real_noop_result(**overrides):
     return item
 
 
+def _real_read_only_promotion(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_promotion",
+        "real_execution_read_only_promotion_id": "real-read-only-promotion-1",
+        "real_execution_noop_result_id": "real-noop-result-1",
+        "real_execution_dry_run_envelope_id": "real-dry-run-envelope-1",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "promotion_status": "promoted",
+        "read_only_candidate": True,
+        "read_only_module": "src.testing.run_replay_evidence_check",
+        "read_only_argv": [
+            "python",
+            "-m",
+            "src.testing.run_replay_evidence_check",
+            "--scenario-id",
+            "s",
+            "--directive-id",
+            "d",
+            "--timeout-profile",
+            "standard",
+        ],
+        "command_parse_valid": True,
+        "stdout_marker_observed": True,
+        "noop_exit_code": 0,
+        "noop_only": True,
+        "rendered_command_executed": False,
+        "dry_run_envelope_command_executed": False,
+        "real_execution_enabled": False,
+        "subprocess_invoked": False,
+        "execution_performed": False,
+    }
+    item.update(overrides)
+    return item
+
+
 def test_inspect_retry_governance_trail_counts_real_noop_result_orphan() -> None:
     summary = inspect_retry_governance_trail_from_records(
         [
@@ -919,3 +980,30 @@ def test_inspect_retry_governance_trail_counts_real_noop_result_orphan() -> None
 
     assert summary["real_noop_linkage_complete"] is False
     assert summary["real_noop_result_orphans"] == 1
+
+
+def test_inspect_retry_governance_trail_counts_real_read_only_promotion_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(),
+            _real_noop_result(),
+            _real_read_only_promotion(
+                real_execution_noop_result_id="missing-noop-result"
+            ),
+        ]
+    )
+
+    assert summary["real_read_only_promotion_linkage_complete"] is False
+    assert summary["real_read_only_promotion_orphans"] == 1
