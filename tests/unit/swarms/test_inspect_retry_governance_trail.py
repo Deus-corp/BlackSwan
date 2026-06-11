@@ -616,6 +616,9 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_dry_run_envelope_subprocess_enabled"]["false"] == 1
     assert summary["real_dry_run_envelope_execution_performed"]["false"] == 1
     assert summary["real_dry_run_envelope_subprocess_invoked"]["false"] == 1
+    assert summary["real_dry_run_linkage_complete"] is True
+    assert summary["real_dry_run_envelope_final_gate_matches"] == 1
+    assert summary["real_dry_run_envelope_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -822,3 +825,26 @@ def _real_dry_run_envelope(**overrides):
     }
     item.update(overrides)
     return item
+
+
+def test_inspect_retry_governance_trail_counts_real_dry_run_envelope_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(real_execution_final_gate_id="missing-final-gate"),
+        ]
+    )
+
+    assert summary["real_dry_run_linkage_complete"] is False
+    assert summary["real_dry_run_envelope_orphans"] == 1

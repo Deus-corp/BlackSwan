@@ -491,6 +491,11 @@ def inspect_retry_governance_trail_from_records(
         real_approvals=real_approvals,
     )
 
+    real_dry_run_linkage = _real_dry_run_linkage_summary(
+        real_final_gates=real_final_gates,
+        real_dry_run_envelopes=real_dry_run_envelopes,
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -675,6 +680,16 @@ def inspect_retry_governance_trail_from_records(
         ),
         "real_dry_run_envelope_subprocess_invoked": dict(
             real_dry_run_envelope_subprocess_invoked
+        ),
+        "real_dry_run_linkage": real_dry_run_linkage,
+        "real_dry_run_linkage_complete": bool(
+            real_dry_run_linkage.get("real_dry_run_linkage_complete")
+        ),
+        "real_dry_run_envelope_final_gate_matches": real_dry_run_linkage.get(
+            "real_dry_run_envelope_final_gate_matches", 0
+        ),
+        "real_dry_run_envelope_orphans": real_dry_run_linkage.get(
+            "real_dry_run_envelope_orphans", 0
         ),
     }
 
@@ -1265,6 +1280,8 @@ def _format_summary(summary: Mapping[str, Any]) -> str:
         f"real_linkage_complete={str(bool(summary.get('real_linkage_complete'))).lower()} "
         f"real_preflight_orphans={summary.get('real_preflight_orphans', 0)} "
         f"real_approval_orphans={summary.get('real_approval_orphans', 0)} "
+        f"real_dry_run_linkage_complete={str(bool(summary.get('real_dry_run_linkage_complete'))).lower()} "
+        f"real_dry_run_envelope_orphans={summary.get('real_dry_run_envelope_orphans', 0)} "
     )
 
 
@@ -1356,6 +1373,41 @@ def _real_linkage_summary(
                     for item in real_approvals
                 )
             )
+        ),
+    }
+
+
+def _real_dry_run_linkage_summary(
+    *,
+    real_final_gates: list[Mapping[str, Any]],
+    real_dry_run_envelopes: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    final_gate_ids = {
+        clean(item.get("real_execution_final_gate_id"))
+        for item in real_final_gates
+        if clean(item.get("real_execution_final_gate_id"))
+    }
+
+    envelope_final_gate_matches = 0
+    envelope_orphans = 0
+
+    for envelope in real_dry_run_envelopes:
+        final_gate_id = clean(envelope.get("real_execution_final_gate_id"))
+
+        if final_gate_id and final_gate_id in final_gate_ids:
+            envelope_final_gate_matches += 1
+        else:
+            envelope_orphans += 1
+
+    return {
+        "real_dry_run_envelope_final_gate_matches": envelope_final_gate_matches,
+        "real_dry_run_envelope_orphans": envelope_orphans,
+        "real_dry_run_linkage_complete": (
+            bool(real_dry_run_envelopes)
+            and envelope_orphans == 0
         ),
     }
 

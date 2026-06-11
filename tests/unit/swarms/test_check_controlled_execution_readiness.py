@@ -128,6 +128,8 @@ def _trail_summary(**overrides):
         "real_dry_run_envelope_subprocess_enabled": {"false": 1},
         "real_dry_run_envelope_execution_performed": {"false": 1},
         "real_dry_run_envelope_subprocess_invoked": {"false": 1},
+        "real_dry_run_linkage_complete": True,
+        "real_dry_run_envelope_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -170,6 +172,8 @@ def _report(**overrides):
         "adapter_subprocess_invoked": 0,
         "adapter_real_execution_enabled": 0,
         "adapter_payload_executed": 0,
+        "real_dry_run_linkage_complete": True,
+        "real_dry_run_envelope_orphans": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -528,6 +532,8 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_dry_run_envelope_subprocess_enabled": 0,
         "real_dry_run_envelope_execution_performed": 0,
         "real_dry_run_envelope_subprocess_invoked": 0,
+        "real_dry_run_linkage_complete": True,
+        "real_dry_run_envelope_orphans": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -617,6 +623,8 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_dry_run_envelope_subprocess_enabled": 0,
         "real_dry_run_envelope_execution_performed": 0,
         "real_dry_run_envelope_subprocess_invoked": 0,
+        "real_dry_run_linkage_complete": True,
+        "real_dry_run_envelope_orphans": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -752,3 +760,18 @@ def test_controlled_execution_readiness_fails_for_real_preflight_orphan() -> Non
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_preflight_links_to_controlled_result" in failed
+
+
+def test_controlled_execution_readiness_fails_for_real_dry_run_envelope_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_dry_run_envelope_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_dry_run_envelope_links_to_final_gate" in failed

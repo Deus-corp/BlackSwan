@@ -32,6 +32,8 @@ def _report(**overrides):
         "real_final_gate_blocked": 1,
         "real_dry_run_envelope_observed": True,
         "real_dry_run_envelope_records": 1,
+        "real_dry_run_linkage_complete": True,
+        "real_dry_run_envelope_orphans": 0,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -100,6 +102,8 @@ def _report(**overrides):
             "real_final_gate_blocked",
             "real_dry_run_envelope_observed",
             "real_dry_run_envelope_records",
+            "real_dry_run_linkage_complete",
+            "real_dry_run_envelope_orphans",
         ],
     }
     item.update(overrides)
@@ -182,6 +186,8 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_final_gate_blocked",
             "real_dry_run_envelope_observed",
             "real_dry_run_envelope_records",
+            "real_dry_run_linkage_complete",
+            "real_dry_run_envelope_orphans",
             "checks",
             "exit_codes",
         ]
@@ -359,3 +365,21 @@ def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_
 
     assert result["valid"] is False
     assert "real_approval_orphans_must_be_int" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_dry_run_linkage_complete_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_dry_run_linkage_complete="true")
+    )
+
+    assert result["valid"] is False
+    assert "real_dry_run_linkage_complete_must_be_bool" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_dry_run_envelope_orphans_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_dry_run_envelope_orphans="0")
+    )
+
+    assert result["valid"] is False
+    assert "real_dry_run_envelope_orphans_must_be_int" in result["reasons"]

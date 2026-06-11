@@ -354,6 +354,12 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         "real_dry_run_envelope_subprocess_invoked": _safe_int(
             real_dry_run_envelope_subprocess_invoked.get("true"), 0
         ),
+        "real_dry_run_linkage_complete": bool(
+            trail_summary.get("real_dry_run_linkage_complete")
+        ),
+        "real_dry_run_envelope_orphans": _safe_int(
+            trail_summary.get("real_dry_run_envelope_orphans"), 0
+        ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
         "ready_for_real_execution": ready_for_real_execution,
@@ -529,6 +535,12 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_dry_run_envelope_subprocess_invoked": _safe_int(
                 real_dry_run_envelope_subprocess_invoked.get("true"), 0
             ),
+            "real_dry_run_linkage_complete": bool(
+                trail_summary.get("real_dry_run_linkage_complete")
+            ),
+            "real_dry_run_envelope_orphans": _safe_int(
+                trail_summary.get("real_dry_run_envelope_orphans"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -564,6 +576,8 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_final_gate_blocked",
             "real_dry_run_envelope_observed",
             "real_dry_run_envelope_records",
+            "real_dry_run_linkage_complete",
+            "real_dry_run_envelope_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -1204,6 +1218,19 @@ def _build_checks(
             _safe_int(real_dry_run_envelope_subprocess_invoked.get("true"), 0) == 0,
             _safe_int(real_dry_run_envelope_subprocess_invoked.get("true"), 0),
         ),
+        _check(
+            "real_dry_run_envelope_links_to_final_gate",
+            _safe_int(real_dry_run_envelope_dry_run_only.get("true"), 0) == 0
+            or _safe_int(trail_summary.get("real_dry_run_envelope_orphans"), 0) == 0,
+            {
+                "real_dry_run_envelopes": _safe_int(
+                    real_dry_run_envelope_dry_run_only.get("true"), 0
+                ),
+                "real_dry_run_envelope_orphans": _safe_int(
+                    trail_summary.get("real_dry_run_envelope_orphans"), 0
+                ),
+            },
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -1281,6 +1308,8 @@ def validate_controlled_execution_readiness_report_schema(
         "real_final_gate_blocked",
         "real_dry_run_envelope_observed",
         "real_dry_run_envelope_records",
+        "real_dry_run_linkage_complete",
+        "real_dry_run_envelope_orphans",
     ]
 
     reasons: list[str] = []
@@ -1379,6 +1408,11 @@ def validate_controlled_execution_readiness_report_schema(
     if not isinstance(report.get("real_dry_run_envelope_records"), int):
         reasons.append("real_dry_run_envelope_records_must_be_int")
 
+    if not isinstance(report.get("real_dry_run_linkage_complete"), bool):
+        reasons.append("real_dry_run_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_dry_run_envelope_orphans"), int):
+        reasons.append("real_dry_run_envelope_orphans_must_be_int")
+
     return {
         "type": "controlled_execution_readiness_schema_validation",
         "valid": not reasons,
@@ -1472,6 +1506,8 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_dry_run_envelope_subprocess_enabled={result.get('real_dry_run_envelope_subprocess_enabled', 0)} "
         f"real_dry_run_envelope_execution_performed={result.get('real_dry_run_envelope_execution_performed', 0)} "
         f"real_dry_run_envelope_subprocess_invoked={result.get('real_dry_run_envelope_subprocess_invoked', 0)} "
+        f"real_dry_run_linkage_complete={str(bool(result.get('real_dry_run_linkage_complete'))).lower()} "
+        f"real_dry_run_envelope_orphans={result.get('real_dry_run_envelope_orphans', 0)} "
     )
 
 
