@@ -37,6 +37,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_approval_transition",
     "replay_lifecycle_retry_real_execution_final_gate",
     "replay_lifecycle_retry_real_execution_dry_run_envelope",
+    "replay_lifecycle_retry_real_execution_noop_result",
 }
 
 
@@ -239,6 +240,18 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_noop_result":
+            result = validate_replay_lifecycle_retry_real_execution_noop_result(record)
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -336,6 +349,13 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_dry_run_envelope_subprocess_enabled: dict[str, int] = {}
     real_dry_run_envelope_execution_performed: dict[str, int] = {}
     real_dry_run_envelope_subprocess_invoked: dict[str, int] = {}
+    real_noop_result_noop_only: dict[str, int] = {}
+    real_noop_result_rendered_command_executed: dict[str, int] = {}
+    real_noop_result_dry_run_command_executed: dict[str, int] = {}
+    real_noop_result_real_execution_enabled: dict[str, int] = {}
+    real_noop_result_subprocess_invoked: dict[str, int] = {}
+    real_noop_result_execution_performed: dict[str, int] = {}
+    real_noop_result_exit_codes: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -674,6 +694,29 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             ):
                 value = str(bool(item.get(key))).lower()
                 target[value] = target.get(value, 0) + 1
+        
+        if record_type == "replay_lifecycle_retry_real_execution_noop_result":
+            for target, key in (
+                (real_noop_result_noop_only, "noop_only"),
+                (
+                    real_noop_result_rendered_command_executed,
+                    "rendered_command_executed",
+                ),
+                (
+                    real_noop_result_dry_run_command_executed,
+                    "dry_run_envelope_command_executed",
+                ),
+                (real_noop_result_real_execution_enabled, "real_execution_enabled"),
+                (real_noop_result_subprocess_invoked, "subprocess_invoked"),
+                (real_noop_result_execution_performed, "execution_performed"),
+            ):
+                value = str(bool(item.get(key))).lower()
+                target[value] = target.get(value, 0) + 1
+
+            exit_code = str(item.get("exit_code"))
+            real_noop_result_exit_codes[exit_code] = (
+                real_noop_result_exit_codes.get(exit_code, 0) + 1
+            )
 
     return {
         "type": "security_validation_summary",
@@ -778,6 +821,17 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_dry_run_envelope_subprocess_invoked": (
             real_dry_run_envelope_subprocess_invoked
         ),
+        "real_noop_result_noop_only": real_noop_result_noop_only,
+        "real_noop_result_rendered_command_executed": (
+            real_noop_result_rendered_command_executed
+        ),
+        "real_noop_result_dry_run_command_executed": (
+            real_noop_result_dry_run_command_executed
+        ),
+        "real_noop_result_real_execution_enabled": real_noop_result_real_execution_enabled,
+        "real_noop_result_subprocess_invoked": real_noop_result_subprocess_invoked,
+        "real_noop_result_execution_performed": real_noop_result_execution_performed,
+        "real_noop_result_exit_codes": real_noop_result_exit_codes,
     }
 
 
@@ -960,6 +1014,27 @@ def build_security_validation_heartbeat_metrics(records: Iterable[Any]) -> dict[
         "security_validation_real_dry_run_envelope_subprocess_invoked": summary[
             "real_dry_run_envelope_subprocess_invoked"
         ],
+        "security_validation_real_noop_result_noop_only": summary[
+            "real_noop_result_noop_only"
+        ],
+        "security_validation_real_noop_result_rendered_command_executed": summary[
+            "real_noop_result_rendered_command_executed"
+        ],
+        "security_validation_real_noop_result_dry_run_command_executed": summary[
+            "real_noop_result_dry_run_command_executed"
+        ],
+        "security_validation_real_noop_result_real_execution_enabled": summary[
+            "real_noop_result_real_execution_enabled"
+        ],
+        "security_validation_real_noop_result_subprocess_invoked": summary[
+            "real_noop_result_subprocess_invoked"
+        ],
+        "security_validation_real_noop_result_execution_performed": summary[
+            "real_noop_result_execution_performed"
+        ],
+        "security_validation_real_noop_result_exit_codes": summary[
+            "real_noop_result_exit_codes"
+        ],
     }
 
 
@@ -1063,6 +1138,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_approval_transition_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_noop_result":
+        return str(
+            record.get("real_execution_noop_result_id")
+            or record.get("real_execution_dry_run_envelope_id")
+            or record.get("real_execution_final_gate_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -1094,6 +1177,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_approval_transition_id",
         "real_execution_final_gate_id",
         "real_execution_dry_run_envelope_id",
+        "real_execution_noop_result_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -1122,6 +1206,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_approval_transition_id",
             "real_execution_final_gate_id",
             "real_execution_dry_run_envelope_id",
+            "real_execution_noop_result_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -2587,6 +2672,112 @@ def validate_replay_lifecycle_retry_real_execution_dry_run_envelope(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_noop_result(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate guarded noop subprocess harness result records."""
+    reasons: list[str] = []
+
+    result_id = str(record.get("real_execution_noop_result_id") or "").strip()
+    envelope_id = str(
+        record.get("real_execution_dry_run_envelope_id") or ""
+    ).strip()
+    final_gate_id = str(record.get("real_execution_final_gate_id") or "").strip()
+    transition_id = str(
+        record.get("real_execution_approval_transition_id") or ""
+    ).strip()
+    approval_id = str(record.get("real_execution_approval_id") or "").strip()
+    preflight_id = str(record.get("real_execution_preflight_id") or "").strip()
+    controlled_result_id = str(
+        record.get("controlled_execution_result_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    noop_argv = record.get("noop_argv")
+    noop_only = bool(record.get("noop_only"))
+    rendered_command_executed = bool(record.get("rendered_command_executed"))
+    dry_run_envelope_command_executed = bool(
+        record.get("dry_run_envelope_command_executed")
+    )
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    exit_code = record.get("exit_code")
+    stdout = str(record.get("stdout") or "")
+    stderr = str(record.get("stderr") or "")
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not result_id:
+        reasons.append("missing_real_execution_noop_result_id")
+    if not envelope_id:
+        reasons.append("missing_real_execution_dry_run_envelope_id")
+    if not final_gate_id:
+        reasons.append("missing_real_execution_final_gate_id")
+    if not transition_id:
+        reasons.append("missing_real_execution_approval_transition_id")
+    if not approval_id:
+        reasons.append("missing_real_execution_approval_id")
+    if not preflight_id:
+        reasons.append("missing_real_execution_preflight_id")
+    if not controlled_result_id:
+        reasons.append("missing_controlled_execution_result_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if not isinstance(noop_argv, list) or not noop_argv:
+        reasons.append("noop_result_argv_must_be_non_empty_list")
+    if reason != "real_execution_noop_harness_completed":
+        reasons.append("invalid_noop_result_reason")
+
+    if not noop_only or not bool(payload_mapping.get("noop_only", True)):
+        reasons.append("noop_result_must_remain_noop_only")
+    if rendered_command_executed or bool(
+        payload_mapping.get("rendered_command_executed")
+    ):
+        reasons.append("noop_result_must_not_execute_rendered_command")
+    if dry_run_envelope_command_executed or bool(
+        payload_mapping.get("dry_run_envelope_command_executed")
+    ):
+        reasons.append("noop_result_must_not_execute_dry_run_envelope_command")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("noop_result_must_not_enable_real_execution")
+    if not subprocess_invoked or not bool(
+        payload_mapping.get("subprocess_invoked", True)
+    ):
+        reasons.append("noop_result_must_invoke_subprocess")
+    if not execution_performed or not bool(
+        payload_mapping.get("execution_performed", True)
+    ):
+        reasons.append("noop_result_must_record_execution_performed")
+    if exit_code != 0:
+        reasons.append("noop_result_exit_code_must_be_zero")
+    if "controlled-noop-ok" not in stdout:
+        reasons.append("noop_result_stdout_must_contain_marker")
+    if stderr:
+        reasons.append("noop_result_stderr_must_be_empty")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_noop_result",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": result_id or envelope_id,
+        "noop_only": noop_only,
+        "rendered_command_executed": rendered_command_executed,
+        "dry_run_envelope_command_executed": dry_run_envelope_command_executed,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_invoked": subprocess_invoked,
+        "execution_performed": execution_performed,
+        "exit_code": exit_code,
+        "stdout_marker_observed": "controlled-noop-ok" in stdout,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -2607,4 +2798,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_approval_transition",
     "validate_replay_lifecycle_retry_real_execution_final_gate",
     "validate_replay_lifecycle_retry_real_execution_dry_run_envelope",
+    "validate_replay_lifecycle_retry_real_execution_noop_result",
 ]

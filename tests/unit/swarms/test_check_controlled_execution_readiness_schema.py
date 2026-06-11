@@ -34,6 +34,8 @@ def _report(**overrides):
         "real_dry_run_envelope_records": 1,
         "real_dry_run_linkage_complete": True,
         "real_dry_run_envelope_orphans": 0,
+        "real_noop_result_observed": True,
+        "real_noop_result_records": 1,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -104,6 +106,8 @@ def _report(**overrides):
             "real_dry_run_envelope_records",
             "real_dry_run_linkage_complete",
             "real_dry_run_envelope_orphans",
+            "real_noop_result_observed",
+            "real_noop_result_records",
         ],
     }
     item.update(overrides)
@@ -188,6 +192,8 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_dry_run_envelope_records",
             "real_dry_run_linkage_complete",
             "real_dry_run_envelope_orphans",
+            "real_noop_result_observed",
+            "real_noop_result_records",
             "checks",
             "exit_codes",
         ]

@@ -411,3 +411,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "dry_run_only=true" in text
     assert "subprocess_invoked=false" in text
     assert "does not execute commands" in text
+    assert "Guarded noop execution harness" in text
+    assert "replay_lifecycle_retry_real_execution_noop_result" in text
+    assert "noop_only=true" in text
+    assert "rendered_command_executed=false" in text
+    assert "dry_run_envelope_command_executed=false" in text
+    assert "subprocess_invoked=true" in text

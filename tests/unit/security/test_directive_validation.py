@@ -23,6 +23,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_approval_transition,
     validate_replay_lifecycle_retry_real_execution_final_gate,
     validate_replay_lifecycle_retry_real_execution_dry_run_envelope,
+    validate_replay_lifecycle_retry_real_execution_noop_result,
 )
 
 
@@ -2235,3 +2236,96 @@ def test_validate_retry_real_execution_dry_run_envelope_rejects_secret_env_keys(
 
     assert result["valid"] is False
     assert "dry_run_envelope_env_keys_must_not_include_secrets" in result["reasons"]
+
+
+def _real_execution_noop_result(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_noop_result",
+        "real_execution_noop_result_id": "real-noop-result-1",
+        "real_execution_dry_run_envelope_id": "real-dry-run-envelope-1",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "noop_argv": ["python", "-c", "print('controlled-noop-ok')"],
+        "noop_only": True,
+        "rendered_command_executed": False,
+        "dry_run_envelope_command_executed": False,
+        "real_execution_enabled": False,
+        "subprocess_invoked": True,
+        "execution_performed": True,
+        "exit_code": 0,
+        "stdout": "controlled-noop-ok\n",
+        "stderr": "",
+        "duration_seconds": 0.01,
+        "reason": "real_execution_noop_harness_completed",
+        "payload": {
+            "noop_only": True,
+            "rendered_command_executed": False,
+            "dry_run_envelope_command_executed": False,
+            "real_execution_enabled": False,
+            "subprocess_invoked": True,
+            "execution_performed": True,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_noop_result_accepts_safe_noop() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_noop_result(
+        _real_execution_noop_result()
+    )
+
+    assert result["valid"] is True
+    assert result["noop_only"] is True
+    assert result["rendered_command_executed"] is False
+    assert result["dry_run_envelope_command_executed"] is False
+    assert result["real_execution_enabled"] is False
+    assert result["subprocess_invoked"] is True
+    assert result["execution_performed"] is True
+    assert result["exit_code"] == 0
+    assert result["stdout_marker_observed"] is True
+
+
+def test_validate_retry_real_execution_noop_result_rejects_rendered_command_execution() -> None:
+    record = _real_execution_noop_result(rendered_command_executed=True)
+    record["payload"]["rendered_command_executed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_noop_result(record)
+
+    assert result["valid"] is False
+    assert "noop_result_must_not_execute_rendered_command" in result["reasons"]
+
+
+def test_validate_retry_real_execution_noop_result_rejects_dry_run_command_execution() -> None:
+    record = _real_execution_noop_result(dry_run_envelope_command_executed=True)
+    record["payload"]["dry_run_envelope_command_executed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_noop_result(record)
+
+    assert result["valid"] is False
+    assert "noop_result_must_not_execute_dry_run_envelope_command" in result["reasons"]
+
+
+def test_validate_retry_real_execution_noop_result_rejects_missing_stdout_marker() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_noop_result(
+        _real_execution_noop_result(stdout="")
+    )
+
+    assert result["valid"] is False
+    assert "noop_result_stdout_must_contain_marker" in result["reasons"]
+
+
+def test_validate_retry_real_execution_noop_result_rejects_non_zero_exit_code() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_noop_result(
+        _real_execution_noop_result(exit_code=1)
+    )
+
+    assert result["valid"] is False
+    assert "noop_result_exit_code_must_be_zero" in result["reasons"]

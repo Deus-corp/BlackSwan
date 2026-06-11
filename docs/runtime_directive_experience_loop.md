@@ -1475,6 +1475,19 @@ The envelope is an audit artifact only. It does not execute commands.
 
 ---
 
+### Guarded noop execution harness
+
+`replay_lifecycle_retry_real_execution_noop_result` is the first subprocess
+boundary. It runs only a fixed noop command and never executes the rendered
+command or the dry-run envelope command. The record must keep
+`noop_only=true`, `rendered_command_executed=false`,
+`dry_run_envelope_command_executed=false`, `real_execution_enabled=false`,
+`subprocess_invoked=true`, `execution_performed=true`, and `exit_code=0`.
+
+This validates subprocess plumbing without enabling real execution.
+
+---
+
 ## Related modules
 
 ```text

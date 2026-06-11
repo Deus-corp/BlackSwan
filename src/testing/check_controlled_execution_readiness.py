@@ -360,6 +360,30 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         "real_dry_run_envelope_orphans": _safe_int(
             trail_summary.get("real_dry_run_envelope_orphans"), 0
         ),
+        "real_noop_result_observed": _safe_int(
+            real_noop_result_noop_only.get("true"), 0
+        ) > 0,
+        "real_noop_result_records": _safe_int(
+            real_noop_result_noop_only.get("true"), 0
+        ),
+        "real_noop_result_rendered_command_executed": _safe_int(
+            real_noop_result_rendered_command_executed.get("true"), 0
+        ),
+        "real_noop_result_dry_run_command_executed": _safe_int(
+            real_noop_result_dry_run_command_executed.get("true"), 0
+        ),
+        "real_noop_result_real_execution_enabled": _safe_int(
+            real_noop_result_real_execution_enabled.get("true"), 0
+        ),
+        "real_noop_result_subprocess_invoked": _safe_int(
+            real_noop_result_subprocess_invoked.get("true"), 0
+        ),
+        "real_noop_result_execution_performed": _safe_int(
+            real_noop_result_execution_performed.get("true"), 0
+        ),
+        "real_noop_result_exit_code_zero": _safe_int(
+            real_noop_result_exit_codes.get("0"), 0
+        ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
         "ready_for_real_execution": ready_for_real_execution,
@@ -541,6 +565,30 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_dry_run_envelope_orphans": _safe_int(
                 trail_summary.get("real_dry_run_envelope_orphans"), 0
             ),
+            "real_noop_result_observed": _safe_int(
+                real_noop_result_noop_only.get("true"), 0
+            ) > 0,
+            "real_noop_result_records": _safe_int(
+                real_noop_result_noop_only.get("true"), 0
+            ),
+            "real_noop_result_rendered_command_executed": _safe_int(
+                real_noop_result_rendered_command_executed.get("true"), 0
+            ),
+            "real_noop_result_dry_run_command_executed": _safe_int(
+                real_noop_result_dry_run_command_executed.get("true"), 0
+            ),
+            "real_noop_result_real_execution_enabled": _safe_int(
+                real_noop_result_real_execution_enabled.get("true"), 0
+            ),
+            "real_noop_result_subprocess_invoked": _safe_int(
+                real_noop_result_subprocess_invoked.get("true"), 0
+            ),
+            "real_noop_result_execution_performed": _safe_int(
+                real_noop_result_execution_performed.get("true"), 0
+            ),
+            "real_noop_result_exit_code_zero": _safe_int(
+                real_noop_result_exit_codes.get("0"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -578,6 +626,8 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_dry_run_envelope_records",
             "real_dry_run_linkage_complete",
             "real_dry_run_envelope_orphans",
+            "real_noop_result_observed",
+            "real_noop_result_records",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -806,6 +856,27 @@ def _build_checks(
     )
     real_dry_run_envelope_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_dry_run_envelope_subprocess_invoked")
+    )
+    real_noop_result_noop_only = _safe_mapping(
+        trail_summary.get("real_noop_result_noop_only")
+    )
+    real_noop_result_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_noop_result_rendered_command_executed")
+    )
+    real_noop_result_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_noop_result_dry_run_command_executed")
+    )
+    real_noop_result_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_noop_result_real_execution_enabled")
+    )
+    real_noop_result_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_noop_result_subprocess_invoked")
+    )
+    real_noop_result_execution_performed = _safe_mapping(
+        trail_summary.get("real_noop_result_execution_performed")
+    )
+    real_noop_result_exit_codes = _safe_mapping(
+        trail_summary.get("real_noop_result_exit_codes")
     )
 
     checks = [
@@ -1231,6 +1302,54 @@ def _build_checks(
                 ),
             },
         ),
+        _check(
+            "real_noop_result_observed_after_dry_run_envelope",
+            _safe_int(real_dry_run_envelope_dry_run_only.get("true"), 0) == 0
+            or _safe_int(real_noop_result_noop_only.get("true"), 0) > 0,
+            {
+                "dry_run_envelopes": _safe_int(
+                    real_dry_run_envelope_dry_run_only.get("true"), 0
+                ),
+                "noop_results": _safe_int(
+                    real_noop_result_noop_only.get("true"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_noop_result_is_noop_only",
+            _safe_int(real_noop_result_noop_only.get("true"), 0) > 0,
+            _safe_int(real_noop_result_noop_only.get("true"), 0),
+        ),
+        _check(
+            "real_noop_result_did_not_execute_rendered_command",
+            _safe_int(real_noop_result_rendered_command_executed.get("true"), 0) == 0,
+            _safe_int(real_noop_result_rendered_command_executed.get("true"), 0),
+        ),
+        _check(
+            "real_noop_result_did_not_execute_dry_run_command",
+            _safe_int(real_noop_result_dry_run_command_executed.get("true"), 0) == 0,
+            _safe_int(real_noop_result_dry_run_command_executed.get("true"), 0),
+        ),
+        _check(
+            "real_noop_result_does_not_enable_real_execution",
+            _safe_int(real_noop_result_real_execution_enabled.get("true"), 0) == 0,
+            _safe_int(real_noop_result_real_execution_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_noop_result_invoked_subprocess_once",
+            _safe_int(real_noop_result_subprocess_invoked.get("true"), 0) == 1,
+            _safe_int(real_noop_result_subprocess_invoked.get("true"), 0),
+        ),
+        _check(
+            "real_noop_result_execution_performed_once",
+            _safe_int(real_noop_result_execution_performed.get("true"), 0) == 1,
+            _safe_int(real_noop_result_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "real_noop_result_exit_code_zero",
+            _safe_int(real_noop_result_exit_codes.get("0"), 0) == 1,
+            real_noop_result_exit_codes,
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -1310,6 +1429,8 @@ def validate_controlled_execution_readiness_report_schema(
         "real_dry_run_envelope_records",
         "real_dry_run_linkage_complete",
         "real_dry_run_envelope_orphans",
+        "real_noop_result_observed",
+        "real_noop_result_records",
     ]
 
     reasons: list[str] = []
@@ -1412,6 +1533,11 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_dry_run_linkage_complete_must_be_bool")
     if not isinstance(report.get("real_dry_run_envelope_orphans"), int):
         reasons.append("real_dry_run_envelope_orphans_must_be_int")
+    
+    if not isinstance(report.get("real_noop_result_observed"), bool):
+        reasons.append("real_noop_result_observed_must_be_bool")
+    if not isinstance(report.get("real_noop_result_records"), int):
+        reasons.append("real_noop_result_records_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -1508,6 +1634,14 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_dry_run_envelope_subprocess_invoked={result.get('real_dry_run_envelope_subprocess_invoked', 0)} "
         f"real_dry_run_linkage_complete={str(bool(result.get('real_dry_run_linkage_complete'))).lower()} "
         f"real_dry_run_envelope_orphans={result.get('real_dry_run_envelope_orphans', 0)} "
+        f"real_noop_result_observed={str(bool(result.get('real_noop_result_observed'))).lower()} "
+        f"real_noop_result_records={result.get('real_noop_result_records', 0)} "
+        f"real_noop_result_rendered_command_executed={result.get('real_noop_result_rendered_command_executed', 0)} "
+        f"real_noop_result_dry_run_command_executed={result.get('real_noop_result_dry_run_command_executed', 0)} "
+        f"real_noop_result_real_execution_enabled={result.get('real_noop_result_real_execution_enabled', 0)} "
+        f"real_noop_result_subprocess_invoked={result.get('real_noop_result_subprocess_invoked', 0)} "
+        f"real_noop_result_execution_performed={result.get('real_noop_result_execution_performed', 0)} "
+        f"real_noop_result_exit_code_zero={result.get('real_noop_result_exit_code_zero', 0)} "
     )
 
 

@@ -517,12 +517,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_approval_transition(),
             _real_final_gate(),
             _real_dry_run_envelope(),
+            _real_noop_result(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 13
+    assert summary["total_records"] == 14
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -619,6 +620,17 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_dry_run_linkage_complete"] is True
     assert summary["real_dry_run_envelope_final_gate_matches"] == 1
     assert summary["real_dry_run_envelope_orphans"] == 0
+    assert summary["counts"]["real_execution_noop_results"] == 1
+    assert summary["chain_ids"]["real_execution_noop_result_ids"] == [
+        "real-noop-result-1"
+    ]
+    assert summary["real_noop_result_noop_only"]["true"] == 1
+    assert summary["real_noop_result_rendered_command_executed"]["false"] == 1
+    assert summary["real_noop_result_dry_run_command_executed"]["false"] == 1
+    assert summary["real_noop_result_real_execution_enabled"]["false"] == 1
+    assert summary["real_noop_result_subprocess_invoked"]["true"] == 1
+    assert summary["real_noop_result_execution_performed"]["true"] == 1
+    assert summary["real_noop_result_exit_codes"]["0"] == 1
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -848,3 +860,32 @@ def test_inspect_retry_governance_trail_counts_real_dry_run_envelope_orphan() ->
 
     assert summary["real_dry_run_linkage_complete"] is False
     assert summary["real_dry_run_envelope_orphans"] == 1
+
+
+def _real_noop_result(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_noop_result",
+        "real_execution_noop_result_id": "real-noop-result-1",
+        "real_execution_dry_run_envelope_id": "real-dry-run-envelope-1",
+        "real_execution_final_gate_id": "real-final-gate-1",
+        "real_execution_approval_transition_id": "real-transition-1",
+        "real_execution_approval_id": "real-approval-1",
+        "real_execution_preflight_id": "real-preflight-1",
+        "controlled_execution_result_id": "controlled-result-1",
+        "rendered_command_id": "rendered-1",
+        "plan_id": "plan-1",
+        "proposal_id": "proposal-1",
+        "approval_id": "approval-1",
+        "noop_argv": ["python", "-c", "print('controlled-noop-ok')"],
+        "noop_only": True,
+        "rendered_command_executed": False,
+        "dry_run_envelope_command_executed": False,
+        "real_execution_enabled": False,
+        "subprocess_invoked": True,
+        "execution_performed": True,
+        "exit_code": 0,
+        "stdout": "controlled-noop-ok\n",
+        "stderr": "",
+    }
+    item.update(overrides)
+    return item

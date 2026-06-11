@@ -32,6 +32,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_approval_transition",
     "replay_lifecycle_retry_real_execution_final_gate",
     "replay_lifecycle_retry_real_execution_dry_run_envelope",
+    "replay_lifecycle_retry_real_execution_noop_result",
 }
 
 
@@ -164,6 +165,11 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_dry_run_envelope"
+    ]
+    real_noop_results = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_real_execution_noop_result"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -457,6 +463,34 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in real_dry_run_envelopes
     )
+    real_noop_result_noop_only = Counter(
+        str(bool(item.get("noop_only"))).lower()
+        for item in real_noop_results
+    )
+    real_noop_result_rendered_command_executed = Counter(
+        str(bool(item.get("rendered_command_executed"))).lower()
+        for item in real_noop_results
+    )
+    real_noop_result_dry_run_command_executed = Counter(
+        str(bool(item.get("dry_run_envelope_command_executed"))).lower()
+        for item in real_noop_results
+    )
+    real_noop_result_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_noop_results
+    )
+    real_noop_result_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_noop_results
+    )
+    real_noop_result_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_noop_results
+    )
+    real_noop_result_exit_codes = Counter(
+        str(item.get("exit_code"))
+        for item in real_noop_results
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -472,6 +506,7 @@ def inspect_retry_governance_trail_from_records(
         real_approval_transitions=real_approval_transitions,
         real_final_gates=real_final_gates,
         real_dry_run_envelopes=real_dry_run_envelopes,
+        real_noop_results=real_noop_results,
         results=results,
     )
 
@@ -519,6 +554,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_approval_transitions": len(real_approval_transitions),
             "real_execution_final_gates": len(real_final_gates),
             "real_execution_dry_run_envelopes": len(real_dry_run_envelopes),
+            "real_execution_noop_results": len(real_noop_results),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -691,6 +727,23 @@ def inspect_retry_governance_trail_from_records(
         "real_dry_run_envelope_orphans": real_dry_run_linkage.get(
             "real_dry_run_envelope_orphans", 0
         ),
+        "real_noop_result_noop_only": dict(real_noop_result_noop_only),
+        "real_noop_result_rendered_command_executed": dict(
+            real_noop_result_rendered_command_executed
+        ),
+        "real_noop_result_dry_run_command_executed": dict(
+            real_noop_result_dry_run_command_executed
+        ),
+        "real_noop_result_real_execution_enabled": dict(
+            real_noop_result_real_execution_enabled
+        ),
+        "real_noop_result_subprocess_invoked": dict(
+            real_noop_result_subprocess_invoked
+        ),
+        "real_noop_result_execution_performed": dict(
+            real_noop_result_execution_performed
+        ),
+        "real_noop_result_exit_codes": dict(real_noop_result_exit_codes),
     }
 
 def _missing_stages(
@@ -850,6 +903,7 @@ def _build_chain_ids(
     real_approval_transitions: list[Mapping[str, Any]],
     real_final_gates: list[Mapping[str, Any]],
     real_dry_run_envelopes: list[Mapping[str, Any]],
+    real_noop_results: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -866,6 +920,7 @@ def _build_chain_ids(
         + real_approval_transitions
         + real_final_gates
         + real_dry_run_envelopes
+        + real_noop_results
         + results
     )
 
@@ -892,6 +947,7 @@ def _build_chain_ids(
                 + real_approval_transitions
                 + real_final_gates
                 + real_dry_run_envelopes
+                + real_noop_results
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -910,6 +966,7 @@ def _build_chain_ids(
                 + real_approval_transitions
                 + real_final_gates
                 + real_dry_run_envelopes
+                + real_noop_results
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -928,6 +985,7 @@ def _build_chain_ids(
                     + real_approval_transitions
                     + real_final_gates
                     + real_dry_run_envelopes
+                    + real_noop_results
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -1001,6 +1059,13 @@ def _build_chain_ids(
                 str(item.get("real_execution_dry_run_envelope_id") or "").strip()
                 for item in real_dry_run_envelopes
                 if str(item.get("real_execution_dry_run_envelope_id") or "").strip()
+            }
+        ),
+        "real_execution_noop_result_ids": sorted(
+            {
+                str(item.get("real_execution_noop_result_id") or "").strip()
+                for item in real_noop_results
+                if str(item.get("real_execution_noop_result_id") or "").strip()
             }
         ),
     }

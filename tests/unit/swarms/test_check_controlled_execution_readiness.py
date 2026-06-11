@@ -130,6 +130,13 @@ def _trail_summary(**overrides):
         "real_dry_run_envelope_subprocess_invoked": {"false": 1},
         "real_dry_run_linkage_complete": True,
         "real_dry_run_envelope_orphans": 0,
+        "real_noop_result_noop_only": {"true": 1},
+        "real_noop_result_rendered_command_executed": {"false": 1},
+        "real_noop_result_dry_run_command_executed": {"false": 1},
+        "real_noop_result_real_execution_enabled": {"false": 1},
+        "real_noop_result_subprocess_invoked": {"true": 1},
+        "real_noop_result_execution_performed": {"true": 1},
+        "real_noop_result_exit_codes": {"0": 1},
     }
     item.update(overrides)
     return item
@@ -303,6 +310,14 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
             "real_dry_run_envelope_subprocess_enabled": 0,
             "real_dry_run_envelope_execution_performed": 0,
             "real_dry_run_envelope_subprocess_invoked": 0,
+            "real_noop_result_observed": True,
+            "real_noop_result_records": 1,
+            "real_noop_result_rendered_command_executed": 0,
+            "real_noop_result_dry_run_command_executed": 0,
+            "real_noop_result_real_execution_enabled": 0,
+            "real_noop_result_subprocess_invoked": 1,
+            "real_noop_result_execution_performed": 1,
+            "real_noop_result_exit_code_zero": 1,
         }
     )
 
@@ -346,6 +361,10 @@ def test_controlled_execution_readiness_format_reports_mock_and_real_readiness()
     assert "real_dry_run_envelope_records=1" in text
     assert "real_dry_run_envelope_would_execute=0" in text
     assert "real_dry_run_envelope_subprocess_invoked=0" in text
+    assert "real_noop_result_observed=true" in text
+    assert "real_noop_result_records=1" in text
+    assert "real_noop_result_subprocess_invoked=1" in text
+    assert "real_noop_result_exit_code_zero=1" in text
 
 
 def test_controlled_execution_readiness_exit_code() -> None:
@@ -534,6 +553,14 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_dry_run_envelope_subprocess_invoked": 0,
         "real_dry_run_linkage_complete": True,
         "real_dry_run_envelope_orphans": 0,
+        "real_noop_result_observed": True,
+        "real_noop_result_records": 1,
+        "real_noop_result_rendered_command_executed": 0,
+        "real_noop_result_dry_run_command_executed": 0,
+        "real_noop_result_real_execution_enabled": 0,
+        "real_noop_result_subprocess_invoked": 1,
+        "real_noop_result_execution_performed": 1,
+        "real_noop_result_exit_code_zero": 1,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -625,6 +652,14 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_dry_run_envelope_subprocess_invoked": 0,
         "real_dry_run_linkage_complete": True,
         "real_dry_run_envelope_orphans": 0,
+        "real_noop_result_observed": True,
+        "real_noop_result_records": 1,
+        "real_noop_result_rendered_command_executed": 0,
+        "real_noop_result_dry_run_command_executed": 0,
+        "real_noop_result_real_execution_enabled": 0,
+        "real_noop_result_subprocess_invoked": 1,
+        "real_noop_result_execution_performed": 1,
+        "real_noop_result_exit_code_zero": 1,
         "checks": [],
         "exit_codes": {
             "trail": 0,
