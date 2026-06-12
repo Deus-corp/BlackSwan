@@ -68,6 +68,10 @@ def _report(**overrides):
         "real_read_only_feedback_records": 1,
         "real_read_only_feedback_linkage_complete": True,
         "real_read_only_feedback_orphans": 0,
+        "real_read_only_repair_plan_observed": True,
+        "real_read_only_repair_plan_records": 1,
+        "real_read_only_repair_plan_linkage_complete": True,
+        "real_read_only_repair_plan_orphans": 0,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -172,6 +176,10 @@ def _report(**overrides):
             "real_read_only_feedback_records",
             "real_read_only_feedback_linkage_complete",
             "real_read_only_feedback_orphans",
+            "real_read_only_repair_plan_observed",
+            "real_read_only_repair_plan_records",
+            "real_read_only_repair_plan_linkage_complete",
+            "real_read_only_repair_plan_orphans",
         ],
     }
     item.update(overrides)
@@ -290,6 +298,10 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_read_only_feedback_records",
             "real_read_only_feedback_linkage_complete",
             "real_read_only_feedback_orphans",
+            "real_read_only_repair_plan_observed",
+            "real_read_only_repair_plan_records",
+            "real_read_only_repair_plan_linkage_complete",
+            "real_read_only_repair_plan_orphans",
             "checks",
             "exit_codes",
         ]

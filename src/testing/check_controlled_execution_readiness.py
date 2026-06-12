@@ -441,6 +441,48 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_read_only_feedback_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_read_only_feedback_subprocess_invoked")
     )
+    real_read_only_repair_plan_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_statuses")
+    )
+    real_read_only_repair_plan_source_feedback_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_source_feedback_statuses")
+    )
+    real_read_only_repair_plan_source_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_source_statuses")
+    )
+    real_read_only_repair_plan_source_exit_codes = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_source_exit_codes")
+    )
+    real_read_only_repair_plan_next_actions = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_next_actions")
+    )
+    real_read_only_repair_plan_item_counts = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_item_counts")
+    )
+    real_read_only_repair_plan_requires_operator_review = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_requires_operator_review")
+    )
+    real_read_only_repair_plan_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_repair_execution_enabled")
+    )
+    real_read_only_repair_plan_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_real_execution_enabled")
+    )
+    real_read_only_repair_plan_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_subprocess_enabled")
+    )
+    real_read_only_repair_plan_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_repair_execution_performed")
+    )
+    real_read_only_repair_plan_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_repair_subprocess_invoked")
+    )
+    real_read_only_repair_plan_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_execution_performed")
+    )
+    real_read_only_repair_plan_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -921,6 +963,61 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_read_only_feedback_subprocess_invoked": _safe_int(
             real_read_only_feedback_subprocess_invoked.get("true"), 0
+        ),
+        "real_read_only_repair_plan_observed": _safe_int(
+            real_read_only_repair_plan_statuses.get("planned"), 0
+        )
+        > 0,
+        "real_read_only_repair_plan_records": _safe_int(
+            real_read_only_repair_plan_statuses.get("planned"), 0
+        ),
+        "real_read_only_repair_plan_linkage_complete": bool(
+            trail_summary.get("real_read_only_repair_plan_linkage_complete")
+        ),
+        "real_read_only_repair_plan_orphans": _safe_int(
+            trail_summary.get("real_read_only_repair_plan_orphans"), 0
+        ),
+        "real_read_only_repair_plan_planned": _safe_int(
+            real_read_only_repair_plan_statuses.get("planned"), 0
+        ),
+        "real_read_only_repair_plan_source_actionable": _safe_int(
+            real_read_only_repair_plan_source_feedback_statuses.get("actionable"), 0
+        ),
+        "real_read_only_repair_plan_source_failed": _safe_int(
+            real_read_only_repair_plan_source_statuses.get("failed"), 0
+        ),
+        "real_read_only_repair_plan_source_exit_code_1": _safe_int(
+            real_read_only_repair_plan_source_exit_codes.get("1"), 0
+        ),
+        "real_read_only_repair_plan_next_action_review": _safe_int(
+            real_read_only_repair_plan_next_actions.get(
+                "review_replay_evidence_repair_plan"
+            ),
+            0,
+        ),
+        "real_read_only_repair_plan_requires_operator_review": _safe_int(
+            real_read_only_repair_plan_requires_operator_review.get("true"), 0
+        ),
+        "real_read_only_repair_plan_repair_execution_enabled": _safe_int(
+            real_read_only_repair_plan_repair_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_repair_plan_real_execution_enabled": _safe_int(
+            real_read_only_repair_plan_real_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_repair_plan_subprocess_enabled": _safe_int(
+            real_read_only_repair_plan_subprocess_enabled.get("true"), 0
+        ),
+        "real_read_only_repair_plan_repair_execution_performed": _safe_int(
+            real_read_only_repair_plan_repair_execution_performed.get("true"), 0
+        ),
+        "real_read_only_repair_plan_repair_subprocess_invoked": _safe_int(
+            real_read_only_repair_plan_repair_subprocess_invoked.get("true"), 0
+        ),
+        "real_read_only_repair_plan_execution_performed": _safe_int(
+            real_read_only_repair_plan_execution_performed.get("true"), 0
+        ),
+        "real_read_only_repair_plan_subprocess_invoked": _safe_int(
+            real_read_only_repair_plan_subprocess_invoked.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -1449,6 +1546,61 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_feedback_subprocess_invoked": _safe_int(
                 real_read_only_feedback_subprocess_invoked.get("true"), 0
             ),
+            "real_read_only_repair_plan_observed": _safe_int(
+                real_read_only_repair_plan_statuses.get("planned"), 0
+            )
+            > 0,
+            "real_read_only_repair_plan_records": _safe_int(
+                real_read_only_repair_plan_statuses.get("planned"), 0
+            ),
+            "real_read_only_repair_plan_linkage_complete": bool(
+                trail_summary.get("real_read_only_repair_plan_linkage_complete")
+            ),
+            "real_read_only_repair_plan_orphans": _safe_int(
+                trail_summary.get("real_read_only_repair_plan_orphans"), 0
+            ),
+            "real_read_only_repair_plan_planned": _safe_int(
+                real_read_only_repair_plan_statuses.get("planned"), 0
+            ),
+            "real_read_only_repair_plan_source_actionable": _safe_int(
+                real_read_only_repair_plan_source_feedback_statuses.get("actionable"), 0
+            ),
+            "real_read_only_repair_plan_source_failed": _safe_int(
+                real_read_only_repair_plan_source_statuses.get("failed"), 0
+            ),
+            "real_read_only_repair_plan_source_exit_code_1": _safe_int(
+                real_read_only_repair_plan_source_exit_codes.get("1"), 0
+            ),
+            "real_read_only_repair_plan_next_action_review": _safe_int(
+                real_read_only_repair_plan_next_actions.get(
+                    "review_replay_evidence_repair_plan"
+                ),
+                0,
+            ),
+            "real_read_only_repair_plan_requires_operator_review": _safe_int(
+                real_read_only_repair_plan_requires_operator_review.get("true"), 0
+            ),
+            "real_read_only_repair_plan_repair_execution_enabled": _safe_int(
+                real_read_only_repair_plan_repair_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_repair_plan_real_execution_enabled": _safe_int(
+                real_read_only_repair_plan_real_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_repair_plan_subprocess_enabled": _safe_int(
+                real_read_only_repair_plan_subprocess_enabled.get("true"), 0
+            ),
+            "real_read_only_repair_plan_repair_execution_performed": _safe_int(
+                real_read_only_repair_plan_repair_execution_performed.get("true"), 0
+            ),
+            "real_read_only_repair_plan_repair_subprocess_invoked": _safe_int(
+                real_read_only_repair_plan_repair_subprocess_invoked.get("true"), 0
+            ),
+            "real_read_only_repair_plan_execution_performed": _safe_int(
+                real_read_only_repair_plan_execution_performed.get("true"), 0
+            ),
+            "real_read_only_repair_plan_subprocess_invoked": _safe_int(
+                real_read_only_repair_plan_subprocess_invoked.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -1520,6 +1672,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_feedback_records",
             "real_read_only_feedback_linkage_complete",
             "real_read_only_feedback_orphans",
+            "real_read_only_repair_plan_observed",
+            "real_read_only_repair_plan_records",
+            "real_read_only_repair_plan_linkage_complete",
+            "real_read_only_repair_plan_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -1991,6 +2147,48 @@ def _build_checks(
     )
     real_read_only_feedback_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_read_only_feedback_subprocess_invoked")
+    )
+    real_read_only_repair_plan_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_statuses")
+    )
+    real_read_only_repair_plan_source_feedback_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_source_feedback_statuses")
+    )
+    real_read_only_repair_plan_source_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_source_statuses")
+    )
+    real_read_only_repair_plan_source_exit_codes = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_source_exit_codes")
+    )
+    real_read_only_repair_plan_next_actions = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_next_actions")
+    )
+    real_read_only_repair_plan_item_counts = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_item_counts")
+    )
+    real_read_only_repair_plan_requires_operator_review = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_requires_operator_review")
+    )
+    real_read_only_repair_plan_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_repair_execution_enabled")
+    )
+    real_read_only_repair_plan_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_real_execution_enabled")
+    )
+    real_read_only_repair_plan_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_subprocess_enabled")
+    )
+    real_read_only_repair_plan_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_repair_execution_performed")
+    )
+    real_read_only_repair_plan_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_repair_subprocess_invoked")
+    )
+    real_read_only_repair_plan_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_execution_performed")
+    )
+    real_read_only_repair_plan_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_plan_subprocess_invoked")
     )
 
     checks = [
@@ -3339,6 +3537,135 @@ def _build_checks(
             == 0,
             _safe_int(real_read_only_feedback_subprocess_invoked.get("true"), 0),
         ),
+        _check(
+            "real_read_only_repair_plan_observed_after_feedback",
+            _safe_int(real_read_only_feedback_statuses.get("actionable"), 0) == 0
+            or _safe_int(real_read_only_repair_plan_statuses.get("planned"), 0) > 0,
+            {
+                "actionable_feedback": _safe_int(
+                    real_read_only_feedback_statuses.get("actionable"), 0
+                ),
+                "planned_repair_plans": _safe_int(
+                    real_read_only_repair_plan_statuses.get("planned"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_read_only_repair_plan_links_to_feedback",
+            _safe_int(real_read_only_repair_plan_statuses.get("planned"), 0) == 0
+            or _safe_int(trail_summary.get("real_read_only_repair_plan_orphans"), 0)
+            == 0,
+            _safe_int(trail_summary.get("real_read_only_repair_plan_orphans"), 0),
+        ),
+        _check(
+            "real_read_only_repair_plan_is_planned",
+            _safe_int(real_read_only_repair_plan_statuses.get("planned"), 0) == 1,
+            _safe_int(real_read_only_repair_plan_statuses.get("planned"), 0),
+        ),
+        _check(
+            "real_read_only_repair_plan_source_is_actionable_feedback",
+            _safe_int(
+                real_read_only_repair_plan_source_feedback_statuses.get("actionable"),
+                0,
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_plan_source_feedback_statuses.get("actionable"),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_plan_source_failed",
+            _safe_int(real_read_only_repair_plan_source_statuses.get("failed"), 0)
+            == 1,
+            _safe_int(real_read_only_repair_plan_source_statuses.get("failed"), 0),
+        ),
+        _check(
+            "real_read_only_repair_plan_next_action_observed",
+            _safe_int(
+                real_read_only_repair_plan_next_actions.get(
+                    "review_replay_evidence_repair_plan"
+                ),
+                0,
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_plan_next_actions.get(
+                    "review_replay_evidence_repair_plan"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_plan_requires_operator_review",
+            _safe_int(
+                real_read_only_repair_plan_requires_operator_review.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_plan_requires_operator_review.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_repair_plan_has_repair_items",
+            sum(_safe_int(value, 0) for value in real_read_only_repair_plan_item_counts)
+            > 0,
+            real_read_only_repair_plan_item_counts,
+        ),
+        _check(
+            "real_read_only_repair_plan_did_not_enable_repair_execution",
+            _safe_int(
+                real_read_only_repair_plan_repair_execution_enabled.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_plan_repair_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_repair_plan_did_not_enable_real_execution",
+            _safe_int(real_read_only_repair_plan_real_execution_enabled.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_repair_plan_real_execution_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_repair_plan_did_not_enable_subprocess",
+            _safe_int(real_read_only_repair_plan_subprocess_enabled.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_repair_plan_subprocess_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_repair_plan_did_not_perform_repair_execution",
+            _safe_int(
+                real_read_only_repair_plan_repair_execution_performed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_plan_repair_execution_performed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_repair_plan_did_not_invoke_repair_subprocess",
+            _safe_int(
+                real_read_only_repair_plan_repair_subprocess_invoked.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_plan_repair_subprocess_invoked.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_repair_plan_did_not_execute",
+            _safe_int(real_read_only_repair_plan_execution_performed.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_repair_plan_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_repair_plan_did_not_invoke_subprocess",
+            _safe_int(real_read_only_repair_plan_subprocess_invoked.get("true"), 0)
+            == 0,
+            _safe_int(real_read_only_repair_plan_subprocess_invoked.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -3452,6 +3779,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_read_only_feedback_records",
         "real_read_only_feedback_linkage_complete",
         "real_read_only_feedback_orphans",
+        "real_read_only_repair_plan_observed",
+        "real_read_only_repair_plan_records",
+        "real_read_only_repair_plan_linkage_complete",
+        "real_read_only_repair_plan_orphans",
     ]
 
     reasons: list[str] = []
@@ -3639,6 +3970,15 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_read_only_feedback_linkage_complete_must_be_bool")
     if not isinstance(report.get("real_read_only_feedback_orphans"), int):
         reasons.append("real_read_only_feedback_orphans_must_be_int")
+
+    if not isinstance(report.get("real_read_only_repair_plan_observed"), bool):
+        reasons.append("real_read_only_repair_plan_observed_must_be_bool")
+    if not isinstance(report.get("real_read_only_repair_plan_records"), int):
+        reasons.append("real_read_only_repair_plan_records_must_be_int")
+    if not isinstance(report.get("real_read_only_repair_plan_linkage_complete"), bool):
+        reasons.append("real_read_only_repair_plan_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_read_only_repair_plan_orphans"), int):
+        reasons.append("real_read_only_repair_plan_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -3846,6 +4186,23 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_read_only_feedback_feedback_subprocess_invoked={result.get('real_read_only_feedback_feedback_subprocess_invoked', 0)} "
         f"real_read_only_feedback_execution_performed={result.get('real_read_only_feedback_execution_performed', 0)} "
         f"real_read_only_feedback_subprocess_invoked={result.get('real_read_only_feedback_subprocess_invoked', 0)} "
+        f"real_read_only_repair_plan_observed={str(bool(result.get('real_read_only_repair_plan_observed'))).lower()} "
+        f"real_read_only_repair_plan_records={result.get('real_read_only_repair_plan_records', 0)} "
+        f"real_read_only_repair_plan_linkage_complete={str(bool(result.get('real_read_only_repair_plan_linkage_complete'))).lower()} "
+        f"real_read_only_repair_plan_orphans={result.get('real_read_only_repair_plan_orphans', 0)} "
+        f"real_read_only_repair_plan_planned={result.get('real_read_only_repair_plan_planned', 0)} "
+        f"real_read_only_repair_plan_source_actionable={result.get('real_read_only_repair_plan_source_actionable', 0)} "
+        f"real_read_only_repair_plan_source_failed={result.get('real_read_only_repair_plan_source_failed', 0)} "
+        f"real_read_only_repair_plan_source_exit_code_1={result.get('real_read_only_repair_plan_source_exit_code_1', 0)} "
+        f"real_read_only_repair_plan_next_action_review={result.get('real_read_only_repair_plan_next_action_review', 0)} "
+        f"real_read_only_repair_plan_requires_operator_review={result.get('real_read_only_repair_plan_requires_operator_review', 0)} "
+        f"real_read_only_repair_plan_repair_execution_enabled={result.get('real_read_only_repair_plan_repair_execution_enabled', 0)} "
+        f"real_read_only_repair_plan_real_execution_enabled={result.get('real_read_only_repair_plan_real_execution_enabled', 0)} "
+        f"real_read_only_repair_plan_subprocess_enabled={result.get('real_read_only_repair_plan_subprocess_enabled', 0)} "
+        f"real_read_only_repair_plan_repair_execution_performed={result.get('real_read_only_repair_plan_repair_execution_performed', 0)} "
+        f"real_read_only_repair_plan_repair_subprocess_invoked={result.get('real_read_only_repair_plan_repair_subprocess_invoked', 0)} "
+        f"real_read_only_repair_plan_execution_performed={result.get('real_read_only_repair_plan_execution_performed', 0)} "
+        f"real_read_only_repair_plan_subprocess_invoked={result.get('real_read_only_repair_plan_subprocess_invoked', 0)} "
     )
 
 

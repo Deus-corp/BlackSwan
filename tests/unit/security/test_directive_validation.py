@@ -31,6 +31,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate,
     validate_replay_lifecycle_retry_real_execution_read_only_execution_result,
     validate_replay_lifecycle_retry_real_execution_read_only_feedback,
+    validate_replay_lifecycle_retry_real_execution_read_only_repair_plan,
 )
 
 
@@ -3064,3 +3065,97 @@ def test_validate_retry_real_execution_read_only_feedback_rejects_real_execution
 
     assert result["valid"] is False
     assert "read_only_feedback_must_not_enable_real_execution" in result["reasons"]
+
+
+def _real_execution_read_only_repair_plan(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_repair_plan",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "real_execution_read_only_readiness_gate_id": "readiness-gate-1",
+        "rendered_command_id": "rendered-command-1",
+        "source_feedback_status": "actionable",
+        "source_status": "failed",
+        "source_exit_code": 1,
+        "repair_plan_status": "planned",
+        "repair_items": [
+            {
+                "target": "execution_published",
+                "recommended_action": "publish_or_verify_execution_record",
+                "priority": "high",
+                "execution_required": False,
+                "subprocess_required": False,
+            }
+        ],
+        "repair_item_count": 1,
+        "repair_targets": ["execution_published"],
+        "recommended_next_action": "review_replay_evidence_repair_plan",
+        "requires_operator_review": True,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "read_only_execution_repair_plan_recorded",
+        "payload": {
+            "repair_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "repair_execution_performed": False,
+            "repair_subprocess_invoked": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_read_only_repair_plan_accepts_planned() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_plan(
+        _real_execution_read_only_repair_plan()
+    )
+
+    assert result["valid"] is True
+    assert result["repair_plan_status"] == "planned"
+    assert result["source_feedback_status"] == "actionable"
+    assert result["source_status"] == "failed"
+    assert result["repair_item_count"] == 1
+    assert result["repair_execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_read_only_repair_plan_rejects_execution() -> None:
+    record = _real_execution_read_only_repair_plan(execution_performed=True)
+    record["payload"]["execution_performed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_plan(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "read_only_repair_plan_must_not_execute" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_repair_plan_rejects_real_execution_enabled() -> None:
+    record = _real_execution_read_only_repair_plan(real_execution_enabled=True)
+    record["payload"]["real_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_plan(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "read_only_repair_plan_must_not_enable_real_execution" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_repair_plan_rejects_item_count_mismatch() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_plan(
+        _real_execution_read_only_repair_plan(repair_item_count=2)
+    )
+
+    assert result["valid"] is False
+    assert "read_only_repair_plan_item_count_mismatch" in result["reasons"]

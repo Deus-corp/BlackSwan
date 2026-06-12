@@ -1608,6 +1608,22 @@ invoke subprocesses, or enable arbitrary real execution.
 
 ---
 
+### Read-only execution repair plan
+
+`replay_lifecycle_retry_real_execution_read_only_repair_plan` converts
+actionable read-only execution feedback into a reviewable repair plan. For a
+failed read-only evidence check, the plan may include targets such as
+`execution_published`, `execution_completed`, `evidence_published`,
+`memory_record_published`, and replay evidence visibility checks.
+
+The repair plan is observational and review-only. It must keep
+`repair_execution_enabled=false`, `real_execution_enabled=false`,
+`subprocess_enabled=false`, `repair_execution_performed=false`,
+`repair_subprocess_invoked=false`, `execution_performed=false`, and
+`subprocess_invoked=false`.
+
+---
+
 ## Related modules
 
 ```text

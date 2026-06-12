@@ -525,12 +525,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_read_only_readiness_gate(),
             _real_read_only_execution_result(),
             _real_read_only_feedback(),
+            _real_read_only_repair_plan(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 21
+    assert summary["total_records"] == 22
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -780,6 +781,29 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_read_only_feedback_linkage_complete"] is True
     assert summary["real_read_only_feedback_result_matches"] == 1
     assert summary["real_read_only_feedback_orphans"] == 0
+    assert summary["counts"]["real_execution_read_only_repair_plans"] == 1
+    assert summary["chain_ids"]["real_execution_read_only_repair_plan_ids"] == [
+        "repair-plan-1"
+    ]
+    assert summary["real_read_only_repair_plan_statuses"]["planned"] == 1
+    assert summary["real_read_only_repair_plan_source_feedback_statuses"]["actionable"] == 1
+    assert summary["real_read_only_repair_plan_source_statuses"]["failed"] == 1
+    assert summary["real_read_only_repair_plan_source_exit_codes"]["1"] == 1
+    assert summary["real_read_only_repair_plan_next_actions"][
+        "review_replay_evidence_repair_plan"
+    ] == 1
+    assert summary["real_read_only_repair_plan_item_counts"]["9"] == 1
+    assert summary["real_read_only_repair_plan_requires_operator_review"]["true"] == 1
+    assert summary["real_read_only_repair_plan_repair_execution_enabled"]["false"] == 1
+    assert summary["real_read_only_repair_plan_real_execution_enabled"]["false"] == 1
+    assert summary["real_read_only_repair_plan_subprocess_enabled"]["false"] == 1
+    assert summary["real_read_only_repair_plan_repair_execution_performed"]["false"] == 1
+    assert summary["real_read_only_repair_plan_repair_subprocess_invoked"]["false"] == 1
+    assert summary["real_read_only_repair_plan_execution_performed"]["false"] == 1
+    assert summary["real_read_only_repair_plan_subprocess_invoked"]["false"] == 1
+    assert summary["real_read_only_repair_plan_linkage_complete"] is True
+    assert summary["real_read_only_repair_plan_feedback_matches"] == 1
+    assert summary["real_read_only_repair_plan_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -1497,3 +1521,65 @@ def test_inspect_retry_governance_trail_counts_real_read_only_feedback_orphan() 
 
     assert summary["real_read_only_feedback_linkage_complete"] is False
     assert summary["real_read_only_feedback_orphans"] == 1
+
+
+def _real_read_only_repair_plan(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_repair_plan",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "real_execution_read_only_readiness_gate_id": "readiness-gate-1",
+        "rendered_command_id": "rendered-1",
+        "source_feedback_status": "actionable",
+        "source_status": "failed",
+        "source_exit_code": 1,
+        "repair_plan_status": "planned",
+        "repair_item_count": 9,
+        "repair_targets": ["execution_published", "evidence_published"],
+        "recommended_next_action": "review_replay_evidence_repair_plan",
+        "requires_operator_review": True,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+    }
+    item.update(overrides)
+    return item
+
+
+def test_inspect_retry_governance_trail_counts_real_read_only_repair_plan_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(),
+            _real_noop_result(),
+            _real_read_only_promotion(),
+            _real_read_only_final_gate(),
+            _real_read_only_approval(),
+            _real_read_only_approval_transition(),
+            _real_read_only_readiness_gate(),
+            _real_read_only_execution_result(),
+            _real_read_only_feedback(),
+            _real_read_only_repair_plan(
+                real_execution_read_only_feedback_id="missing-feedback"
+            ),
+        ]
+    )
+
+    assert summary["real_read_only_repair_plan_linkage_complete"] is False
+    assert summary["real_read_only_repair_plan_orphans"] == 1

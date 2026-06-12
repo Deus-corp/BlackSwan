@@ -45,6 +45,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_readiness_gate",
     "replay_lifecycle_retry_real_execution_read_only_execution_result",
     "replay_lifecycle_retry_real_execution_read_only_feedback",
+    "replay_lifecycle_retry_real_execution_read_only_repair_plan",
 }
 
 
@@ -378,6 +379,22 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_read_only_repair_plan":
+            result = (
+                validate_replay_lifecycle_retry_real_execution_read_only_repair_plan(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -557,6 +574,20 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_read_only_feedback_feedback_subprocess_invoked: dict[str, int] = {}
     real_read_only_feedback_execution_performed: dict[str, int] = {}
     real_read_only_feedback_subprocess_invoked: dict[str, int] = {}
+    real_read_only_repair_plan_statuses: dict[str, int] = {}
+    real_read_only_repair_plan_source_feedback_statuses: dict[str, int] = {}
+    real_read_only_repair_plan_source_statuses: dict[str, int] = {}
+    real_read_only_repair_plan_source_exit_codes: dict[str, int] = {}
+    real_read_only_repair_plan_next_actions: dict[str, int] = {}
+    real_read_only_repair_plan_item_counts: dict[str, int] = {}
+    real_read_only_repair_plan_requires_operator_review: dict[str, int] = {}
+    real_read_only_repair_plan_repair_execution_enabled: dict[str, int] = {}
+    real_read_only_repair_plan_real_execution_enabled: dict[str, int] = {}
+    real_read_only_repair_plan_subprocess_enabled: dict[str, int] = {}
+    real_read_only_repair_plan_repair_execution_performed: dict[str, int] = {}
+    real_read_only_repair_plan_repair_subprocess_invoked: dict[str, int] = {}
+    real_read_only_repair_plan_execution_performed: dict[str, int] = {}
+    real_read_only_repair_plan_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -1256,6 +1287,83 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
 
+        if record_type == "replay_lifecycle_retry_real_execution_read_only_repair_plan":
+            status = str(item.get("repair_plan_status") or "unknown").strip() or "unknown"
+            source_feedback_status = (
+                str(item.get("source_feedback_status") or "unknown").strip()
+                or "unknown"
+            )
+            source_status = str(item.get("source_status") or "unknown").strip() or "unknown"
+            next_action = (
+                str(item.get("recommended_next_action") or "unknown").strip()
+                or "unknown"
+            )
+            exit_code = item.get("source_exit_code")
+            exit_code_key = "none" if exit_code is None else str(exit_code)
+            item_count = item.get("repair_item_count")
+            item_count_key = str(item_count if isinstance(item_count, int) else "unknown")
+
+            real_read_only_repair_plan_statuses[status] = (
+                real_read_only_repair_plan_statuses.get(status, 0) + 1
+            )
+            real_read_only_repair_plan_source_feedback_statuses[
+                source_feedback_status
+            ] = (
+                real_read_only_repair_plan_source_feedback_statuses.get(
+                    source_feedback_status, 0
+                )
+                + 1
+            )
+            real_read_only_repair_plan_source_statuses[source_status] = (
+                real_read_only_repair_plan_source_statuses.get(source_status, 0) + 1
+            )
+            real_read_only_repair_plan_source_exit_codes[exit_code_key] = (
+                real_read_only_repair_plan_source_exit_codes.get(exit_code_key, 0) + 1
+            )
+            real_read_only_repair_plan_next_actions[next_action] = (
+                real_read_only_repair_plan_next_actions.get(next_action, 0) + 1
+            )
+            real_read_only_repair_plan_item_counts[item_count_key] = (
+                real_read_only_repair_plan_item_counts.get(item_count_key, 0) + 1
+            )
+
+            for target, key_name in (
+                (
+                    real_read_only_repair_plan_requires_operator_review,
+                    "requires_operator_review",
+                ),
+                (
+                    real_read_only_repair_plan_repair_execution_enabled,
+                    "repair_execution_enabled",
+                ),
+                (
+                    real_read_only_repair_plan_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (
+                    real_read_only_repair_plan_subprocess_enabled,
+                    "subprocess_enabled",
+                ),
+                (
+                    real_read_only_repair_plan_repair_execution_performed,
+                    "repair_execution_performed",
+                ),
+                (
+                    real_read_only_repair_plan_repair_subprocess_invoked,
+                    "repair_subprocess_invoked",
+                ),
+                (
+                    real_read_only_repair_plan_execution_performed,
+                    "execution_performed",
+                ),
+                (
+                    real_read_only_repair_plan_subprocess_invoked,
+                    "subprocess_invoked",
+                ),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -1545,6 +1653,46 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_read_only_feedback_feedback_subprocess_invoked": real_read_only_feedback_feedback_subprocess_invoked,
         "real_read_only_feedback_execution_performed": real_read_only_feedback_execution_performed,
         "real_read_only_feedback_subprocess_invoked": real_read_only_feedback_subprocess_invoked,
+        "real_read_only_repair_plan_statuses": real_read_only_repair_plan_statuses,
+        "real_read_only_repair_plan_source_feedback_statuses": (
+            real_read_only_repair_plan_source_feedback_statuses
+        ),
+        "real_read_only_repair_plan_source_statuses": (
+            real_read_only_repair_plan_source_statuses
+        ),
+        "real_read_only_repair_plan_source_exit_codes": (
+            real_read_only_repair_plan_source_exit_codes
+        ),
+        "real_read_only_repair_plan_next_actions": (
+            real_read_only_repair_plan_next_actions
+        ),
+        "real_read_only_repair_plan_item_counts": (
+            real_read_only_repair_plan_item_counts
+        ),
+        "real_read_only_repair_plan_requires_operator_review": (
+            real_read_only_repair_plan_requires_operator_review
+        ),
+        "real_read_only_repair_plan_repair_execution_enabled": (
+            real_read_only_repair_plan_repair_execution_enabled
+        ),
+        "real_read_only_repair_plan_real_execution_enabled": (
+            real_read_only_repair_plan_real_execution_enabled
+        ),
+        "real_read_only_repair_plan_subprocess_enabled": (
+            real_read_only_repair_plan_subprocess_enabled
+        ),
+        "real_read_only_repair_plan_repair_execution_performed": (
+            real_read_only_repair_plan_repair_execution_performed
+        ),
+        "real_read_only_repair_plan_repair_subprocess_invoked": (
+            real_read_only_repair_plan_repair_subprocess_invoked
+        ),
+        "real_read_only_repair_plan_execution_performed": (
+            real_read_only_repair_plan_execution_performed
+        ),
+        "real_read_only_repair_plan_subprocess_invoked": (
+            real_read_only_repair_plan_subprocess_invoked
+        ),
     }
 
 
@@ -1966,6 +2114,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_read_only_readiness_gate_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_read_only_repair_plan":
+        return str(
+            record.get("real_execution_read_only_repair_plan_id")
+            or record.get("real_execution_read_only_feedback_id")
+            or record.get("real_execution_read_only_execution_result_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -2005,6 +2161,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_read_only_readiness_gate_id",
         "real_execution_read_only_execution_result_id",
         "real_execution_read_only_feedback_id",
+        "real_execution_read_only_repair_plan_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -2041,6 +2198,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_read_only_readiness_gate_id",
             "real_execution_read_only_execution_result_id",
             "real_execution_read_only_feedback_id",
+            "real_execution_read_only_repair_plan_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -4586,6 +4744,139 @@ def validate_replay_lifecycle_retry_real_execution_read_only_feedback(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_read_only_repair_plan(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate read-only execution repair plan records."""
+    reasons: list[str] = []
+
+    repair_plan_id = str(
+        record.get("real_execution_read_only_repair_plan_id") or ""
+    ).strip()
+    feedback_id = str(
+        record.get("real_execution_read_only_feedback_id") or ""
+    ).strip()
+    execution_result_id = str(
+        record.get("real_execution_read_only_execution_result_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    repair_plan_status = str(record.get("repair_plan_status") or "").strip()
+    source_feedback_status = str(record.get("source_feedback_status") or "").strip()
+    source_status = str(record.get("source_status") or "").strip()
+    source_exit_code = record.get("source_exit_code")
+    recommended_next_action = str(
+        record.get("recommended_next_action") or ""
+    ).strip()
+    reason = str(record.get("reason") or "").strip()
+
+    repair_items = record.get("repair_items")
+    repair_targets = record.get("repair_targets")
+    repair_item_count = record.get("repair_item_count")
+
+    requires_operator_review = bool(record.get("requires_operator_review"))
+    repair_execution_enabled = bool(record.get("repair_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    repair_execution_performed = bool(record.get("repair_execution_performed"))
+    repair_subprocess_invoked = bool(record.get("repair_subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not repair_plan_id:
+        reasons.append("missing_real_execution_read_only_repair_plan_id")
+    if not feedback_id:
+        reasons.append("missing_real_execution_read_only_feedback_id")
+    if not execution_result_id:
+        reasons.append("missing_real_execution_read_only_execution_result_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if repair_plan_status not in {"planned", "blocked", "no_repair_needed", "unknown"}:
+        reasons.append("invalid_read_only_repair_plan_status")
+    if source_feedback_status not in {"actionable", "blocked", "successful", "unknown"}:
+        reasons.append("invalid_read_only_repair_plan_source_feedback_status")
+    if source_status not in {"failed", "executed", "rejected", "unknown"}:
+        reasons.append("invalid_read_only_repair_plan_source_status")
+    if recommended_next_action != "review_replay_evidence_repair_plan":
+        reasons.append("invalid_read_only_repair_plan_next_action")
+    if reason != "read_only_execution_repair_plan_recorded":
+        reasons.append("invalid_read_only_repair_plan_reason")
+
+    if not isinstance(repair_items, list):
+        reasons.append("read_only_repair_plan_items_must_be_list")
+    if not isinstance(repair_targets, list):
+        reasons.append("read_only_repair_plan_targets_must_be_list")
+    if not isinstance(repair_item_count, int):
+        reasons.append("read_only_repair_plan_item_count_must_be_int")
+    elif isinstance(repair_items, list) and repair_item_count != len(repair_items):
+        reasons.append("read_only_repair_plan_item_count_mismatch")
+
+    if source_feedback_status == "actionable":
+        if repair_plan_status != "planned":
+            reasons.append("actionable_read_only_repair_plan_must_be_planned")
+        if source_status != "failed":
+            reasons.append("actionable_read_only_repair_plan_source_must_be_failed")
+        if source_exit_code is None:
+            reasons.append("actionable_read_only_repair_plan_requires_source_exit_code")
+        if isinstance(repair_item_count, int) and repair_item_count <= 0:
+            reasons.append("actionable_read_only_repair_plan_requires_items")
+        if not requires_operator_review:
+            reasons.append("actionable_read_only_repair_plan_requires_operator_review")
+
+    if source_feedback_status == "successful":
+        if repair_plan_status != "no_repair_needed":
+            reasons.append("successful_read_only_repair_plan_status_mismatch")
+
+    if source_feedback_status == "blocked":
+        if repair_plan_status != "blocked":
+            reasons.append("blocked_read_only_repair_plan_status_mismatch")
+
+    if repair_execution_enabled or bool(payload_mapping.get("repair_execution_enabled")):
+        reasons.append("read_only_repair_plan_must_not_enable_repair_execution")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("read_only_repair_plan_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("read_only_repair_plan_must_not_enable_subprocess")
+    if repair_execution_performed or bool(
+        payload_mapping.get("repair_execution_performed")
+    ):
+        reasons.append("read_only_repair_plan_must_not_perform_repair_execution")
+    if repair_subprocess_invoked or bool(payload_mapping.get("repair_subprocess_invoked")):
+        reasons.append("read_only_repair_plan_must_not_invoke_repair_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("read_only_repair_plan_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("read_only_repair_plan_must_not_invoke_subprocess")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_read_only_repair_plan",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": repair_plan_id or feedback_id,
+        "repair_plan_status": repair_plan_status or "unknown",
+        "source_feedback_status": source_feedback_status or "unknown",
+        "source_status": source_status or "unknown",
+        "source_exit_code": source_exit_code,
+        "recommended_next_action": recommended_next_action or "unknown",
+        "repair_item_count": repair_item_count if isinstance(repair_item_count, int) else 0,
+        "requires_operator_review": requires_operator_review,
+        "repair_execution_enabled": repair_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "repair_execution_performed": repair_execution_performed,
+        "repair_subprocess_invoked": repair_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -4614,4 +4905,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate",
     "validate_replay_lifecycle_retry_real_execution_read_only_execution_result",
     "validate_replay_lifecycle_retry_real_execution_read_only_feedback",
+    "validate_replay_lifecycle_retry_real_execution_read_only_repair_plan",
 ]
