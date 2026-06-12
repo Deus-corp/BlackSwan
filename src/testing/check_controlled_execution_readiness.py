@@ -228,6 +228,30 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_noop_result_stdout_marker_observed = _safe_mapping(
         trail_summary.get("real_noop_result_stdout_marker_observed")
     )
+    real_noop_result_noop_only = _safe_mapping(
+        trail_summary.get("real_noop_result_noop_only")
+    )
+    real_noop_result_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_noop_result_rendered_command_executed")
+    )
+    real_noop_result_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_noop_result_dry_run_command_executed")
+    )
+    real_noop_result_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_noop_result_real_execution_enabled")
+    )
+    real_noop_result_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_noop_result_subprocess_invoked")
+    )
+    real_noop_result_execution_performed = _safe_mapping(
+        trail_summary.get("real_noop_result_execution_performed")
+    )
+    real_noop_result_exit_codes = _safe_mapping(
+        trail_summary.get("real_noop_result_exit_codes")
+    )
+    real_noop_result_stdout_marker_observed = _safe_mapping(
+        trail_summary.get("real_noop_result_stdout_marker_observed")
+    )
     real_read_only_final_gate_statuses = _safe_mapping(
         trail_summary.get("real_read_only_final_gate_statuses")
     )

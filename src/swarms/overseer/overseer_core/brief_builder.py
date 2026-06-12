@@ -565,88 +565,100 @@ def build_global_swarm_brief(
             0,
         )
 
+    def _security_mapping(*keys: str) -> dict[str, Any]:
+        for key in keys:
+            mapping = _safe_dict(security_validation.get(key))
+            if mapping:
+                return mapping
+        return {}
+
     security_read_only_feedback_actionable = _safe_int(
-        _safe_dict(
-            security_validation.get("security_validation_real_read_only_feedback_statuses")
-            or security_validation.get("real_read_only_feedback_statuses")
+        _security_mapping(
+            "security_validation_real_read_only_feedback_statuses",
+            "security_validation_read_only_feedback_statuses",
+            "security_validation_real_execution_read_only_feedback_statuses",
+            "real_read_only_feedback_statuses",
+            "read_only_feedback_statuses",
         ).get("actionable"),
         0,
     )
     security_read_only_feedback_source_failed = _safe_int(
-        _safe_dict(
-            security_validation.get(
-                "security_validation_real_read_only_feedback_source_statuses"
-            )
-            or security_validation.get("real_read_only_feedback_source_statuses")
+        _security_mapping(
+            "security_validation_real_read_only_feedback_source_statuses",
+            "security_validation_read_only_feedback_source_statuses",
+            "security_validation_real_execution_read_only_feedback_source_statuses",
+            "real_read_only_feedback_source_statuses",
+            "read_only_feedback_source_statuses",
         ).get("failed"),
         0,
     )
     security_read_only_feedback_exit_code_1 = _safe_int(
-        _safe_dict(
-            security_validation.get(
-                "security_validation_real_read_only_feedback_source_exit_codes"
-            )
-            or security_validation.get("real_read_only_feedback_source_exit_codes")
+        _security_mapping(
+            "security_validation_real_read_only_feedback_source_exit_codes",
+            "security_validation_read_only_feedback_source_exit_codes",
+            "security_validation_real_execution_read_only_feedback_source_exit_codes",
+            "real_read_only_feedback_source_exit_codes",
+            "read_only_feedback_source_exit_codes",
         ).get("1"),
         0,
     )
     security_read_only_feedback_next_action_investigate = _safe_int(
-        _safe_dict(
-            security_validation.get(
-                "security_validation_real_read_only_feedback_next_actions"
-            )
-            or security_validation.get("real_read_only_feedback_next_actions")
+        _security_mapping(
+            "security_validation_real_read_only_feedback_next_actions",
+            "security_validation_read_only_feedback_next_actions",
+            "security_validation_real_execution_read_only_feedback_next_actions",
+            "real_read_only_feedback_next_actions",
+            "read_only_feedback_next_actions",
         ).get("investigate_failed_read_only_evidence_check"),
         0,
     )
     security_read_only_feedback_real_execution_enabled = _safe_int(
-        _safe_dict(
-            security_validation.get(
-                "security_validation_real_read_only_feedback_real_execution_enabled"
-            )
-            or security_validation.get(
-                "real_read_only_feedback_real_execution_enabled"
-            )
+        _security_mapping(
+            "security_validation_real_read_only_feedback_real_execution_enabled",
+            "security_validation_read_only_feedback_real_execution_enabled",
+            "security_validation_real_execution_read_only_feedback_real_execution_enabled",
+            "real_read_only_feedback_real_execution_enabled",
+            "read_only_feedback_real_execution_enabled",
         ).get("true"),
         0,
     )
     security_read_only_feedback_execution_performed = _safe_int(
-        _safe_dict(
-            security_validation.get(
-                "security_validation_real_read_only_feedback_execution_performed"
-            )
-            or security_validation.get("real_read_only_feedback_execution_performed")
+        _security_mapping(
+            "security_validation_real_read_only_feedback_execution_performed",
+            "security_validation_read_only_feedback_execution_performed",
+            "security_validation_real_execution_read_only_feedback_execution_performed",
+            "real_read_only_feedback_execution_performed",
+            "read_only_feedback_execution_performed",
         ).get("true"),
         0,
     )
     security_read_only_feedback_subprocess_invoked = _safe_int(
-        _safe_dict(
-            security_validation.get(
-                "security_validation_real_read_only_feedback_subprocess_invoked"
-            )
-            or security_validation.get("real_read_only_feedback_subprocess_invoked")
+        _security_mapping(
+            "security_validation_real_read_only_feedback_subprocess_invoked",
+            "security_validation_read_only_feedback_subprocess_invoked",
+            "security_validation_real_execution_read_only_feedback_subprocess_invoked",
+            "real_read_only_feedback_subprocess_invoked",
+            "read_only_feedback_subprocess_invoked",
         ).get("true"),
         0,
     )
     security_read_only_feedback_feedback_execution_performed = _safe_int(
-        _safe_dict(
-            security_validation.get(
-                "security_validation_real_read_only_feedback_feedback_execution_performed"
-            )
-            or security_validation.get(
-                "real_read_only_feedback_feedback_execution_performed"
-            )
+        _security_mapping(
+            "security_validation_real_read_only_feedback_feedback_execution_performed",
+            "security_validation_read_only_feedback_feedback_execution_performed",
+            "security_validation_real_execution_read_only_feedback_feedback_execution_performed",
+            "real_read_only_feedback_feedback_execution_performed",
+            "read_only_feedback_feedback_execution_performed",
         ).get("true"),
         0,
     )
     security_read_only_feedback_feedback_subprocess_invoked = _safe_int(
-        _safe_dict(
-            security_validation.get(
-                "security_validation_real_read_only_feedback_feedback_subprocess_invoked"
-            )
-            or security_validation.get(
-                "real_read_only_feedback_feedback_subprocess_invoked"
-            )
+        _security_mapping(
+            "security_validation_real_read_only_feedback_feedback_subprocess_invoked",
+            "security_validation_read_only_feedback_feedback_subprocess_invoked",
+            "security_validation_real_execution_read_only_feedback_feedback_subprocess_invoked",
+            "real_read_only_feedback_feedback_subprocess_invoked",
+            "read_only_feedback_feedback_subprocess_invoked",
         ).get("true"),
         0,
     )

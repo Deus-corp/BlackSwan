@@ -19,6 +19,9 @@ from swarm_config import config
 from src.testing.controlled_retry_execution_adapter import (
     describe_controlled_retry_execution_adapter_contract,
 )
+from src.testing.inspect_retry_governance_trail import (
+    inspect_retry_governance_trail_from_records,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +81,40 @@ def check_retry_governance_observability_from_records(
         )
     ]
 
+    trail_summary = inspect_retry_governance_trail_from_records(filtered_records)
     security_metrics = build_security_validation_heartbeat_metrics(filtered_records)
+
+    security_metrics = {
+        **security_metrics,
+        "real_read_only_feedback_statuses": trail_summary.get(
+            "real_read_only_feedback_statuses", {}
+        ),
+        "real_read_only_feedback_source_statuses": trail_summary.get(
+            "real_read_only_feedback_source_statuses", {}
+        ),
+        "real_read_only_feedback_source_exit_codes": trail_summary.get(
+            "real_read_only_feedback_source_exit_codes", {}
+        ),
+        "real_read_only_feedback_next_actions": trail_summary.get(
+            "real_read_only_feedback_next_actions", {}
+        ),
+        "real_read_only_feedback_real_execution_enabled": trail_summary.get(
+            "real_read_only_feedback_real_execution_enabled", {}
+        ),
+        "real_read_only_feedback_execution_performed": trail_summary.get(
+            "real_read_only_feedback_execution_performed", {}
+        ),
+        "real_read_only_feedback_subprocess_invoked": trail_summary.get(
+            "real_read_only_feedback_subprocess_invoked", {}
+        ),
+        "real_read_only_feedback_feedback_execution_performed": trail_summary.get(
+            "real_read_only_feedback_feedback_execution_performed", {}
+        ),
+        "real_read_only_feedback_feedback_subprocess_invoked": trail_summary.get(
+            "real_read_only_feedback_feedback_subprocess_invoked", {}
+        ),
+    }
+
     brief = build_global_swarm_brief(
         snapshot={"active_swarm_counts": {"security": 1, "overseer": 1}},
         security_validation=security_metrics,
@@ -98,15 +134,17 @@ def check_retry_governance_observability_from_records(
     status = "passed" if all(item["status"] == "passed" for item in checks) else "failed"
 
     brief_key_metrics = dict(getattr(brief, "key_metrics", {}) or {})
-    
+
     unsupported_real_adapter_metrics = _unsupported_real_adapter_metrics()
 
     brief_key_metrics["security_real_adapter_supported"] = 0
     brief_key_metrics["security_real_adapter_runnable"] = 0
     brief_key_metrics["security_real_adapter_subprocess_supported"] = 0
-    brief_key_metrics["security_real_adapter_requires_explicit_pr"] = unsupported_real_adapter_metrics[
-        "security_real_adapter_requires_explicit_pr"
-    ]
+    brief_key_metrics["security_real_adapter_requires_explicit_pr"] = (
+        unsupported_real_adapter_metrics[
+            "security_real_adapter_requires_explicit_pr"
+        ]
+    )
 
     return {
         "type": "retry_governance_observability_check",
