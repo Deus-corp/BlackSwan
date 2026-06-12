@@ -318,6 +318,36 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_approval_transition_dry_run_command_executed"
         )
     )
+    real_read_only_readiness_gate_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_statuses")
+    )
+    real_read_only_readiness_gate_satisfied = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_satisfied")
+    )
+    real_read_only_readiness_gate_ready = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_ready")
+    )
+    real_read_only_readiness_gate_read_only_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_read_only_execution_enabled")
+    )
+    real_read_only_readiness_gate_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_real_execution_enabled")
+    )
+    real_read_only_readiness_gate_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_subprocess_enabled")
+    )
+    real_read_only_readiness_gate_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_subprocess_invoked")
+    )
+    real_read_only_readiness_gate_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_execution_performed")
+    )
+    real_read_only_readiness_gate_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_rendered_command_executed")
+    )
+    real_read_only_readiness_gate_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_dry_run_command_executed")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -650,6 +680,46 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_read_only_approval_transition_dry_run_command_executed": _safe_int(
             real_read_only_approval_transition_dry_run_command_executed.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_observed": _safe_int(
+            real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+        )
+        > 0,
+        "real_read_only_readiness_gate_records": _safe_int(
+            real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+        ),
+        "real_read_only_readiness_gate_linkage_complete": bool(
+            trail_summary.get("real_read_only_readiness_gate_linkage_complete")
+        ),
+        "real_read_only_readiness_gate_orphans": _safe_int(
+            trail_summary.get("real_read_only_readiness_gate_orphans"), 0
+        ),
+        "real_read_only_readiness_gate_satisfied": _safe_int(
+            real_read_only_readiness_gate_satisfied.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_ready": _safe_int(
+            real_read_only_readiness_gate_ready.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_read_only_execution_enabled": _safe_int(
+            real_read_only_readiness_gate_read_only_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_real_execution_enabled": _safe_int(
+            real_read_only_readiness_gate_real_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_subprocess_enabled": _safe_int(
+            real_read_only_readiness_gate_subprocess_enabled.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_subprocess_invoked": _safe_int(
+            real_read_only_readiness_gate_subprocess_invoked.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_execution_performed": _safe_int(
+            real_read_only_readiness_gate_execution_performed.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_rendered_command_executed": _safe_int(
+            real_read_only_readiness_gate_rendered_command_executed.get("true"), 0
+        ),
+        "real_read_only_readiness_gate_dry_run_command_executed": _safe_int(
+            real_read_only_readiness_gate_dry_run_command_executed.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -1030,6 +1100,46 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_approval_transition_dry_run_command_executed": _safe_int(
                 real_read_only_approval_transition_dry_run_command_executed.get("true"), 0
             ),
+            "real_read_only_readiness_gate_observed": _safe_int(
+                real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+            )
+            > 0,
+            "real_read_only_readiness_gate_records": _safe_int(
+                real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+            ),
+            "real_read_only_readiness_gate_linkage_complete": bool(
+                trail_summary.get("real_read_only_readiness_gate_linkage_complete")
+            ),
+            "real_read_only_readiness_gate_orphans": _safe_int(
+                trail_summary.get("real_read_only_readiness_gate_orphans"), 0
+            ),
+            "real_read_only_readiness_gate_satisfied": _safe_int(
+                real_read_only_readiness_gate_satisfied.get("true"), 0
+            ),
+            "real_read_only_readiness_gate_ready": _safe_int(
+                real_read_only_readiness_gate_ready.get("true"), 0
+            ),
+            "real_read_only_readiness_gate_read_only_execution_enabled": _safe_int(
+                real_read_only_readiness_gate_read_only_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_readiness_gate_real_execution_enabled": _safe_int(
+                real_read_only_readiness_gate_real_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_readiness_gate_subprocess_enabled": _safe_int(
+                real_read_only_readiness_gate_subprocess_enabled.get("true"), 0
+            ),
+            "real_read_only_readiness_gate_subprocess_invoked": _safe_int(
+                real_read_only_readiness_gate_subprocess_invoked.get("true"), 0
+            ),
+            "real_read_only_readiness_gate_execution_performed": _safe_int(
+                real_read_only_readiness_gate_execution_performed.get("true"), 0
+            ),
+            "real_read_only_readiness_gate_rendered_command_executed": _safe_int(
+                real_read_only_readiness_gate_rendered_command_executed.get("true"), 0
+            ),
+            "real_read_only_readiness_gate_dry_run_command_executed": _safe_int(
+                real_read_only_readiness_gate_dry_run_command_executed.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -1089,6 +1199,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_approval_transition_linkage_complete",
             "real_read_only_approval_transition_orphans",
             "real_read_only_approval_latest_status",
+            "real_read_only_readiness_gate_observed",
+            "real_read_only_readiness_gate_records",
+            "real_read_only_readiness_gate_linkage_complete",
+            "real_read_only_readiness_gate_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -1461,6 +1575,36 @@ def _build_checks(
         trail_summary.get(
             "real_read_only_approval_transition_dry_run_command_executed"
         )
+    )
+    real_read_only_readiness_gate_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_statuses")
+    )
+    real_read_only_readiness_gate_satisfied = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_satisfied")
+    )
+    real_read_only_readiness_gate_ready = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_ready")
+    )
+    real_read_only_readiness_gate_read_only_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_read_only_execution_enabled")
+    )
+    real_read_only_readiness_gate_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_real_execution_enabled")
+    )
+    real_read_only_readiness_gate_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_subprocess_enabled")
+    )
+    real_read_only_readiness_gate_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_subprocess_invoked")
+    )
+    real_read_only_readiness_gate_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_execution_performed")
+    )
+    real_read_only_readiness_gate_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_rendered_command_executed")
+    )
+    real_read_only_readiness_gate_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_readiness_gate_dry_run_command_executed")
     )
 
     checks = [
@@ -2426,6 +2570,155 @@ def _build_checks(
                 0,
             ),
         ),
+        _check(
+            "real_read_only_readiness_gate_observed_after_transition",
+            _safe_int(
+                real_read_only_approval_transition_to_statuses.get("approved"), 0
+            )
+            == 0
+            or _safe_int(
+                real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+            )
+            > 0,
+            {
+                "approved_transitions": _safe_int(
+                    real_read_only_approval_transition_to_statuses.get("approved"),
+                    0,
+                ),
+                "readiness_gates": _safe_int(
+                    real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_read_only_readiness_gate_links_to_transition",
+            _safe_int(
+                real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+            )
+            == 0
+            or _safe_int(
+                trail_summary.get("real_read_only_readiness_gate_orphans"), 0
+            )
+            == 0,
+            {
+                "readiness_gates": _safe_int(
+                    real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+                ),
+                "orphans": _safe_int(
+                    trail_summary.get("real_read_only_readiness_gate_orphans"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_read_only_readiness_gate_is_ready_blocked",
+            _safe_int(
+                real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+            )
+            == 1,
+            _safe_int(
+                real_read_only_readiness_gate_statuses.get("ready_blocked"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_readiness_gate_satisfied",
+            _safe_int(real_read_only_readiness_gate_satisfied.get("true"), 0) == 1,
+            _safe_int(real_read_only_readiness_gate_satisfied.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_readiness_gate_ready_for_guarded_execution",
+            _safe_int(real_read_only_readiness_gate_ready.get("true"), 0) == 1,
+            _safe_int(real_read_only_readiness_gate_ready.get("true"), 0),
+        ),
+        _check(
+            "real_read_only_readiness_gate_does_not_enable_read_only_execution",
+            _safe_int(
+                real_read_only_readiness_gate_read_only_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_readiness_gate_read_only_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_readiness_gate_does_not_enable_real_execution",
+            _safe_int(
+                real_read_only_readiness_gate_real_execution_enabled.get("true"),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_readiness_gate_real_execution_enabled.get("true"),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_readiness_gate_does_not_enable_subprocess",
+            _safe_int(
+                real_read_only_readiness_gate_subprocess_enabled.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_readiness_gate_subprocess_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_readiness_gate_does_not_invoke_subprocess",
+            _safe_int(
+                real_read_only_readiness_gate_subprocess_invoked.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_readiness_gate_subprocess_invoked.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_readiness_gate_does_not_execute",
+            _safe_int(
+                real_read_only_readiness_gate_execution_performed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_read_only_readiness_gate_execution_performed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_readiness_gate_did_not_execute_rendered_command",
+            _safe_int(
+                real_read_only_readiness_gate_rendered_command_executed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_readiness_gate_rendered_command_executed.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_readiness_gate_did_not_execute_dry_run_command",
+            _safe_int(
+                real_read_only_readiness_gate_dry_run_command_executed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_readiness_gate_dry_run_command_executed.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -2527,6 +2820,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_read_only_approval_transition_linkage_complete",
         "real_read_only_approval_transition_orphans",
         "real_read_only_approval_latest_status",
+        "real_read_only_readiness_gate_observed",
+        "real_read_only_readiness_gate_records",
+        "real_read_only_readiness_gate_linkage_complete",
+        "real_read_only_readiness_gate_orphans",
     ]
 
     reasons: list[str] = []
@@ -2683,6 +2980,17 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_read_only_approval_transition_orphans_must_be_int")
     if not isinstance(report.get("real_read_only_approval_latest_status"), str):
         reasons.append("real_read_only_approval_latest_status_must_be_str")
+    
+    if not isinstance(report.get("real_read_only_readiness_gate_observed"), bool):
+        reasons.append("real_read_only_readiness_gate_observed_must_be_bool")
+    if not isinstance(report.get("real_read_only_readiness_gate_records"), int):
+        reasons.append("real_read_only_readiness_gate_records_must_be_int")
+    if not isinstance(
+        report.get("real_read_only_readiness_gate_linkage_complete"), bool
+    ):
+        reasons.append("real_read_only_readiness_gate_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_read_only_readiness_gate_orphans"), int):
+        reasons.append("real_read_only_readiness_gate_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -2844,6 +3152,19 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_read_only_approval_transition_execution_performed={result.get('real_read_only_approval_transition_execution_performed', 0)} "
         f"real_read_only_approval_transition_rendered_command_executed={result.get('real_read_only_approval_transition_rendered_command_executed', 0)} "
         f"real_read_only_approval_transition_dry_run_command_executed={result.get('real_read_only_approval_transition_dry_run_command_executed', 0)} "
+        f"real_read_only_readiness_gate_observed={str(bool(result.get('real_read_only_readiness_gate_observed'))).lower()} "
+        f"real_read_only_readiness_gate_records={result.get('real_read_only_readiness_gate_records', 0)} "
+        f"real_read_only_readiness_gate_linkage_complete={str(bool(result.get('real_read_only_readiness_gate_linkage_complete'))).lower()} "
+        f"real_read_only_readiness_gate_orphans={result.get('real_read_only_readiness_gate_orphans', 0)} "
+        f"real_read_only_readiness_gate_satisfied={result.get('real_read_only_readiness_gate_satisfied', 0)} "
+        f"real_read_only_readiness_gate_ready={result.get('real_read_only_readiness_gate_ready', 0)} "
+        f"real_read_only_readiness_gate_read_only_execution_enabled={result.get('real_read_only_readiness_gate_read_only_execution_enabled', 0)} "
+        f"real_read_only_readiness_gate_real_execution_enabled={result.get('real_read_only_readiness_gate_real_execution_enabled', 0)} "
+        f"real_read_only_readiness_gate_subprocess_enabled={result.get('real_read_only_readiness_gate_subprocess_enabled', 0)} "
+        f"real_read_only_readiness_gate_subprocess_invoked={result.get('real_read_only_readiness_gate_subprocess_invoked', 0)} "
+        f"real_read_only_readiness_gate_execution_performed={result.get('real_read_only_readiness_gate_execution_performed', 0)} "
+        f"real_read_only_readiness_gate_rendered_command_executed={result.get('real_read_only_readiness_gate_rendered_command_executed', 0)} "
+        f"real_read_only_readiness_gate_dry_run_command_executed={result.get('real_read_only_readiness_gate_dry_run_command_executed', 0)} "
     )
 
 

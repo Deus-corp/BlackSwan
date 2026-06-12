@@ -42,6 +42,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_final_gate",
     "replay_lifecycle_retry_real_execution_read_only_approval",
     "replay_lifecycle_retry_real_execution_read_only_approval_transition",
+    "replay_lifecycle_retry_real_execution_read_only_readiness_gate",
 }
 
 
@@ -323,6 +324,25 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_read_only_readiness_gate"
+        ):
+            result = (
+                validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -465,6 +485,16 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_read_only_approval_transition_execution_performed: dict[str, int] = {}
     real_read_only_approval_transition_rendered_command_executed: dict[str, int] = {}
     real_read_only_approval_transition_dry_run_command_executed: dict[str, int] = {}
+    real_read_only_readiness_gate_statuses: dict[str, int] = {}
+    real_read_only_readiness_gate_satisfied: dict[str, int] = {}
+    real_read_only_readiness_gate_ready: dict[str, int] = {}
+    real_read_only_readiness_gate_read_only_execution_enabled: dict[str, int] = {}
+    real_read_only_readiness_gate_real_execution_enabled: dict[str, int] = {}
+    real_read_only_readiness_gate_subprocess_enabled: dict[str, int] = {}
+    real_read_only_readiness_gate_subprocess_invoked: dict[str, int] = {}
+    real_read_only_readiness_gate_execution_performed: dict[str, int] = {}
+    real_read_only_readiness_gate_rendered_command_executed: dict[str, int] = {}
+    real_read_only_readiness_gate_dry_run_command_executed: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -1007,6 +1037,56 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             ):
                 value = str(bool(item.get(key))).lower()
                 target[value] = target.get(value, 0) + 1
+        
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_read_only_readiness_gate"
+        ):
+            status = str(item.get("gate_status") or "unknown").strip() or "unknown"
+            real_read_only_readiness_gate_statuses[status] = (
+                real_read_only_readiness_gate_statuses.get(status, 0) + 1
+            )
+
+            for target, key in (
+                (
+                    real_read_only_readiness_gate_satisfied,
+                    "read_only_readiness_satisfied",
+                ),
+                (
+                    real_read_only_readiness_gate_ready,
+                    "ready_for_guarded_read_only_execution",
+                ),
+                (
+                    real_read_only_readiness_gate_read_only_execution_enabled,
+                    "read_only_execution_enabled",
+                ),
+                (
+                    real_read_only_readiness_gate_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (
+                    real_read_only_readiness_gate_subprocess_enabled,
+                    "subprocess_enabled",
+                ),
+                (
+                    real_read_only_readiness_gate_subprocess_invoked,
+                    "subprocess_invoked",
+                ),
+                (
+                    real_read_only_readiness_gate_execution_performed,
+                    "execution_performed",
+                ),
+                (
+                    real_read_only_readiness_gate_rendered_command_executed,
+                    "rendered_command_executed",
+                ),
+                (
+                    real_read_only_readiness_gate_dry_run_command_executed,
+                    "dry_run_envelope_command_executed",
+                ),
+            ):
+                value = str(bool(item.get(key))).lower()
+                target[value] = target.get(value, 0) + 1
 
     return {
         "type": "security_validation_summary",
@@ -1223,6 +1303,30 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         ),
         "real_read_only_approval_transition_dry_run_command_executed": (
             real_read_only_approval_transition_dry_run_command_executed
+        ),
+        "real_read_only_readiness_gate_statuses": real_read_only_readiness_gate_statuses,
+        "real_read_only_readiness_gate_satisfied": real_read_only_readiness_gate_satisfied,
+        "real_read_only_readiness_gate_ready": real_read_only_readiness_gate_ready,
+        "real_read_only_readiness_gate_read_only_execution_enabled": (
+            real_read_only_readiness_gate_read_only_execution_enabled
+        ),
+        "real_read_only_readiness_gate_real_execution_enabled": (
+            real_read_only_readiness_gate_real_execution_enabled
+        ),
+        "real_read_only_readiness_gate_subprocess_enabled": (
+            real_read_only_readiness_gate_subprocess_enabled
+        ),
+        "real_read_only_readiness_gate_subprocess_invoked": (
+            real_read_only_readiness_gate_subprocess_invoked
+        ),
+        "real_read_only_readiness_gate_execution_performed": (
+            real_read_only_readiness_gate_execution_performed
+        ),
+        "real_read_only_readiness_gate_rendered_command_executed": (
+            real_read_only_readiness_gate_rendered_command_executed
+        ),
+        "real_read_only_readiness_gate_dry_run_command_executed": (
+            real_read_only_readiness_gate_dry_run_command_executed
         ),
     }
 
@@ -1621,6 +1725,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_read_only_final_gate_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_read_only_readiness_gate":
+        return str(
+            record.get("real_execution_read_only_readiness_gate_id")
+            or record.get("real_execution_read_only_approval_transition_id")
+            or record.get("real_execution_read_only_approval_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -1657,6 +1769,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_read_only_final_gate_id",
         "real_execution_read_only_approval_id",
         "real_execution_read_only_approval_transition_id",
+        "real_execution_read_only_readiness_gate_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -1690,6 +1803,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_read_only_final_gate_id",
             "real_execution_read_only_approval_id",
             "real_execution_read_only_approval_transition_id",
+            "real_execution_read_only_readiness_gate_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -3761,6 +3875,161 @@ def validate_replay_lifecycle_retry_real_execution_read_only_approval_transition
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate read-only execution readiness gate records."""
+    reasons: list[str] = []
+
+    gate_id = str(
+        record.get("real_execution_read_only_readiness_gate_id") or ""
+    ).strip()
+    transition_id = str(
+        record.get("real_execution_read_only_approval_transition_id") or ""
+    ).strip()
+    approval_id = str(
+        record.get("real_execution_read_only_approval_id") or ""
+    ).strip()
+    final_gate_id = str(
+        record.get("real_execution_read_only_final_gate_id") or ""
+    ).strip()
+    promotion_id = str(
+        record.get("real_execution_read_only_promotion_id") or ""
+    ).strip()
+    noop_result_id = str(record.get("real_execution_noop_result_id") or "").strip()
+    envelope_id = str(
+        record.get("real_execution_dry_run_envelope_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    gate_status = str(record.get("gate_status") or "").strip()
+    from_status = str(record.get("read_only_approval_from_status") or "").strip()
+    latest_status = str(record.get("read_only_approval_latest_status") or "").strip()
+    read_only_module = str(record.get("read_only_module") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    read_only_argv = record.get("read_only_argv")
+    blocking_reasons = record.get("blocking_reasons")
+    precondition_failures = record.get("precondition_failures")
+
+    read_only_readiness_satisfied = bool(
+        record.get("read_only_readiness_satisfied")
+    )
+    ready_for_guarded_read_only_execution = bool(
+        record.get("ready_for_guarded_read_only_execution")
+    )
+    read_only_execution_enabled = bool(record.get("read_only_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    rendered_command_executed = bool(record.get("rendered_command_executed"))
+    dry_run_command_executed = bool(
+        record.get("dry_run_envelope_command_executed")
+    )
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not gate_id:
+        reasons.append("missing_real_execution_read_only_readiness_gate_id")
+    if not transition_id:
+        reasons.append("missing_real_execution_read_only_approval_transition_id")
+    if not approval_id:
+        reasons.append("missing_real_execution_read_only_approval_id")
+    if not final_gate_id:
+        reasons.append("missing_real_execution_read_only_final_gate_id")
+    if not promotion_id:
+        reasons.append("missing_real_execution_read_only_promotion_id")
+    if not noop_result_id:
+        reasons.append("missing_real_execution_noop_result_id")
+    if not envelope_id:
+        reasons.append("missing_real_execution_dry_run_envelope_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if gate_status != "ready_blocked":
+        reasons.append("read_only_readiness_gate_must_be_ready_blocked")
+    if from_status != "pending":
+        reasons.append("read_only_readiness_gate_from_status_must_be_pending")
+    if latest_status != "approved":
+        reasons.append("read_only_readiness_gate_latest_status_must_be_approved")
+    if reason != "guarded_read_only_execution_requires_separate_pr":
+        reasons.append("invalid_read_only_readiness_gate_reason")
+    if read_only_module != "src.testing.run_replay_evidence_check":
+        reasons.append("read_only_readiness_gate_module_must_be_allowlisted")
+    if not isinstance(read_only_argv, list) or not read_only_argv:
+        reasons.append("read_only_readiness_gate_argv_must_be_non_empty_list")
+
+    if not isinstance(blocking_reasons, list):
+        reasons.append("read_only_readiness_gate_blocking_reasons_must_be_list")
+    elif "guarded_read_only_execution_requires_separate_pr" not in {
+        str(item) for item in blocking_reasons
+    }:
+        reasons.append("read_only_readiness_gate_must_require_separate_pr")
+
+    if not isinstance(precondition_failures, list):
+        reasons.append("read_only_readiness_gate_precondition_failures_must_be_list")
+    elif precondition_failures:
+        reasons.append("read_only_readiness_gate_precondition_failures_must_be_empty")
+
+    if not read_only_readiness_satisfied or not bool(
+        payload_mapping.get("read_only_readiness_satisfied", True)
+    ):
+        reasons.append("read_only_readiness_gate_must_be_satisfied")
+    if not ready_for_guarded_read_only_execution or not bool(
+        payload_mapping.get("ready_for_guarded_read_only_execution", True)
+    ):
+        reasons.append("read_only_readiness_gate_must_be_ready_for_guarded_execution")
+
+    if read_only_execution_enabled or bool(
+        payload_mapping.get("read_only_execution_enabled")
+    ):
+        reasons.append("read_only_readiness_gate_must_not_enable_read_only_execution")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("read_only_readiness_gate_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("read_only_readiness_gate_must_not_enable_subprocess")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("read_only_readiness_gate_must_not_invoke_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("read_only_readiness_gate_must_not_execute")
+    if rendered_command_executed or bool(
+        payload_mapping.get("rendered_command_executed")
+    ):
+        reasons.append("read_only_readiness_gate_must_not_execute_rendered_command")
+    if dry_run_command_executed or bool(
+        payload_mapping.get("dry_run_envelope_command_executed")
+    ):
+        reasons.append("read_only_readiness_gate_must_not_execute_dry_run_command")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": (
+            "replay_lifecycle_retry_real_execution_read_only_readiness_gate"
+        ),
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": gate_id or transition_id,
+        "gate_status": gate_status or "unknown",
+        "read_only_approval_from_status": from_status or "unknown",
+        "read_only_approval_latest_status": latest_status or "unknown",
+        "read_only_readiness_satisfied": read_only_readiness_satisfied,
+        "ready_for_guarded_read_only_execution": (
+            ready_for_guarded_read_only_execution
+        ),
+        "read_only_execution_enabled": read_only_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "subprocess_invoked": subprocess_invoked,
+        "execution_performed": execution_performed,
+        "rendered_command_executed": rendered_command_executed,
+        "dry_run_envelope_command_executed": dry_run_command_executed,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -3786,4 +4055,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_read_only_final_gate",
     "validate_replay_lifecycle_retry_real_execution_read_only_approval",
     "validate_replay_lifecycle_retry_real_execution_read_only_approval_transition",
+    "validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate",
 ]

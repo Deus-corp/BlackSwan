@@ -28,6 +28,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_final_gate,
     validate_replay_lifecycle_retry_real_execution_read_only_approval,
     validate_replay_lifecycle_retry_real_execution_read_only_approval_transition,
+    validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate,
 )
 
 
@@ -2760,3 +2761,101 @@ def test_validate_retry_real_execution_read_only_approval_transition_rejects_rea
         "read_only_approval_transition_must_not_enable_read_only_execution"
         in result["reasons"]
     )
+
+
+def _real_execution_read_only_readiness_gate(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_readiness_gate",
+        "real_execution_read_only_readiness_gate_id": "readiness-gate-1",
+        "real_execution_read_only_approval_transition_id": "read-only-transition-1",
+        "real_execution_read_only_approval_id": "read-only-approval-1",
+        "real_execution_read_only_final_gate_id": "read-only-final-gate-1",
+        "real_execution_read_only_promotion_id": "read-only-promotion-1",
+        "real_execution_noop_result_id": "noop-result-1",
+        "real_execution_dry_run_envelope_id": "dry-run-envelope-1",
+        "rendered_command_id": "rendered-command-1",
+        "read_only_approval_from_status": "pending",
+        "read_only_approval_latest_status": "approved",
+        "read_only_readiness_satisfied": True,
+        "ready_for_guarded_read_only_execution": True,
+        "gate_status": "ready_blocked",
+        "precondition_failures": [],
+        "blocking_reasons": ["guarded_read_only_execution_requires_separate_pr"],
+        "read_only_module": "src.testing.run_replay_evidence_check",
+        "read_only_argv": ["python", "-m", "src.testing.run_replay_evidence_check"],
+        "read_only_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "subprocess_invoked": False,
+        "execution_performed": False,
+        "rendered_command_executed": False,
+        "dry_run_envelope_command_executed": False,
+        "reason": "guarded_read_only_execution_requires_separate_pr",
+        "payload": {
+            "read_only_readiness_satisfied": True,
+            "ready_for_guarded_read_only_execution": True,
+            "read_only_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "subprocess_invoked": False,
+            "execution_performed": False,
+            "rendered_command_executed": False,
+            "dry_run_envelope_command_executed": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_read_only_readiness_gate_accepts_ready_blocked() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate(
+        _real_execution_read_only_readiness_gate()
+    )
+
+    assert result["valid"] is True
+    assert result["gate_status"] == "ready_blocked"
+    assert result["read_only_readiness_satisfied"] is True
+    assert result["ready_for_guarded_read_only_execution"] is True
+    assert result["read_only_execution_enabled"] is False
+    assert result["subprocess_invoked"] is False
+    assert result["execution_performed"] is False
+
+
+def test_validate_retry_real_execution_read_only_readiness_gate_rejects_execution_enabled() -> None:
+    record = _real_execution_read_only_readiness_gate(
+        read_only_execution_enabled=True
+    )
+    record["payload"]["read_only_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate(
+        record
+    )
+
+    assert result["valid"] is False
+    assert (
+        "read_only_readiness_gate_must_not_enable_read_only_execution"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_read_only_readiness_gate_rejects_subprocess_invoked() -> None:
+    record = _real_execution_read_only_readiness_gate(subprocess_invoked=True)
+    record["payload"]["subprocess_invoked"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "read_only_readiness_gate_must_not_invoke_subprocess" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_readiness_gate_rejects_not_approved() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate(
+        _real_execution_read_only_readiness_gate(
+            read_only_approval_latest_status="rejected"
+        )
+    )
+
+    assert result["valid"] is False
+    assert "read_only_readiness_gate_latest_status_must_be_approved" in result["reasons"]

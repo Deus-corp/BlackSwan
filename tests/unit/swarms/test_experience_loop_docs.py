@@ -437,3 +437,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "to_status=approved" in text
     assert "read_only_execution_enabled=false" in text
     assert "audit artifact only" in text
+    assert "Read-only execution readiness gate" in text
+    assert "replay_lifecycle_retry_real_execution_read_only_readiness_gate" in text
+    assert "ready_for_guarded_read_only_execution=true" in text
+    assert "read_only_execution_enabled=false" in text
+    assert "guarded_read_only_execution_requires_separate_pr" in text

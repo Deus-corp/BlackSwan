@@ -1547,6 +1547,22 @@ The transition is an audit artifact only. Even when approved it must keep
 
 ---
 
+### Read-only execution readiness gate
+
+`replay_lifecycle_retry_real_execution_read_only_readiness_gate` is the final
+pre-execution readiness artifact for guarded read-only execution. It may record
+`read_only_readiness_satisfied=true` and
+`ready_for_guarded_read_only_execution=true`, but it must keep
+`read_only_execution_enabled=false`, `real_execution_enabled=false`,
+`subprocess_enabled=false`, `subprocess_invoked=false`,
+`execution_performed=false`, `rendered_command_executed=false`, and
+`dry_run_envelope_command_executed=false`.
+
+The gate remains blocked by
+`guarded_read_only_execution_requires_separate_pr`.
+
+---
+
 ## Related modules
 
 ```text
