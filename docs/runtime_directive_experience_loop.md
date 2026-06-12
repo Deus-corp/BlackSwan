@@ -1581,6 +1581,20 @@ does not enable arbitrary real execution.
 
 ---
 
+### Read-only execution feedback
+
+`replay_lifecycle_retry_real_execution_read_only_feedback` records post-execution
+feedback derived from a guarded read-only execution result. A failed read-only
+execution can become `feedback_status=actionable` with
+`recommended_next_action=investigate_failed_read_only_evidence_check`.
+
+The feedback record is evidence only. It must keep
+`feedback_execution_performed=false`, `feedback_subprocess_invoked=false`,
+`execution_performed=false`, `subprocess_invoked=false`, and
+`real_execution_enabled=false`.
+
+---
+
 ## Related modules
 
 ```text

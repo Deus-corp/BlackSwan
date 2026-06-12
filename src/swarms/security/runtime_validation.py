@@ -44,6 +44,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_approval_transition",
     "replay_lifecycle_retry_real_execution_read_only_readiness_gate",
     "replay_lifecycle_retry_real_execution_read_only_execution_result",
+    "replay_lifecycle_retry_real_execution_read_only_feedback",
 }
 
 
@@ -363,6 +364,20 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_read_only_feedback":
+            result = validate_replay_lifecycle_retry_real_execution_read_only_feedback(
+                record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -528,7 +543,20 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_read_only_execution_result_execution_performed: dict[str, int] = {}
     real_read_only_execution_result_read_only_command_executed: dict[str, int] = {}
     real_read_only_execution_result_rendered_command_executed: dict[str, int] = {}
-    real_read_only_execution_result_dry_run_command_executed: dict[str, int] = {} 
+    real_read_only_execution_result_dry_run_command_executed: dict[str, int] = {}
+    real_read_only_feedback_statuses: dict[str, int] = {}
+    real_read_only_feedback_source_statuses: dict[str, int] = {}
+    real_read_only_feedback_source_exit_codes: dict[str, int] = {}
+    real_read_only_feedback_next_actions: dict[str, int] = {}
+    real_read_only_feedback_execution_observed: dict[str, int] = {}
+    real_read_only_feedback_failed: dict[str, int] = {}
+    real_read_only_feedback_succeeded: dict[str, int] = {}
+    real_read_only_feedback_rejected: dict[str, int] = {}
+    real_read_only_feedback_real_execution_enabled: dict[str, int] = {}
+    real_read_only_feedback_feedback_execution_performed: dict[str, int] = {}
+    real_read_only_feedback_feedback_subprocess_invoked: dict[str, int] = {}
+    real_read_only_feedback_execution_performed: dict[str, int] = {}
+    real_read_only_feedback_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -1193,6 +1221,40 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             ):
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
+        
+        if record_type == "replay_lifecycle_retry_real_execution_read_only_feedback":
+            feedback_status = str(item.get("feedback_status") or "unknown").strip() or "unknown"
+            source_status = str(item.get("source_status") or "unknown").strip() or "unknown"
+            next_action = str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+            exit_code = item.get("source_exit_code")
+            exit_code_key = "none" if exit_code is None else str(exit_code)
+
+            real_read_only_feedback_statuses[feedback_status] = (
+                real_read_only_feedback_statuses.get(feedback_status, 0) + 1
+            )
+            real_read_only_feedback_source_statuses[source_status] = (
+                real_read_only_feedback_source_statuses.get(source_status, 0) + 1
+            )
+            real_read_only_feedback_next_actions[next_action] = (
+                real_read_only_feedback_next_actions.get(next_action, 0) + 1
+            )
+            real_read_only_feedback_source_exit_codes[exit_code_key] = (
+                real_read_only_feedback_source_exit_codes.get(exit_code_key, 0) + 1
+            )
+
+            for target, key_name in (
+                (real_read_only_feedback_execution_observed, "read_only_execution_was_observed"),
+                (real_read_only_feedback_failed, "read_only_execution_failed"),
+                (real_read_only_feedback_succeeded, "read_only_execution_succeeded"),
+                (real_read_only_feedback_rejected, "read_only_execution_rejected"),
+                (real_read_only_feedback_real_execution_enabled, "real_execution_enabled"),
+                (real_read_only_feedback_feedback_execution_performed, "feedback_execution_performed"),
+                (real_read_only_feedback_feedback_subprocess_invoked, "feedback_subprocess_invoked"),
+                (real_read_only_feedback_execution_performed, "execution_performed"),
+                (real_read_only_feedback_subprocess_invoked, "subprocess_invoked"),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
 
     return {
         "type": "security_validation_summary",
@@ -1470,6 +1532,19 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_read_only_execution_result_dry_run_command_executed": (
             real_read_only_execution_result_dry_run_command_executed
         ),
+        "real_read_only_feedback_statuses": real_read_only_feedback_statuses,
+        "real_read_only_feedback_source_statuses": real_read_only_feedback_source_statuses,
+        "real_read_only_feedback_source_exit_codes": real_read_only_feedback_source_exit_codes,
+        "real_read_only_feedback_next_actions": real_read_only_feedback_next_actions,
+        "real_read_only_feedback_execution_observed": real_read_only_feedback_execution_observed,
+        "real_read_only_feedback_failed": real_read_only_feedback_failed,
+        "real_read_only_feedback_succeeded": real_read_only_feedback_succeeded,
+        "real_read_only_feedback_rejected": real_read_only_feedback_rejected,
+        "real_read_only_feedback_real_execution_enabled": real_read_only_feedback_real_execution_enabled,
+        "real_read_only_feedback_feedback_execution_performed": real_read_only_feedback_feedback_execution_performed,
+        "real_read_only_feedback_feedback_subprocess_invoked": real_read_only_feedback_feedback_subprocess_invoked,
+        "real_read_only_feedback_execution_performed": real_read_only_feedback_execution_performed,
+        "real_read_only_feedback_subprocess_invoked": real_read_only_feedback_subprocess_invoked,
     }
 
 
@@ -1883,6 +1958,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("rendered_command_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_read_only_feedback":
+        return str(
+            record.get("real_execution_read_only_feedback_id")
+            or record.get("real_execution_read_only_execution_result_id")
+            or record.get("real_execution_read_only_readiness_gate_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -1921,6 +2004,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_read_only_approval_transition_id",
         "real_execution_read_only_readiness_gate_id",
         "real_execution_read_only_execution_result_id",
+        "real_execution_read_only_feedback_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -1956,6 +2040,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_read_only_approval_transition_id",
             "real_execution_read_only_readiness_gate_id",
             "real_execution_read_only_execution_result_id",
+            "real_execution_read_only_feedback_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -4326,6 +4411,181 @@ def validate_replay_lifecycle_retry_real_execution_read_only_execution_result(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_read_only_feedback(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate post-read-only execution feedback records."""
+    reasons: list[str] = []
+
+    feedback_id = str(
+        record.get("real_execution_read_only_feedback_id") or ""
+    ).strip()
+    execution_result_id = str(
+        record.get("real_execution_read_only_execution_result_id") or ""
+    ).strip()
+    readiness_gate_id = str(
+        record.get("real_execution_read_only_readiness_gate_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    source_status = str(record.get("source_status") or "").strip()
+    source_reason = str(record.get("source_reason") or "").strip()
+    feedback_status = str(record.get("feedback_status") or "").strip()
+    recommended_next_action = str(
+        record.get("recommended_next_action") or ""
+    ).strip()
+    reason = str(record.get("reason") or "").strip()
+
+    source_exit_code = record.get("source_exit_code")
+    failure_hints = record.get("failure_hints")
+
+    read_only_execution_was_observed = bool(
+        record.get("read_only_execution_was_observed")
+    )
+    read_only_execution_failed = bool(record.get("read_only_execution_failed"))
+    read_only_execution_succeeded = bool(record.get("read_only_execution_succeeded"))
+    read_only_execution_rejected = bool(record.get("read_only_execution_rejected"))
+
+    operator_authorized = bool(record.get("operator_authorized"))
+    allow_guarded = bool(record.get("allow_guarded_read_only_execution"))
+    read_only_execution_enabled = bool(record.get("read_only_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+
+    source_subprocess_invoked = bool(record.get("source_subprocess_invoked"))
+    source_execution_performed = bool(record.get("source_execution_performed"))
+    source_read_only_command_executed = bool(
+        record.get("source_read_only_command_executed")
+    )
+    source_rendered_command_executed = bool(
+        record.get("source_rendered_command_executed")
+    )
+    source_dry_run_command_executed = bool(
+        record.get("source_dry_run_command_executed")
+    )
+
+    feedback_execution_performed = bool(record.get("feedback_execution_performed"))
+    feedback_subprocess_invoked = bool(record.get("feedback_subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not feedback_id:
+        reasons.append("missing_real_execution_read_only_feedback_id")
+    if not execution_result_id:
+        reasons.append("missing_real_execution_read_only_execution_result_id")
+    if not readiness_gate_id:
+        reasons.append("missing_real_execution_read_only_readiness_gate_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if source_status not in {"executed", "failed", "rejected", "unknown"}:
+        reasons.append("invalid_read_only_feedback_source_status")
+    if feedback_status not in {"successful", "actionable", "blocked", "unknown"}:
+        reasons.append("invalid_read_only_feedback_status")
+    if reason != "read_only_execution_feedback_recorded":
+        reasons.append("invalid_read_only_feedback_reason")
+    if not recommended_next_action:
+        reasons.append("missing_read_only_feedback_recommended_next_action")
+    if not isinstance(failure_hints, list):
+        reasons.append("read_only_feedback_failure_hints_must_be_list")
+
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("read_only_feedback_must_not_enable_real_execution")
+
+    if feedback_execution_performed or bool(
+        payload_mapping.get("feedback_execution_performed")
+    ):
+        reasons.append("read_only_feedback_must_not_perform_feedback_execution")
+    if feedback_subprocess_invoked or bool(
+        payload_mapping.get("feedback_subprocess_invoked")
+    ):
+        reasons.append("read_only_feedback_must_not_invoke_feedback_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("read_only_feedback_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("read_only_feedback_must_not_invoke_subprocess")
+
+    if source_status == "failed":
+        if feedback_status != "actionable":
+            reasons.append("failed_read_only_feedback_must_be_actionable")
+        if recommended_next_action != "investigate_failed_read_only_evidence_check":
+            reasons.append("failed_read_only_feedback_next_action_mismatch")
+        if source_exit_code is None:
+            reasons.append("failed_read_only_feedback_requires_source_exit_code")
+        if not read_only_execution_was_observed:
+            reasons.append("failed_read_only_feedback_must_observe_execution")
+        if not read_only_execution_failed:
+            reasons.append("failed_read_only_feedback_must_mark_failed")
+        if not operator_authorized:
+            reasons.append("failed_read_only_feedback_requires_operator_authorized")
+        if not allow_guarded:
+            reasons.append("failed_read_only_feedback_requires_guarded_flag")
+        if not read_only_execution_enabled:
+            reasons.append("failed_read_only_feedback_requires_read_only_enabled")
+        if not source_subprocess_invoked:
+            reasons.append("failed_read_only_feedback_requires_source_subprocess")
+        if not source_execution_performed:
+            reasons.append("failed_read_only_feedback_requires_source_execution")
+        if not source_read_only_command_executed:
+            reasons.append("failed_read_only_feedback_requires_source_read_only_command")
+        if not source_rendered_command_executed:
+            reasons.append("failed_read_only_feedback_requires_source_rendered_command")
+        if not source_dry_run_command_executed:
+            reasons.append("failed_read_only_feedback_requires_source_dry_run_command")
+
+    if source_status == "executed":
+        if feedback_status != "successful":
+            reasons.append("successful_read_only_feedback_status_mismatch")
+        if recommended_next_action != "promote_successful_read_only_execution_evidence":
+            reasons.append("successful_read_only_feedback_next_action_mismatch")
+        if source_exit_code != 0:
+            reasons.append("successful_read_only_feedback_exit_code_must_be_zero")
+        if not read_only_execution_succeeded:
+            reasons.append("successful_read_only_feedback_must_mark_succeeded")
+
+    if source_status == "rejected":
+        if feedback_status != "blocked":
+            reasons.append("rejected_read_only_feedback_status_mismatch")
+        if recommended_next_action != "resolve_guarded_read_only_execution_rejection":
+            reasons.append("rejected_read_only_feedback_next_action_mismatch")
+        if not read_only_execution_rejected:
+            reasons.append("rejected_read_only_feedback_must_mark_rejected")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_read_only_feedback",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": feedback_id or execution_result_id,
+        "source_status": source_status or "unknown",
+        "source_reason": source_reason or "unknown",
+        "source_exit_code": source_exit_code,
+        "feedback_status": feedback_status or "unknown",
+        "recommended_next_action": recommended_next_action or "unknown",
+        "read_only_execution_was_observed": read_only_execution_was_observed,
+        "read_only_execution_failed": read_only_execution_failed,
+        "read_only_execution_succeeded": read_only_execution_succeeded,
+        "read_only_execution_rejected": read_only_execution_rejected,
+        "operator_authorized": operator_authorized,
+        "allow_guarded_read_only_execution": allow_guarded,
+        "read_only_execution_enabled": read_only_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "source_subprocess_invoked": source_subprocess_invoked,
+        "source_execution_performed": source_execution_performed,
+        "source_read_only_command_executed": source_read_only_command_executed,
+        "source_rendered_command_executed": source_rendered_command_executed,
+        "source_dry_run_command_executed": source_dry_run_command_executed,
+        "feedback_execution_performed": feedback_execution_performed,
+        "feedback_subprocess_invoked": feedback_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -4353,4 +4613,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_read_only_approval_transition",
     "validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate",
     "validate_replay_lifecycle_retry_real_execution_read_only_execution_result",
+    "validate_replay_lifecycle_retry_real_execution_read_only_feedback",
 ]

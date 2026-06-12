@@ -216,6 +216,23 @@ def _trail_summary(**overrides):
         "real_read_only_execution_result_dry_run_command_executed": {"true": 1},
         "real_read_only_execution_result_linkage_complete": True,
         "real_read_only_execution_result_orphans": 0,
+        "real_read_only_feedback_statuses": {"actionable": 1},
+        "real_read_only_feedback_source_statuses": {"failed": 1},
+        "real_read_only_feedback_source_exit_codes": {"1": 1},
+        "real_read_only_feedback_next_actions": {
+            "investigate_failed_read_only_evidence_check": 1,
+        },
+        "real_read_only_feedback_execution_observed": {"true": 1},
+        "real_read_only_feedback_failed": {"true": 1},
+        "real_read_only_feedback_succeeded": {"false": 1},
+        "real_read_only_feedback_rejected": {"false": 1},
+        "real_read_only_feedback_real_execution_enabled": {"false": 1},
+        "real_read_only_feedback_feedback_execution_performed": {"false": 1},
+        "real_read_only_feedback_feedback_subprocess_invoked": {"false": 1},
+        "real_read_only_feedback_execution_performed": {"false": 1},
+        "real_read_only_feedback_subprocess_invoked": {"false": 1},
+        "real_read_only_feedback_linkage_complete": True,
+        "real_read_only_feedback_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -788,6 +805,21 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_read_only_execution_result_read_only_command_executed": 1,
         "real_read_only_execution_result_rendered_command_executed": 1,
         "real_read_only_execution_result_dry_run_command_executed": 1,
+        "real_read_only_feedback_observed": True,
+        "real_read_only_feedback_records": 1,
+        "real_read_only_feedback_linkage_complete": True,
+        "real_read_only_feedback_orphans": 0,
+        "real_read_only_feedback_actionable": 1,
+        "real_read_only_feedback_source_failed": 1,
+        "real_read_only_feedback_source_exit_code_1": 1,
+        "real_read_only_feedback_next_action_investigate": 1,
+        "real_read_only_feedback_execution_observed": 1,
+        "real_read_only_feedback_failed": 1,
+        "real_read_only_feedback_real_execution_enabled": 0,
+        "real_read_only_feedback_feedback_execution_performed": 0,
+        "real_read_only_feedback_feedback_subprocess_invoked": 0,
+        "real_read_only_feedback_execution_performed": 0,
+        "real_read_only_feedback_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -975,6 +1007,21 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_read_only_execution_result_read_only_command_executed": 1,
         "real_read_only_execution_result_rendered_command_executed": 1,
         "real_read_only_execution_result_dry_run_command_executed": 1,
+        "real_read_only_feedback_observed": True,
+        "real_read_only_feedback_records": 1,
+        "real_read_only_feedback_linkage_complete": True,
+        "real_read_only_feedback_orphans": 0,
+        "real_read_only_feedback_actionable": 1,
+        "real_read_only_feedback_source_failed": 1,
+        "real_read_only_feedback_source_exit_code_1": 1,
+        "real_read_only_feedback_next_action_investigate": 1,
+        "real_read_only_feedback_execution_observed": 1,
+        "real_read_only_feedback_failed": 1,
+        "real_read_only_feedback_real_execution_enabled": 0,
+        "real_read_only_feedback_feedback_execution_performed": 0,
+        "real_read_only_feedback_feedback_subprocess_invoked": 0,
+        "real_read_only_feedback_execution_performed": 0,
+        "real_read_only_feedback_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -1335,3 +1382,33 @@ def test_controlled_execution_readiness_fails_when_read_only_execution_result_en
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_read_only_execution_result_did_not_enable_real_execution" in failed
+
+
+def test_controlled_execution_readiness_fails_for_read_only_feedback_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_feedback_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_feedback_links_to_execution_result" in failed
+
+
+def test_controlled_execution_readiness_fails_when_read_only_feedback_executes() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_feedback_execution_performed={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_feedback_did_not_execute" in failed

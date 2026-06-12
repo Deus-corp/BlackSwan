@@ -30,6 +30,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_approval_transition,
     validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate,
     validate_replay_lifecycle_retry_real_execution_read_only_execution_result,
+    validate_replay_lifecycle_retry_real_execution_read_only_feedback,
 )
 
 
@@ -2970,3 +2971,96 @@ def test_validate_retry_real_execution_read_only_execution_result_accepts_reject
 
     assert result["valid"] is True
     assert result["status"] == "rejected"
+
+
+def _real_execution_read_only_feedback(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_feedback",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "real_execution_read_only_readiness_gate_id": "readiness-gate-1",
+        "rendered_command_id": "rendered-command-1",
+        "source_status": "failed",
+        "source_reason": "guarded_read_only_execution_failed",
+        "source_exit_code": 1,
+        "feedback_status": "actionable",
+        "recommended_next_action": "investigate_failed_read_only_evidence_check",
+        "failure_hints": ["source_status:failed", "source_exit_code:1"],
+        "read_only_execution_was_observed": True,
+        "read_only_execution_failed": True,
+        "read_only_execution_succeeded": False,
+        "read_only_execution_rejected": False,
+        "operator_authorized": True,
+        "allow_guarded_read_only_execution": True,
+        "read_only_execution_enabled": True,
+        "real_execution_enabled": False,
+        "source_subprocess_invoked": True,
+        "source_execution_performed": True,
+        "source_read_only_command_executed": True,
+        "source_rendered_command_executed": True,
+        "source_dry_run_command_executed": True,
+        "feedback_execution_performed": False,
+        "feedback_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "read_only_execution_feedback_recorded",
+        "payload": {
+            "real_execution_enabled": False,
+            "feedback_execution_performed": False,
+            "feedback_subprocess_invoked": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_read_only_feedback_accepts_failed_actionable() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_feedback(
+        _real_execution_read_only_feedback()
+    )
+
+    assert result["valid"] is True
+    assert result["feedback_status"] == "actionable"
+    assert result["source_status"] == "failed"
+    assert result["source_exit_code"] == 1
+    assert result["feedback_execution_performed"] is False
+    assert result["feedback_subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_read_only_feedback_accepts_successful() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_feedback(
+        _real_execution_read_only_feedback(
+            source_status="executed",
+            source_reason="guarded_read_only_execution_completed",
+            source_exit_code=0,
+            feedback_status="successful",
+            recommended_next_action="promote_successful_read_only_execution_evidence",
+            read_only_execution_failed=False,
+            read_only_execution_succeeded=True,
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["feedback_status"] == "successful"
+
+
+def test_validate_retry_real_execution_read_only_feedback_rejects_feedback_execution() -> None:
+    record = _real_execution_read_only_feedback(feedback_execution_performed=True)
+    record["payload"]["feedback_execution_performed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_feedback(record)
+
+    assert result["valid"] is False
+    assert "read_only_feedback_must_not_perform_feedback_execution" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_feedback_rejects_real_execution_enabled() -> None:
+    record = _real_execution_read_only_feedback(real_execution_enabled=True)
+    record["payload"]["real_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_feedback(record)
+
+    assert result["valid"] is False
+    assert "read_only_feedback_must_not_enable_real_execution" in result["reasons"]
