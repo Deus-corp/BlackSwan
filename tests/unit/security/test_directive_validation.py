@@ -32,6 +32,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_execution_result,
     validate_replay_lifecycle_retry_real_execution_read_only_feedback,
     validate_replay_lifecycle_retry_real_execution_read_only_repair_plan,
+    validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle,
 )
 
 
@@ -3159,3 +3160,132 @@ def test_validate_retry_real_execution_read_only_repair_plan_rejects_item_count_
 
     assert result["valid"] is False
     assert "read_only_repair_plan_item_count_mismatch" in result["reasons"]
+
+
+def _real_execution_read_only_repair_action_bundle(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle",
+        "real_execution_read_only_repair_action_bundle_id": "bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "source_repair_plan_status": "planned",
+        "source_feedback_status": "actionable",
+        "source_status": "failed",
+        "source_exit_code": 1,
+        "source_repair_item_count": 2,
+        "bundle_status": "assembled",
+        "bundle_items": [
+            {
+                "action_id": "action-1",
+                "target": "execution_published",
+                "recommended_action": "publish_or_verify_execution_record",
+                "review_required": True,
+                "execution_allowed": False,
+                "subprocess_allowed": False,
+                "real_execution_allowed": False,
+                "execution_performed": False,
+                "subprocess_invoked": False,
+            },
+            {
+                "action_id": "action-2",
+                "target": "evidence_published",
+                "recommended_action": "publish_or_verify_replay_evidence",
+                "review_required": True,
+                "execution_allowed": False,
+                "subprocess_allowed": False,
+                "real_execution_allowed": False,
+                "execution_performed": False,
+                "subprocess_invoked": False,
+            },
+        ],
+        "bundle_item_count": 2,
+        "bundle_targets": ["execution_published", "evidence_published"],
+        "recommended_next_action": "review_repair_action_bundle",
+        "requires_operator_review": True,
+        "bundle_reviewed": False,
+        "bundle_execution_enabled": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "bundle_execution_performed": False,
+        "bundle_subprocess_invoked": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "read_only_repair_action_bundle_recorded",
+        "payload": {
+            "bundle_execution_enabled": False,
+            "repair_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "bundle_execution_performed": False,
+            "bundle_subprocess_invoked": False,
+            "repair_execution_performed": False,
+            "repair_subprocess_invoked": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_accepts_assembled() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle(
+        _real_execution_read_only_repair_action_bundle()
+    )
+
+    assert result["valid"] is True
+    assert result["bundle_status"] == "assembled"
+    assert result["source_repair_plan_status"] == "planned"
+    assert result["bundle_item_count"] == 2
+    assert result["bundle_execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_rejects_execution() -> None:
+    record = _real_execution_read_only_repair_action_bundle(execution_performed=True)
+    record["payload"]["execution_performed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "read_only_repair_action_bundle_must_not_execute" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_rejects_real_execution_enabled() -> None:
+    record = _real_execution_read_only_repair_action_bundle(real_execution_enabled=True)
+    record["payload"]["real_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "read_only_repair_action_bundle_must_not_enable_real_execution" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_rejects_item_execution_allowed() -> None:
+    record = _real_execution_read_only_repair_action_bundle()
+    record["bundle_items"][0]["execution_allowed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "read_only_repair_action_bundle_item_must_not_allow_execution" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_rejects_item_count_mismatch() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle(
+        _real_execution_read_only_repair_action_bundle(bundle_item_count=3)
+    )
+
+    assert result["valid"] is False
+    assert "read_only_repair_action_bundle_item_count_mismatch" in result["reasons"]

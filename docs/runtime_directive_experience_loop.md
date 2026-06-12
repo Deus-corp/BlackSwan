@@ -1639,6 +1639,21 @@ This recommendation is review-only. It must keep
 
 ---
 
+### Read-only repair action bundle
+
+`replay_lifecycle_retry_real_execution_read_only_repair_action_bundle` converts
+a reviewable repair plan into a structured action bundle. The bundle lists
+candidate repair actions and targets, but it remains review-only until a later
+explicit approval and execution PR.
+
+The bundle must keep `bundle_reviewed=false`,
+`bundle_execution_enabled=false`, `repair_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`bundle_execution_performed=false`, `bundle_subprocess_invoked=false`,
+`execution_performed=false`, and `subprocess_invoked=false`.
+
+---
+
 ## Related modules
 
 ```text

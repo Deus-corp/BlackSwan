@@ -251,6 +251,28 @@ def _trail_summary(**overrides):
         "real_read_only_repair_plan_subprocess_invoked": {"false": 1},
         "real_read_only_repair_plan_linkage_complete": True,
         "real_read_only_repair_plan_orphans": 0,
+        "real_read_only_repair_action_bundle_statuses": {"assembled": 1},
+        "real_read_only_repair_action_bundle_source_plan_statuses": {"planned": 1},
+        "real_read_only_repair_action_bundle_source_feedback_statuses": {"actionable": 1},
+        "real_read_only_repair_action_bundle_source_statuses": {"failed": 1},
+        "real_read_only_repair_action_bundle_source_exit_codes": {"1": 1},
+        "real_read_only_repair_action_bundle_next_actions": {
+            "review_repair_action_bundle": 1,
+        },
+        "real_read_only_repair_action_bundle_item_counts": {"9": 1},
+        "real_read_only_repair_action_bundle_source_item_counts": {"9": 1},
+        "real_read_only_repair_action_bundle_requires_operator_review": {"true": 1},
+        "real_read_only_repair_action_bundle_reviewed": {"false": 1},
+        "real_read_only_repair_action_bundle_bundle_execution_enabled": {"false": 1},
+        "real_read_only_repair_action_bundle_repair_execution_enabled": {"false": 1},
+        "real_read_only_repair_action_bundle_real_execution_enabled": {"false": 1},
+        "real_read_only_repair_action_bundle_subprocess_enabled": {"false": 1},
+        "real_read_only_repair_action_bundle_bundle_execution_performed": {"false": 1},
+        "real_read_only_repair_action_bundle_bundle_subprocess_invoked": {"false": 1},
+        "real_read_only_repair_action_bundle_execution_performed": {"false": 1},
+        "real_read_only_repair_action_bundle_subprocess_invoked": {"false": 1},
+        "real_read_only_repair_action_bundle_linkage_complete": True,
+        "real_read_only_repair_action_bundle_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -855,6 +877,26 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_read_only_repair_plan_repair_subprocess_invoked": 0,
         "real_read_only_repair_plan_execution_performed": 0,
         "real_read_only_repair_plan_subprocess_invoked": 0,
+        "real_read_only_repair_action_bundle_observed": True,
+        "real_read_only_repair_action_bundle_records": 1,
+        "real_read_only_repair_action_bundle_linkage_complete": True,
+        "real_read_only_repair_action_bundle_orphans": 0,
+        "real_read_only_repair_action_bundle_assembled": 1,
+        "real_read_only_repair_action_bundle_source_planned": 1,
+        "real_read_only_repair_action_bundle_source_actionable": 1,
+        "real_read_only_repair_action_bundle_source_failed": 1,
+        "real_read_only_repair_action_bundle_source_exit_code_1": 1,
+        "real_read_only_repair_action_bundle_next_action_review": 1,
+        "real_read_only_repair_action_bundle_requires_operator_review": 1,
+        "real_read_only_repair_action_bundle_reviewed": 0,
+        "real_read_only_repair_action_bundle_bundle_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_repair_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_real_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_subprocess_enabled": 0,
+        "real_read_only_repair_action_bundle_bundle_execution_performed": 0,
+        "real_read_only_repair_action_bundle_bundle_subprocess_invoked": 0,
+        "real_read_only_repair_action_bundle_execution_performed": 0,
+        "real_read_only_repair_action_bundle_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -1074,6 +1116,26 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_read_only_repair_plan_repair_subprocess_invoked": 0,
         "real_read_only_repair_plan_execution_performed": 0,
         "real_read_only_repair_plan_subprocess_invoked": 0,
+        "real_read_only_repair_action_bundle_observed": True,
+        "real_read_only_repair_action_bundle_records": 1,
+        "real_read_only_repair_action_bundle_linkage_complete": True,
+        "real_read_only_repair_action_bundle_orphans": 0,
+        "real_read_only_repair_action_bundle_assembled": 1,
+        "real_read_only_repair_action_bundle_source_planned": 1,
+        "real_read_only_repair_action_bundle_source_actionable": 1,
+        "real_read_only_repair_action_bundle_source_failed": 1,
+        "real_read_only_repair_action_bundle_source_exit_code_1": 1,
+        "real_read_only_repair_action_bundle_next_action_review": 1,
+        "real_read_only_repair_action_bundle_requires_operator_review": 1,
+        "real_read_only_repair_action_bundle_reviewed": 0,
+        "real_read_only_repair_action_bundle_bundle_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_repair_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_real_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_subprocess_enabled": 0,
+        "real_read_only_repair_action_bundle_bundle_execution_performed": 0,
+        "real_read_only_repair_action_bundle_bundle_subprocess_invoked": 0,
+        "real_read_only_repair_action_bundle_execution_performed": 0,
+        "real_read_only_repair_action_bundle_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -1494,3 +1556,33 @@ def test_controlled_execution_readiness_fails_when_read_only_repair_plan_execute
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_read_only_repair_plan_did_not_execute" in failed
+
+
+def test_controlled_execution_readiness_fails_for_read_only_repair_action_bundle_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_repair_action_bundle_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_repair_action_bundle_links_to_repair_plan" in failed
+
+
+def test_controlled_execution_readiness_fails_when_read_only_repair_action_bundle_executes() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_repair_action_bundle_execution_performed={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_repair_action_bundle_did_not_execute" in failed
