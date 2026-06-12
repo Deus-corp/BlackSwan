@@ -464,3 +464,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "reviewable repair plan" in text
     assert "repair_execution_enabled=false" in text
     assert "repair_subprocess_invoked=false" in text
+    assert "Overseer repair-plan recommendation" in text
+    assert "review_replay_evidence_repair_plan" in text
+    assert "repair targets" in text
+    assert "review-only" in text
+    assert "repair_execution_enabled=false" in text
+    assert "repair_subprocess_invoked=false" in text

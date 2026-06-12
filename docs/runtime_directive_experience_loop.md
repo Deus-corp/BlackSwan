@@ -1624,6 +1624,21 @@ The repair plan is observational and review-only. It must keep
 
 ---
 
+### Overseer repair-plan recommendation
+
+The Overseer brief surfaces
+`replay_lifecycle_retry_real_execution_read_only_repair_plan` as a safe next
+action after actionable read-only feedback. The brief should recommend
+`review_replay_evidence_repair_plan` and summarize repair targets before any
+future execution expansion.
+
+This recommendation is review-only. It must keep
+`repair_execution_enabled=false`, `real_execution_enabled=false`,
+`subprocess_enabled=false`, `repair_execution_performed=false`, and
+`repair_subprocess_invoked=false`.
+
+---
+
 ## Related modules
 
 ```text

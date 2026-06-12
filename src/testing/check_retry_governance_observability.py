@@ -113,6 +113,48 @@ def check_retry_governance_observability_from_records(
         "real_read_only_feedback_feedback_subprocess_invoked": trail_summary.get(
             "real_read_only_feedback_feedback_subprocess_invoked", {}
         ),
+        "real_read_only_repair_plan_statuses": trail_summary.get(
+            "real_read_only_repair_plan_statuses", {}
+        ),
+        "real_read_only_repair_plan_source_feedback_statuses": trail_summary.get(
+            "real_read_only_repair_plan_source_feedback_statuses", {}
+        ),
+        "real_read_only_repair_plan_source_statuses": trail_summary.get(
+            "real_read_only_repair_plan_source_statuses", {}
+        ),
+        "real_read_only_repair_plan_source_exit_codes": trail_summary.get(
+            "real_read_only_repair_plan_source_exit_codes", {}
+        ),
+        "real_read_only_repair_plan_next_actions": trail_summary.get(
+            "real_read_only_repair_plan_next_actions", {}
+        ),
+        "real_read_only_repair_plan_item_counts": trail_summary.get(
+            "real_read_only_repair_plan_item_counts", {}
+        ),
+        "real_read_only_repair_plan_requires_operator_review": trail_summary.get(
+            "real_read_only_repair_plan_requires_operator_review", {}
+        ),
+        "real_read_only_repair_plan_repair_execution_enabled": trail_summary.get(
+            "real_read_only_repair_plan_repair_execution_enabled", {}
+        ),
+        "real_read_only_repair_plan_real_execution_enabled": trail_summary.get(
+            "real_read_only_repair_plan_real_execution_enabled", {}
+        ),
+        "real_read_only_repair_plan_subprocess_enabled": trail_summary.get(
+            "real_read_only_repair_plan_subprocess_enabled", {}
+        ),
+        "real_read_only_repair_plan_repair_execution_performed": trail_summary.get(
+            "real_read_only_repair_plan_repair_execution_performed", {}
+        ),
+        "real_read_only_repair_plan_repair_subprocess_invoked": trail_summary.get(
+            "real_read_only_repair_plan_repair_subprocess_invoked", {}
+        ),
+        "real_read_only_repair_plan_execution_performed": trail_summary.get(
+            "real_read_only_repair_plan_execution_performed", {}
+        ),
+        "real_read_only_repair_plan_subprocess_invoked": trail_summary.get(
+            "real_read_only_repair_plan_subprocess_invoked", {}
+        ),
     }
 
     brief = build_global_swarm_brief(

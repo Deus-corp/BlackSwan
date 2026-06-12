@@ -825,6 +825,23 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "real_read_only_feedback_subprocess_invoked": {"false": 1},
             "real_read_only_feedback_feedback_execution_performed": {"false": 1},
             "real_read_only_feedback_feedback_subprocess_invoked": {"false": 1},
+            "replay_lifecycle_retry_real_execution_read_only_repair_plan": 1,
+            "real_read_only_repair_plan_statuses": {"planned": 1},
+            "real_read_only_repair_plan_source_feedback_statuses": {"actionable": 1},
+            "real_read_only_repair_plan_source_statuses": {"failed": 1},
+            "real_read_only_repair_plan_source_exit_codes": {"1": 1},
+            "real_read_only_repair_plan_next_actions": {
+                "review_replay_evidence_repair_plan": 1,
+            },
+            "real_read_only_repair_plan_item_counts": {"9": 1},
+            "real_read_only_repair_plan_requires_operator_review": {"true": 1},
+            "real_read_only_repair_plan_repair_execution_enabled": {"false": 1},
+            "real_read_only_repair_plan_real_execution_enabled": {"false": 1},
+            "real_read_only_repair_plan_subprocess_enabled": {"false": 1},
+            "real_read_only_repair_plan_repair_execution_performed": {"false": 1},
+            "real_read_only_repair_plan_repair_subprocess_invoked": {"false": 1},
+            "real_read_only_repair_plan_execution_performed": {"false": 1},
+            "real_read_only_repair_plan_subprocess_invoked": {"false": 1},
         },
     )
 
@@ -906,6 +923,34 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert brief.key_metrics["security_read_only_feedback_subprocess_invoked"] == 0
     assert brief.key_metrics["security_read_only_feedback_feedback_execution_performed"] == 0
     assert brief.key_metrics["security_read_only_feedback_feedback_subprocess_invoked"] == 0
+    assert brief.key_metrics["security_read_only_repair_plan_records"] == 1
+    assert brief.key_metrics["security_read_only_repair_plan_planned"] == 1
+    assert brief.key_metrics["security_read_only_repair_plan_source_actionable"] == 1
+    assert brief.key_metrics["security_read_only_repair_plan_source_failed"] == 1
+    assert brief.key_metrics["security_read_only_repair_plan_exit_code_1"] == 1
+    assert brief.key_metrics["security_read_only_repair_plan_item_count_9"] == 1
+    assert brief.key_metrics["security_read_only_repair_plan_next_action_review"] == 1
+    assert brief.key_metrics["security_read_only_repair_plan_requires_operator_review"] == 1
+    assert brief.key_metrics["security_read_only_repair_plan_repair_execution_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_plan_real_execution_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_plan_subprocess_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_plan_repair_execution_performed"] == 0
+    assert brief.key_metrics["security_read_only_repair_plan_repair_subprocess_invoked"] == 0
+    assert brief.key_metrics["security_read_only_repair_plan_execution_performed"] == 0
+    assert brief.key_metrics["security_read_only_repair_plan_subprocess_invoked"] == 0
+
+    assert "Read-only repair plan observed" in brief.summary
+    assert "records=1" in brief.summary
+    assert "planned=1" in brief.summary
+    assert "source_actionable=1" in brief.summary
+    assert "source_failed=1" in brief.summary
+    assert "repair_item_count_9=1" in brief.summary
+    assert "next_action=review_replay_evidence_repair_plan" in brief.summary
+    assert "repair_execution_enabled=0" in brief.summary
+    assert "real_execution_enabled=0" in brief.summary
+    assert "subprocess_enabled=0" in brief.summary
+    assert "repair_execution_performed=0" in brief.summary
+    assert "repair_subprocess_invoked=0" in brief.summary
 
 
 def test_global_brief_surfaces_unsupported_real_adapter_placeholder() -> None:
