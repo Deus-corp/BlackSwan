@@ -442,3 +442,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "ready_for_guarded_read_only_execution=true" in text
     assert "read_only_execution_enabled=false" in text
     assert "guarded_read_only_execution_requires_separate_pr" in text
+    assert "Guarded read-only execution result" in text
+    assert "replay_lifecycle_retry_real_execution_read_only_execution_result" in text
+    assert "status=failed" in text
+    assert "validation_reasons=[]" in text
+    assert "real_execution_enabled=false" in text
+    assert "does not enable arbitrary real execution" in text

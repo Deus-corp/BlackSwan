@@ -523,12 +523,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_read_only_approval(),
             _real_read_only_approval_transition(),
             _real_read_only_readiness_gate(),
+            _real_read_only_execution_result(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 19
+    assert summary["total_records"] == 20
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -733,6 +734,29 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_read_only_readiness_gate_linkage_complete"] is True
     assert summary["real_read_only_readiness_gate_transition_matches"] == 1
     assert summary["real_read_only_readiness_gate_orphans"] == 0
+    assert summary["counts"]["real_execution_read_only_execution_results"] == 1
+    assert summary["chain_ids"]["real_execution_read_only_execution_result_ids"] == [
+        "read-only-result-1"
+    ]
+    assert summary["real_read_only_execution_result_statuses"]["failed"] == 1
+    assert summary["real_read_only_execution_result_reasons"][
+        "guarded_read_only_execution_failed"
+    ] == 1
+    assert summary["real_read_only_execution_result_exit_codes"]["1"] == 1
+    assert summary["real_read_only_execution_result_validation_reasons_empty"]["true"] == 1
+    assert summary["real_read_only_execution_result_operator_authorized"]["true"] == 1
+    assert summary["real_read_only_execution_result_allow_guarded"]["true"] == 1
+    assert summary["real_read_only_execution_result_read_only_execution_enabled"]["true"] == 1
+    assert summary["real_read_only_execution_result_real_execution_enabled"]["false"] == 1
+    assert summary["real_read_only_execution_result_subprocess_enabled"]["true"] == 1
+    assert summary["real_read_only_execution_result_subprocess_invoked"]["true"] == 1
+    assert summary["real_read_only_execution_result_execution_performed"]["true"] == 1
+    assert summary["real_read_only_execution_result_read_only_command_executed"]["true"] == 1
+    assert summary["real_read_only_execution_result_rendered_command_executed"]["true"] == 1
+    assert summary["real_read_only_execution_result_dry_run_command_executed"]["true"] == 1
+    assert summary["real_read_only_execution_result_linkage_complete"] is True
+    assert summary["real_read_only_execution_result_gate_matches"] == 1
+    assert summary["real_read_only_execution_result_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -1328,3 +1352,66 @@ def test_inspect_retry_governance_trail_counts_real_read_only_readiness_gate_orp
 
     assert summary["real_read_only_readiness_gate_linkage_complete"] is False
     assert summary["real_read_only_readiness_gate_orphans"] == 1
+
+
+def _real_read_only_execution_result(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_execution_result",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "real_execution_read_only_readiness_gate_id": "readiness-gate-1",
+        "real_execution_read_only_approval_transition_id": "read-only-transition-1",
+        "real_execution_read_only_approval_id": "read-only-approval-1",
+        "real_execution_read_only_final_gate_id": "real-read-only-final-gate-1",
+        "real_execution_read_only_promotion_id": "real-read-only-promotion-1",
+        "real_execution_noop_result_id": "real-noop-result-1",
+        "real_execution_dry_run_envelope_id": "real-dry-run-envelope-1",
+        "rendered_command_id": "rendered-1",
+        "status": "failed",
+        "reason": "guarded_read_only_execution_failed",
+        "operator_authorized": True,
+        "allow_guarded_read_only_execution": True,
+        "read_only_execution_enabled": True,
+        "real_execution_enabled": False,
+        "subprocess_enabled": True,
+        "subprocess_invoked": True,
+        "execution_performed": True,
+        "read_only_command_executed": True,
+        "rendered_command_executed": True,
+        "dry_run_envelope_command_executed": True,
+        "exit_code": 1,
+        "validation_reasons": [],
+    }
+    item.update(overrides)
+    return item
+
+
+def test_inspect_retry_governance_trail_counts_real_read_only_execution_result_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(),
+            _real_noop_result(),
+            _real_read_only_promotion(),
+            _real_read_only_final_gate(),
+            _real_read_only_approval(),
+            _real_read_only_approval_transition(),
+            _real_read_only_readiness_gate(),
+            _real_read_only_execution_result(
+                real_execution_read_only_readiness_gate_id="missing-gate"
+            ),
+        ]
+    )
+
+    assert summary["real_read_only_execution_result_linkage_complete"] is False
+    assert summary["real_read_only_execution_result_orphans"] == 1

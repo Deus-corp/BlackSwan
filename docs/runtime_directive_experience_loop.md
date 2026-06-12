@@ -1563,6 +1563,24 @@ The gate remains blocked by
 
 ---
 
+### Guarded read-only execution result
+
+`replay_lifecycle_retry_real_execution_read_only_execution_result` records the
+first guarded read-only execution outcome. It is only valid for the allowlisted
+`src.testing.run_replay_evidence_check` module with explicit operator
+authorization and an explicit guarded read-only execution flag.
+
+The result may be `status=executed`, `status=failed`, or `status=rejected`.
+A failed exit code is still valid execution evidence when
+`validation_reasons=[]`, `operator_authorized=true`,
+`allow_guarded_read_only_execution=true`, `read_only_execution_enabled=true`,
+`subprocess_invoked=true`, and `execution_performed=true`.
+
+The record must keep `real_execution_enabled=false`; guarded read-only execution
+does not enable arbitrary real execution.
+
+---
+
 ## Related modules
 
 ```text

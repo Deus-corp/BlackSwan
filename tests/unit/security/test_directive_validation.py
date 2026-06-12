@@ -29,6 +29,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_approval,
     validate_replay_lifecycle_retry_real_execution_read_only_approval_transition,
     validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate,
+    validate_replay_lifecycle_retry_real_execution_read_only_execution_result,
 )
 
 
@@ -2859,3 +2860,113 @@ def test_validate_retry_real_execution_read_only_readiness_gate_rejects_not_appr
 
     assert result["valid"] is False
     assert "read_only_readiness_gate_latest_status_must_be_approved" in result["reasons"]
+
+
+def _real_execution_read_only_execution_result(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_execution_result",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "real_execution_read_only_readiness_gate_id": "readiness-gate-1",
+        "real_execution_read_only_approval_transition_id": "read-only-transition-1",
+        "real_execution_read_only_approval_id": "read-only-approval-1",
+        "real_execution_read_only_final_gate_id": "read-only-final-gate-1",
+        "real_execution_read_only_promotion_id": "read-only-promotion-1",
+        "real_execution_noop_result_id": "noop-result-1",
+        "real_execution_dry_run_envelope_id": "dry-run-envelope-1",
+        "rendered_command_id": "rendered-command-1",
+        "status": "failed",
+        "reason": "guarded_read_only_execution_failed",
+        "operator_authorized": True,
+        "allow_guarded_read_only_execution": True,
+        "read_only_module": "src.testing.run_replay_evidence_check",
+        "read_only_argv": ["python", "-m", "src.testing.run_replay_evidence_check"],
+        "read_only_execution_enabled": True,
+        "real_execution_enabled": False,
+        "subprocess_enabled": True,
+        "subprocess_invoked": True,
+        "execution_performed": True,
+        "read_only_command_executed": True,
+        "rendered_command_executed": True,
+        "dry_run_envelope_command_executed": True,
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "failed checks",
+        "validation_reasons": [],
+        "payload": {
+            "real_execution_enabled": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_read_only_execution_result_accepts_failed_execution() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_execution_result(
+        _real_execution_read_only_execution_result()
+    )
+
+    assert result["valid"] is True
+    assert result["status"] == "failed"
+    assert result["exit_code"] == 1
+    assert result["subprocess_invoked"] is True
+    assert result["execution_performed"] is True
+
+
+def test_validate_retry_real_execution_read_only_execution_result_accepts_successful_execution() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_execution_result(
+        _real_execution_read_only_execution_result(
+            status="executed",
+            reason="guarded_read_only_execution_completed",
+            exit_code=0,
+            stdout="ok",
+            stderr="",
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["status"] == "executed"
+    assert result["exit_code"] == 0
+
+
+def test_validate_retry_real_execution_read_only_execution_result_rejects_real_execution_enabled() -> None:
+    record = _real_execution_read_only_execution_result(real_execution_enabled=True)
+    record["payload"]["real_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_execution_result(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "read_only_execution_result_must_not_enable_real_execution" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_execution_result_rejects_missing_guarded_flag() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_execution_result(
+        _real_execution_read_only_execution_result(
+            allow_guarded_read_only_execution=False
+        )
+    )
+
+    assert result["valid"] is False
+    assert "read_only_execution_result_requires_guarded_flag" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_execution_result_accepts_rejected_without_subprocess() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_execution_result(
+        _real_execution_read_only_execution_result(
+            status="rejected",
+            reason="guarded_read_only_execution_rejected",
+            read_only_execution_enabled=False,
+            subprocess_enabled=False,
+            subprocess_invoked=False,
+            execution_performed=False,
+            read_only_command_executed=False,
+            rendered_command_executed=False,
+            dry_run_envelope_command_executed=False,
+            exit_code=None,
+            validation_reasons=["guarded_read_only_execution_flag_required"],
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["status"] == "rejected"

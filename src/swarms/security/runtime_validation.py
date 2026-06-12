@@ -43,6 +43,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_approval",
     "replay_lifecycle_retry_real_execution_read_only_approval_transition",
     "replay_lifecycle_retry_real_execution_read_only_readiness_gate",
+    "replay_lifecycle_retry_real_execution_read_only_execution_result",
 }
 
 
@@ -343,6 +344,25 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_read_only_execution_result"
+        ):
+            result = (
+                validate_replay_lifecycle_retry_real_execution_read_only_execution_result(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -495,6 +515,20 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_read_only_readiness_gate_execution_performed: dict[str, int] = {}
     real_read_only_readiness_gate_rendered_command_executed: dict[str, int] = {}
     real_read_only_readiness_gate_dry_run_command_executed: dict[str, int] = {}
+    real_read_only_execution_result_statuses: dict[str, int] = {}
+    real_read_only_execution_result_reasons: dict[str, int] = {}
+    real_read_only_execution_result_exit_codes: dict[str, int] = {}
+    real_read_only_execution_result_validation_reasons_empty: dict[str, int] = {}
+    real_read_only_execution_result_operator_authorized: dict[str, int] = {}
+    real_read_only_execution_result_allow_guarded: dict[str, int] = {}
+    real_read_only_execution_result_read_only_execution_enabled: dict[str, int] = {}
+    real_read_only_execution_result_real_execution_enabled: dict[str, int] = {}
+    real_read_only_execution_result_subprocess_enabled: dict[str, int] = {}
+    real_read_only_execution_result_subprocess_invoked: dict[str, int] = {}
+    real_read_only_execution_result_execution_performed: dict[str, int] = {}
+    real_read_only_execution_result_read_only_command_executed: dict[str, int] = {}
+    real_read_only_execution_result_rendered_command_executed: dict[str, int] = {}
+    real_read_only_execution_result_dry_run_command_executed: dict[str, int] = {} 
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -1087,6 +1121,78 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             ):
                 value = str(bool(item.get(key))).lower()
                 target[value] = target.get(value, 0) + 1
+        
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_read_only_execution_result"
+        ):
+            status = str(item.get("status") or "unknown").strip() or "unknown"
+            reason = str(item.get("reason") or "unknown").strip() or "unknown"
+            exit_code = item.get("exit_code")
+            exit_code_key = "none" if exit_code is None else str(exit_code)
+
+            real_read_only_execution_result_statuses[status] = (
+                real_read_only_execution_result_statuses.get(status, 0) + 1
+            )
+            real_read_only_execution_result_reasons[reason] = (
+                real_read_only_execution_result_reasons.get(reason, 0) + 1
+            )
+            real_read_only_execution_result_exit_codes[exit_code_key] = (
+                real_read_only_execution_result_exit_codes.get(exit_code_key, 0) + 1
+            )
+
+            validation_reasons = item.get("validation_reasons")
+            validation_empty = isinstance(validation_reasons, list) and not validation_reasons
+            key = str(validation_empty).lower()
+            real_read_only_execution_result_validation_reasons_empty[key] = (
+                real_read_only_execution_result_validation_reasons_empty.get(key, 0)
+                + 1
+            )
+
+            for target, key_name in (
+                (
+                    real_read_only_execution_result_operator_authorized,
+                    "operator_authorized",
+                ),
+                (
+                    real_read_only_execution_result_allow_guarded,
+                    "allow_guarded_read_only_execution",
+                ),
+                (
+                    real_read_only_execution_result_read_only_execution_enabled,
+                    "read_only_execution_enabled",
+                ),
+                (
+                    real_read_only_execution_result_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (
+                    real_read_only_execution_result_subprocess_enabled,
+                    "subprocess_enabled",
+                ),
+                (
+                    real_read_only_execution_result_subprocess_invoked,
+                    "subprocess_invoked",
+                ),
+                (
+                    real_read_only_execution_result_execution_performed,
+                    "execution_performed",
+                ),
+                (
+                    real_read_only_execution_result_read_only_command_executed,
+                    "read_only_command_executed",
+                ),
+                (
+                    real_read_only_execution_result_rendered_command_executed,
+                    "rendered_command_executed",
+                ),
+                (
+                    real_read_only_execution_result_dry_run_command_executed,
+                    "dry_run_envelope_command_executed",
+                ),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
 
     return {
         "type": "security_validation_summary",
@@ -1327,6 +1433,42 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         ),
         "real_read_only_readiness_gate_dry_run_command_executed": (
             real_read_only_readiness_gate_dry_run_command_executed
+        ),
+        "real_read_only_execution_result_statuses": real_read_only_execution_result_statuses,
+        "real_read_only_execution_result_reasons": real_read_only_execution_result_reasons,
+        "real_read_only_execution_result_exit_codes": real_read_only_execution_result_exit_codes,
+        "real_read_only_execution_result_validation_reasons_empty": (
+            real_read_only_execution_result_validation_reasons_empty
+        ),
+        "real_read_only_execution_result_operator_authorized": (
+            real_read_only_execution_result_operator_authorized
+        ),
+        "real_read_only_execution_result_allow_guarded": (
+            real_read_only_execution_result_allow_guarded
+        ),
+        "real_read_only_execution_result_read_only_execution_enabled": (
+            real_read_only_execution_result_read_only_execution_enabled
+        ),
+        "real_read_only_execution_result_real_execution_enabled": (
+           real_read_only_execution_result_real_execution_enabled
+        ),
+        "real_read_only_execution_result_subprocess_enabled": (
+            real_read_only_execution_result_subprocess_enabled
+        ),
+        "real_read_only_execution_result_subprocess_invoked": (
+            real_read_only_execution_result_subprocess_invoked
+        ),
+        "real_read_only_execution_result_execution_performed": (
+            real_read_only_execution_result_execution_performed
+        ),
+        "real_read_only_execution_result_read_only_command_executed": (
+            real_read_only_execution_result_read_only_command_executed
+        ),
+        "real_read_only_execution_result_rendered_command_executed": (
+            real_read_only_execution_result_rendered_command_executed
+        ),
+        "real_read_only_execution_result_dry_run_command_executed": (
+            real_read_only_execution_result_dry_run_command_executed
         ),
     }
 
@@ -1733,6 +1875,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_read_only_approval_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_read_only_execution_result":
+        return str(
+            record.get("real_execution_read_only_execution_result_id")
+            or record.get("real_execution_read_only_readiness_gate_id")
+            or record.get("rendered_command_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -1770,6 +1920,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_read_only_approval_id",
         "real_execution_read_only_approval_transition_id",
         "real_execution_read_only_readiness_gate_id",
+        "real_execution_read_only_execution_result_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -1804,6 +1955,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_read_only_approval_id",
             "real_execution_read_only_approval_transition_id",
             "real_execution_read_only_readiness_gate_id",
+            "real_execution_read_only_execution_result_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -4030,6 +4182,150 @@ def validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_read_only_execution_result(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate guarded read-only execution result records."""
+    reasons: list[str] = []
+
+    result_id = str(
+        record.get("real_execution_read_only_execution_result_id") or ""
+    ).strip()
+    readiness_gate_id = str(
+        record.get("real_execution_read_only_readiness_gate_id") or ""
+    ).strip()
+    transition_id = str(
+        record.get("real_execution_read_only_approval_transition_id") or ""
+    ).strip()
+    approval_id = str(
+        record.get("real_execution_read_only_approval_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    status = str(record.get("status") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+    read_only_module = str(record.get("read_only_module") or "").strip()
+    read_only_argv = record.get("read_only_argv")
+    validation_reasons = record.get("validation_reasons")
+
+    operator_authorized = bool(record.get("operator_authorized"))
+    allow_guarded = bool(record.get("allow_guarded_read_only_execution"))
+    read_only_execution_enabled = bool(record.get("read_only_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    read_only_command_executed = bool(record.get("read_only_command_executed"))
+    rendered_command_executed = bool(record.get("rendered_command_executed"))
+    dry_run_command_executed = bool(
+        record.get("dry_run_envelope_command_executed")
+    )
+
+    exit_code = record.get("exit_code")
+    stdout = record.get("stdout")
+    stderr = record.get("stderr")
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not result_id:
+        reasons.append("missing_real_execution_read_only_execution_result_id")
+    if not readiness_gate_id:
+        reasons.append("missing_real_execution_read_only_readiness_gate_id")
+    if not transition_id:
+        reasons.append("missing_real_execution_read_only_approval_transition_id")
+    if not approval_id:
+        reasons.append("missing_real_execution_read_only_approval_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if status not in {"executed", "failed", "rejected"}:
+        reasons.append("invalid_read_only_execution_result_status")
+    if read_only_module != "src.testing.run_replay_evidence_check":
+        reasons.append("read_only_execution_result_module_must_be_allowlisted")
+    if not isinstance(read_only_argv, list) or not read_only_argv:
+        reasons.append("read_only_execution_result_argv_must_be_non_empty_list")
+    if not isinstance(validation_reasons, list):
+        reasons.append("read_only_execution_result_validation_reasons_must_be_list")
+    if not isinstance(stdout, str):
+        reasons.append("read_only_execution_result_stdout_must_be_str")
+    if not isinstance(stderr, str):
+        reasons.append("read_only_execution_result_stderr_must_be_str")
+
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("read_only_execution_result_must_not_enable_real_execution")
+
+    if status in {"executed", "failed"}:
+        if not operator_authorized:
+            reasons.append("read_only_execution_result_requires_operator_authorized")
+        if not allow_guarded:
+            reasons.append("read_only_execution_result_requires_guarded_flag")
+        if not read_only_execution_enabled:
+            reasons.append("read_only_execution_result_must_enable_read_only_execution")
+        if not subprocess_enabled:
+            reasons.append("read_only_execution_result_must_enable_subprocess")
+        if not subprocess_invoked:
+            reasons.append("read_only_execution_result_must_invoke_subprocess")
+        if not execution_performed:
+            reasons.append("read_only_execution_result_must_perform_execution")
+        if not read_only_command_executed:
+            reasons.append("read_only_execution_result_must_execute_read_only_command")
+        if not rendered_command_executed:
+            reasons.append("read_only_execution_result_must_execute_rendered_command")
+        if not dry_run_command_executed:
+            reasons.append("read_only_execution_result_must_execute_dry_run_command")
+        if not isinstance(exit_code, int):
+            reasons.append("read_only_execution_result_exit_code_must_be_int")
+        if validation_reasons:
+            reasons.append("read_only_execution_result_validation_reasons_must_be_empty")
+        if reason not in {
+            "guarded_read_only_execution_completed",
+            "guarded_read_only_execution_failed",
+        }:
+            reasons.append("invalid_read_only_execution_result_reason")
+
+    if status == "rejected":
+        if read_only_execution_enabled:
+            reasons.append("rejected_read_only_execution_must_not_enable_execution")
+        if subprocess_enabled:
+            reasons.append("rejected_read_only_execution_must_not_enable_subprocess")
+        if subprocess_invoked:
+            reasons.append("rejected_read_only_execution_must_not_invoke_subprocess")
+        if execution_performed:
+            reasons.append("rejected_read_only_execution_must_not_execute")
+        if read_only_command_executed:
+            reasons.append("rejected_read_only_execution_must_not_execute_command")
+        if exit_code is not None:
+            reasons.append("rejected_read_only_execution_exit_code_must_be_none")
+        if reason != "guarded_read_only_execution_rejected":
+            reasons.append("invalid_rejected_read_only_execution_reason")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": (
+            "replay_lifecycle_retry_real_execution_read_only_execution_result"
+        ),
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": result_id or readiness_gate_id,
+        "status": status or "unknown",
+        "reason": reason or "unknown",
+        "operator_authorized": operator_authorized,
+        "allow_guarded_read_only_execution": allow_guarded,
+        "read_only_execution_enabled": read_only_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "subprocess_invoked": subprocess_invoked,
+        "execution_performed": execution_performed,
+        "read_only_command_executed": read_only_command_executed,
+        "rendered_command_executed": rendered_command_executed,
+        "dry_run_envelope_command_executed": dry_run_command_executed,
+        "exit_code": exit_code,
+        "validation_reasons": validation_reasons if isinstance(validation_reasons, list) else [],
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -4056,4 +4352,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_read_only_approval",
     "validate_replay_lifecycle_retry_real_execution_read_only_approval_transition",
     "validate_replay_lifecycle_retry_real_execution_read_only_readiness_gate",
+    "validate_replay_lifecycle_retry_real_execution_read_only_execution_result",
 ]
