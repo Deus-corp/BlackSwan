@@ -1595,6 +1595,19 @@ The feedback record is evidence only. It must keep
 
 ---
 
+### Overseer read-only feedback recommendation
+
+The Overseer brief surfaces
+`replay_lifecycle_retry_real_execution_read_only_feedback` as an actionable
+post-execution signal. When a guarded read-only execution fails, the brief should
+report `feedback_status=actionable` and recommend
+`investigate_failed_read_only_evidence_check`.
+
+The recommendation is observational only. It must not perform feedback execution,
+invoke subprocesses, or enable arbitrary real execution.
+
+---
+
 ## Related modules
 
 ```text

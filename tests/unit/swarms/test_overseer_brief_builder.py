@@ -813,6 +813,18 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "security_validation_controlled_execution_mock_adapter_payload_executed": {
                 "false": 1,
             },
+            "replay_lifecycle_retry_real_execution_read_only_feedback": 1,
+            "real_read_only_feedback_statuses": {"actionable": 1},
+            "real_read_only_feedback_source_statuses": {"failed": 1},
+            "real_read_only_feedback_source_exit_codes": {"1": 1},
+            "real_read_only_feedback_next_actions": {
+                "investigate_failed_read_only_evidence_check": 1,
+            },
+            "real_read_only_feedback_real_execution_enabled": {"false": 1},
+            "real_read_only_feedback_execution_performed": {"false": 1},
+            "real_read_only_feedback_subprocess_invoked": {"false": 1},
+            "real_read_only_feedback_feedback_execution_performed": {"false": 1},
+            "real_read_only_feedback_feedback_subprocess_invoked": {"false": 1},
         },
     )
 
@@ -884,6 +896,16 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert brief.key_metrics["security_mock_adapter_subprocess_invoked"] == 0
     assert brief.key_metrics["security_mock_adapter_real_execution_enabled"] == 0
     assert brief.key_metrics["security_mock_adapter_payload_executed"] == 0
+    assert brief.key_metrics["security_read_only_feedback_records"] == 1
+    assert brief.key_metrics["security_read_only_feedback_actionable"] == 1
+    assert brief.key_metrics["security_read_only_feedback_source_failed"] == 1
+    assert brief.key_metrics["security_read_only_feedback_exit_code_1"] == 1
+    assert brief.key_metrics["security_read_only_feedback_next_action_investigate"] == 1
+    assert brief.key_metrics["security_read_only_feedback_real_execution_enabled"] == 0
+    assert brief.key_metrics["security_read_only_feedback_execution_performed"] == 0
+    assert brief.key_metrics["security_read_only_feedback_subprocess_invoked"] == 0
+    assert brief.key_metrics["security_read_only_feedback_feedback_execution_performed"] == 0
+    assert brief.key_metrics["security_read_only_feedback_feedback_subprocess_invoked"] == 0
 
 
 def test_global_brief_surfaces_unsupported_real_adapter_placeholder() -> None:

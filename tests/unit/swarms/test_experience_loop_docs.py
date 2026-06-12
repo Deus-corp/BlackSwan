@@ -454,3 +454,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "investigate_failed_read_only_evidence_check" in text
     assert "feedback_execution_performed=false" in text
     assert "real_execution_enabled=false" in text
+    assert "Overseer read-only feedback recommendation" in text
+    assert "investigate_failed_read_only_evidence_check" in text
+    assert "feedback_status=actionable" in text
+    assert "observational only" in text
+    assert "enable arbitrary real execution" in text

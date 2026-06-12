@@ -544,6 +544,112 @@ def build_global_swarm_brief(
         ).get("true"),
         0,
     )
+    security_read_only_feedback_records = _safe_int(
+        security_validation_record_type_counts.get(
+            "replay_lifecycle_retry_real_execution_read_only_feedback"
+        ),
+        0,
+    )
+    if security_read_only_feedback_records == 0:
+        security_read_only_feedback_records = _safe_int(
+            security_validation.get(
+                "replay_lifecycle_retry_real_execution_read_only_feedback"
+            ),
+            0,
+        )
+    if security_read_only_feedback_records == 0:
+        security_read_only_feedback_records = _safe_int(
+            _safe_dict(security_validation.get("by_type")).get(
+                "replay_lifecycle_retry_real_execution_read_only_feedback"
+            ),
+            0,
+        )
+
+    security_read_only_feedback_actionable = _safe_int(
+        _safe_dict(
+            security_validation.get("security_validation_real_read_only_feedback_statuses")
+            or security_validation.get("real_read_only_feedback_statuses")
+        ).get("actionable"),
+        0,
+    )
+    security_read_only_feedback_source_failed = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_read_only_feedback_source_statuses"
+            )
+            or security_validation.get("real_read_only_feedback_source_statuses")
+        ).get("failed"),
+        0,
+    )
+    security_read_only_feedback_exit_code_1 = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_read_only_feedback_source_exit_codes"
+            )
+            or security_validation.get("real_read_only_feedback_source_exit_codes")
+        ).get("1"),
+        0,
+    )
+    security_read_only_feedback_next_action_investigate = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_read_only_feedback_next_actions"
+            )
+            or security_validation.get("real_read_only_feedback_next_actions")
+        ).get("investigate_failed_read_only_evidence_check"),
+        0,
+    )
+    security_read_only_feedback_real_execution_enabled = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_read_only_feedback_real_execution_enabled"
+            )
+            or security_validation.get(
+                "real_read_only_feedback_real_execution_enabled"
+            )
+        ).get("true"),
+        0,
+    )
+    security_read_only_feedback_execution_performed = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_read_only_feedback_execution_performed"
+            )
+            or security_validation.get("real_read_only_feedback_execution_performed")
+        ).get("true"),
+        0,
+    )
+    security_read_only_feedback_subprocess_invoked = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_read_only_feedback_subprocess_invoked"
+            )
+            or security_validation.get("real_read_only_feedback_subprocess_invoked")
+        ).get("true"),
+        0,
+    )
+    security_read_only_feedback_feedback_execution_performed = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_read_only_feedback_feedback_execution_performed"
+            )
+            or security_validation.get(
+                "real_read_only_feedback_feedback_execution_performed"
+            )
+        ).get("true"),
+        0,
+    )
+    security_read_only_feedback_feedback_subprocess_invoked = _safe_int(
+        _safe_dict(
+            security_validation.get(
+                "security_validation_real_read_only_feedback_feedback_subprocess_invoked"
+            )
+            or security_validation.get(
+                "real_read_only_feedback_feedback_subprocess_invoked"
+            )
+        ).get("true"),
+        0,
+    )
     security_real_adapter_supported = bool(
         security_validation.get("security_real_adapter_supported", False)
     )
@@ -1208,6 +1314,89 @@ def build_global_swarm_brief(
             )
         )
 
+    if security_read_only_feedback_records > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Read-only execution feedback observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Read-only execution feedback observed: "
+                    f"records={security_read_only_feedback_records}, "
+                    f"actionable={security_read_only_feedback_actionable}, "
+                    f"source_failed={security_read_only_feedback_source_failed}, "
+                    f"exit_code_1={security_read_only_feedback_exit_code_1}, "
+                    "next_action=investigate_failed_read_only_evidence_check, "
+                    f"next_action_count={security_read_only_feedback_next_action_investigate}, "
+                    f"real_execution_enabled={security_read_only_feedback_real_execution_enabled}, "
+                    f"execution_performed={security_read_only_feedback_execution_performed}, "
+                    f"subprocess_invoked={security_read_only_feedback_subprocess_invoked}, "
+                    f"feedback_execution_performed={security_read_only_feedback_feedback_execution_performed}, "
+                    f"feedback_subprocess_invoked={security_read_only_feedback_feedback_subprocess_invoked}."
+                ),
+                payload={
+                    "security_read_only_feedback_records": (
+                        security_read_only_feedback_records
+                    ),
+                    "security_read_only_feedback_actionable": (
+                        security_read_only_feedback_actionable
+                    ),
+                    "security_read_only_feedback_source_failed": (
+                        security_read_only_feedback_source_failed
+                    ),
+                    "security_read_only_feedback_exit_code_1": (
+                        security_read_only_feedback_exit_code_1
+                    ),
+                    "security_read_only_feedback_next_action_investigate": (
+                        security_read_only_feedback_next_action_investigate
+                    ),
+                    "security_read_only_feedback_real_execution_enabled": (
+                        security_read_only_feedback_real_execution_enabled
+                    ),
+                    "security_read_only_feedback_execution_performed": (
+                        security_read_only_feedback_execution_performed
+                    ),
+                    "security_read_only_feedback_subprocess_invoked": (
+                        security_read_only_feedback_subprocess_invoked
+                    ),
+                    "security_read_only_feedback_feedback_execution_performed": (
+                        security_read_only_feedback_feedback_execution_performed
+                    ),
+                    "security_read_only_feedback_feedback_subprocess_invoked": (
+                        security_read_only_feedback_feedback_subprocess_invoked
+                    ),
+                    "recommendation": "investigate_failed_read_only_evidence_check",
+                },
+            )
+        )
+        recommended_actions.append(
+            build_brief_item(
+                title="Investigate failed read-only evidence check",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Use read-only execution feedback to investigate the failed "
+                    "replay evidence check before expanding execution capability."
+                ),
+                payload={
+                    "recommendation": "investigate_failed_read_only_evidence_check",
+                    "target_swarm": "overseer",
+                    "security_read_only_feedback_records": (
+                        security_read_only_feedback_records
+                    ),
+                    "security_read_only_feedback_actionable": (
+                        security_read_only_feedback_actionable
+                    ),
+                    "security_read_only_feedback_source_failed": (
+                        security_read_only_feedback_source_failed
+                    ),
+                    "security_read_only_feedback_exit_code_1": (
+                        security_read_only_feedback_exit_code_1
+                    ),
+                    "execution_enabled": False,
+                    "subprocess_enabled": False,
+                },
+            )
+        )
+
     if simulation_replay_pending > 0:
         opportunities.append(
             build_brief_item(
@@ -1500,6 +1689,32 @@ def build_global_swarm_brief(
         "security_real_approval_subprocess_enabled": security_real_approval_subprocess_enabled,
         "security_real_approval_execution_performed": security_real_approval_execution_performed,
         "security_real_approval_subprocess_invoked": security_real_approval_subprocess_invoked,
+        "security_read_only_feedback_records": security_read_only_feedback_records,
+        "security_read_only_feedback_actionable": security_read_only_feedback_actionable,
+        "security_read_only_feedback_source_failed": (
+            security_read_only_feedback_source_failed
+        ),
+        "security_read_only_feedback_exit_code_1": (
+            security_read_only_feedback_exit_code_1
+        ),
+        "security_read_only_feedback_next_action_investigate": (
+            security_read_only_feedback_next_action_investigate
+        ),
+        "security_read_only_feedback_real_execution_enabled": (
+            security_read_only_feedback_real_execution_enabled
+        ),
+        "security_read_only_feedback_execution_performed": (
+            security_read_only_feedback_execution_performed
+        ),
+        "security_read_only_feedback_subprocess_invoked": (
+            security_read_only_feedback_subprocess_invoked
+        ),
+        "security_read_only_feedback_feedback_execution_performed": (
+            security_read_only_feedback_feedback_execution_performed
+        ),
+        "security_read_only_feedback_feedback_subprocess_invoked": (
+            security_read_only_feedback_feedback_subprocess_invoked
+        ),
     }
 
     summary = _build_summary(
@@ -1636,6 +1851,34 @@ def build_global_swarm_brief(
         security_real_approval_subprocess_invoked=(
             security_real_approval_subprocess_invoked
         ),
+        security_read_only_feedback_records=security_read_only_feedback_records,
+        security_read_only_feedback_actionable=(
+            security_read_only_feedback_actionable
+        ),
+        security_read_only_feedback_source_failed=(
+            security_read_only_feedback_source_failed
+        ),
+        security_read_only_feedback_exit_code_1=(
+            security_read_only_feedback_exit_code_1
+        ),
+        security_read_only_feedback_next_action_investigate=(
+            security_read_only_feedback_next_action_investigate
+        ),
+        security_read_only_feedback_real_execution_enabled=(
+            security_read_only_feedback_real_execution_enabled
+        ),
+        security_read_only_feedback_execution_performed=(
+            security_read_only_feedback_execution_performed
+        ),
+        security_read_only_feedback_subprocess_invoked=(
+            security_read_only_feedback_subprocess_invoked
+        ),
+        security_read_only_feedback_feedback_execution_performed=(
+            security_read_only_feedback_feedback_execution_performed
+        ),
+        security_read_only_feedback_feedback_subprocess_invoked=(
+            security_read_only_feedback_feedback_subprocess_invoked
+        ),
     )
 
     return build_swarm_brief(
@@ -1749,6 +1992,16 @@ def _build_summary(
     security_real_approval_subprocess_enabled: int,
     security_real_approval_execution_performed: int,
     security_real_approval_subprocess_invoked: int,
+    security_read_only_feedback_records: int,
+    security_read_only_feedback_actionable: int,
+    security_read_only_feedback_source_failed: int,
+    security_read_only_feedback_exit_code_1: int,
+    security_read_only_feedback_next_action_investigate: int,
+    security_read_only_feedback_real_execution_enabled: int,
+    security_read_only_feedback_execution_performed: int,
+    security_read_only_feedback_subprocess_invoked: int,
+    security_read_only_feedback_feedback_execution_performed: int,
+    security_read_only_feedback_feedback_subprocess_invoked: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -1974,6 +2227,22 @@ def _build_summary(
             f"subprocess_enabled={security_real_approval_subprocess_enabled}, "
             f"execution_performed={security_real_approval_execution_performed}, "
             f"subprocess_invoked={security_real_approval_subprocess_invoked}."
+        )
+
+    if security_read_only_feedback_records > 0:
+        parts.append(
+            "Read-only execution feedback observed: "
+            f"records={security_read_only_feedback_records}, "
+            f"actionable={security_read_only_feedback_actionable}, "
+            f"source_failed={security_read_only_feedback_source_failed}, "
+            f"exit_code_1={security_read_only_feedback_exit_code_1}, "
+            "next_action=investigate_failed_read_only_evidence_check, "
+            f"next_action_count={security_read_only_feedback_next_action_investigate}, "
+            f"real_execution_enabled={security_read_only_feedback_real_execution_enabled}, "
+            f"execution_performed={security_read_only_feedback_execution_performed}, "
+            f"subprocess_invoked={security_read_only_feedback_subprocess_invoked}, "
+            f"feedback_execution_performed={security_read_only_feedback_feedback_execution_performed}, "
+            f"feedback_subprocess_invoked={security_read_only_feedback_feedback_subprocess_invoked}."
         )
 
     blocked_execution_disabled = _safe_int(
