@@ -529,12 +529,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_read_only_repair_action_bundle(),
             _real_read_only_repair_action_bundle_review(),
             _real_repair_approval(),
+            _real_repair_approval_transition(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 25
+    assert summary["total_records"] == 26
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -892,6 +893,31 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_repair_approval_linkage_complete"] is True
     assert summary["real_repair_approval_review_matches"] == 1
     assert summary["real_repair_approval_orphans"] == 0
+    assert summary["counts"]["real_execution_repair_approval_transitions"] == 1
+    assert summary["chain_ids"]["real_execution_repair_approval_transition_ids"] == [
+        "repair-transition-1"
+    ]
+    assert summary["real_repair_approval_transition_from_statuses"]["pending"] == 1
+    assert summary["real_repair_approval_transition_to_statuses"]["approved"] == 1
+    assert summary["real_repair_approval_transition_source_approval_statuses"]["pending"] == 1
+    assert summary["real_repair_approval_transition_source_review_statuses"]["approved"] == 1
+    assert summary["real_repair_approval_transition_next_actions"][
+        "prepare_repair_execution_final_gate"
+    ] == 1
+    assert summary["real_repair_approval_transition_operator_authorized"]["true"] == 1
+    assert summary["real_repair_approval_transition_required"]["true"] == 1
+    assert summary["real_repair_approval_transition_approved"]["true"] == 1
+    assert summary["real_repair_approval_transition_rejected"]["false"] == 1
+    assert summary["real_repair_approval_transition_repair_execution_enabled"]["false"] == 1
+    assert summary["real_repair_approval_transition_real_execution_enabled"]["false"] == 1
+    assert summary["real_repair_approval_transition_subprocess_enabled"]["false"] == 1
+    assert summary["real_repair_approval_transition_repair_execution_performed"]["false"] == 1
+    assert summary["real_repair_approval_transition_repair_subprocess_invoked"]["false"] == 1
+    assert summary["real_repair_approval_transition_execution_performed"]["false"] == 1
+    assert summary["real_repair_approval_transition_subprocess_invoked"]["false"] == 1
+    assert summary["real_repair_approval_transition_linkage_complete"] is True
+    assert summary["real_repair_approval_transition_approval_matches"] == 1
+    assert summary["real_repair_approval_transition_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -1884,3 +1910,77 @@ def test_inspect_retry_governance_trail_counts_real_repair_approval_orphan() -> 
 
     assert summary["real_repair_approval_linkage_complete"] is False
     assert summary["real_repair_approval_orphans"] == 1
+
+
+def _real_repair_approval_transition(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_repair_approval_transition",
+        "real_execution_repair_approval_transition_id": "repair-transition-1",
+        "real_execution_repair_approval_id": "repair-approval-1",
+        "real_execution_read_only_repair_action_bundle_review_id": "bundle-review-1",
+        "real_execution_read_only_repair_action_bundle_id": "repair-bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "rendered_command_id": "rendered-1",
+        "from_status": "pending",
+        "to_status": "approved",
+        "source_approval_status": "pending",
+        "source_review_status": "approved",
+        "source_reviewed": True,
+        "source_review_approved": True,
+        "source_bundle_status": "assembled",
+        "recommended_next_action": "prepare_repair_execution_final_gate",
+        "operator_authorized": True,
+        "requires_operator_review": True,
+        "repair_execution_approval_required": True,
+        "repair_execution_transition_approved": True,
+        "repair_execution_transition_rejected": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+    }
+    item.update(overrides)
+    return item
+
+
+def test_inspect_retry_governance_trail_counts_real_repair_approval_transition_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(),
+            _real_noop_result(),
+            _real_read_only_promotion(),
+            _real_read_only_final_gate(),
+            _real_read_only_approval(),
+            _real_read_only_approval_transition(),
+            _real_read_only_readiness_gate(),
+            _real_read_only_execution_result(),
+            _real_read_only_feedback(),
+            _real_read_only_repair_plan(),
+            _real_read_only_repair_action_bundle(),
+            _real_read_only_repair_action_bundle_review(),
+            _real_repair_approval(),
+            _real_repair_approval_transition(
+                real_execution_repair_approval_id="missing-approval"
+            ),
+        ]
+    )
+
+    assert summary["real_repair_approval_transition_linkage_complete"] is False
+    assert summary["real_repair_approval_transition_orphans"] == 1

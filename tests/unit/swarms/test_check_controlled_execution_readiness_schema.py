@@ -84,6 +84,10 @@ def _report(**overrides):
         "real_repair_approval_records": 1,
         "real_repair_approval_linkage_complete": True,
         "real_repair_approval_orphans": 0,
+        "real_repair_approval_transition_observed": True,
+        "real_repair_approval_transition_records": 1,
+        "real_repair_approval_transition_linkage_complete": True,
+        "real_repair_approval_transition_orphans": 0,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -204,6 +208,10 @@ def _report(**overrides):
             "real_repair_approval_records",
             "real_repair_approval_linkage_complete",
             "real_repair_approval_orphans",
+            "real_repair_approval_transition_observed",
+            "real_repair_approval_transition_records",
+            "real_repair_approval_transition_linkage_complete",
+            "real_repair_approval_transition_orphans",
         ],
     }
     item.update(overrides)
@@ -338,6 +346,10 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_repair_approval_records",
             "real_repair_approval_linkage_complete",
             "real_repair_approval_orphans",
+            "real_repair_approval_transition_observed",
+            "real_repair_approval_transition_records",
+            "real_repair_approval_transition_linkage_complete",
+            "real_repair_approval_transition_orphans",
             "checks",
             "exit_codes",
         ]

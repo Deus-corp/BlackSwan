@@ -35,6 +35,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle,
     validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review,
     validate_replay_lifecycle_retry_real_execution_repair_approval,
+    validate_replay_lifecycle_retry_real_execution_repair_approval_transition,
 )
 
 
@@ -3541,3 +3542,139 @@ def test_validate_retry_real_execution_repair_approval_rejects_unapproved_source
     assert "repair_execution_approval_source_review_must_be_approved" in result["reasons"]
     assert "repair_execution_approval_source_must_be_reviewed" in result["reasons"]
     assert "repair_execution_approval_source_must_be_review_approved" in result["reasons"]
+
+
+def _real_execution_repair_approval_transition(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_repair_approval_transition",
+        "real_execution_repair_approval_transition_id": "repair-transition-1",
+        "real_execution_repair_approval_id": "repair-approval-1",
+        "real_execution_read_only_repair_action_bundle_review_id": "bundle-review-1",
+        "real_execution_read_only_repair_action_bundle_id": "bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "from_status": "pending",
+        "to_status": "approved",
+        "source_approval_status": "pending",
+        "source_review_status": "approved",
+        "source_reviewed": True,
+        "source_review_approved": True,
+        "source_bundle_status": "assembled",
+        "source_repair_plan_status": "planned",
+        "source_feedback_status": "actionable",
+        "source_status": "failed",
+        "source_exit_code": 1,
+        "source_bundle_item_count": 9,
+        "recommended_next_action": "prepare_repair_execution_final_gate",
+        "operator_authorized": True,
+        "requires_operator_review": True,
+        "repair_execution_approval_required": True,
+        "repair_execution_transition_approved": True,
+        "repair_execution_transition_rejected": False,
+        "bundle_execution_enabled": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "bundle_execution_performed": False,
+        "bundle_subprocess_invoked": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "repair_execution_approval_transition_recorded",
+        "payload": {
+            "bundle_execution_enabled": False,
+            "repair_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "bundle_execution_performed": False,
+            "bundle_subprocess_invoked": False,
+            "repair_execution_performed": False,
+            "repair_subprocess_invoked": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_repair_approval_transition_accepts_approved_disabled() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_approval_transition(
+        _real_execution_repair_approval_transition()
+    )
+
+    assert result["valid"] is True
+    assert result["from_status"] == "pending"
+    assert result["to_status"] == "approved"
+    assert result["repair_execution_transition_approved"] is True
+    assert result["repair_execution_enabled"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_repair_approval_transition_accepts_rejected_disabled() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_approval_transition(
+        _real_execution_repair_approval_transition(
+            to_status="rejected",
+            repair_execution_transition_approved=False,
+            repair_execution_transition_rejected=True,
+            recommended_next_action="revise_repair_execution_approval",
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["to_status"] == "rejected"
+    assert result["repair_execution_transition_rejected"] is True
+    assert result["repair_execution_enabled"] is False
+
+
+def test_validate_retry_real_execution_repair_approval_transition_rejects_repair_execution_enabled() -> None:
+    record = _real_execution_repair_approval_transition(repair_execution_enabled=True)
+    record["payload"]["repair_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_approval_transition(
+        record
+    )
+
+    assert result["valid"] is False
+    assert (
+        "repair_execution_approval_transition_must_not_enable_repair_execution"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_repair_approval_transition_rejects_subprocess_enabled() -> None:
+    record = _real_execution_repair_approval_transition(subprocess_enabled=True)
+    record["payload"]["subprocess_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_approval_transition(
+        record
+    )
+
+    assert result["valid"] is False
+    assert (
+        "repair_execution_approval_transition_must_not_enable_subprocess"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_repair_approval_transition_rejects_non_pending_from_status() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_approval_transition(
+        _real_execution_repair_approval_transition(
+            from_status="approved",
+            source_approval_status="approved",
+        )
+    )
+
+    assert result["valid"] is False
+    assert (
+        "repair_execution_approval_transition_from_status_must_be_pending"
+        in result["reasons"]
+    )
+    assert (
+        "repair_execution_approval_transition_source_approval_must_be_pending"
+        in result["reasons"]
+    )

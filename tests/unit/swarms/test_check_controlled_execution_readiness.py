@@ -323,6 +323,26 @@ def _trail_summary(**overrides):
         "real_repair_approval_subprocess_invoked": {"false": 1},
         "real_repair_approval_linkage_complete": True,
         "real_repair_approval_orphans": 0,
+        "real_repair_approval_transition_from_statuses": {"pending": 1},
+        "real_repair_approval_transition_to_statuses": {"approved": 1},
+        "real_repair_approval_transition_source_approval_statuses": {"pending": 1},
+        "real_repair_approval_transition_source_review_statuses": {"approved": 1},
+        "real_repair_approval_transition_next_actions": {
+            "prepare_repair_execution_final_gate": 1,
+        },
+        "real_repair_approval_transition_operator_authorized": {"true": 1},
+        "real_repair_approval_transition_required": {"true": 1},
+        "real_repair_approval_transition_approved": {"true": 1},
+        "real_repair_approval_transition_rejected": {"false": 1},
+        "real_repair_approval_transition_repair_execution_enabled": {"false": 1},
+        "real_repair_approval_transition_real_execution_enabled": {"false": 1},
+        "real_repair_approval_transition_subprocess_enabled": {"false": 1},
+        "real_repair_approval_transition_repair_execution_performed": {"false": 1},
+        "real_repair_approval_transition_repair_subprocess_invoked": {"false": 1},
+        "real_repair_approval_transition_execution_performed": {"false": 1},
+        "real_repair_approval_transition_subprocess_invoked": {"false": 1},
+        "real_repair_approval_transition_linkage_complete": True,
+        "real_repair_approval_transition_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -987,6 +1007,24 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_repair_approval_repair_subprocess_invoked": 0,
         "real_repair_approval_execution_performed": 0,
         "real_repair_approval_subprocess_invoked": 0,
+        "real_repair_approval_transition_observed": True,
+        "real_repair_approval_transition_records": 1,
+        "real_repair_approval_transition_linkage_complete": True,
+        "real_repair_approval_transition_orphans": 0,
+        "real_repair_approval_transition_from_pending": 1,
+        "real_repair_approval_transition_to_approved": 1,
+        "real_repair_approval_transition_source_approval_pending": 1,
+        "real_repair_approval_transition_next_action_final_gate": 1,
+        "real_repair_approval_transition_operator_authorized": 1,
+        "real_repair_approval_transition_required": 1,
+        "real_repair_approval_transition_approved": 1,
+        "real_repair_approval_transition_repair_execution_enabled": 0,
+        "real_repair_approval_transition_real_execution_enabled": 0,
+        "real_repair_approval_transition_subprocess_enabled": 0,
+        "real_repair_approval_transition_repair_execution_performed": 0,
+        "real_repair_approval_transition_repair_subprocess_invoked": 0,
+        "real_repair_approval_transition_execution_performed": 0,
+        "real_repair_approval_transition_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -1266,6 +1304,24 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_repair_approval_repair_subprocess_invoked": 0,
         "real_repair_approval_execution_performed": 0,
         "real_repair_approval_subprocess_invoked": 0,
+        "real_repair_approval_transition_observed": True,
+        "real_repair_approval_transition_records": 1,
+        "real_repair_approval_transition_linkage_complete": True,
+        "real_repair_approval_transition_orphans": 0,
+        "real_repair_approval_transition_from_pending": 1,
+        "real_repair_approval_transition_to_approved": 1,
+        "real_repair_approval_transition_source_approval_pending": 1,
+        "real_repair_approval_transition_next_action_final_gate": 1,
+        "real_repair_approval_transition_operator_authorized": 1,
+        "real_repair_approval_transition_required": 1,
+        "real_repair_approval_transition_approved": 1,
+        "real_repair_approval_transition_repair_execution_enabled": 0,
+        "real_repair_approval_transition_real_execution_enabled": 0,
+        "real_repair_approval_transition_subprocess_enabled": 0,
+        "real_repair_approval_transition_repair_execution_performed": 0,
+        "real_repair_approval_transition_repair_subprocess_invoked": 0,
+        "real_repair_approval_transition_execution_performed": 0,
+        "real_repair_approval_transition_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -1778,3 +1834,36 @@ def test_controlled_execution_readiness_fails_when_real_repair_approval_enables_
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_repair_approval_did_not_enable_repair_execution" in failed
+
+
+def test_controlled_execution_readiness_fails_for_real_repair_approval_transition_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_approval_transition_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_approval_transition_links_to_repair_approval" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_approval_transition_enables_repair_execution() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_approval_transition_repair_execution_enabled={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert (
+        "real_repair_approval_transition_did_not_enable_repair_execution"
+        in failed
+    )

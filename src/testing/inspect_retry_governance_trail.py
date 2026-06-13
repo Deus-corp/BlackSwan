@@ -44,6 +44,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle",
     "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
     "replay_lifecycle_retry_real_execution_repair_approval",
+    "replay_lifecycle_retry_real_execution_repair_approval_transition",
 }
 
 
@@ -246,6 +247,12 @@ def inspect_retry_governance_trail_from_records(
         item
         for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_real_execution_repair_approval"
+    ]
+    real_repair_approval_transitions = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_repair_approval_transition"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -1162,6 +1169,70 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in real_repair_approvals
     )
+    real_repair_approval_transition_from_statuses = Counter(
+        str(item.get("from_status") or "unknown").strip() or "unknown"
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_to_statuses = Counter(
+        str(item.get("to_status") or "unknown").strip() or "unknown"
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_source_approval_statuses = Counter(
+        str(item.get("source_approval_status") or "unknown").strip() or "unknown"
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_source_review_statuses = Counter(
+        str(item.get("source_review_status") or "unknown").strip() or "unknown"
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_operator_authorized = Counter(
+        str(bool(item.get("operator_authorized"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_required = Counter(
+        str(bool(item.get("repair_execution_approval_required"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_approved = Counter(
+        str(bool(item.get("repair_execution_transition_approved"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_rejected = Counter(
+        str(bool(item.get("repair_execution_transition_rejected"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_repair_execution_enabled = Counter(
+        str(bool(item.get("repair_execution_enabled"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_subprocess_enabled = Counter(
+        str(bool(item.get("subprocess_enabled"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_repair_execution_performed = Counter(
+        str(bool(item.get("repair_execution_performed"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_repair_subprocess_invoked = Counter(
+        str(bool(item.get("repair_subprocess_invoked"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_repair_approval_transitions
+    )
+    real_repair_approval_transition_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_repair_approval_transitions
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -1191,6 +1262,7 @@ def inspect_retry_governance_trail_from_records(
             real_read_only_repair_action_bundle_reviews
         ),
         real_repair_approvals=real_repair_approvals,
+        real_repair_approval_transitions=real_repair_approval_transitions,
         results=results,
     )
 
@@ -1301,6 +1373,13 @@ def inspect_retry_governance_trail_from_records(
         real_repair_approvals=real_repair_approvals,
     )
 
+    real_repair_approval_transition_linkage = (
+        _real_repair_approval_transition_linkage_summary(
+            real_repair_approvals=real_repair_approvals,
+            real_repair_approval_transitions=real_repair_approval_transitions,
+        )
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -1342,6 +1421,9 @@ def inspect_retry_governance_trail_from_records(
                 real_read_only_repair_action_bundle_reviews
             ),
             "real_execution_repair_approvals": len(real_repair_approvals),
+            "real_execution_repair_approval_transitions": len(
+                real_repair_approval_transitions
+            ),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -2157,6 +2239,72 @@ def inspect_retry_governance_trail_from_records(
         "real_repair_approval_orphans": real_repair_approval_linkage.get(
             "real_repair_approval_orphans", 0
         ),
+        "real_repair_approval_transition_from_statuses": dict(
+            real_repair_approval_transition_from_statuses
+        ),
+        "real_repair_approval_transition_to_statuses": dict(
+            real_repair_approval_transition_to_statuses
+        ),
+        "real_repair_approval_transition_source_approval_statuses": dict(
+            real_repair_approval_transition_source_approval_statuses
+        ),
+        "real_repair_approval_transition_source_review_statuses": dict(
+            real_repair_approval_transition_source_review_statuses
+        ),
+        "real_repair_approval_transition_next_actions": dict(
+            real_repair_approval_transition_next_actions
+        ),
+        "real_repair_approval_transition_operator_authorized": dict(
+            real_repair_approval_transition_operator_authorized
+        ),
+        "real_repair_approval_transition_required": dict(
+            real_repair_approval_transition_required
+        ),
+        "real_repair_approval_transition_approved": dict(
+            real_repair_approval_transition_approved
+        ),
+        "real_repair_approval_transition_rejected": dict(
+            real_repair_approval_transition_rejected
+        ),
+        "real_repair_approval_transition_repair_execution_enabled": dict(
+            real_repair_approval_transition_repair_execution_enabled
+        ),
+        "real_repair_approval_transition_real_execution_enabled": dict(
+            real_repair_approval_transition_real_execution_enabled
+        ),
+        "real_repair_approval_transition_subprocess_enabled": dict(
+            real_repair_approval_transition_subprocess_enabled
+        ),
+        "real_repair_approval_transition_repair_execution_performed": dict(
+            real_repair_approval_transition_repair_execution_performed
+        ),
+        "real_repair_approval_transition_repair_subprocess_invoked": dict(
+            real_repair_approval_transition_repair_subprocess_invoked
+        ),
+        "real_repair_approval_transition_execution_performed": dict(
+            real_repair_approval_transition_execution_performed
+        ),
+        "real_repair_approval_transition_subprocess_invoked": dict(
+            real_repair_approval_transition_subprocess_invoked
+        ),
+        "real_repair_approval_transition_linkage": (
+            real_repair_approval_transition_linkage
+        ),
+        "real_repair_approval_transition_linkage_complete": bool(
+            real_repair_approval_transition_linkage.get(
+                "real_repair_approval_transition_linkage_complete"
+            )
+        ),
+        "real_repair_approval_transition_approval_matches": (
+            real_repair_approval_transition_linkage.get(
+                "real_repair_approval_transition_approval_matches", 0
+            )
+        ),
+        "real_repair_approval_transition_orphans": (
+            real_repair_approval_transition_linkage.get(
+                "real_repair_approval_transition_orphans", 0
+            )
+        ),
     }
 
 def _missing_stages(
@@ -2328,6 +2476,7 @@ def _build_chain_ids(
     real_read_only_repair_action_bundles: list[Mapping[str, Any]],
     real_read_only_repair_action_bundle_reviews: list[Mapping[str, Any]],
     real_repair_approvals: list[Mapping[str, Any]],
+    real_repair_approval_transitions: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -2356,6 +2505,7 @@ def _build_chain_ids(
         + real_read_only_repair_action_bundles
         + real_read_only_repair_action_bundle_reviews
         + real_repair_approvals
+        + real_repair_approval_transitions
         + results
     )
 
@@ -2394,6 +2544,7 @@ def _build_chain_ids(
                 + real_read_only_repair_action_bundles
                 + real_read_only_repair_action_bundle_reviews
                 + real_repair_approvals
+                + real_repair_approval_transitions
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -2424,6 +2575,7 @@ def _build_chain_ids(
                 + real_read_only_repair_action_bundles
                 + real_read_only_repair_action_bundle_reviews
                 + real_repair_approvals
+                + real_repair_approval_transitions
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -2454,6 +2606,7 @@ def _build_chain_ids(
                     + real_read_only_repair_action_bundles
                     + real_read_only_repair_action_bundle_reviews
                     + real_repair_approvals
+                    + real_repair_approval_transitions
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -2633,6 +2786,17 @@ def _build_chain_ids(
                 str(item.get("real_execution_repair_approval_id") or "").strip()
                 for item in real_repair_approvals
                 if str(item.get("real_execution_repair_approval_id") or "").strip()
+            }
+        ),
+        "real_execution_repair_approval_transition_ids": sorted(
+            {
+                str(
+                    item.get("real_execution_repair_approval_transition_id") or ""
+                ).strip()
+                for item in real_repair_approval_transitions
+                if str(
+                    item.get("real_execution_repair_approval_transition_id") or ""
+                ).strip()
             }
         ),
     }
@@ -3502,6 +3666,42 @@ def _real_repair_approval_linkage_summary(
         "real_repair_approval_orphans": approval_orphans,
         "real_repair_approval_linkage_complete": bool(real_repair_approvals)
         and approval_orphans == 0,
+    }
+
+
+def _real_repair_approval_transition_linkage_summary(
+    *,
+    real_repair_approvals: list[Mapping[str, Any]],
+    real_repair_approval_transitions: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    approval_ids = {
+        clean(item.get("real_execution_repair_approval_id"))
+        for item in real_repair_approvals
+        if clean(item.get("real_execution_repair_approval_id"))
+    }
+
+    transition_approval_matches = 0
+    transition_orphans = 0
+
+    for transition in real_repair_approval_transitions:
+        approval_id = clean(transition.get("real_execution_repair_approval_id"))
+        if approval_id and approval_id in approval_ids:
+            transition_approval_matches += 1
+        else:
+            transition_orphans += 1
+
+    return {
+        "real_repair_approval_transition_approval_matches": (
+            transition_approval_matches
+        ),
+        "real_repair_approval_transition_orphans": transition_orphans,
+        "real_repair_approval_transition_linkage_complete": bool(
+            real_repair_approval_transitions
+        )
+        and transition_orphans == 0,
     }
 
 

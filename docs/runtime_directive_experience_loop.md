@@ -1711,6 +1711,21 @@ The approval scaffold must keep `repair_execution_enabled=false`,
 
 ---
 
+### Repair execution approval transition
+
+`replay_lifecycle_retry_real_execution_repair_approval_transition` records an
+immutable transition from a pending repair execution approval to `approved` or
+`rejected`. An approved transition may recommend
+`prepare_repair_execution_final_gate`, but it must not enable or perform repair
+execution.
+
+The transition artifact must keep `repair_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`repair_execution_performed=false`, `repair_subprocess_invoked=false`,
+`execution_performed=false`, and `subprocess_invoked=false`.
+
+---
+
 ## Related modules
 
 ```text
