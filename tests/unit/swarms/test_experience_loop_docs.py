@@ -482,3 +482,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "review-only" in text
     assert "bundle_execution_enabled=false" in text
     assert "bundle_subprocess_invoked=false" in text
+    assert "Repair action bundle operator review" in text
+    assert "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review" in text
+    assert "prepare_repair_execution_approval_scaffold" in text
+    assert "must not enable or perform execution" in text
+    assert "bundle_execution_enabled=false" in text
+    assert "bundle_subprocess_invoked=false" in text

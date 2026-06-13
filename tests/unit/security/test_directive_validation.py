@@ -33,6 +33,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_feedback,
     validate_replay_lifecycle_retry_real_execution_read_only_repair_plan,
     validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle,
+    validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review,
 )
 
 
@@ -3289,3 +3290,137 @@ def test_validate_retry_real_execution_read_only_repair_action_bundle_rejects_it
 
     assert result["valid"] is False
     assert "read_only_repair_action_bundle_item_count_mismatch" in result["reasons"]
+
+
+def _real_execution_read_only_repair_action_bundle_review(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
+        "real_execution_read_only_repair_action_bundle_review_id": "bundle-review-1",
+        "real_execution_read_only_repair_action_bundle_id": "bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "rendered_command_id": "rendered-command-1",
+        "source_bundle_status": "assembled",
+        "source_repair_plan_status": "planned",
+        "source_feedback_status": "actionable",
+        "source_status": "failed",
+        "source_exit_code": 1,
+        "source_bundle_item_count": 9,
+        "review_status": "approved",
+        "operator_authorized": True,
+        "requires_operator_review": True,
+        "reviewed": True,
+        "review_approved": True,
+        "review_rejected": False,
+        "recommended_next_action": "prepare_repair_execution_approval_scaffold",
+        "bundle_execution_enabled": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "bundle_execution_performed": False,
+        "bundle_subprocess_invoked": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "read_only_repair_action_bundle_review_recorded",
+        "payload": {
+            "bundle_execution_enabled": False,
+            "repair_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "bundle_execution_performed": False,
+            "bundle_subprocess_invoked": False,
+            "repair_execution_performed": False,
+            "repair_subprocess_invoked": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_review_accepts_approved() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review(
+        _real_execution_read_only_repair_action_bundle_review()
+    )
+
+    assert result["valid"] is True
+    assert result["review_status"] == "approved"
+    assert result["reviewed"] is True
+    assert result["review_approved"] is True
+    assert result["recommended_next_action"] == (
+        "prepare_repair_execution_approval_scaffold"
+    )
+    assert result["repair_execution_enabled"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_review_accepts_pending() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review(
+        _real_execution_read_only_repair_action_bundle_review(
+            review_status="pending",
+            reviewed=False,
+            review_approved=False,
+            review_rejected=False,
+            recommended_next_action="await_repair_action_bundle_review",
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["review_status"] == "pending"
+    assert result["reviewed"] is False
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_review_rejects_real_execution_enabled() -> None:
+    record = _real_execution_read_only_repair_action_bundle_review(
+        real_execution_enabled=True
+    )
+    record["payload"]["real_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review(
+        record
+    )
+
+    assert result["valid"] is False
+    assert (
+        "read_only_repair_action_bundle_review_must_not_enable_real_execution"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_review_rejects_execution() -> None:
+    record = _real_execution_read_only_repair_action_bundle_review(
+        execution_performed=True
+    )
+    record["payload"]["execution_performed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "read_only_repair_action_bundle_review_must_not_execute" in result["reasons"]
+
+
+def test_validate_retry_real_execution_read_only_repair_action_bundle_review_rejects_bad_approved_flags() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review(
+        _real_execution_read_only_repair_action_bundle_review(
+            review_status="approved",
+            reviewed=False,
+            review_approved=False,
+        )
+    )
+
+    assert result["valid"] is False
+    assert (
+        "approved_read_only_repair_action_bundle_review_must_be_reviewed"
+        in result["reasons"]
+    )
+    assert (
+        "approved_read_only_repair_action_bundle_review_must_be_approved"
+        in result["reasons"]
+    )

@@ -47,6 +47,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_feedback",
     "replay_lifecycle_retry_real_execution_read_only_repair_plan",
     "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle",
+    "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
 }
 
 
@@ -415,6 +416,25 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review"
+        ):
+            result = (
+                validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -628,6 +648,29 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_read_only_repair_action_bundle_repair_subprocess_invoked: dict[str, int] = {}
     real_read_only_repair_action_bundle_execution_performed: dict[str, int] = {}
     real_read_only_repair_action_bundle_subprocess_invoked: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_statuses: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_source_bundle_statuses: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_source_plan_statuses: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_source_feedback_statuses: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_source_statuses: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_source_exit_codes: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_source_item_counts: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_next_actions: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_operator_authorized: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_requires_operator_review: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_reviewed: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_approved: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_rejected: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_bundle_execution_enabled: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_repair_execution_enabled: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_real_execution_enabled: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_subprocess_enabled: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_bundle_execution_performed: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_bundle_subprocess_invoked: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_repair_execution_performed: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_repair_subprocess_invoked: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_execution_performed: dict[str, int] = {}
+    real_read_only_repair_action_bundle_review_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -1535,6 +1578,158 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
 
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review"
+        ):
+            status = str(item.get("review_status") or "unknown").strip() or "unknown"
+            source_bundle_status = (
+                str(item.get("source_bundle_status") or "unknown").strip()
+                or "unknown"
+            )
+            source_plan_status = (
+                str(item.get("source_repair_plan_status") or "unknown").strip()
+                or "unknown"
+            )
+            source_feedback_status = (
+                str(item.get("source_feedback_status") or "unknown").strip()
+                or "unknown"
+            )
+            source_status = str(item.get("source_status") or "unknown").strip() or "unknown"
+            next_action = (
+                str(item.get("recommended_next_action") or "unknown").strip()
+                or "unknown"
+            )
+            exit_code = item.get("source_exit_code")
+            exit_code_key = "none" if exit_code is None else str(exit_code)
+            source_item_count = item.get("source_bundle_item_count")
+            source_item_count_key = str(
+                source_item_count if isinstance(source_item_count, int) else "unknown"
+            )
+
+            real_read_only_repair_action_bundle_review_statuses[status] = (
+                real_read_only_repair_action_bundle_review_statuses.get(status, 0) + 1
+            )
+            real_read_only_repair_action_bundle_review_source_bundle_statuses[
+                source_bundle_status
+            ] = (
+                real_read_only_repair_action_bundle_review_source_bundle_statuses.get(
+                    source_bundle_status, 0
+                )
+                + 1
+            )
+            real_read_only_repair_action_bundle_review_source_plan_statuses[
+                source_plan_status
+            ] = (
+                real_read_only_repair_action_bundle_review_source_plan_statuses.get(
+                    source_plan_status, 0
+                )
+                + 1
+            )
+            real_read_only_repair_action_bundle_review_source_feedback_statuses[
+                source_feedback_status
+            ] = (
+                real_read_only_repair_action_bundle_review_source_feedback_statuses.get(
+                    source_feedback_status, 0
+                )
+                + 1
+            )
+            real_read_only_repair_action_bundle_review_source_statuses[
+                source_status
+            ] = (
+                real_read_only_repair_action_bundle_review_source_statuses.get(
+                    source_status, 0
+                )
+                + 1
+            )
+            real_read_only_repair_action_bundle_review_source_exit_codes[
+                exit_code_key
+            ] = (
+                real_read_only_repair_action_bundle_review_source_exit_codes.get(
+                    exit_code_key, 0
+                )
+                + 1
+            )
+            real_read_only_repair_action_bundle_review_source_item_counts[
+                source_item_count_key
+            ] = (
+                real_read_only_repair_action_bundle_review_source_item_counts.get(
+                    source_item_count_key, 0
+                )
+                + 1
+            )
+            real_read_only_repair_action_bundle_review_next_actions[next_action] = (
+                real_read_only_repair_action_bundle_review_next_actions.get(
+                    next_action, 0
+                )
+                + 1
+            )
+
+            for target, key_name in (
+                (
+                    real_read_only_repair_action_bundle_review_operator_authorized,
+                    "operator_authorized",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_requires_operator_review,
+                    "requires_operator_review",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_reviewed,
+                    "reviewed",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_approved,
+                    "review_approved",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_rejected,
+                    "review_rejected",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_bundle_execution_enabled,
+                    "bundle_execution_enabled",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_repair_execution_enabled,
+                    "repair_execution_enabled",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_subprocess_enabled,
+                    "subprocess_enabled",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_bundle_execution_performed,
+                    "bundle_execution_performed",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_bundle_subprocess_invoked,
+                    "bundle_subprocess_invoked",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_repair_execution_performed,
+                    "repair_execution_performed",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_repair_subprocess_invoked,
+                    "repair_subprocess_invoked",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_execution_performed,
+                    "execution_performed",
+                ),
+                (
+                    real_read_only_repair_action_bundle_review_subprocess_invoked,
+                    "subprocess_invoked",
+                ),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -1923,6 +2118,75 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         ),
         "real_read_only_repair_action_bundle_subprocess_invoked": (
             real_read_only_repair_action_bundle_subprocess_invoked
+        ),
+        "real_read_only_repair_action_bundle_review_statuses": (
+            real_read_only_repair_action_bundle_review_statuses
+        ),
+        "real_read_only_repair_action_bundle_review_source_bundle_statuses": (
+            real_read_only_repair_action_bundle_review_source_bundle_statuses
+        ),
+        "real_read_only_repair_action_bundle_review_source_plan_statuses": (
+            real_read_only_repair_action_bundle_review_source_plan_statuses
+        ),
+        "real_read_only_repair_action_bundle_review_source_feedback_statuses": (
+            real_read_only_repair_action_bundle_review_source_feedback_statuses
+        ),
+        "real_read_only_repair_action_bundle_review_source_statuses": (
+            real_read_only_repair_action_bundle_review_source_statuses
+        ),
+        "real_read_only_repair_action_bundle_review_source_exit_codes": (
+            real_read_only_repair_action_bundle_review_source_exit_codes
+        ),
+        "real_read_only_repair_action_bundle_review_source_item_counts": (
+            real_read_only_repair_action_bundle_review_source_item_counts
+        ),
+        "real_read_only_repair_action_bundle_review_next_actions": (
+            real_read_only_repair_action_bundle_review_next_actions
+        ),
+        "real_read_only_repair_action_bundle_review_operator_authorized": (
+            real_read_only_repair_action_bundle_review_operator_authorized
+        ),
+        "real_read_only_repair_action_bundle_review_requires_operator_review": (
+            real_read_only_repair_action_bundle_review_requires_operator_review
+        ),
+        "real_read_only_repair_action_bundle_review_reviewed": (
+            real_read_only_repair_action_bundle_review_reviewed
+        ),
+        "real_read_only_repair_action_bundle_review_approved": (
+            real_read_only_repair_action_bundle_review_approved
+        ),
+        "real_read_only_repair_action_bundle_review_rejected": (
+            real_read_only_repair_action_bundle_review_rejected
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_execution_enabled": (
+            real_read_only_repair_action_bundle_review_bundle_execution_enabled
+        ),
+        "real_read_only_repair_action_bundle_review_repair_execution_enabled": (
+            real_read_only_repair_action_bundle_review_repair_execution_enabled
+        ),
+        "real_read_only_repair_action_bundle_review_real_execution_enabled": (
+            real_read_only_repair_action_bundle_review_real_execution_enabled
+        ),
+        "real_read_only_repair_action_bundle_review_subprocess_enabled": (
+            real_read_only_repair_action_bundle_review_subprocess_enabled
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_execution_performed": (
+            real_read_only_repair_action_bundle_review_bundle_execution_performed
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": (
+            real_read_only_repair_action_bundle_review_bundle_subprocess_invoked
+        ),
+        "real_read_only_repair_action_bundle_review_repair_execution_performed": (
+            real_read_only_repair_action_bundle_review_repair_execution_performed
+        ),
+        "real_read_only_repair_action_bundle_review_repair_subprocess_invoked": (
+            real_read_only_repair_action_bundle_review_repair_subprocess_invoked
+        ),
+        "real_read_only_repair_action_bundle_review_execution_performed": (
+            real_read_only_repair_action_bundle_review_execution_performed
+        ),
+        "real_read_only_repair_action_bundle_review_subprocess_invoked": (
+            real_read_only_repair_action_bundle_review_subprocess_invoked
         ),
     }
 
@@ -2364,6 +2628,17 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_read_only_feedback_id")
             or ""
         ).strip()
+    
+    if (
+        record_type
+        == "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review"
+    ):
+        return str(
+            record.get("real_execution_read_only_repair_action_bundle_review_id")
+            or record.get("real_execution_read_only_repair_action_bundle_id")
+            or record.get("real_execution_read_only_repair_plan_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -2405,6 +2680,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_read_only_feedback_id",
         "real_execution_read_only_repair_plan_id",
         "real_execution_read_only_repair_action_bundle_id",
+        "real_execution_read_only_repair_action_bundle_review_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -2443,6 +2719,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_read_only_feedback_id",
             "real_execution_read_only_repair_plan_id",
             "real_execution_read_only_repair_action_bundle_id",
+            "real_execution_read_only_repair_action_bundle_review_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -5311,6 +5588,204 @@ def validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundl
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate read-only repair action bundle review records."""
+    reasons: list[str] = []
+
+    review_id = str(
+        record.get("real_execution_read_only_repair_action_bundle_review_id") or ""
+    ).strip()
+    bundle_id = str(
+        record.get("real_execution_read_only_repair_action_bundle_id") or ""
+    ).strip()
+    repair_plan_id = str(
+        record.get("real_execution_read_only_repair_plan_id") or ""
+    ).strip()
+    feedback_id = str(record.get("real_execution_read_only_feedback_id") or "").strip()
+    execution_result_id = str(
+        record.get("real_execution_read_only_execution_result_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    review_status = str(record.get("review_status") or "").strip()
+    source_bundle_status = str(record.get("source_bundle_status") or "").strip()
+    source_repair_plan_status = str(
+        record.get("source_repair_plan_status") or ""
+    ).strip()
+    source_feedback_status = str(record.get("source_feedback_status") or "").strip()
+    source_status = str(record.get("source_status") or "").strip()
+    source_exit_code = record.get("source_exit_code")
+    source_bundle_item_count = record.get("source_bundle_item_count")
+    recommended_next_action = str(
+        record.get("recommended_next_action") or ""
+    ).strip()
+    reason = str(record.get("reason") or "").strip()
+
+    operator_authorized = bool(record.get("operator_authorized"))
+    requires_operator_review = bool(record.get("requires_operator_review"))
+    reviewed = bool(record.get("reviewed"))
+    review_approved = bool(record.get("review_approved"))
+    review_rejected = bool(record.get("review_rejected"))
+
+    bundle_execution_enabled = bool(record.get("bundle_execution_enabled"))
+    repair_execution_enabled = bool(record.get("repair_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    bundle_execution_performed = bool(record.get("bundle_execution_performed"))
+    bundle_subprocess_invoked = bool(record.get("bundle_subprocess_invoked"))
+    repair_execution_performed = bool(record.get("repair_execution_performed"))
+    repair_subprocess_invoked = bool(record.get("repair_subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not review_id:
+        reasons.append(
+            "missing_real_execution_read_only_repair_action_bundle_review_id"
+        )
+    if not bundle_id:
+        reasons.append("missing_real_execution_read_only_repair_action_bundle_id")
+    if not repair_plan_id:
+        reasons.append("missing_real_execution_read_only_repair_plan_id")
+    if not feedback_id:
+        reasons.append("missing_real_execution_read_only_feedback_id")
+    if not execution_result_id:
+        reasons.append("missing_real_execution_read_only_execution_result_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if review_status not in {"pending", "approved", "rejected"}:
+        reasons.append("invalid_read_only_repair_action_bundle_review_status")
+    if source_bundle_status not in {"assembled", "unknown"}:
+        reasons.append("invalid_read_only_repair_action_bundle_review_source_bundle_status")
+    if source_repair_plan_status not in {
+        "planned",
+        "blocked",
+        "no_repair_needed",
+        "unknown",
+    }:
+        reasons.append("invalid_read_only_repair_action_bundle_review_source_plan_status")
+    if source_feedback_status not in {"actionable", "blocked", "successful", "unknown"}:
+        reasons.append("invalid_read_only_repair_action_bundle_review_source_feedback_status")
+    if source_status not in {"failed", "executed", "rejected", "unknown"}:
+        reasons.append("invalid_read_only_repair_action_bundle_review_source_status")
+
+    expected_next_actions = {
+        "pending": "await_repair_action_bundle_review",
+        "approved": "prepare_repair_execution_approval_scaffold",
+        "rejected": "revise_repair_action_bundle",
+    }
+    if recommended_next_action != expected_next_actions.get(review_status):
+        reasons.append("invalid_read_only_repair_action_bundle_review_next_action")
+    if reason != "read_only_repair_action_bundle_review_recorded":
+        reasons.append("invalid_read_only_repair_action_bundle_review_reason")
+
+    if review_status == "pending":
+        if reviewed:
+            reasons.append("pending_read_only_repair_action_bundle_review_must_not_be_reviewed")
+        if review_approved or review_rejected:
+            reasons.append("pending_read_only_repair_action_bundle_review_invalid_flags")
+
+    if review_status == "approved":
+        if not reviewed:
+            reasons.append("approved_read_only_repair_action_bundle_review_must_be_reviewed")
+        if not review_approved:
+            reasons.append("approved_read_only_repair_action_bundle_review_must_be_approved")
+        if review_rejected:
+            reasons.append("approved_read_only_repair_action_bundle_review_must_not_be_rejected")
+        if not operator_authorized:
+            reasons.append("approved_read_only_repair_action_bundle_review_requires_operator_authorized")
+        if source_bundle_status != "assembled":
+            reasons.append("approved_read_only_repair_action_bundle_review_source_bundle_must_be_assembled")
+        if source_repair_plan_status != "planned":
+            reasons.append("approved_read_only_repair_action_bundle_review_source_plan_must_be_planned")
+
+    if review_status == "rejected":
+        if not reviewed:
+            reasons.append("rejected_read_only_repair_action_bundle_review_must_be_reviewed")
+        if review_approved:
+            reasons.append("rejected_read_only_repair_action_bundle_review_must_not_be_approved")
+        if not review_rejected:
+            reasons.append("rejected_read_only_repair_action_bundle_review_must_be_rejected")
+
+    if not requires_operator_review:
+        reasons.append("read_only_repair_action_bundle_review_requires_operator_review")
+    if not isinstance(source_bundle_item_count, int):
+        reasons.append("read_only_repair_action_bundle_review_source_item_count_must_be_int")
+
+    if bundle_execution_enabled or bool(payload_mapping.get("bundle_execution_enabled")):
+        reasons.append("read_only_repair_action_bundle_review_must_not_enable_bundle_execution")
+    if repair_execution_enabled or bool(payload_mapping.get("repair_execution_enabled")):
+        reasons.append("read_only_repair_action_bundle_review_must_not_enable_repair_execution")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("read_only_repair_action_bundle_review_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("read_only_repair_action_bundle_review_must_not_enable_subprocess")
+    if bundle_execution_performed or bool(
+        payload_mapping.get("bundle_execution_performed")
+    ):
+        reasons.append("read_only_repair_action_bundle_review_must_not_perform_bundle_execution")
+    if bundle_subprocess_invoked or bool(
+        payload_mapping.get("bundle_subprocess_invoked")
+    ):
+        reasons.append("read_only_repair_action_bundle_review_must_not_invoke_bundle_subprocess")
+    if repair_execution_performed or bool(
+        payload_mapping.get("repair_execution_performed")
+    ):
+        reasons.append("read_only_repair_action_bundle_review_must_not_perform_repair_execution")
+    if repair_subprocess_invoked or bool(
+        payload_mapping.get("repair_subprocess_invoked")
+    ):
+        reasons.append("read_only_repair_action_bundle_review_must_not_invoke_repair_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("read_only_repair_action_bundle_review_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("read_only_repair_action_bundle_review_must_not_invoke_subprocess")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": (
+            "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review"
+        ),
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": review_id or bundle_id,
+        "review_status": review_status or "unknown",
+        "source_bundle_status": source_bundle_status or "unknown",
+        "source_repair_plan_status": source_repair_plan_status or "unknown",
+        "source_feedback_status": source_feedback_status or "unknown",
+        "source_status": source_status or "unknown",
+        "source_exit_code": source_exit_code,
+        "source_bundle_item_count": (
+            source_bundle_item_count
+            if isinstance(source_bundle_item_count, int)
+            else 0
+        ),
+        "recommended_next_action": recommended_next_action or "unknown",
+        "operator_authorized": operator_authorized,
+        "requires_operator_review": requires_operator_review,
+        "reviewed": reviewed,
+        "review_approved": review_approved,
+        "review_rejected": review_rejected,
+        "bundle_execution_enabled": bundle_execution_enabled,
+        "repair_execution_enabled": repair_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "bundle_execution_performed": bundle_execution_performed,
+        "bundle_subprocess_invoked": bundle_subprocess_invoked,
+        "repair_execution_performed": repair_execution_performed,
+        "repair_subprocess_invoked": repair_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -5341,4 +5816,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_read_only_feedback",
     "validate_replay_lifecycle_retry_real_execution_read_only_repair_plan",
     "validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle",
+    "validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
 ]

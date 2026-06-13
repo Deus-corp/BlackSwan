@@ -1669,6 +1669,21 @@ This recommendation is review-only. It must keep `bundle_reviewed=false`,
 
 ---
 
+### Repair action bundle operator review
+
+`replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review`
+records explicit operator review of a repair action bundle. An approved review
+may recommend `prepare_repair_execution_approval_scaffold`, but it must not
+enable or perform execution.
+
+The review artifact must keep `bundle_execution_enabled=false`,
+`repair_execution_enabled=false`, `real_execution_enabled=false`,
+`subprocess_enabled=false`, `bundle_execution_performed=false`,
+`bundle_subprocess_invoked=false`, `execution_performed=false`, and
+`subprocess_invoked=false`. must not enable or perform execution.
+
+---
+
 ## Related modules
 
 ```text

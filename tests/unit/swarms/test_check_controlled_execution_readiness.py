@@ -273,6 +273,37 @@ def _trail_summary(**overrides):
         "real_read_only_repair_action_bundle_subprocess_invoked": {"false": 1},
         "real_read_only_repair_action_bundle_linkage_complete": True,
         "real_read_only_repair_action_bundle_orphans": 0,
+        "real_read_only_repair_action_bundle_review_statuses": {"approved": 1},
+        "real_read_only_repair_action_bundle_review_source_bundle_statuses": {
+            "assembled": 1
+        },
+        "real_read_only_repair_action_bundle_review_source_plan_statuses": {
+            "planned": 1
+        },
+        "real_read_only_repair_action_bundle_review_source_feedback_statuses": {
+            "actionable": 1
+        },
+        "real_read_only_repair_action_bundle_review_source_statuses": {"failed": 1},
+        "real_read_only_repair_action_bundle_review_source_exit_codes": {"1": 1},
+        "real_read_only_repair_action_bundle_review_source_item_counts": {"9": 1},
+        "real_read_only_repair_action_bundle_review_next_actions": {
+            "prepare_repair_execution_approval_scaffold": 1,
+        },
+        "real_read_only_repair_action_bundle_review_operator_authorized": {"true": 1},
+        "real_read_only_repair_action_bundle_review_requires_operator_review": {"true": 1},
+        "real_read_only_repair_action_bundle_review_reviewed": {"true": 1},
+        "real_read_only_repair_action_bundle_review_approved": {"true": 1},
+        "real_read_only_repair_action_bundle_review_rejected": {"false": 1},
+        "real_read_only_repair_action_bundle_review_bundle_execution_enabled": {"false": 1},
+        "real_read_only_repair_action_bundle_review_repair_execution_enabled": {"false": 1},
+        "real_read_only_repair_action_bundle_review_real_execution_enabled": {"false": 1},
+        "real_read_only_repair_action_bundle_review_subprocess_enabled": {"false": 1},
+        "real_read_only_repair_action_bundle_review_bundle_execution_performed": {"false": 1},
+        "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": {"false": 1},
+        "real_read_only_repair_action_bundle_review_execution_performed": {"false": 1},
+        "real_read_only_repair_action_bundle_review_subprocess_invoked": {"false": 1},
+        "real_read_only_repair_action_bundle_review_linkage_complete": True,
+        "real_read_only_repair_action_bundle_review_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -897,6 +928,29 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_read_only_repair_action_bundle_bundle_subprocess_invoked": 0,
         "real_read_only_repair_action_bundle_execution_performed": 0,
         "real_read_only_repair_action_bundle_subprocess_invoked": 0,
+        "real_read_only_repair_action_bundle_review_observed": True,
+        "real_read_only_repair_action_bundle_review_records": 1,
+        "real_read_only_repair_action_bundle_review_linkage_complete": True,
+        "real_read_only_repair_action_bundle_review_orphans": 0,
+        "real_read_only_repair_action_bundle_review_approved_status": 1,
+        "real_read_only_repair_action_bundle_review_source_assembled": 1,
+        "real_read_only_repair_action_bundle_review_source_planned": 1,
+        "real_read_only_repair_action_bundle_review_source_actionable": 1,
+        "real_read_only_repair_action_bundle_review_source_failed": 1,
+        "real_read_only_repair_action_bundle_review_source_exit_code_1": 1,
+        "real_read_only_repair_action_bundle_review_source_item_count_9": 1,
+        "real_read_only_repair_action_bundle_review_next_action_prepare": 1,
+        "real_read_only_repair_action_bundle_review_operator_authorized": 1,
+        "real_read_only_repair_action_bundle_review_reviewed": 1,
+        "real_read_only_repair_action_bundle_review_approved": 1,
+        "real_read_only_repair_action_bundle_review_bundle_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_review_repair_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_review_real_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_review_subprocess_enabled": 0,
+        "real_read_only_repair_action_bundle_review_bundle_execution_performed": 0,
+        "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": 0,
+        "real_read_only_repair_action_bundle_review_execution_performed": 0,
+        "real_read_only_repair_action_bundle_review_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -1136,6 +1190,29 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_read_only_repair_action_bundle_bundle_subprocess_invoked": 0,
         "real_read_only_repair_action_bundle_execution_performed": 0,
         "real_read_only_repair_action_bundle_subprocess_invoked": 0,
+        "real_read_only_repair_action_bundle_review_observed": True,
+        "real_read_only_repair_action_bundle_review_records": 1,
+        "real_read_only_repair_action_bundle_review_linkage_complete": True,
+        "real_read_only_repair_action_bundle_review_orphans": 0,
+        "real_read_only_repair_action_bundle_review_approved_status": 1,
+        "real_read_only_repair_action_bundle_review_source_assembled": 1,
+        "real_read_only_repair_action_bundle_review_source_planned": 1,
+        "real_read_only_repair_action_bundle_review_source_actionable": 1,
+        "real_read_only_repair_action_bundle_review_source_failed": 1,
+        "real_read_only_repair_action_bundle_review_source_exit_code_1": 1,
+        "real_read_only_repair_action_bundle_review_source_item_count_9": 1,
+        "real_read_only_repair_action_bundle_review_next_action_prepare": 1,
+        "real_read_only_repair_action_bundle_review_operator_authorized": 1,
+        "real_read_only_repair_action_bundle_review_reviewed": 1,
+        "real_read_only_repair_action_bundle_review_approved": 1,
+        "real_read_only_repair_action_bundle_review_bundle_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_review_repair_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_review_real_execution_enabled": 0,
+        "real_read_only_repair_action_bundle_review_subprocess_enabled": 0,
+        "real_read_only_repair_action_bundle_review_bundle_execution_performed": 0,
+        "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": 0,
+        "real_read_only_repair_action_bundle_review_execution_performed": 0,
+        "real_read_only_repair_action_bundle_review_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -1586,3 +1663,35 @@ def test_controlled_execution_readiness_fails_when_read_only_repair_action_bundl
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_read_only_repair_action_bundle_did_not_execute" in failed
+
+
+def test_controlled_execution_readiness_fails_for_read_only_repair_action_bundle_review_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_repair_action_bundle_review_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_repair_action_bundle_review_links_to_bundle" in failed
+
+
+def test_controlled_execution_readiness_fails_when_read_only_repair_action_bundle_review_executes() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_read_only_repair_action_bundle_review_execution_performed={
+                "true": 1
+            },
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_read_only_repair_action_bundle_review_did_not_execute" in failed

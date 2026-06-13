@@ -527,12 +527,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_read_only_feedback(),
             _real_read_only_repair_plan(),
             _real_read_only_repair_action_bundle(),
+            _real_read_only_repair_action_bundle_review(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 23
+    assert summary["total_records"] == 24
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -834,6 +835,38 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_read_only_repair_action_bundle_linkage_complete"] is True
     assert summary["real_read_only_repair_action_bundle_plan_matches"] == 1
     assert summary["real_read_only_repair_action_bundle_orphans"] == 0
+    assert summary["counts"]["real_execution_read_only_repair_action_bundle_reviews"] == 1
+    assert summary["chain_ids"]["real_execution_read_only_repair_action_bundle_review_ids"] == [
+        "bundle-review-1"
+    ]
+    assert summary["real_read_only_repair_action_bundle_review_statuses"]["approved"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_source_bundle_statuses"]["assembled"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_source_plan_statuses"]["planned"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_source_feedback_statuses"]["actionable"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_source_statuses"]["failed"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_source_exit_codes"]["1"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_source_item_counts"]["9"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_next_actions"][
+        "prepare_repair_execution_approval_scaffold"
+    ] == 1
+    assert summary["real_read_only_repair_action_bundle_review_operator_authorized"]["true"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_requires_operator_review"]["true"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_reviewed"]["true"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_approved"]["true"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_rejected"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_bundle_execution_enabled"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_repair_execution_enabled"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_real_execution_enabled"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_subprocess_enabled"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_bundle_execution_performed"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_bundle_subprocess_invoked"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_repair_execution_performed"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_repair_subprocess_invoked"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_execution_performed"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_subprocess_invoked"]["false"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_linkage_complete"] is True
+    assert summary["real_read_only_repair_action_bundle_review_bundle_matches"] == 1
+    assert summary["real_read_only_repair_action_bundle_review_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -1683,3 +1716,76 @@ def test_inspect_retry_governance_trail_counts_real_read_only_repair_action_bund
 
     assert summary["real_read_only_repair_action_bundle_linkage_complete"] is False
     assert summary["real_read_only_repair_action_bundle_orphans"] == 1
+
+
+def _real_read_only_repair_action_bundle_review(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
+        "real_execution_read_only_repair_action_bundle_review_id": "bundle-review-1",
+        "real_execution_read_only_repair_action_bundle_id": "repair-bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "rendered_command_id": "rendered-1",
+        "source_bundle_status": "assembled",
+        "source_repair_plan_status": "planned",
+        "source_feedback_status": "actionable",
+        "source_status": "failed",
+        "source_exit_code": 1,
+        "source_bundle_item_count": 9,
+        "review_status": "approved",
+        "operator_authorized": True,
+        "requires_operator_review": True,
+        "reviewed": True,
+        "review_approved": True,
+        "review_rejected": False,
+        "recommended_next_action": "prepare_repair_execution_approval_scaffold",
+        "bundle_execution_enabled": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "bundle_execution_performed": False,
+        "bundle_subprocess_invoked": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+    }
+    item.update(overrides)
+    return item
+
+
+def test_inspect_retry_governance_trail_counts_real_read_only_repair_action_bundle_review_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(),
+            _real_noop_result(),
+            _real_read_only_promotion(),
+            _real_read_only_final_gate(),
+            _real_read_only_approval(),
+            _real_read_only_approval_transition(),
+            _real_read_only_readiness_gate(),
+            _real_read_only_execution_result(),
+            _real_read_only_feedback(),
+            _real_read_only_repair_plan(),
+            _real_read_only_repair_action_bundle(),
+            _real_read_only_repair_action_bundle_review(
+                real_execution_read_only_repair_action_bundle_id="missing-bundle"
+            ),
+        ]
+    )
+
+    assert summary["real_read_only_repair_action_bundle_review_linkage_complete"] is False
+    assert summary["real_read_only_repair_action_bundle_review_orphans"] == 1

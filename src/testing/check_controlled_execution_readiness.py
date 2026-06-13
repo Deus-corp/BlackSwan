@@ -543,6 +543,75 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_read_only_repair_action_bundle_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_read_only_repair_action_bundle_subprocess_invoked")
     )
+    real_read_only_repair_action_bundle_review_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_bundle_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_bundle_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_plan_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_plan_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_feedback_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_feedback_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_exit_codes = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_exit_codes")
+    )
+    real_read_only_repair_action_bundle_review_source_item_counts = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_item_counts")
+    )
+    real_read_only_repair_action_bundle_review_next_actions = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_next_actions")
+    )
+    real_read_only_repair_action_bundle_review_operator_authorized = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_operator_authorized")
+    )
+    real_read_only_repair_action_bundle_review_requires_operator_review = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_requires_operator_review")
+    )
+    real_read_only_repair_action_bundle_review_reviewed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_reviewed")
+    )
+    real_read_only_repair_action_bundle_review_approved = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_approved")
+    )
+    real_read_only_repair_action_bundle_review_rejected = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_rejected")
+    )
+    real_read_only_repair_action_bundle_review_bundle_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_bundle_execution_enabled")
+    )
+    real_read_only_repair_action_bundle_review_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_repair_execution_enabled")
+    )
+    real_read_only_repair_action_bundle_review_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_real_execution_enabled")
+    )
+    real_read_only_repair_action_bundle_review_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_subprocess_enabled")
+    )
+    real_read_only_repair_action_bundle_review_bundle_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_bundle_execution_performed")
+    )
+    real_read_only_repair_action_bundle_review_bundle_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_bundle_subprocess_invoked")
+    )
+    real_read_only_repair_action_bundle_review_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_repair_execution_performed")
+    )
+    real_read_only_repair_action_bundle_review_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_repair_subprocess_invoked")
+    )
+    real_read_only_repair_action_bundle_review_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_execution_performed")
+    )
+    real_read_only_repair_action_bundle_review_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -1142,6 +1211,83 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_read_only_repair_action_bundle_subprocess_invoked": _safe_int(
             real_read_only_repair_action_bundle_subprocess_invoked.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_observed": _safe_int(
+            real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+        )
+        > 0,
+        "real_read_only_repair_action_bundle_review_records": _safe_int(
+            real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_linkage_complete": bool(
+            trail_summary.get("real_read_only_repair_action_bundle_review_linkage_complete")
+        ),
+        "real_read_only_repair_action_bundle_review_orphans": _safe_int(
+            trail_summary.get("real_read_only_repair_action_bundle_review_orphans"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_approved_status": _safe_int(
+            real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_source_assembled": _safe_int(
+            real_read_only_repair_action_bundle_review_source_bundle_statuses.get("assembled"),
+            0,
+        ),
+        "real_read_only_repair_action_bundle_review_source_planned": _safe_int(
+            real_read_only_repair_action_bundle_review_source_plan_statuses.get("planned"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_source_actionable": _safe_int(
+            real_read_only_repair_action_bundle_review_source_feedback_statuses.get(
+                "actionable"
+            ),
+            0,
+        ),
+        "real_read_only_repair_action_bundle_review_source_failed": _safe_int(
+            real_read_only_repair_action_bundle_review_source_statuses.get("failed"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_source_exit_code_1": _safe_int(
+            real_read_only_repair_action_bundle_review_source_exit_codes.get("1"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_source_item_count_9": _safe_int(
+            real_read_only_repair_action_bundle_review_source_item_counts.get("9"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_next_action_prepare": _safe_int(
+            real_read_only_repair_action_bundle_review_next_actions.get(
+                "prepare_repair_execution_approval_scaffold"
+            ),
+            0,
+        ),
+        "real_read_only_repair_action_bundle_review_operator_authorized": _safe_int(
+            real_read_only_repair_action_bundle_review_operator_authorized.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_reviewed": _safe_int(
+            real_read_only_repair_action_bundle_review_reviewed.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_approved": _safe_int(
+            real_read_only_repair_action_bundle_review_approved.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_execution_enabled": _safe_int(
+            real_read_only_repair_action_bundle_review_bundle_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_repair_execution_enabled": _safe_int(
+            real_read_only_repair_action_bundle_review_repair_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_real_execution_enabled": _safe_int(
+            real_read_only_repair_action_bundle_review_real_execution_enabled.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_subprocess_enabled": _safe_int(
+            real_read_only_repair_action_bundle_review_subprocess_enabled.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_execution_performed": _safe_int(
+            real_read_only_repair_action_bundle_review_bundle_execution_performed.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": _safe_int(
+            real_read_only_repair_action_bundle_review_bundle_subprocess_invoked.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_execution_performed": _safe_int(
+            real_read_only_repair_action_bundle_review_execution_performed.get("true"), 0
+        ),
+        "real_read_only_repair_action_bundle_review_subprocess_invoked": _safe_int(
+            real_read_only_repair_action_bundle_review_subprocess_invoked.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -1789,6 +1935,83 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_repair_action_bundle_subprocess_invoked": _safe_int(
                 real_read_only_repair_action_bundle_subprocess_invoked.get("true"), 0
             ),
+            "real_read_only_repair_action_bundle_review_observed": _safe_int(
+                real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+            )
+            > 0,
+            "real_read_only_repair_action_bundle_review_records": _safe_int(
+                real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_linkage_complete": bool(
+                trail_summary.get("real_read_only_repair_action_bundle_review_linkage_complete")
+            ),
+            "real_read_only_repair_action_bundle_review_orphans": _safe_int(
+                trail_summary.get("real_read_only_repair_action_bundle_review_orphans"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_approved_status": _safe_int(
+                real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_source_assembled": _safe_int(
+                real_read_only_repair_action_bundle_review_source_bundle_statuses.get("assembled"),
+                0,
+            ),
+            "real_read_only_repair_action_bundle_review_source_planned": _safe_int(
+                real_read_only_repair_action_bundle_review_source_plan_statuses.get("planned"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_source_actionable": _safe_int(
+                real_read_only_repair_action_bundle_review_source_feedback_statuses.get(
+                    "actionable"
+                ),
+                0,
+            ),
+            "real_read_only_repair_action_bundle_review_source_failed": _safe_int(
+                real_read_only_repair_action_bundle_review_source_statuses.get("failed"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_source_exit_code_1": _safe_int(
+                real_read_only_repair_action_bundle_review_source_exit_codes.get("1"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_source_item_count_9": _safe_int(
+                real_read_only_repair_action_bundle_review_source_item_counts.get("9"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_next_action_prepare": _safe_int(
+                real_read_only_repair_action_bundle_review_next_actions.get(
+                    "prepare_repair_execution_approval_scaffold"
+                ),
+                0,
+            ),
+            "real_read_only_repair_action_bundle_review_operator_authorized": _safe_int(
+                real_read_only_repair_action_bundle_review_operator_authorized.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_reviewed": _safe_int(
+                real_read_only_repair_action_bundle_review_reviewed.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_approved": _safe_int(
+                real_read_only_repair_action_bundle_review_approved.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_bundle_execution_enabled": _safe_int(
+                real_read_only_repair_action_bundle_review_bundle_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_repair_execution_enabled": _safe_int(
+                real_read_only_repair_action_bundle_review_repair_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_real_execution_enabled": _safe_int(
+                real_read_only_repair_action_bundle_review_real_execution_enabled.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_subprocess_enabled": _safe_int(
+                real_read_only_repair_action_bundle_review_subprocess_enabled.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_bundle_execution_performed": _safe_int(
+                real_read_only_repair_action_bundle_review_bundle_execution_performed.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": _safe_int(
+                real_read_only_repair_action_bundle_review_bundle_subprocess_invoked.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_execution_performed": _safe_int(
+                real_read_only_repair_action_bundle_review_execution_performed.get("true"), 0
+            ),
+            "real_read_only_repair_action_bundle_review_subprocess_invoked": _safe_int(
+                real_read_only_repair_action_bundle_review_subprocess_invoked.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -1868,6 +2091,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_read_only_repair_action_bundle_records",
             "real_read_only_repair_action_bundle_linkage_complete",
             "real_read_only_repair_action_bundle_orphans",
+            "real_read_only_repair_action_bundle_review_observed",
+            "real_read_only_repair_action_bundle_review_records",
+            "real_read_only_repair_action_bundle_review_linkage_complete",
+            "real_read_only_repair_action_bundle_review_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -2441,6 +2668,75 @@ def _build_checks(
     )
     real_read_only_repair_action_bundle_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_read_only_repair_action_bundle_subprocess_invoked")
+    )
+    real_read_only_repair_action_bundle_review_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_bundle_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_bundle_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_plan_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_plan_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_feedback_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_feedback_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_statuses")
+    )
+    real_read_only_repair_action_bundle_review_source_exit_codes = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_exit_codes")
+    )
+    real_read_only_repair_action_bundle_review_source_item_counts = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_source_item_counts")
+    )
+    real_read_only_repair_action_bundle_review_next_actions = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_next_actions")
+    )
+    real_read_only_repair_action_bundle_review_operator_authorized = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_operator_authorized")
+    )
+    real_read_only_repair_action_bundle_review_requires_operator_review = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_requires_operator_review")
+    )
+    real_read_only_repair_action_bundle_review_reviewed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_reviewed")
+    )
+    real_read_only_repair_action_bundle_review_approved = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_approved")
+    )
+    real_read_only_repair_action_bundle_review_rejected = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_rejected")
+    )
+    real_read_only_repair_action_bundle_review_bundle_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_bundle_execution_enabled")
+    )
+    real_read_only_repair_action_bundle_review_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_repair_execution_enabled")
+    )
+    real_read_only_repair_action_bundle_review_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_real_execution_enabled")
+    )
+    real_read_only_repair_action_bundle_review_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_subprocess_enabled")
+    )
+    real_read_only_repair_action_bundle_review_bundle_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_bundle_execution_performed")
+    )
+    real_read_only_repair_action_bundle_review_bundle_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_bundle_subprocess_invoked")
+    )
+    real_read_only_repair_action_bundle_review_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_repair_execution_performed")
+    )
+    real_read_only_repair_action_bundle_review_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_repair_subprocess_invoked")
+    )
+    real_read_only_repair_action_bundle_review_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_execution_performed")
+    )
+    real_read_only_repair_action_bundle_review_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_repair_action_bundle_review_subprocess_invoked")
     )
 
     checks = [
@@ -4094,6 +4390,217 @@ def _build_checks(
                 real_read_only_repair_action_bundle_subprocess_invoked.get("true"), 0
             ),
         ),
+        _check(
+            "real_read_only_repair_action_bundle_review_observed_after_bundle",
+            _safe_int(real_read_only_repair_action_bundle_statuses.get("assembled"), 0)
+            == 0
+            or _safe_int(
+                real_read_only_repair_action_bundle_review_statuses.get("approved"),
+                0,
+            )
+            > 0,
+            {
+                "assembled_bundles": _safe_int(
+                    real_read_only_repair_action_bundle_statuses.get("assembled"), 0
+                ),
+                "approved_reviews": _safe_int(
+                    real_read_only_repair_action_bundle_review_statuses.get("approved"),
+                    0,
+                ),
+            },
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_links_to_bundle",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+            )
+            == 0
+            or _safe_int(
+                trail_summary.get(
+                    "real_read_only_repair_action_bundle_review_orphans"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                trail_summary.get("real_read_only_repair_action_bundle_review_orphans"),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_is_approved",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_statuses.get("approved"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_source_is_assembled",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_source_bundle_statuses.get(
+                    "assembled"
+                ),
+                0,
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_source_bundle_statuses.get(
+                    "assembled"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_next_action_observed",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_next_actions.get(
+                    "prepare_repair_execution_approval_scaffold"
+                ),
+                0,
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_next_actions.get(
+                    "prepare_repair_execution_approval_scaffold"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_operator_authorized",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_operator_authorized.get(
+                    "true"
+                ),
+                0,
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_operator_authorized.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_reviewed",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_reviewed.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_reviewed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_approved",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_approved.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_approved.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_did_not_enable_bundle_execution",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_bundle_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_bundle_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_did_not_enable_repair_execution",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_repair_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_repair_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_did_not_enable_real_execution",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_real_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_real_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_did_not_enable_subprocess",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_subprocess_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_subprocess_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_did_not_execute",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_execution_performed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_execution_performed.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_read_only_repair_action_bundle_review_did_not_invoke_subprocess",
+            _safe_int(
+                real_read_only_repair_action_bundle_review_subprocess_invoked.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_read_only_repair_action_bundle_review_subprocess_invoked.get(
+                    "true"
+                ),
+                0,
+            ),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -4215,6 +4722,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_read_only_repair_action_bundle_records",
         "real_read_only_repair_action_bundle_linkage_complete",
         "real_read_only_repair_action_bundle_orphans",
+        "real_read_only_repair_action_bundle_review_observed",
+        "real_read_only_repair_action_bundle_review_records",
+        "real_read_only_repair_action_bundle_review_linkage_complete",
+        "real_read_only_repair_action_bundle_review_orphans",
     ]
 
     reasons: list[str] = []
@@ -4422,6 +4933,25 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_read_only_repair_action_bundle_linkage_complete_must_be_bool")
     if not isinstance(report.get("real_read_only_repair_action_bundle_orphans"), int):
         reasons.append("real_read_only_repair_action_bundle_orphans_must_be_int")
+    
+    if not isinstance(
+        report.get("real_read_only_repair_action_bundle_review_observed"), bool
+    ):
+        reasons.append("real_read_only_repair_action_bundle_review_observed_must_be_bool")
+    if not isinstance(
+        report.get("real_read_only_repair_action_bundle_review_records"), int
+    ):
+        reasons.append("real_read_only_repair_action_bundle_review_records_must_be_int")
+    if not isinstance(
+        report.get("real_read_only_repair_action_bundle_review_linkage_complete"), bool
+    ):
+        reasons.append(
+            "real_read_only_repair_action_bundle_review_linkage_complete_must_be_bool"
+        )
+    if not isinstance(
+        report.get("real_read_only_repair_action_bundle_review_orphans"), int
+    ):
+        reasons.append("real_read_only_repair_action_bundle_review_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -4666,6 +5196,29 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_read_only_repair_action_bundle_bundle_subprocess_invoked={result.get('real_read_only_repair_action_bundle_bundle_subprocess_invoked', 0)} "
         f"real_read_only_repair_action_bundle_execution_performed={result.get('real_read_only_repair_action_bundle_execution_performed', 0)} "
         f"real_read_only_repair_action_bundle_subprocess_invoked={result.get('real_read_only_repair_action_bundle_subprocess_invoked', 0)} "
+        f"real_read_only_repair_action_bundle_review_observed={str(bool(result.get('real_read_only_repair_action_bundle_review_observed'))).lower()} "
+        f"real_read_only_repair_action_bundle_review_records={result.get('real_read_only_repair_action_bundle_review_records', 0)} "
+        f"real_read_only_repair_action_bundle_review_linkage_complete={str(bool(result.get('real_read_only_repair_action_bundle_review_linkage_complete'))).lower()} "
+        f"real_read_only_repair_action_bundle_review_orphans={result.get('real_read_only_repair_action_bundle_review_orphans', 0)} "
+        f"real_read_only_repair_action_bundle_review_approved_status={result.get('real_read_only_repair_action_bundle_review_approved_status', 0)} "
+        f"real_read_only_repair_action_bundle_review_source_assembled={result.get('real_read_only_repair_action_bundle_review_source_assembled', 0)} "
+        f"real_read_only_repair_action_bundle_review_source_planned={result.get('real_read_only_repair_action_bundle_review_source_planned', 0)} "
+        f"real_read_only_repair_action_bundle_review_source_actionable={result.get('real_read_only_repair_action_bundle_review_source_actionable', 0)} "
+        f"real_read_only_repair_action_bundle_review_source_failed={result.get('real_read_only_repair_action_bundle_review_source_failed', 0)} "
+        f"real_read_only_repair_action_bundle_review_source_exit_code_1={result.get('real_read_only_repair_action_bundle_review_source_exit_code_1', 0)} "
+        f"real_read_only_repair_action_bundle_review_source_item_count_9={result.get('real_read_only_repair_action_bundle_review_source_item_count_9', 0)} "
+        f"real_read_only_repair_action_bundle_review_next_action_prepare={result.get('real_read_only_repair_action_bundle_review_next_action_prepare', 0)} "
+        f"real_read_only_repair_action_bundle_review_operator_authorized={result.get('real_read_only_repair_action_bundle_review_operator_authorized', 0)} "
+        f"real_read_only_repair_action_bundle_review_reviewed={result.get('real_read_only_repair_action_bundle_review_reviewed', 0)} "
+        f"real_read_only_repair_action_bundle_review_approved={result.get('real_read_only_repair_action_bundle_review_approved', 0)} "
+        f"real_read_only_repair_action_bundle_review_bundle_execution_enabled={result.get('real_read_only_repair_action_bundle_review_bundle_execution_enabled', 0)} "
+        f"real_read_only_repair_action_bundle_review_repair_execution_enabled={result.get('real_read_only_repair_action_bundle_review_repair_execution_enabled', 0)} "
+        f"real_read_only_repair_action_bundle_review_real_execution_enabled={result.get('real_read_only_repair_action_bundle_review_real_execution_enabled', 0)} "
+        f"real_read_only_repair_action_bundle_review_subprocess_enabled={result.get('real_read_only_repair_action_bundle_review_subprocess_enabled', 0)} "
+        f"real_read_only_repair_action_bundle_review_bundle_execution_performed={result.get('real_read_only_repair_action_bundle_review_bundle_execution_performed', 0)} "
+        f"real_read_only_repair_action_bundle_review_bundle_subprocess_invoked={result.get('real_read_only_repair_action_bundle_review_bundle_subprocess_invoked', 0)} "
+        f"real_read_only_repair_action_bundle_review_execution_performed={result.get('real_read_only_repair_action_bundle_review_execution_performed', 0)} "
+        f"real_read_only_repair_action_bundle_review_subprocess_invoked={result.get('real_read_only_repair_action_bundle_review_subprocess_invoked', 0)} "
     )
 
 
