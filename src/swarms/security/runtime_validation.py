@@ -48,6 +48,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_repair_plan",
     "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle",
     "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
+    "replay_lifecycle_retry_real_execution_repair_approval",
 }
 
 
@@ -435,6 +436,20 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_repair_approval":
+            result = validate_replay_lifecycle_retry_real_execution_repair_approval(
+                record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -671,6 +686,24 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_read_only_repair_action_bundle_review_repair_subprocess_invoked: dict[str, int] = {}
     real_read_only_repair_action_bundle_review_execution_performed: dict[str, int] = {}
     real_read_only_repair_action_bundle_review_subprocess_invoked: dict[str, int] = {}
+    real_repair_approval_statuses: dict[str, int] = {}
+    real_repair_approval_source_review_statuses: dict[str, int] = {}
+    real_repair_approval_source_bundle_statuses: dict[str, int] = {}
+    real_repair_approval_next_actions: dict[str, int] = {}
+    real_repair_approval_operator_authorized: dict[str, int] = {}
+    real_repair_approval_required: dict[str, int] = {}
+    real_repair_approval_approved: dict[str, int] = {}
+    real_repair_approval_rejected: dict[str, int] = {}
+    real_repair_approval_bundle_execution_enabled: dict[str, int] = {}
+    real_repair_approval_repair_execution_enabled: dict[str, int] = {}
+    real_repair_approval_real_execution_enabled: dict[str, int] = {}
+    real_repair_approval_subprocess_enabled: dict[str, int] = {}
+    real_repair_approval_bundle_execution_performed: dict[str, int] = {}
+    real_repair_approval_bundle_subprocess_invoked: dict[str, int] = {}
+    real_repair_approval_repair_execution_performed: dict[str, int] = {}
+    real_repair_approval_repair_subprocess_invoked: dict[str, int] = {}
+    real_repair_approval_execution_performed: dict[str, int] = {}
+    real_repair_approval_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -1729,6 +1762,83 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             ):
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
+        
+        if record_type == "replay_lifecycle_retry_real_execution_repair_approval":
+            status = str(item.get("approval_status") or "unknown").strip() or "unknown"
+            source_review_status = (
+                str(item.get("source_review_status") or "unknown").strip()
+                or "unknown"
+            )
+            source_bundle_status = (
+                str(item.get("source_bundle_status") or "unknown").strip()
+                or "unknown"
+            )
+            next_action = (
+                str(item.get("recommended_next_action") or "unknown").strip()
+                or "unknown"
+            )
+
+            real_repair_approval_statuses[status] = (
+                real_repair_approval_statuses.get(status, 0) + 1
+            )
+            real_repair_approval_source_review_statuses[source_review_status] = (
+                real_repair_approval_source_review_statuses.get(
+                    source_review_status, 0
+                )
+                + 1
+            )
+            real_repair_approval_source_bundle_statuses[source_bundle_status] = (
+                real_repair_approval_source_bundle_statuses.get(
+                    source_bundle_status, 0
+                )
+                + 1
+            )
+            real_repair_approval_next_actions[next_action] = (
+                real_repair_approval_next_actions.get(next_action, 0) + 1
+            )
+
+            for target, key_name in (
+                (real_repair_approval_operator_authorized, "operator_authorized"),
+                (
+                    real_repair_approval_required,
+                    "repair_execution_approval_required",
+                ),
+                (real_repair_approval_approved, "repair_execution_approved"),
+                (real_repair_approval_rejected, "repair_execution_rejected"),
+                (
+                    real_repair_approval_bundle_execution_enabled,
+                    "bundle_execution_enabled",
+                ),
+                (
+                    real_repair_approval_repair_execution_enabled,
+                    "repair_execution_enabled",
+                ),
+                (
+                    real_repair_approval_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (real_repair_approval_subprocess_enabled, "subprocess_enabled"),
+                (
+                    real_repair_approval_bundle_execution_performed,
+                    "bundle_execution_performed",
+                ),
+                (
+                    real_repair_approval_bundle_subprocess_invoked,
+                    "bundle_subprocess_invoked",
+                ),
+                (
+                    real_repair_approval_repair_execution_performed,
+                    "repair_execution_performed",
+                ),
+                (
+                    real_repair_approval_repair_subprocess_invoked,
+                    "repair_subprocess_invoked",
+                ),
+                (real_repair_approval_execution_performed, "execution_performed"),
+                (real_repair_approval_subprocess_invoked, "subprocess_invoked"),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
 
     return {
         "type": "security_validation_summary",
@@ -2188,6 +2298,50 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_read_only_repair_action_bundle_review_subprocess_invoked": (
             real_read_only_repair_action_bundle_review_subprocess_invoked
         ),
+        "real_repair_approval_statuses": real_repair_approval_statuses,
+        "real_repair_approval_source_review_statuses": (
+            real_repair_approval_source_review_statuses
+        ),
+        "real_repair_approval_source_bundle_statuses": (
+            real_repair_approval_source_bundle_statuses
+        ),
+        "real_repair_approval_next_actions": real_repair_approval_next_actions,
+        "real_repair_approval_operator_authorized": (
+            real_repair_approval_operator_authorized
+        ),
+        "real_repair_approval_required": real_repair_approval_required,
+        "real_repair_approval_approved": real_repair_approval_approved,
+        "real_repair_approval_rejected": real_repair_approval_rejected,
+        "real_repair_approval_bundle_execution_enabled": (
+            real_repair_approval_bundle_execution_enabled
+        ),
+        "real_repair_approval_repair_execution_enabled": (
+            real_repair_approval_repair_execution_enabled
+        ),
+        "real_repair_approval_real_execution_enabled": (
+            real_repair_approval_real_execution_enabled
+        ),
+        "real_repair_approval_subprocess_enabled": (
+            real_repair_approval_subprocess_enabled
+        ),
+        "real_repair_approval_bundle_execution_performed": (
+            real_repair_approval_bundle_execution_performed
+        ),
+        "real_repair_approval_bundle_subprocess_invoked": (
+            real_repair_approval_bundle_subprocess_invoked
+        ),
+        "real_repair_approval_repair_execution_performed": (
+            real_repair_approval_repair_execution_performed
+        ),
+        "real_repair_approval_repair_subprocess_invoked": (
+            real_repair_approval_repair_subprocess_invoked
+        ),
+        "real_repair_approval_execution_performed": (
+            real_repair_approval_execution_performed
+        ),
+        "real_repair_approval_subprocess_invoked": (
+            real_repair_approval_subprocess_invoked
+        ),
     }
 
 
@@ -2639,6 +2793,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_read_only_repair_plan_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_repair_approval":
+        return str(
+            record.get("real_execution_repair_approval_id")
+            or record.get("real_execution_read_only_repair_action_bundle_review_id")
+            or record.get("real_execution_read_only_repair_action_bundle_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -2681,6 +2843,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_read_only_repair_plan_id",
         "real_execution_read_only_repair_action_bundle_id",
         "real_execution_read_only_repair_action_bundle_review_id",
+        "real_execution_repair_approval_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -2720,6 +2883,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_read_only_repair_plan_id",
             "real_execution_read_only_repair_action_bundle_id",
             "real_execution_read_only_repair_action_bundle_review_id",
+            "real_execution_repair_approval_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -5786,6 +5950,198 @@ def validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundl
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_repair_approval(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate repair execution approval scaffold records."""
+    reasons: list[str] = []
+
+    repair_approval_id = str(
+        record.get("real_execution_repair_approval_id") or ""
+    ).strip()
+    review_id = str(
+        record.get("real_execution_read_only_repair_action_bundle_review_id") or ""
+    ).strip()
+    bundle_id = str(
+        record.get("real_execution_read_only_repair_action_bundle_id") or ""
+    ).strip()
+    repair_plan_id = str(
+        record.get("real_execution_read_only_repair_plan_id") or ""
+    ).strip()
+    feedback_id = str(record.get("real_execution_read_only_feedback_id") or "").strip()
+    read_only_result_id = str(
+        record.get("real_execution_read_only_execution_result_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    approval_status = str(record.get("approval_status") or "").strip()
+    source_review_status = str(record.get("source_review_status") or "").strip()
+    source_bundle_status = str(record.get("source_bundle_status") or "").strip()
+    source_repair_plan_status = str(
+        record.get("source_repair_plan_status") or ""
+    ).strip()
+    source_feedback_status = str(record.get("source_feedback_status") or "").strip()
+    source_status = str(record.get("source_status") or "").strip()
+    recommended_next_action = str(
+        record.get("recommended_next_action") or ""
+    ).strip()
+    reason = str(record.get("reason") or "").strip()
+
+    source_reviewed = bool(record.get("source_reviewed"))
+    source_review_approved = bool(record.get("source_review_approved"))
+    operator_authorized = bool(record.get("operator_authorized"))
+    requires_operator_review = bool(record.get("requires_operator_review"))
+    repair_execution_approval_required = bool(
+        record.get("repair_execution_approval_required")
+    )
+    repair_execution_approved = bool(record.get("repair_execution_approved"))
+    repair_execution_rejected = bool(record.get("repair_execution_rejected"))
+
+    bundle_execution_enabled = bool(record.get("bundle_execution_enabled"))
+    repair_execution_enabled = bool(record.get("repair_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    bundle_execution_performed = bool(record.get("bundle_execution_performed"))
+    bundle_subprocess_invoked = bool(record.get("bundle_subprocess_invoked"))
+    repair_execution_performed = bool(record.get("repair_execution_performed"))
+    repair_subprocess_invoked = bool(record.get("repair_subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not repair_approval_id:
+        reasons.append("missing_real_execution_repair_approval_id")
+    if not review_id:
+        reasons.append(
+            "missing_real_execution_read_only_repair_action_bundle_review_id"
+        )
+    if not bundle_id:
+        reasons.append("missing_real_execution_read_only_repair_action_bundle_id")
+    if not repair_plan_id:
+        reasons.append("missing_real_execution_read_only_repair_plan_id")
+    if not feedback_id:
+        reasons.append("missing_real_execution_read_only_feedback_id")
+    if not read_only_result_id:
+        reasons.append("missing_real_execution_read_only_execution_result_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if approval_status not in {"pending", "approved", "rejected"}:
+        reasons.append("invalid_repair_execution_approval_status")
+    if source_review_status != "approved":
+        reasons.append("repair_execution_approval_source_review_must_be_approved")
+    if not source_reviewed:
+        reasons.append("repair_execution_approval_source_must_be_reviewed")
+    if not source_review_approved:
+        reasons.append("repair_execution_approval_source_must_be_review_approved")
+    if source_bundle_status not in {"assembled", "unknown"}:
+        reasons.append("invalid_repair_execution_approval_source_bundle_status")
+    if source_repair_plan_status not in {"planned", "blocked", "no_repair_needed", "unknown"}:
+        reasons.append("invalid_repair_execution_approval_source_plan_status")
+    if source_feedback_status not in {"actionable", "blocked", "successful", "unknown"}:
+        reasons.append("invalid_repair_execution_approval_source_feedback_status")
+    if source_status not in {"failed", "executed", "rejected", "unknown"}:
+        reasons.append("invalid_repair_execution_approval_source_status")
+
+    expected_next_actions = {
+        "pending": "await_repair_execution_approval",
+        "approved": "await_repair_execution_approval_transition",
+        "rejected": "revise_repair_action_bundle",
+    }
+    if recommended_next_action != expected_next_actions.get(approval_status):
+        reasons.append("invalid_repair_execution_approval_next_action")
+    if reason != "repair_execution_explicit_approval_required":
+        reasons.append("invalid_repair_execution_approval_reason")
+
+    if not operator_authorized:
+        reasons.append("repair_execution_approval_requires_operator_authorized")
+    if not requires_operator_review:
+        reasons.append("repair_execution_approval_requires_operator_review")
+    if not repair_execution_approval_required:
+        reasons.append("repair_execution_approval_required_flag_missing")
+
+    if approval_status == "pending":
+        if repair_execution_approved:
+            reasons.append("pending_repair_execution_approval_must_not_be_approved")
+        if repair_execution_rejected:
+            reasons.append("pending_repair_execution_approval_must_not_be_rejected")
+
+    if approval_status == "approved":
+        if not repair_execution_approved:
+            reasons.append("approved_repair_execution_approval_must_be_approved")
+        if repair_execution_rejected:
+            reasons.append("approved_repair_execution_approval_must_not_be_rejected")
+
+    if approval_status == "rejected":
+        if repair_execution_approved:
+            reasons.append("rejected_repair_execution_approval_must_not_be_approved")
+        if not repair_execution_rejected:
+            reasons.append("rejected_repair_execution_approval_must_be_rejected")
+
+    if bundle_execution_enabled or bool(payload_mapping.get("bundle_execution_enabled")):
+        reasons.append("repair_execution_approval_must_not_enable_bundle_execution")
+    if repair_execution_enabled or bool(payload_mapping.get("repair_execution_enabled")):
+        reasons.append("repair_execution_approval_must_not_enable_repair_execution")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("repair_execution_approval_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("repair_execution_approval_must_not_enable_subprocess")
+    if bundle_execution_performed or bool(
+        payload_mapping.get("bundle_execution_performed")
+    ):
+        reasons.append("repair_execution_approval_must_not_perform_bundle_execution")
+    if bundle_subprocess_invoked or bool(payload_mapping.get("bundle_subprocess_invoked")):
+        reasons.append("repair_execution_approval_must_not_invoke_bundle_subprocess")
+    if repair_execution_performed or bool(
+        payload_mapping.get("repair_execution_performed")
+    ):
+        reasons.append("repair_execution_approval_must_not_perform_repair_execution")
+    if repair_subprocess_invoked or bool(payload_mapping.get("repair_subprocess_invoked")):
+        reasons.append("repair_execution_approval_must_not_invoke_repair_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("repair_execution_approval_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("repair_execution_approval_must_not_invoke_subprocess")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_repair_approval",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": repair_approval_id or review_id,
+        "approval_status": approval_status or "unknown",
+        "source_review_status": source_review_status or "unknown",
+        "source_reviewed": source_reviewed,
+        "source_review_approved": source_review_approved,
+        "source_bundle_status": source_bundle_status or "unknown",
+        "source_repair_plan_status": source_repair_plan_status or "unknown",
+        "source_feedback_status": source_feedback_status or "unknown",
+        "source_status": source_status or "unknown",
+        "source_exit_code": record.get("source_exit_code"),
+        "source_bundle_item_count": record.get("source_bundle_item_count"),
+        "recommended_next_action": recommended_next_action or "unknown",
+        "operator_authorized": operator_authorized,
+        "requires_operator_review": requires_operator_review,
+        "repair_execution_approval_required": repair_execution_approval_required,
+        "repair_execution_approved": repair_execution_approved,
+        "repair_execution_rejected": repair_execution_rejected,
+        "bundle_execution_enabled": bundle_execution_enabled,
+        "repair_execution_enabled": repair_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "bundle_execution_performed": bundle_execution_performed,
+        "bundle_subprocess_invoked": bundle_subprocess_invoked,
+        "repair_execution_performed": repair_execution_performed,
+        "repair_subprocess_invoked": repair_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -5817,4 +6173,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_read_only_repair_plan",
     "validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle",
     "validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
+    "validate_replay_lifecycle_retry_real_execution_repair_approval",
 ]

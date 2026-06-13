@@ -1697,6 +1697,20 @@ This recommendation prepares the next approval artifact only. It must keep
 
 ---
 
+### Repair execution approval scaffold
+
+`replay_lifecycle_retry_real_execution_repair_approval` records an explicit
+repair execution approval scaffold after an approved repair action bundle review.
+The scaffold may be `pending`, `approved`, or `rejected`, but it must not enable
+or perform repair execution.
+
+The approval scaffold must keep `repair_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`repair_execution_performed=false`, `repair_subprocess_invoked=false`,
+`execution_performed=false`, and `subprocess_invoked=false`. must not enable or perform repair execution.
+
+---
+
 ## Related modules
 
 ```text

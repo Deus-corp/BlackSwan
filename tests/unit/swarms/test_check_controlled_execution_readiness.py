@@ -304,6 +304,25 @@ def _trail_summary(**overrides):
         "real_read_only_repair_action_bundle_review_subprocess_invoked": {"false": 1},
         "real_read_only_repair_action_bundle_review_linkage_complete": True,
         "real_read_only_repair_action_bundle_review_orphans": 0,
+        "real_repair_approval_statuses": {"pending": 1},
+        "real_repair_approval_source_review_statuses": {"approved": 1},
+        "real_repair_approval_source_bundle_statuses": {"assembled": 1},
+        "real_repair_approval_next_actions": {
+            "await_repair_execution_approval": 1,
+        },
+        "real_repair_approval_operator_authorized": {"true": 1},
+        "real_repair_approval_required": {"true": 1},
+        "real_repair_approval_approved": {"false": 1},
+        "real_repair_approval_rejected": {"false": 1},
+        "real_repair_approval_repair_execution_enabled": {"false": 1},
+        "real_repair_approval_real_execution_enabled": {"false": 1},
+        "real_repair_approval_subprocess_enabled": {"false": 1},
+        "real_repair_approval_repair_execution_performed": {"false": 1},
+        "real_repair_approval_repair_subprocess_invoked": {"false": 1},
+        "real_repair_approval_execution_performed": {"false": 1},
+        "real_repair_approval_subprocess_invoked": {"false": 1},
+        "real_repair_approval_linkage_complete": True,
+        "real_repair_approval_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -951,6 +970,23 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": 0,
         "real_read_only_repair_action_bundle_review_execution_performed": 0,
         "real_read_only_repair_action_bundle_review_subprocess_invoked": 0,
+        "real_repair_approval_observed": True,
+        "real_repair_approval_records": 1,
+        "real_repair_approval_linkage_complete": True,
+        "real_repair_approval_orphans": 0,
+        "real_repair_approval_pending": 1,
+        "real_repair_approval_source_review_approved": 1,
+        "real_repair_approval_next_action_await": 1,
+        "real_repair_approval_operator_authorized": 1,
+        "real_repair_approval_required": 1,
+        "real_repair_approval_approved": 0,
+        "real_repair_approval_repair_execution_enabled": 0,
+        "real_repair_approval_real_execution_enabled": 0,
+        "real_repair_approval_subprocess_enabled": 0,
+        "real_repair_approval_repair_execution_performed": 0,
+        "real_repair_approval_repair_subprocess_invoked": 0,
+        "real_repair_approval_execution_performed": 0,
+        "real_repair_approval_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -1213,6 +1249,23 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": 0,
         "real_read_only_repair_action_bundle_review_execution_performed": 0,
         "real_read_only_repair_action_bundle_review_subprocess_invoked": 0,
+        "real_repair_approval_observed": True,
+        "real_repair_approval_records": 1,
+        "real_repair_approval_linkage_complete": True,
+        "real_repair_approval_orphans": 0,
+        "real_repair_approval_pending": 1,
+        "real_repair_approval_source_review_approved": 1,
+        "real_repair_approval_next_action_await": 1,
+        "real_repair_approval_operator_authorized": 1,
+        "real_repair_approval_required": 1,
+        "real_repair_approval_approved": 0,
+        "real_repair_approval_repair_execution_enabled": 0,
+        "real_repair_approval_real_execution_enabled": 0,
+        "real_repair_approval_subprocess_enabled": 0,
+        "real_repair_approval_repair_execution_performed": 0,
+        "real_repair_approval_repair_subprocess_invoked": 0,
+        "real_repair_approval_execution_performed": 0,
+        "real_repair_approval_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -1695,3 +1748,33 @@ def test_controlled_execution_readiness_fails_when_read_only_repair_action_bundl
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_read_only_repair_action_bundle_review_did_not_execute" in failed
+
+
+def test_controlled_execution_readiness_fails_for_real_repair_approval_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_approval_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_approval_links_to_bundle_review" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_approval_enables_repair_execution() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_approval_repair_execution_enabled={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_approval_did_not_enable_repair_execution" in failed
