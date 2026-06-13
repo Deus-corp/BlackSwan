@@ -209,6 +209,66 @@ def check_retry_governance_observability_from_records(
         "real_read_only_repair_action_bundle_subprocess_invoked": trail_summary.get(
             "real_read_only_repair_action_bundle_subprocess_invoked", {}
         ),
+        "real_read_only_repair_action_bundle_review_statuses": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_statuses", {}
+        ),
+        "real_read_only_repair_action_bundle_review_source_bundle_statuses": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_source_bundle_statuses", {}
+        ),
+        "real_read_only_repair_action_bundle_review_source_plan_statuses": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_source_plan_statuses", {}
+        ),
+        "real_read_only_repair_action_bundle_review_source_feedback_statuses": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_source_feedback_statuses", {}
+        ),
+        "real_read_only_repair_action_bundle_review_source_statuses": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_source_statuses", {}
+        ),
+        "real_read_only_repair_action_bundle_review_source_exit_codes": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_source_exit_codes", {}
+        ),
+        "real_read_only_repair_action_bundle_review_source_item_counts": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_source_item_counts", {}
+        ),
+        "real_read_only_repair_action_bundle_review_next_actions": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_next_actions", {}
+        ),
+        "real_read_only_repair_action_bundle_review_operator_authorized": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_operator_authorized", {}
+        ),
+        "real_read_only_repair_action_bundle_review_reviewed": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_reviewed", {}
+        ),
+        "real_read_only_repair_action_bundle_review_approved": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_approved", {}
+        ),
+        "real_read_only_repair_action_bundle_review_rejected": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_rejected", {}
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_execution_enabled": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_bundle_execution_enabled", {}
+        ),
+        "real_read_only_repair_action_bundle_review_repair_execution_enabled": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_repair_execution_enabled", {}
+        ),
+        "real_read_only_repair_action_bundle_review_real_execution_enabled": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_real_execution_enabled", {}
+        ),
+        "real_read_only_repair_action_bundle_review_subprocess_enabled": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_subprocess_enabled", {}
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_execution_performed": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_bundle_execution_performed", {}
+        ),
+        "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_bundle_subprocess_invoked", {}
+        ),
+        "real_read_only_repair_action_bundle_review_execution_performed": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_execution_performed", {}
+        ),
+        "real_read_only_repair_action_bundle_review_subprocess_invoked": trail_summary.get(
+            "real_read_only_repair_action_bundle_review_subprocess_invoked", {}
+        ),
     }
 
     brief = build_global_swarm_brief(

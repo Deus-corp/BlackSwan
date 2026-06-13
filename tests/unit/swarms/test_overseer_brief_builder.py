@@ -863,6 +863,22 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "real_read_only_repair_action_bundle_bundle_subprocess_invoked": {"false": 1},
             "real_read_only_repair_action_bundle_execution_performed": {"false": 1},
             "real_read_only_repair_action_bundle_subprocess_invoked": {"false": 1},
+            "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review": 1,
+            "real_read_only_repair_action_bundle_review_statuses": {"approved": 1},
+            "real_read_only_repair_action_bundle_review_source_bundle_statuses": {
+                "assembled": 1
+            },
+            "real_read_only_repair_action_bundle_review_next_actions": {
+                "prepare_repair_execution_approval_scaffold": 1,
+            },
+            "real_read_only_repair_action_bundle_review_operator_authorized": {"true": 1},
+            "real_read_only_repair_action_bundle_review_reviewed": {"true": 1},
+            "real_read_only_repair_action_bundle_review_approved": {"true": 1},
+            "real_read_only_repair_action_bundle_review_repair_execution_enabled": {"false": 1},
+            "real_read_only_repair_action_bundle_review_real_execution_enabled": {"false": 1},
+            "real_read_only_repair_action_bundle_review_subprocess_enabled": {"false": 1},
+            "real_read_only_repair_action_bundle_review_execution_performed": {"false": 1},
+            "real_read_only_repair_action_bundle_review_subprocess_invoked": {"false": 1},
         },
     )
 
@@ -1008,6 +1024,26 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert "subprocess_enabled=0" in brief.summary
     assert "bundle_execution_performed=0" in brief.summary
     assert "bundle_subprocess_invoked=0" in brief.summary
+
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_records"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_approved"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_source_assembled"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_next_action_prepare"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_operator_authorized"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_reviewed"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_approved_flag"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_repair_execution_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_real_execution_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_subprocess_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_execution_performed"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_review_subprocess_invoked"] == 0
+
+    assert "Repair action bundle review observed" in brief.summary
+    assert "approved=1" in brief.summary
+    assert "next_action=prepare_repair_execution_approval_scaffold" in brief.summary
+    assert "repair_execution_enabled=0" in brief.summary
+    assert "real_execution_enabled=0" in brief.summary
+    assert "subprocess_enabled=0" in brief.summary
 
 
 def test_global_brief_surfaces_unsupported_real_adapter_placeholder() -> None:

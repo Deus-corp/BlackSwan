@@ -1684,6 +1684,19 @@ The review artifact must keep `bundle_execution_enabled=false`,
 
 ---
 
+### Overseer repair review recommendation
+
+The Overseer brief surfaces approved
+`replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review`
+records and recommends `prepare_repair_execution_approval_scaffold`.
+
+This recommendation prepares the next approval artifact only. It must keep
+`repair_execution_enabled=false`, `real_execution_enabled=false`,
+`subprocess_enabled=false`, `execution_performed=false`, and
+`subprocess_invoked=false`.
+
+---
+
 ## Related modules
 
 ```text
