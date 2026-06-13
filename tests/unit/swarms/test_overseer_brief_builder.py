@@ -842,6 +842,27 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
             "real_read_only_repair_plan_repair_subprocess_invoked": {"false": 1},
             "real_read_only_repair_plan_execution_performed": {"false": 1},
             "real_read_only_repair_plan_subprocess_invoked": {"false": 1},
+            "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle": 1,
+            "real_read_only_repair_action_bundle_statuses": {"assembled": 1},
+            "real_read_only_repair_action_bundle_source_plan_statuses": {"planned": 1},
+            "real_read_only_repair_action_bundle_source_feedback_statuses": {"actionable": 1},
+            "real_read_only_repair_action_bundle_source_statuses": {"failed": 1},
+            "real_read_only_repair_action_bundle_source_exit_codes": {"1": 1},
+            "real_read_only_repair_action_bundle_next_actions": {
+                "review_repair_action_bundle": 1,
+            },
+            "real_read_only_repair_action_bundle_item_counts": {"9": 1},
+            "real_read_only_repair_action_bundle_source_item_counts": {"9": 1},
+            "real_read_only_repair_action_bundle_requires_operator_review": {"true": 1},
+            "real_read_only_repair_action_bundle_reviewed": {"false": 1},
+            "real_read_only_repair_action_bundle_bundle_execution_enabled": {"false": 1},
+            "real_read_only_repair_action_bundle_repair_execution_enabled": {"false": 1},
+            "real_read_only_repair_action_bundle_real_execution_enabled": {"false": 1},
+            "real_read_only_repair_action_bundle_subprocess_enabled": {"false": 1},
+            "real_read_only_repair_action_bundle_bundle_execution_performed": {"false": 1},
+            "real_read_only_repair_action_bundle_bundle_subprocess_invoked": {"false": 1},
+            "real_read_only_repair_action_bundle_execution_performed": {"false": 1},
+            "real_read_only_repair_action_bundle_subprocess_invoked": {"false": 1},
         },
     )
 
@@ -951,6 +972,42 @@ def test_global_brief_surfaces_controlled_retry_execution_results() -> None:
     assert "subprocess_enabled=0" in brief.summary
     assert "repair_execution_performed=0" in brief.summary
     assert "repair_subprocess_invoked=0" in brief.summary
+
+    assert brief.key_metrics["security_read_only_repair_action_bundle_records"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_assembled"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_source_planned"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_source_actionable"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_source_failed"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_exit_code_1"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_item_count_9"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_source_item_count_9"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_next_action_review"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_requires_operator_review"] == 1
+    assert brief.key_metrics["security_read_only_repair_action_bundle_reviewed"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_bundle_execution_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_repair_execution_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_real_execution_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_subprocess_enabled"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_bundle_execution_performed"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_bundle_subprocess_invoked"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_execution_performed"] == 0
+    assert brief.key_metrics["security_read_only_repair_action_bundle_subprocess_invoked"] == 0
+
+    assert "Read-only repair action bundle observed" in brief.summary
+    assert "records=1" in brief.summary
+    assert "assembled=1" in brief.summary
+    assert "source_planned=1" in brief.summary
+    assert "source_actionable=1" in brief.summary
+    assert "source_failed=1" in brief.summary
+    assert "bundle_item_count_9=1" in brief.summary
+    assert "next_action=review_repair_action_bundle" in brief.summary
+    assert "requires_operator_review=1" in brief.summary
+    assert "reviewed=0" in brief.summary
+    assert "bundle_execution_enabled=0" in brief.summary
+    assert "real_execution_enabled=0" in brief.summary
+    assert "subprocess_enabled=0" in brief.summary
+    assert "bundle_execution_performed=0" in brief.summary
+    assert "bundle_subprocess_invoked=0" in brief.summary
 
 
 def test_global_brief_surfaces_unsupported_real_adapter_placeholder() -> None:

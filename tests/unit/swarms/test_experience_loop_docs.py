@@ -476,3 +476,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "bundle_reviewed=false" in text
     assert "bundle_execution_enabled=false" in text
     assert "bundle_subprocess_invoked=false" in text
+    assert "Overseer repair action bundle recommendation" in text
+    assert "review_repair_action_bundle" in text
+    assert "repair execution approval" in text
+    assert "review-only" in text
+    assert "bundle_execution_enabled=false" in text
+    assert "bundle_subprocess_invoked=false" in text

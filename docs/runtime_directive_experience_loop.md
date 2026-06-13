@@ -1654,6 +1654,21 @@ The bundle must keep `bundle_reviewed=false`,
 
 ---
 
+### Overseer repair action bundle recommendation
+
+The Overseer brief surfaces
+`replay_lifecycle_retry_real_execution_read_only_repair_action_bundle` as the
+next review gate after a repair plan is assembled. The brief should recommend
+`review_repair_action_bundle` before any repair execution approval or execution
+expansion.
+
+This recommendation is review-only. It must keep `bundle_reviewed=false`,
+`bundle_execution_enabled=false`, `repair_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`bundle_execution_performed=false`, and `bundle_subprocess_invoked=false`.
+
+---
+
 ## Related modules
 
 ```text
