@@ -1726,6 +1726,21 @@ The transition artifact must keep `repair_execution_enabled=false`,
 
 ---
 
+### Repair execution final gate
+
+`replay_lifecycle_retry_real_execution_repair_final_gate` records the final
+pre-dry-run gate after an approved repair execution approval transition. A
+`ready_blocked` gate may recommend `prepare_repair_execution_dry_run_envelope`,
+but it must not enable or perform repair execution.
+
+The final gate artifact must keep `ready_for_repair_execution=false`,
+`would_execute=false`, `repair_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`repair_execution_performed=false`, `repair_subprocess_invoked=false`,
+`execution_performed=false`, and `subprocess_invoked=false`.
+
+---
+
 ## Related modules
 
 ```text

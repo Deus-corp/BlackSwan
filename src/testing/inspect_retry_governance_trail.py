@@ -45,6 +45,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
     "replay_lifecycle_retry_real_execution_repair_approval",
     "replay_lifecycle_retry_real_execution_repair_approval_transition",
+    "replay_lifecycle_retry_real_execution_repair_final_gate",
 }
 
 
@@ -253,6 +254,11 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_repair_approval_transition"
+    ]
+    real_repair_final_gates = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_real_execution_repair_final_gate"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -1233,6 +1239,62 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in real_repair_approval_transitions
     )
+    real_repair_final_gate_statuses = Counter(
+        str(item.get("gate_status") or "unknown").strip() or "unknown"
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_preconditions_satisfied = Counter(
+        str(bool(item.get("repair_preconditions_satisfied"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_ready = Counter(
+        str(bool(item.get("ready_for_repair_execution"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_would_execute = Counter(
+        str(bool(item.get("would_execute"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_operator_authorized = Counter(
+        str(bool(item.get("operator_authorized"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_transition_approved = Counter(
+        str(bool(item.get("repair_execution_transition_approved"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_repair_execution_enabled = Counter(
+        str(bool(item.get("repair_execution_enabled"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_subprocess_enabled = Counter(
+        str(bool(item.get("subprocess_enabled"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_repair_execution_performed = Counter(
+        str(bool(item.get("repair_execution_performed"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_repair_subprocess_invoked = Counter(
+        str(bool(item.get("repair_subprocess_invoked"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_repair_final_gates
+    )
+    real_repair_final_gate_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_repair_final_gates
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -1263,6 +1325,7 @@ def inspect_retry_governance_trail_from_records(
         ),
         real_repair_approvals=real_repair_approvals,
         real_repair_approval_transitions=real_repair_approval_transitions,
+        real_repair_final_gates=real_repair_final_gates,
         results=results,
     )
 
@@ -1380,6 +1443,11 @@ def inspect_retry_governance_trail_from_records(
         )
     )
 
+    real_repair_final_gate_linkage = _real_repair_final_gate_linkage_summary(
+        real_repair_approval_transitions=real_repair_approval_transitions,
+        real_repair_final_gates=real_repair_final_gates,
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -1424,6 +1492,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_repair_approval_transitions": len(
                 real_repair_approval_transitions
             ),
+            "real_execution_repair_final_gates": len(real_repair_final_gates),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -2305,6 +2374,58 @@ def inspect_retry_governance_trail_from_records(
                 "real_repair_approval_transition_orphans", 0
             )
         ),
+        "real_repair_final_gate_statuses": dict(real_repair_final_gate_statuses),
+        "real_repair_final_gate_preconditions_satisfied": dict(
+            real_repair_final_gate_preconditions_satisfied
+        ),
+        "real_repair_final_gate_ready": dict(real_repair_final_gate_ready),
+        "real_repair_final_gate_would_execute": dict(
+            real_repair_final_gate_would_execute
+        ),
+        "real_repair_final_gate_next_actions": dict(
+            real_repair_final_gate_next_actions
+        ),
+        "real_repair_final_gate_operator_authorized": dict(
+            real_repair_final_gate_operator_authorized
+        ),
+        "real_repair_final_gate_transition_approved": dict(
+            real_repair_final_gate_transition_approved
+        ),
+        "real_repair_final_gate_repair_execution_enabled": dict(
+            real_repair_final_gate_repair_execution_enabled
+        ),
+        "real_repair_final_gate_real_execution_enabled": dict(
+            real_repair_final_gate_real_execution_enabled
+        ),
+        "real_repair_final_gate_subprocess_enabled": dict(
+            real_repair_final_gate_subprocess_enabled
+        ),
+        "real_repair_final_gate_repair_execution_performed": dict(
+            real_repair_final_gate_repair_execution_performed
+        ),
+        "real_repair_final_gate_repair_subprocess_invoked": dict(
+            real_repair_final_gate_repair_subprocess_invoked
+        ),
+        "real_repair_final_gate_execution_performed": dict(
+            real_repair_final_gate_execution_performed
+        ),
+        "real_repair_final_gate_subprocess_invoked": dict(
+            real_repair_final_gate_subprocess_invoked
+        ),
+        "real_repair_final_gate_linkage": real_repair_final_gate_linkage,
+        "real_repair_final_gate_linkage_complete": bool(
+            real_repair_final_gate_linkage.get(
+                "real_repair_final_gate_linkage_complete"
+            )
+        ),
+        "real_repair_final_gate_transition_matches": (
+            real_repair_final_gate_linkage.get(
+                "real_repair_final_gate_transition_matches", 0
+            )
+        ),
+        "real_repair_final_gate_orphans": real_repair_final_gate_linkage.get(
+            "real_repair_final_gate_orphans", 0
+        ),
     }
 
 def _missing_stages(
@@ -2477,6 +2598,7 @@ def _build_chain_ids(
     real_read_only_repair_action_bundle_reviews: list[Mapping[str, Any]],
     real_repair_approvals: list[Mapping[str, Any]],
     real_repair_approval_transitions: list[Mapping[str, Any]],
+    real_repair_final_gates: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -2506,6 +2628,7 @@ def _build_chain_ids(
         + real_read_only_repair_action_bundle_reviews
         + real_repair_approvals
         + real_repair_approval_transitions
+        + real_repair_final_gates
         + results
     )
 
@@ -2545,6 +2668,7 @@ def _build_chain_ids(
                 + real_read_only_repair_action_bundle_reviews
                 + real_repair_approvals
                 + real_repair_approval_transitions
+                + real_repair_final_gates
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -2576,6 +2700,7 @@ def _build_chain_ids(
                 + real_read_only_repair_action_bundle_reviews
                 + real_repair_approvals
                 + real_repair_approval_transitions
+                + real_repair_final_gates
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -2607,6 +2732,7 @@ def _build_chain_ids(
                     + real_read_only_repair_action_bundle_reviews
                     + real_repair_approvals
                     + real_repair_approval_transitions
+                    + real_repair_final_gates
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -2797,6 +2923,13 @@ def _build_chain_ids(
                 if str(
                     item.get("real_execution_repair_approval_transition_id") or ""
                 ).strip()
+            }
+        ),
+        "real_execution_repair_final_gate_ids": sorted(
+            {
+                str(item.get("real_execution_repair_final_gate_id") or "").strip()
+                for item in real_repair_final_gates
+                if str(item.get("real_execution_repair_final_gate_id") or "").strip()
             }
         ),
     }
@@ -3702,6 +3835,38 @@ def _real_repair_approval_transition_linkage_summary(
             real_repair_approval_transitions
         )
         and transition_orphans == 0,
+    }
+
+
+def _real_repair_final_gate_linkage_summary(
+    *,
+    real_repair_approval_transitions: list[Mapping[str, Any]],
+    real_repair_final_gates: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    transition_ids = {
+        clean(item.get("real_execution_repair_approval_transition_id"))
+        for item in real_repair_approval_transitions
+        if clean(item.get("real_execution_repair_approval_transition_id"))
+    }
+
+    gate_transition_matches = 0
+    gate_orphans = 0
+
+    for gate in real_repair_final_gates:
+        transition_id = clean(gate.get("real_execution_repair_approval_transition_id"))
+        if transition_id and transition_id in transition_ids:
+            gate_transition_matches += 1
+        else:
+            gate_orphans += 1
+
+    return {
+        "real_repair_final_gate_transition_matches": gate_transition_matches,
+        "real_repair_final_gate_orphans": gate_orphans,
+        "real_repair_final_gate_linkage_complete": bool(real_repair_final_gates)
+        and gate_orphans == 0,
     }
 
 

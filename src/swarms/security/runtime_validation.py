@@ -50,6 +50,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
     "replay_lifecycle_retry_real_execution_repair_approval",
     "replay_lifecycle_retry_real_execution_repair_approval_transition",
+    "replay_lifecycle_retry_real_execution_repair_final_gate",
 }
 
 
@@ -470,6 +471,20 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_repair_final_gate":
+            result = validate_replay_lifecycle_retry_real_execution_repair_final_gate(
+                record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -743,6 +758,20 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_repair_approval_transition_repair_subprocess_invoked: dict[str, int] = {}
     real_repair_approval_transition_execution_performed: dict[str, int] = {}
     real_repair_approval_transition_subprocess_invoked: dict[str, int] = {}
+    real_repair_final_gate_statuses: dict[str, int] = {}
+    real_repair_final_gate_preconditions_satisfied: dict[str, int] = {}
+    real_repair_final_gate_ready: dict[str, int] = {}
+    real_repair_final_gate_would_execute: dict[str, int] = {}
+    real_repair_final_gate_next_actions: dict[str, int] = {}
+    real_repair_final_gate_operator_authorized: dict[str, int] = {}
+    real_repair_final_gate_transition_approved: dict[str, int] = {}
+    real_repair_final_gate_repair_execution_enabled: dict[str, int] = {}
+    real_repair_final_gate_real_execution_enabled: dict[str, int] = {}
+    real_repair_final_gate_subprocess_enabled: dict[str, int] = {}
+    real_repair_final_gate_repair_execution_performed: dict[str, int] = {}
+    real_repair_final_gate_repair_subprocess_invoked: dict[str, int] = {}
+    real_repair_final_gate_execution_performed: dict[str, int] = {}
+    real_repair_final_gate_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -1985,6 +2014,37 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
 
+        if record_type == "replay_lifecycle_retry_real_execution_repair_final_gate":
+            status = str(item.get("gate_status") or "unknown").strip() or "unknown"
+            next_action = (
+                str(item.get("recommended_next_action") or "unknown").strip()
+                or "unknown"
+            )
+
+            real_repair_final_gate_statuses[status] = (
+                real_repair_final_gate_statuses.get(status, 0) + 1
+            )
+            real_repair_final_gate_next_actions[next_action] = (
+                real_repair_final_gate_next_actions.get(next_action, 0) + 1
+            )
+
+            for target, key_name in (
+                (real_repair_final_gate_preconditions_satisfied, "repair_preconditions_satisfied"),
+                (real_repair_final_gate_ready, "ready_for_repair_execution"),
+                (real_repair_final_gate_would_execute, "would_execute"),
+                (real_repair_final_gate_operator_authorized, "operator_authorized"),
+                (real_repair_final_gate_transition_approved, "repair_execution_transition_approved"),
+                (real_repair_final_gate_repair_execution_enabled, "repair_execution_enabled"),
+                (real_repair_final_gate_real_execution_enabled, "real_execution_enabled"),
+                (real_repair_final_gate_subprocess_enabled, "subprocess_enabled"),
+                (real_repair_final_gate_repair_execution_performed, "repair_execution_performed"),
+                (real_repair_final_gate_repair_subprocess_invoked, "repair_subprocess_invoked"),
+                (real_repair_final_gate_execution_performed, "execution_performed"),
+                (real_repair_final_gate_subprocess_invoked, "subprocess_invoked"),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -2544,6 +2604,40 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_repair_approval_transition_subprocess_invoked": (
             real_repair_approval_transition_subprocess_invoked
         ),
+        "real_repair_final_gate_statuses": real_repair_final_gate_statuses,
+        "real_repair_final_gate_preconditions_satisfied": (
+            real_repair_final_gate_preconditions_satisfied
+        ),
+        "real_repair_final_gate_ready": real_repair_final_gate_ready,
+        "real_repair_final_gate_would_execute": real_repair_final_gate_would_execute,
+        "real_repair_final_gate_next_actions": real_repair_final_gate_next_actions,
+        "real_repair_final_gate_operator_authorized": (
+            real_repair_final_gate_operator_authorized
+        ),
+        "real_repair_final_gate_transition_approved": (
+            real_repair_final_gate_transition_approved
+        ),
+        "real_repair_final_gate_repair_execution_enabled": (
+            real_repair_final_gate_repair_execution_enabled
+        ),
+        "real_repair_final_gate_real_execution_enabled": (
+            real_repair_final_gate_real_execution_enabled
+        ),
+        "real_repair_final_gate_subprocess_enabled": (
+            real_repair_final_gate_subprocess_enabled
+        ),
+        "real_repair_final_gate_repair_execution_performed": (
+            real_repair_final_gate_repair_execution_performed
+        ),
+        "real_repair_final_gate_repair_subprocess_invoked": (
+            real_repair_final_gate_repair_subprocess_invoked
+        ),
+        "real_repair_final_gate_execution_performed": (
+            real_repair_final_gate_execution_performed
+        ),
+        "real_repair_final_gate_subprocess_invoked": (
+            real_repair_final_gate_subprocess_invoked
+        ),
     }
 
 
@@ -3014,6 +3108,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_read_only_repair_action_bundle_review_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_repair_final_gate":
+        return str(
+            record.get("real_execution_repair_final_gate_id")
+            or record.get("real_execution_repair_approval_transition_id")
+            or record.get("real_execution_repair_approval_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -3058,6 +3160,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_read_only_repair_action_bundle_review_id",
         "real_execution_repair_approval_id",
         "real_execution_repair_approval_transition_id",
+        "real_execution_repair_final_gate_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -3099,6 +3202,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_read_only_repair_action_bundle_review_id",
             "real_execution_repair_approval_id",
             "real_execution_repair_approval_transition_id",
+            "real_execution_repair_final_gate_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -6598,6 +6702,170 @@ def validate_replay_lifecycle_retry_real_execution_repair_approval_transition(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_repair_final_gate(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate repair execution final gate records."""
+    reasons: list[str] = []
+
+    gate_id = str(record.get("real_execution_repair_final_gate_id") or "").strip()
+    transition_id = str(
+        record.get("real_execution_repair_approval_transition_id") or ""
+    ).strip()
+    approval_id = str(record.get("real_execution_repair_approval_id") or "").strip()
+    review_id = str(
+        record.get("real_execution_read_only_repair_action_bundle_review_id") or ""
+    ).strip()
+    bundle_id = str(
+        record.get("real_execution_read_only_repair_action_bundle_id") or ""
+    ).strip()
+    repair_plan_id = str(
+        record.get("real_execution_read_only_repair_plan_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    gate_status = str(record.get("gate_status") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    source_transition_to_status = str(
+        record.get("source_transition_to_status") or ""
+    ).strip()
+    source_transition_approved = bool(record.get("source_transition_approved"))
+    source_review_status = str(record.get("source_review_status") or "").strip()
+    source_bundle_status = str(record.get("source_bundle_status") or "").strip()
+    source_repair_plan_status = str(
+        record.get("source_repair_plan_status") or ""
+    ).strip()
+
+    repair_preconditions_satisfied = bool(
+        record.get("repair_preconditions_satisfied")
+    )
+    ready_for_repair_execution = bool(record.get("ready_for_repair_execution"))
+    would_execute = bool(record.get("would_execute"))
+    operator_authorized = bool(record.get("operator_authorized"))
+    repair_execution_approval_required = bool(
+        record.get("repair_execution_approval_required")
+    )
+    transition_approved = bool(record.get("repair_execution_transition_approved"))
+
+    bundle_execution_enabled = bool(record.get("bundle_execution_enabled"))
+    repair_execution_enabled = bool(record.get("repair_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    bundle_execution_performed = bool(record.get("bundle_execution_performed"))
+    bundle_subprocess_invoked = bool(record.get("bundle_subprocess_invoked"))
+    repair_execution_performed = bool(record.get("repair_execution_performed"))
+    repair_subprocess_invoked = bool(record.get("repair_subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not gate_id:
+        reasons.append("missing_real_execution_repair_final_gate_id")
+    if not transition_id:
+        reasons.append("missing_real_execution_repair_approval_transition_id")
+    if not approval_id:
+        reasons.append("missing_real_execution_repair_approval_id")
+    if not review_id:
+        reasons.append("missing_real_execution_read_only_repair_action_bundle_review_id")
+    if not bundle_id:
+        reasons.append("missing_real_execution_read_only_repair_action_bundle_id")
+    if not repair_plan_id:
+        reasons.append("missing_real_execution_read_only_repair_plan_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if gate_status not in {"ready_blocked", "blocked"}:
+        reasons.append("invalid_repair_execution_final_gate_status")
+    if source_transition_to_status != "approved":
+        reasons.append("repair_final_gate_source_transition_must_be_approved")
+    if not source_transition_approved:
+        reasons.append("repair_final_gate_source_transition_approved_flag_required")
+    if not transition_approved:
+        reasons.append("repair_final_gate_transition_approved_flag_required")
+    if source_review_status != "approved":
+        reasons.append("repair_final_gate_source_review_must_be_approved")
+    if source_bundle_status != "assembled":
+        reasons.append("repair_final_gate_source_bundle_must_be_assembled")
+    if source_repair_plan_status != "planned":
+        reasons.append("repair_final_gate_source_repair_plan_must_be_planned")
+    if not operator_authorized:
+        reasons.append("repair_final_gate_requires_operator_authorized")
+    if not repair_execution_approval_required:
+        reasons.append("repair_final_gate_requires_repair_execution_approval_required")
+
+    if gate_status == "ready_blocked" and not repair_preconditions_satisfied:
+        reasons.append("ready_blocked_repair_final_gate_requires_satisfied_preconditions")
+    if gate_status == "blocked" and repair_preconditions_satisfied:
+        reasons.append("blocked_repair_final_gate_must_not_report_satisfied_preconditions")
+
+    if ready_for_repair_execution:
+        reasons.append("repair_final_gate_must_not_be_ready_for_repair_execution")
+    if would_execute:
+        reasons.append("repair_final_gate_must_not_would_execute")
+    if next_action != "prepare_repair_execution_dry_run_envelope":
+        reasons.append("invalid_repair_final_gate_next_action")
+    if reason != "repair_execution_final_gate_recorded":
+        reasons.append("invalid_repair_final_gate_reason")
+
+    if bundle_execution_enabled or bool(payload_mapping.get("bundle_execution_enabled")):
+        reasons.append("repair_final_gate_must_not_enable_bundle_execution")
+    if repair_execution_enabled or bool(payload_mapping.get("repair_execution_enabled")):
+        reasons.append("repair_final_gate_must_not_enable_repair_execution")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("repair_final_gate_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("repair_final_gate_must_not_enable_subprocess")
+    if bundle_execution_performed or bool(payload_mapping.get("bundle_execution_performed")):
+        reasons.append("repair_final_gate_must_not_perform_bundle_execution")
+    if bundle_subprocess_invoked or bool(payload_mapping.get("bundle_subprocess_invoked")):
+        reasons.append("repair_final_gate_must_not_invoke_bundle_subprocess")
+    if repair_execution_performed or bool(payload_mapping.get("repair_execution_performed")):
+        reasons.append("repair_final_gate_must_not_perform_repair_execution")
+    if repair_subprocess_invoked or bool(payload_mapping.get("repair_subprocess_invoked")):
+        reasons.append("repair_final_gate_must_not_invoke_repair_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("repair_final_gate_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("repair_final_gate_must_not_invoke_subprocess")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_repair_final_gate",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": gate_id or transition_id,
+        "gate_status": gate_status or "unknown",
+        "repair_preconditions_satisfied": repair_preconditions_satisfied,
+        "ready_for_repair_execution": ready_for_repair_execution,
+        "would_execute": would_execute,
+        "recommended_next_action": next_action or "unknown",
+        "operator_authorized": operator_authorized,
+        "repair_execution_approval_required": repair_execution_approval_required,
+        "repair_execution_transition_approved": transition_approved,
+        "source_transition_to_status": source_transition_to_status or "unknown",
+        "source_transition_approved": source_transition_approved,
+        "source_review_status": source_review_status or "unknown",
+        "source_bundle_status": source_bundle_status or "unknown",
+        "source_repair_plan_status": source_repair_plan_status or "unknown",
+        "bundle_execution_enabled": bundle_execution_enabled,
+        "repair_execution_enabled": repair_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "bundle_execution_performed": bundle_execution_performed,
+        "bundle_subprocess_invoked": bundle_subprocess_invoked,
+        "repair_execution_performed": repair_execution_performed,
+        "repair_subprocess_invoked": repair_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -6631,4 +6899,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review",
     "validate_replay_lifecycle_retry_real_execution_repair_approval",
     "validate_replay_lifecycle_retry_real_execution_repair_approval_transition",
+    "validate_replay_lifecycle_retry_real_execution_repair_final_gate",
 ]

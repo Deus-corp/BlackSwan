@@ -530,12 +530,13 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
             _real_read_only_repair_action_bundle_review(),
             _real_repair_approval(),
             _real_repair_approval_transition(),
+            _real_repair_final_gate(),
         ]
     )
 
     assert summary["chain_complete"] is True
     assert summary["missing_stages"] == []
-    assert summary["total_records"] == 26
+    assert summary["total_records"] == 27
     assert summary["counts"]["controlled_execution_results"] == 1
     assert summary["extended_controlled_execution_observed"] is True
     assert summary["controlled_execution_result_statuses"]["rejected"] == 1
@@ -918,6 +919,29 @@ def test_inspect_retry_governance_trail_counts_controlled_execution_extension() 
     assert summary["real_repair_approval_transition_linkage_complete"] is True
     assert summary["real_repair_approval_transition_approval_matches"] == 1
     assert summary["real_repair_approval_transition_orphans"] == 0
+    assert summary["counts"]["real_execution_repair_final_gates"] == 1
+    assert summary["chain_ids"]["real_execution_repair_final_gate_ids"] == [
+        "repair-final-gate-1"
+    ]
+    assert summary["real_repair_final_gate_statuses"]["ready_blocked"] == 1
+    assert summary["real_repair_final_gate_preconditions_satisfied"]["true"] == 1
+    assert summary["real_repair_final_gate_ready"]["false"] == 1
+    assert summary["real_repair_final_gate_would_execute"]["false"] == 1
+    assert summary["real_repair_final_gate_next_actions"][
+        "prepare_repair_execution_dry_run_envelope"
+    ] == 1
+    assert summary["real_repair_final_gate_operator_authorized"]["true"] == 1
+    assert summary["real_repair_final_gate_transition_approved"]["true"] == 1
+    assert summary["real_repair_final_gate_repair_execution_enabled"]["false"] == 1
+    assert summary["real_repair_final_gate_real_execution_enabled"]["false"] == 1
+    assert summary["real_repair_final_gate_subprocess_enabled"]["false"] == 1
+    assert summary["real_repair_final_gate_repair_execution_performed"]["false"] == 1
+    assert summary["real_repair_final_gate_repair_subprocess_invoked"]["false"] == 1
+    assert summary["real_repair_final_gate_execution_performed"]["false"] == 1
+    assert summary["real_repair_final_gate_subprocess_invoked"]["false"] == 1
+    assert summary["real_repair_final_gate_linkage_complete"] is True
+    assert summary["real_repair_final_gate_transition_matches"] == 1
+    assert summary["real_repair_final_gate_orphans"] == 0
 
 
 def test_inspect_retry_governance_trail_does_not_require_controlled_execution_result() -> None:
@@ -1984,3 +2008,74 @@ def test_inspect_retry_governance_trail_counts_real_repair_approval_transition_o
 
     assert summary["real_repair_approval_transition_linkage_complete"] is False
     assert summary["real_repair_approval_transition_orphans"] == 1
+
+
+def _real_repair_final_gate(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_repair_final_gate",
+        "real_execution_repair_final_gate_id": "repair-final-gate-1",
+        "real_execution_repair_approval_transition_id": "repair-transition-1",
+        "real_execution_repair_approval_id": "repair-approval-1",
+        "real_execution_read_only_repair_action_bundle_review_id": "bundle-review-1",
+        "real_execution_read_only_repair_action_bundle_id": "repair-bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "real_execution_read_only_feedback_id": "feedback-1",
+        "real_execution_read_only_execution_result_id": "read-only-result-1",
+        "rendered_command_id": "rendered-1",
+        "gate_status": "ready_blocked",
+        "repair_preconditions_satisfied": True,
+        "ready_for_repair_execution": False,
+        "would_execute": False,
+        "recommended_next_action": "prepare_repair_execution_dry_run_envelope",
+        "operator_authorized": True,
+        "repair_execution_approval_required": True,
+        "repair_execution_transition_approved": True,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+    }
+    item.update(overrides)
+    return item
+
+
+def test_inspect_retry_governance_trail_counts_real_repair_final_gate_orphan() -> None:
+    summary = inspect_retry_governance_trail_from_records(
+        [
+            _proposal(),
+            _approval(),
+            _plan(),
+            _rendered_command(),
+            _rendered_command_result(),
+            _eligibility(),
+            _result(),
+            _controlled_execution_result(),
+            _real_preflight(),
+            _real_approval(),
+            _real_approval_transition(),
+            _real_final_gate(),
+            _real_dry_run_envelope(),
+            _real_noop_result(),
+            _real_read_only_promotion(),
+            _real_read_only_final_gate(),
+            _real_read_only_approval(),
+            _real_read_only_approval_transition(),
+            _real_read_only_readiness_gate(),
+            _real_read_only_execution_result(),
+            _real_read_only_feedback(),
+            _real_read_only_repair_plan(),
+            _real_read_only_repair_action_bundle(),
+            _real_read_only_repair_action_bundle_review(),
+            _real_repair_approval(),
+            _real_repair_approval_transition(),
+            _real_repair_final_gate(
+                real_execution_repair_approval_transition_id="missing-transition"
+            ),
+        ]
+    )
+
+    assert summary["real_repair_final_gate_linkage_complete"] is False
+    assert summary["real_repair_final_gate_orphans"] == 1
