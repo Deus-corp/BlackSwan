@@ -506,3 +506,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "must not enable or perform repair execution" in text
     assert "ready_for_repair_execution=false" in text
     assert "repair_subprocess_invoked=false" in text
+    assert "Repair execution dry-run envelope" in text
+    assert "replay_lifecycle_retry_real_execution_repair_dry_run_envelope" in text
+    assert "dry-run envelope after a ready-blocked repair execution final gate" in text
+    assert "must not apply changes" in text
+    assert "dry_run_only=true" in text
+    assert "repair_subprocess_invoked=false" in text

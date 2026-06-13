@@ -36,6 +36,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review,
     validate_replay_lifecycle_retry_real_execution_repair_approval,
     validate_replay_lifecycle_retry_real_execution_repair_approval_transition,
+    validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope,
 )
 
 
@@ -3678,3 +3679,124 @@ def test_validate_retry_real_execution_repair_approval_transition_rejects_non_pe
         "repair_execution_approval_transition_source_approval_must_be_pending"
         in result["reasons"]
     )
+
+
+def _real_execution_repair_dry_run_envelope(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_repair_dry_run_envelope",
+        "real_execution_repair_dry_run_envelope_id": "repair-envelope-1",
+        "real_execution_repair_final_gate_id": "repair-final-gate-1",
+        "real_execution_repair_approval_transition_id": "repair-transition-1",
+        "real_execution_repair_approval_id": "repair-approval-1",
+        "real_execution_read_only_repair_action_bundle_id": "bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "rendered_command_id": "rendered-command-1",
+        "repair_dry_run_status": "prepared",
+        "dry_run_only": True,
+        "repair_dry_run_mode": "repair_action_bundle_validation",
+        "repair_dry_run_targets": ["target-a", "target-b"],
+        "repair_dry_run_target_count": 2,
+        "repair_dry_run_report": {
+            "mode": "repair_action_bundle_validation",
+            "target_count": 2,
+            "targets": ["target-a", "target-b"],
+            "applies_changes": False,
+            "invokes_subprocess": False,
+            "executes_bundle": False,
+        },
+        "source_gate_status": "ready_blocked",
+        "source_final_gate_ready_blocked": True,
+        "source_final_gate_preconditions_satisfied": True,
+        "source_transition_approved": True,
+        "operator_authorized": True,
+        "ready_for_repair_execution": False,
+        "would_execute": False,
+        "recommended_next_action": "prepare_repair_execution_noop_harness",
+        "bundle_execution_enabled": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "bundle_execution_performed": False,
+        "bundle_subprocess_invoked": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "repair_execution_dry_run_envelope_recorded",
+        "payload": {
+            "bundle_execution_enabled": False,
+            "repair_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "bundle_execution_performed": False,
+            "bundle_subprocess_invoked": False,
+            "repair_execution_performed": False,
+            "repair_subprocess_invoked": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+def test_validate_retry_real_execution_repair_dry_run_envelope_accepts_prepared_disabled() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope(
+        _real_execution_repair_dry_run_envelope()
+    )
+
+    assert result["valid"] is True
+    assert result["repair_dry_run_status"] == "prepared"
+    assert result["dry_run_only"] is True
+    assert result["repair_execution_enabled"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_repair_dry_run_envelope_rejects_repair_execution_enabled() -> None:
+    record = _real_execution_repair_dry_run_envelope(repair_execution_enabled=True)
+    record["payload"]["repair_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope(
+        record
+    )
+
+    assert result["valid"] is False
+    assert (
+        "repair_dry_run_envelope_must_not_enable_repair_execution"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_repair_dry_run_envelope_rejects_subprocess_enabled() -> None:
+    record = _real_execution_repair_dry_run_envelope(subprocess_enabled=True)
+    record["payload"]["subprocess_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "repair_dry_run_envelope_must_not_enable_subprocess" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_dry_run_envelope_rejects_report_that_applies_changes() -> None:
+    record = _real_execution_repair_dry_run_envelope()
+    record["repair_dry_run_report"]["applies_changes"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope(
+        record
+    )
+
+    assert result["valid"] is False
+    assert "repair_dry_run_report_must_not_apply_changes" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_dry_run_envelope_rejects_target_count_mismatch() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope(
+        _real_execution_repair_dry_run_envelope(
+            repair_dry_run_target_count=3,
+        )
+    )
+
+    assert result["valid"] is False
+    assert "repair_dry_run_envelope_target_count_mismatch" in result["reasons"]

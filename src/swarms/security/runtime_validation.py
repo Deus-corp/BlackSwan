@@ -51,6 +51,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_repair_approval",
     "replay_lifecycle_retry_real_execution_repair_approval_transition",
     "replay_lifecycle_retry_real_execution_repair_final_gate",
+    "replay_lifecycle_retry_real_execution_repair_dry_run_envelope",
 }
 
 
@@ -485,6 +486,25 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_repair_dry_run_envelope"
+        ):
+            result = (
+                validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -772,6 +792,22 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_repair_final_gate_repair_subprocess_invoked: dict[str, int] = {}
     real_repair_final_gate_execution_performed: dict[str, int] = {}
     real_repair_final_gate_subprocess_invoked: dict[str, int] = {}
+    real_repair_dry_run_envelope_statuses: dict[str, int] = {}
+    real_repair_dry_run_envelope_dry_run_only: dict[str, int] = {}
+    real_repair_dry_run_envelope_modes: dict[str, int] = {}
+    real_repair_dry_run_envelope_target_counts: dict[str, int] = {}
+    real_repair_dry_run_envelope_source_gate_statuses: dict[str, int] = {}
+    real_repair_dry_run_envelope_next_actions: dict[str, int] = {}
+    real_repair_dry_run_envelope_operator_authorized: dict[str, int] = {}
+    real_repair_dry_run_envelope_ready: dict[str, int] = {}
+    real_repair_dry_run_envelope_would_execute: dict[str, int] = {}
+    real_repair_dry_run_envelope_repair_execution_enabled: dict[str, int] = {}
+    real_repair_dry_run_envelope_real_execution_enabled: dict[str, int] = {}
+    real_repair_dry_run_envelope_subprocess_enabled: dict[str, int] = {}
+    real_repair_dry_run_envelope_repair_execution_performed: dict[str, int] = {}
+    real_repair_dry_run_envelope_repair_subprocess_invoked: dict[str, int] = {}
+    real_repair_dry_run_envelope_execution_performed: dict[str, int] = {}
+    real_repair_dry_run_envelope_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -2044,6 +2080,84 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             ):
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
+        
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_repair_dry_run_envelope"
+        ):
+            status = (
+                str(item.get("repair_dry_run_status") or "unknown").strip()
+                or "unknown"
+            )
+            mode = (
+                str(item.get("repair_dry_run_mode") or "unknown").strip()
+                or "unknown"
+            )
+            gate_status = (
+                str(item.get("source_gate_status") or "unknown").strip()
+                or "unknown"
+            )
+            next_action = (
+                str(item.get("recommended_next_action") or "unknown").strip()
+                or "unknown"
+            )
+            target_count = str(item.get("repair_dry_run_target_count") or 0)
+
+            real_repair_dry_run_envelope_statuses[status] = (
+                real_repair_dry_run_envelope_statuses.get(status, 0) + 1
+            )
+            real_repair_dry_run_envelope_modes[mode] = (
+                real_repair_dry_run_envelope_modes.get(mode, 0) + 1
+            )
+            real_repair_dry_run_envelope_source_gate_statuses[gate_status] = (
+                real_repair_dry_run_envelope_source_gate_statuses.get(
+                    gate_status, 0
+                )
+                + 1
+            )
+            real_repair_dry_run_envelope_next_actions[next_action] = (
+                real_repair_dry_run_envelope_next_actions.get(next_action, 0) + 1
+            )
+            real_repair_dry_run_envelope_target_counts[target_count] = (
+                real_repair_dry_run_envelope_target_counts.get(target_count, 0) + 1
+            )
+
+            for target, key_name in (
+                (real_repair_dry_run_envelope_dry_run_only, "dry_run_only"),
+                (real_repair_dry_run_envelope_operator_authorized, "operator_authorized"),
+                (real_repair_dry_run_envelope_ready, "ready_for_repair_execution"),
+                (real_repair_dry_run_envelope_would_execute, "would_execute"),
+                (
+                    real_repair_dry_run_envelope_repair_execution_enabled,
+                    "repair_execution_enabled",
+                ),
+                (
+                    real_repair_dry_run_envelope_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (
+                    real_repair_dry_run_envelope_subprocess_enabled,
+                    "subprocess_enabled",
+                ),
+                (
+                    real_repair_dry_run_envelope_repair_execution_performed,
+                    "repair_execution_performed",
+                ),
+                (
+                    real_repair_dry_run_envelope_repair_subprocess_invoked,
+                    "repair_subprocess_invoked",
+                ),
+                (
+                    real_repair_dry_run_envelope_execution_performed,
+                    "execution_performed",
+                ),
+                (
+                    real_repair_dry_run_envelope_subprocess_invoked,
+                    "subprocess_invoked",
+                ),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
 
     return {
         "type": "security_validation_summary",
@@ -2638,6 +2752,50 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_repair_final_gate_subprocess_invoked": (
             real_repair_final_gate_subprocess_invoked
         ),
+        "real_repair_dry_run_envelope_statuses": (
+            real_repair_dry_run_envelope_statuses
+        ),
+        "real_repair_dry_run_envelope_dry_run_only": (
+            real_repair_dry_run_envelope_dry_run_only
+        ),
+        "real_repair_dry_run_envelope_modes": real_repair_dry_run_envelope_modes,
+        "real_repair_dry_run_envelope_target_counts": (
+            real_repair_dry_run_envelope_target_counts
+        ),
+        "real_repair_dry_run_envelope_source_gate_statuses": (
+            real_repair_dry_run_envelope_source_gate_statuses
+        ),
+        "real_repair_dry_run_envelope_next_actions": (
+            real_repair_dry_run_envelope_next_actions
+        ),
+        "real_repair_dry_run_envelope_operator_authorized": (
+            real_repair_dry_run_envelope_operator_authorized
+        ),
+        "real_repair_dry_run_envelope_ready": real_repair_dry_run_envelope_ready,
+        "real_repair_dry_run_envelope_would_execute": (
+            real_repair_dry_run_envelope_would_execute
+        ),
+        "real_repair_dry_run_envelope_repair_execution_enabled": (
+            real_repair_dry_run_envelope_repair_execution_enabled
+        ),
+        "real_repair_dry_run_envelope_real_execution_enabled": (
+            real_repair_dry_run_envelope_real_execution_enabled
+        ),
+        "real_repair_dry_run_envelope_subprocess_enabled": (
+            real_repair_dry_run_envelope_subprocess_enabled
+        ),
+        "real_repair_dry_run_envelope_repair_execution_performed": (
+            real_repair_dry_run_envelope_repair_execution_performed
+        ),
+        "real_repair_dry_run_envelope_repair_subprocess_invoked": (
+            real_repair_dry_run_envelope_repair_subprocess_invoked
+        ),
+        "real_repair_dry_run_envelope_execution_performed": (
+            real_repair_dry_run_envelope_execution_performed
+        ),
+        "real_repair_dry_run_envelope_subprocess_invoked": (
+            real_repair_dry_run_envelope_subprocess_invoked
+        ),
     }
 
 
@@ -3116,6 +3274,17 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_repair_approval_id")
             or ""
         ).strip()
+    
+    if (
+        record_type
+        == "replay_lifecycle_retry_real_execution_repair_dry_run_envelope"
+    ):
+        return str(
+            record.get("real_execution_repair_dry_run_envelope_id")
+            or record.get("real_execution_repair_final_gate_id")
+            or record.get("real_execution_repair_approval_transition_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -3161,6 +3330,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_repair_approval_id",
         "real_execution_repair_approval_transition_id",
         "real_execution_repair_final_gate_id",
+        "real_execution_repair_dry_run_envelope_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -3203,6 +3373,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_repair_approval_id",
             "real_execution_repair_approval_transition_id",
             "real_execution_repair_final_gate_id",
+            "real_execution_repair_dry_run_envelope_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -6866,6 +7037,185 @@ def validate_replay_lifecycle_retry_real_execution_repair_final_gate(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate repair execution dry-run envelope records."""
+    reasons: list[str] = []
+
+    envelope_id = str(
+        record.get("real_execution_repair_dry_run_envelope_id") or ""
+    ).strip()
+    final_gate_id = str(
+        record.get("real_execution_repair_final_gate_id") or ""
+    ).strip()
+    transition_id = str(
+        record.get("real_execution_repair_approval_transition_id") or ""
+    ).strip()
+    repair_approval_id = str(
+        record.get("real_execution_repair_approval_id") or ""
+    ).strip()
+    bundle_id = str(
+        record.get("real_execution_read_only_repair_action_bundle_id") or ""
+    ).strip()
+    repair_plan_id = str(
+        record.get("real_execution_read_only_repair_plan_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    dry_run_status = str(record.get("repair_dry_run_status") or "").strip()
+    dry_run_mode = str(record.get("repair_dry_run_mode") or "").strip()
+    source_gate_status = str(record.get("source_gate_status") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    dry_run_only = bool(record.get("dry_run_only"))
+    source_ready_blocked = bool(record.get("source_final_gate_ready_blocked"))
+    source_preconditions_satisfied = bool(
+        record.get("source_final_gate_preconditions_satisfied")
+    )
+    source_transition_approved = bool(record.get("source_transition_approved"))
+    operator_authorized = bool(record.get("operator_authorized"))
+    ready_for_repair_execution = bool(record.get("ready_for_repair_execution"))
+    would_execute = bool(record.get("would_execute"))
+
+    repair_dry_run_target_count = record.get("repair_dry_run_target_count")
+    repair_dry_run_targets = record.get("repair_dry_run_targets")
+    if not isinstance(repair_dry_run_targets, list):
+        repair_dry_run_targets = []
+
+    report = record.get("repair_dry_run_report")
+    report_mapping = report if isinstance(report, Mapping) else {}
+
+    bundle_execution_enabled = bool(record.get("bundle_execution_enabled"))
+    repair_execution_enabled = bool(record.get("repair_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    bundle_execution_performed = bool(record.get("bundle_execution_performed"))
+    bundle_subprocess_invoked = bool(record.get("bundle_subprocess_invoked"))
+    repair_execution_performed = bool(record.get("repair_execution_performed"))
+    repair_subprocess_invoked = bool(record.get("repair_subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not envelope_id:
+        reasons.append("missing_real_execution_repair_dry_run_envelope_id")
+    if not final_gate_id:
+        reasons.append("missing_real_execution_repair_final_gate_id")
+    if not transition_id:
+        reasons.append("missing_real_execution_repair_approval_transition_id")
+    if not repair_approval_id:
+        reasons.append("missing_real_execution_repair_approval_id")
+    if not bundle_id:
+        reasons.append("missing_real_execution_read_only_repair_action_bundle_id")
+    if not repair_plan_id:
+        reasons.append("missing_real_execution_read_only_repair_plan_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if dry_run_status != "prepared":
+        reasons.append("invalid_repair_dry_run_envelope_status")
+    if not dry_run_only:
+        reasons.append("repair_dry_run_envelope_must_be_dry_run_only")
+    if dry_run_mode != "repair_action_bundle_validation":
+        reasons.append("invalid_repair_dry_run_envelope_mode")
+    if source_gate_status != "ready_blocked":
+        reasons.append("repair_dry_run_envelope_source_gate_must_be_ready_blocked")
+    if not source_ready_blocked:
+        reasons.append("repair_dry_run_envelope_source_ready_blocked_required")
+    if not source_preconditions_satisfied:
+        reasons.append("repair_dry_run_envelope_source_preconditions_required")
+    if not source_transition_approved:
+        reasons.append("repair_dry_run_envelope_source_transition_approved_required")
+    if not operator_authorized:
+        reasons.append("repair_dry_run_envelope_requires_operator_authorized")
+
+    if repair_dry_run_target_count != len(repair_dry_run_targets):
+        reasons.append("repair_dry_run_envelope_target_count_mismatch")
+    if len(repair_dry_run_targets) <= 0:
+        reasons.append("repair_dry_run_envelope_targets_required")
+
+    if report_mapping.get("applies_changes") is not False:
+        reasons.append("repair_dry_run_report_must_not_apply_changes")
+    if report_mapping.get("invokes_subprocess") is not False:
+        reasons.append("repair_dry_run_report_must_not_invoke_subprocess")
+    if report_mapping.get("executes_bundle") is not False:
+        reasons.append("repair_dry_run_report_must_not_execute_bundle")
+
+    if ready_for_repair_execution:
+        reasons.append("repair_dry_run_envelope_must_not_be_ready_for_repair_execution")
+    if would_execute:
+        reasons.append("repair_dry_run_envelope_must_not_would_execute")
+    if next_action != "prepare_repair_execution_noop_harness":
+        reasons.append("invalid_repair_dry_run_envelope_next_action")
+    if reason != "repair_execution_dry_run_envelope_recorded":
+        reasons.append("invalid_repair_dry_run_envelope_reason")
+
+    if bundle_execution_enabled or bool(payload_mapping.get("bundle_execution_enabled")):
+        reasons.append("repair_dry_run_envelope_must_not_enable_bundle_execution")
+    if repair_execution_enabled or bool(payload_mapping.get("repair_execution_enabled")):
+        reasons.append("repair_dry_run_envelope_must_not_enable_repair_execution")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("repair_dry_run_envelope_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("repair_dry_run_envelope_must_not_enable_subprocess")
+    if bundle_execution_performed or bool(
+        payload_mapping.get("bundle_execution_performed")
+    ):
+        reasons.append("repair_dry_run_envelope_must_not_perform_bundle_execution")
+    if bundle_subprocess_invoked or bool(
+        payload_mapping.get("bundle_subprocess_invoked")
+    ):
+        reasons.append("repair_dry_run_envelope_must_not_invoke_bundle_subprocess")
+    if repair_execution_performed or bool(
+        payload_mapping.get("repair_execution_performed")
+    ):
+        reasons.append("repair_dry_run_envelope_must_not_perform_repair_execution")
+    if repair_subprocess_invoked or bool(payload_mapping.get("repair_subprocess_invoked")):
+        reasons.append("repair_dry_run_envelope_must_not_invoke_repair_subprocess")
+    if execution_performed or bool(payload_mapping.get("execution_performed")):
+        reasons.append("repair_dry_run_envelope_must_not_execute")
+    if subprocess_invoked or bool(payload_mapping.get("subprocess_invoked")):
+        reasons.append("repair_dry_run_envelope_must_not_invoke_subprocess")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": (
+            "replay_lifecycle_retry_real_execution_repair_dry_run_envelope"
+        ),
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": envelope_id or final_gate_id,
+        "repair_dry_run_status": dry_run_status or "unknown",
+        "dry_run_only": dry_run_only,
+        "repair_dry_run_mode": dry_run_mode or "unknown",
+        "repair_dry_run_target_count": repair_dry_run_target_count,
+        "source_gate_status": source_gate_status or "unknown",
+        "source_final_gate_ready_blocked": source_ready_blocked,
+        "source_final_gate_preconditions_satisfied": source_preconditions_satisfied,
+        "source_transition_approved": source_transition_approved,
+        "operator_authorized": operator_authorized,
+        "ready_for_repair_execution": ready_for_repair_execution,
+        "would_execute": would_execute,
+        "recommended_next_action": next_action or "unknown",
+        "bundle_execution_enabled": bundle_execution_enabled,
+        "repair_execution_enabled": repair_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "bundle_execution_performed": bundle_execution_performed,
+        "bundle_subprocess_invoked": bundle_subprocess_invoked,
+        "repair_execution_performed": repair_execution_performed,
+        "repair_subprocess_invoked": repair_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -6900,4 +7250,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_repair_approval",
     "validate_replay_lifecycle_retry_real_execution_repair_approval_transition",
     "validate_replay_lifecycle_retry_real_execution_repair_final_gate",
+    "validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope",
 ]

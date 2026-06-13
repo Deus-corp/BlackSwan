@@ -1741,6 +1741,23 @@ The final gate artifact must keep `ready_for_repair_execution=false`,
 
 ---
 
+### Repair execution dry-run envelope
+
+`replay_lifecycle_retry_real_execution_repair_dry_run_envelope` records the
+dry-run envelope after a ready-blocked repair execution final gate. The envelope
+captures the repair action bundle targets and validation mode, but it must not
+apply changes, execute the bundle, invoke subprocesses, or enable repair
+execution.
+
+The dry-run envelope artifact must keep `dry_run_only=true`,
+`ready_for_repair_execution=false`, `would_execute=false`,
+`repair_execution_enabled=false`, `real_execution_enabled=false`,
+`subprocess_enabled=false`, `repair_execution_performed=false`,
+`repair_subprocess_invoked=false`, `execution_performed=false`, and
+`subprocess_invoked=false`. must not apply changes.
+
+---
+
 ## Related modules
 
 ```text

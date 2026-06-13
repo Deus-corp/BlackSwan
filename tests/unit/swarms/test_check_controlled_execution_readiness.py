@@ -361,6 +361,28 @@ def _trail_summary(**overrides):
         "real_repair_final_gate_subprocess_invoked": {"false": 1},
         "real_repair_final_gate_linkage_complete": True,
         "real_repair_final_gate_orphans": 0,
+        "real_repair_dry_run_envelope_statuses": {"prepared": 1},
+        "real_repair_dry_run_envelope_dry_run_only": {"true": 1},
+        "real_repair_dry_run_envelope_modes": {
+            "repair_action_bundle_validation": 1,
+        },
+        "real_repair_dry_run_envelope_target_counts": {"9": 1},
+        "real_repair_dry_run_envelope_source_gate_statuses": {"ready_blocked": 1},
+        "real_repair_dry_run_envelope_next_actions": {
+            "prepare_repair_execution_noop_harness": 1,
+        },
+        "real_repair_dry_run_envelope_operator_authorized": {"true": 1},
+        "real_repair_dry_run_envelope_ready": {"false": 1},
+        "real_repair_dry_run_envelope_would_execute": {"false": 1},
+        "real_repair_dry_run_envelope_repair_execution_enabled": {"false": 1},
+        "real_repair_dry_run_envelope_real_execution_enabled": {"false": 1},
+        "real_repair_dry_run_envelope_subprocess_enabled": {"false": 1},
+        "real_repair_dry_run_envelope_repair_execution_performed": {"false": 1},
+        "real_repair_dry_run_envelope_repair_subprocess_invoked": {"false": 1},
+        "real_repair_dry_run_envelope_execution_performed": {"false": 1},
+        "real_repair_dry_run_envelope_subprocess_invoked": {"false": 1},
+        "real_repair_dry_run_envelope_linkage_complete": True,
+        "real_repair_dry_run_envelope_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -1061,6 +1083,26 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_repair_final_gate_repair_subprocess_invoked": 0,
         "real_repair_final_gate_execution_performed": 0,
         "real_repair_final_gate_subprocess_invoked": 0,
+        "real_repair_dry_run_envelope_observed": True,
+        "real_repair_dry_run_envelope_records": 1,
+        "real_repair_dry_run_envelope_linkage_complete": True,
+        "real_repair_dry_run_envelope_orphans": 0,
+        "real_repair_dry_run_envelope_prepared": 1,
+        "real_repair_dry_run_envelope_dry_run_only": 1,
+        "real_repair_dry_run_envelope_mode_valid": 1,
+        "real_repair_dry_run_envelope_target_count_9": 1,
+        "real_repair_dry_run_envelope_source_gate_ready_blocked": 1,
+        "real_repair_dry_run_envelope_next_action_noop": 1,
+        "real_repair_dry_run_envelope_operator_authorized": 1,
+        "real_repair_dry_run_envelope_ready": 0,
+        "real_repair_dry_run_envelope_would_execute": 0,
+        "real_repair_dry_run_envelope_repair_execution_enabled": 0,
+        "real_repair_dry_run_envelope_real_execution_enabled": 0,
+        "real_repair_dry_run_envelope_subprocess_enabled": 0,
+        "real_repair_dry_run_envelope_repair_execution_performed": 0,
+        "real_repair_dry_run_envelope_repair_subprocess_invoked": 0,
+        "real_repair_dry_run_envelope_execution_performed": 0,
+        "real_repair_dry_run_envelope_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -1376,6 +1418,26 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_repair_final_gate_repair_subprocess_invoked": 0,
         "real_repair_final_gate_execution_performed": 0,
         "real_repair_final_gate_subprocess_invoked": 0,
+        "real_repair_dry_run_envelope_observed": True,
+        "real_repair_dry_run_envelope_records": 1,
+        "real_repair_dry_run_envelope_linkage_complete": True,
+        "real_repair_dry_run_envelope_orphans": 0,
+        "real_repair_dry_run_envelope_prepared": 1,
+        "real_repair_dry_run_envelope_dry_run_only": 1,
+        "real_repair_dry_run_envelope_mode_valid": 1,
+        "real_repair_dry_run_envelope_target_count_9": 1,
+        "real_repair_dry_run_envelope_source_gate_ready_blocked": 1,
+        "real_repair_dry_run_envelope_next_action_noop": 1,
+        "real_repair_dry_run_envelope_operator_authorized": 1,
+        "real_repair_dry_run_envelope_ready": 0,
+        "real_repair_dry_run_envelope_would_execute": 0,
+        "real_repair_dry_run_envelope_repair_execution_enabled": 0,
+        "real_repair_dry_run_envelope_real_execution_enabled": 0,
+        "real_repair_dry_run_envelope_subprocess_enabled": 0,
+        "real_repair_dry_run_envelope_repair_execution_performed": 0,
+        "real_repair_dry_run_envelope_repair_subprocess_invoked": 0,
+        "real_repair_dry_run_envelope_execution_performed": 0,
+        "real_repair_dry_run_envelope_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -1951,3 +2013,36 @@ def test_controlled_execution_readiness_fails_when_real_repair_final_gate_enable
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_repair_final_gate_did_not_enable_repair_execution" in failed
+
+
+def test_controlled_execution_readiness_fails_for_real_repair_dry_run_envelope_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_dry_run_envelope_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_dry_run_envelope_links_to_final_gate" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_dry_run_envelope_enables_repair_execution() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_dry_run_envelope_repair_execution_enabled={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert (
+        "real_repair_dry_run_envelope_did_not_enable_repair_execution"
+        in failed
+    )
