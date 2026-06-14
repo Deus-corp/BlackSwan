@@ -14,41 +14,105 @@ The long-term goal is a system that can launch, observe itself, survive failures
 
 ## Project Status: TRL-4+
 
-BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime.
+BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime with a verified controlled retry and guarded repair execution loop.
 
 Validated in the current architecture:
 
-- ✅ 230+ unit/runtime tests passing.
-- ✅ Trade runtime command loop passing.
-- ✅ Swarm runtime smoke test passing.
-- ✅ Canonical first-class swarm topology with 7 swarm types:
-  - `trade`
-  - `security`
-  - `explorer`
-  - `improver`
-  - `overseer`
-  - `memory`
-  - `simulation`
-- ✅ Generic `SwarmHeartbeat`, `SwarmCommand`, `SwarmEvent`, `SwarmPolicy`, and `SwarmCapability` contracts.
-- ✅ Overseer sees generic swarm heartbeats and topology health.
-- ✅ Memory swarm skeleton publishes canonical `swarm_heartbeat`.
-- ✅ Simulation swarm skeleton publishes canonical `swarm_heartbeat`.
-- ✅ Canonical engine layers moved into `src/`:
-  - `src/cognition`
-  - `src/evolution`
-  - `src/simulation`
-- ✅ `sim/` is now an experiment and compatibility layer, not the core runtime.
-- ✅ Industrial CRDT layer with SQLite-backed local persistence.
-- ✅ Secure gossip and signed exchange components.
-- ✅ Local runtime launcher supports trade, memory, simulation, security, explorer, and overseer services.
-- ✅ Simulation and evolution experiments remain runnable through compatibility wrappers.
-- Local CRDT runtime storage is hardened for multi-process devcontainer runs with conservative SQLite journaling, process locking, malformed storage detection, and fresh-run cleanup.
-- Runtime-level inter-swarm memory flow is validated with Memory + Simulation + Overseer.
-- Verified runtime evidence can be converted into `simulation_replay_scenario` records.
-- Simulation heartbeat reports replay queue metrics.
-- Overseer global briefs surface replay opportunities and propose safe `OBSERVE` directives.
-- `RUN_REPLAY` is available as a gated directive: security validates it, simulation consumes it, and execution is rejected until a dry-run executor is implemented.
-- Dry-run replay executions can now be converted into evidence and memory, surfaced through MemorySummary, memory heartbeat, Overseer memory intelligence, and global briefs.
+* ✅ 930+ unit/runtime tests passing.
+* ✅ Retry governance smoke test passing.
+* ✅ Swarm runtime smoke test passing.
+* ✅ Trade runtime command loop passing.
+* ✅ Canonical first-class swarm topology with 7 swarm types:
+
+  * `trade`
+  * `security`
+  * `explorer`
+  * `improver`
+  * `overseer`
+  * `memory`
+  * `simulation`
+* ✅ Generic `SwarmHeartbeat`, `SwarmCommand`, `SwarmEvent`, `SwarmPolicy`, and `SwarmCapability` contracts.
+* ✅ Overseer sees generic swarm heartbeats, topology health, memory intelligence, replay opportunities, retry governance, and guarded execution readiness.
+* ✅ Memory swarm publishes canonical runtime memory signals.
+* ✅ Simulation swarm publishes canonical runtime simulation/replay signals.
+* ✅ Security validates directive lifecycle, retry governance artifacts, controlled execution artifacts, guarded read-only execution artifacts, repair artifacts, and post-repair verification artifacts.
+* ✅ Industrial CRDT layer with SQLite-backed local persistence.
+* ✅ Secure gossip and signed exchange components.
+* ✅ Local runtime launcher supports trade, memory, simulation, security, explorer, and overseer services.
+* ✅ Simulation and evolution experiments remain runnable through compatibility wrappers.
+* ✅ Local CRDT runtime storage is hardened for multi-process devcontainer runs with conservative SQLite journaling, process locking, malformed storage detection, and fresh-run cleanup.
+* ✅ Runtime-level inter-swarm memory flow is validated with Memory + Simulation + Overseer.
+* ✅ Verified runtime evidence can be converted into `simulation_replay_scenario` records.
+* ✅ Simulation heartbeat reports replay queue metrics.
+* ✅ Overseer global briefs surface replay opportunities and propose safe `OBSERVE` directives.
+* ✅ `RUN_REPLAY` is available as a gated directive: security validates it, simulation consumes it, and unsafe execution is rejected unless the controlled path explicitly allows it.
+* ✅ Runtime directive evidence can be published back into CRDT as `evidence_record`.
+* ✅ Verified runtime evidence can be bridged into explicit `memory_record` payloads.
+* ✅ The controlled retry / guarded repair loop is now end-to-end verified through post-repair evidence.
+
+### Latest Milestone — Verified Controlled Retry & Guarded Repair Loop
+
+The current runtime includes a complete, auditable controlled retry and guarded repair execution path:
+
+```text
+proposal
+  -> approval
+  -> execution plan
+  -> rendered command
+  -> eligibility
+  -> controlled execution result
+  -> real execution preflight
+  -> real execution approval
+  -> real execution approval transition
+  -> real execution final gate
+  -> real execution dry-run envelope
+  -> real execution noop harness
+  -> read-only promotion
+  -> read-only final gate
+  -> read-only approval
+  -> read-only approval transition
+  -> read-only readiness gate
+  -> guarded read-only execution
+  -> read-only feedback
+  -> repair plan
+  -> repair action bundle
+  -> repair action bundle review
+  -> repair approval
+  -> repair approval transition
+  -> repair final gate
+  -> repair dry-run envelope
+  -> repair noop harness
+  -> repair noop feedback
+  -> repair readiness gate
+  -> guarded repair execution
+  -> post-repair evidence check
+  -> close_repair_loop
+```
+
+The loop is intentionally fail-closed and audit-first:
+
+* Every stage emits immutable CRDT audit records.
+* Inspector summaries verify linkage and orphan counts between stages.
+* Security validation rejects missing identifiers, unsafe flags, invalid transitions, or unexpected execution.
+* Readiness checks fail on missing stages, unsafe execution flags, broken linkage, or unverified repair outcomes.
+* Guarded repair execution requires explicit approval and readiness lineage.
+* Post-repair verification confirms all expected repair targets were verified.
+* Arbitrary real execution remains disabled.
+* The original rendered command is not executed by the guarded repair harness.
+* Post-repair evidence may run only the verification subprocess and must not perform additional repair execution.
+
+The final verified runtime state expects:
+
+```text
+post_repair_status=passed
+repair_outcome_verified=true
+repair_targets_expected_count=9
+repair_targets_verified_count=9
+repair_targets_missing=[]
+repair_targets_unexpected=[]
+recommended_next_action=close_repair_loop
+real_execution_enabled=false
+```
 
 ### Latest Milestone — Memory Intelligence & Resilience
 
@@ -180,6 +244,31 @@ manual/Overseer directive
 ```
 
 The first validated safe directive is `REDUCE_RISK`, which forces the trade node into a safer dry-run state without enabling live execution.
+
+### Controlled retry and guarded repair execution
+
+BlackSwan now treats retry, execution, repair, and verification as an explicit governance lifecycle rather than a direct command path.
+
+The controlled retry path starts from proposal/approval records, renders a command, checks eligibility, and records blocked or skipped execution safely. The real-execution branch then adds preflight, approval, approval transition, final gate, dry-run envelope, noop harness, read-only promotion, and guarded read-only execution artifacts.
+
+When read-only evidence fails, the system can produce an actionable feedback record, build a repair plan, assemble a repair action bundle, require operator review, require repair approval, run a repair dry-run envelope, run a repair noop harness, publish repair noop feedback, and finally produce a repair readiness gate.
+
+Only after that lineage exists can the guarded repair execution harness run. Even then, it does not execute arbitrary real commands and does not execute the original rendered command. It executes only the controlled guarded repair harness and records the result.
+
+The loop is closed by `replay_lifecycle_retry_post_repair_evidence_check`, which verifies the guarded repair outcome. A successful post-repair check requires:
+
+```text
+post_repair_status=passed
+repair_outcome_verified=true
+post_repair_evidence_exit_code=0
+repair_targets_expected_count=9
+repair_targets_verified_count=9
+repair_targets_missing=[]
+repair_targets_unexpected=[]
+recommended_next_action=close_repair_loop
+```
+
+This gives the runtime an auditable path from failed read-only evidence to reviewed repair, guarded execution, and verified post-repair outcome.
 
 ### Canonical engine layers
 
@@ -405,27 +494,48 @@ swarm_directive_result runtime-reduce-risk-1 None applied trade-1 trade
 * [Documentation site](https://deus-corp.github.io/BlackSwan/)
 * [Roadmap](ROADMAP.md)
 * [Runtime directive experience loop](docs/runtime_directive_experience_loop.md)
-* [TRL-4 Validation Report](docs/TRL4_VALIDATION_REPORT.md)
+* Controlled retry and guarded repair runbook — coming in PR 37.0
+* [TRL-4 Validation Report](docs/reports/TRL4_VALIDATION_REPORT.md)
 * [Architecture decisions](docs/architecture/)
 * [Formal verification](formal/tla/)
-* [Simulation report](docs/TRL4_simulation_baseline.md)
-* [Ouroboros Report](docs/TRL4_OUROBOROS_REPORT.md)
+* [Simulation report](docs/reports/TRL4_simulation_baseline.md)
+* [Ouroboros Report](docs/reports/TRL4_OUROBOROS_REPORT.md)
 
 ---
 
 ## Current Development Focus
 
-The current focus is structural hardening:
+The current focus is milestone stabilization and documentation after the first verified guarded repair loop.
 
-1. Keep all changes controlled, incremental, and test-backed.
-2. Preserve `src/` as the shared platform layer.
-3. Keep each swarm self-contained under `src/swarms/<swarm>/`.
-4. Continue hardening the LLM-friendly synchronization loop:
+1. Document the controlled retry and guarded repair execution lifecycle.
+2. Add an operational runbook for the full golden path:
+   `proposal -> guarded repair execution -> post-repair evidence -> close_repair_loop`.
+3. Keep all changes controlled, incremental, and test-backed.
+4. Preserve `src/` as the shared platform layer.
+5. Keep each swarm self-contained under `src/swarms/<swarm>/`.
+6. Continue hardening the LLM-friendly synchronization loop:
    `SwarmBrief -> Directive -> DirectiveResult -> Evidence -> Memory`.
-5. Mature `memory` and `simulation` from advisory swarms into active policy-supporting swarms.
-6. Keep trade as the proving ground for safe directives, risk controls, runtime evidence, and outcome memory.
-7. Build a dashboard that shows topology, swarm health, memory/simulation status, CRDT state, runtime events, Overseer briefs, and directives.
-8. Preserve trade as one swarm among equals, not the center of the architecture.
+7. Keep arbitrary real execution disabled until a separate policy-gated real execution adapter is designed, reviewed, and documented.
+8. Keep trade as the proving ground for safe directives, risk controls, runtime evidence, repair loops, and outcome memory.
+9. Build dashboard/readiness views that show topology, swarm health, memory/simulation status, CRDT state, runtime events, Overseer briefs, directives, retry governance, guarded execution, repair status, and post-repair verification.
+10. Preserve trade as one swarm among equals, not the center of the architecture.
+
+Near-term milestone plan:
+
+```text
+PR 37.0 — milestone documentation and operational runbook
+PR 37.1 — final golden-path smoke script
+PR 37.2 — docs/schema/test fixture cleanup
+PR 38.x — policy-gated real execution adapter scaffold
+```
+
+Out of scope until a separate reviewed milestone:
+
+* arbitrary real execution
+* external side effects outside guarded harnesses
+* production policy scheduler
+* multi-proposal batch repair execution
+* autonomous code-changing execution without explicit review gates
 
 ---
 
