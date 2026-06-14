@@ -383,6 +383,28 @@ def _trail_summary(**overrides):
         "real_repair_dry_run_envelope_subprocess_invoked": {"false": 1},
         "real_repair_dry_run_envelope_linkage_complete": True,
         "real_repair_dry_run_envelope_orphans": 0,
+        "real_repair_noop_result_statuses": {"completed": 1},
+        "real_repair_noop_result_exit_codes": {"0": 1},
+        "real_repair_noop_result_noop_only": {"true": 1},
+        "real_repair_noop_result_stdout_marker_observed": {"true": 1},
+        "real_repair_noop_result_source_envelope_statuses": {"prepared": 1},
+        "real_repair_noop_result_source_target_counts": {"9": 1},
+        "real_repair_noop_result_next_actions": {"inspect_repair_noop_result": 1},
+        "real_repair_noop_result_operator_authorized": {"true": 1},
+        "real_repair_noop_result_repair_actions_executed": {"false": 1},
+        "real_repair_noop_result_repair_bundle_executed": {"false": 1},
+        "real_repair_noop_result_repair_command_executed": {"false": 1},
+        "real_repair_noop_result_rendered_command_executed": {"false": 1},
+        "real_repair_noop_result_dry_run_command_executed": {"false": 1},
+        "real_repair_noop_result_repair_execution_enabled": {"false": 1},
+        "real_repair_noop_result_real_execution_enabled": {"false": 1},
+        "real_repair_noop_result_subprocess_enabled": {"false": 1},
+        "real_repair_noop_result_repair_execution_performed": {"false": 1},
+        "real_repair_noop_result_repair_subprocess_invoked": {"false": 1},
+        "real_repair_noop_result_execution_performed": {"true": 1},
+        "real_repair_noop_result_subprocess_invoked": {"true": 1},
+        "real_repair_noop_result_linkage_complete": True,
+        "real_repair_noop_result_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -1103,6 +1125,30 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_repair_dry_run_envelope_repair_subprocess_invoked": 0,
         "real_repair_dry_run_envelope_execution_performed": 0,
         "real_repair_dry_run_envelope_subprocess_invoked": 0,
+        "real_repair_noop_result_observed": True,
+        "real_repair_noop_result_records": 1,
+        "real_repair_noop_result_linkage_complete": True,
+        "real_repair_noop_result_orphans": 0,
+        "real_repair_noop_result_completed": 1,
+        "real_repair_noop_result_exit_code_zero": 1,
+        "real_repair_noop_result_noop_only": 1,
+        "real_repair_noop_result_stdout_marker_observed": 1,
+        "real_repair_noop_result_source_envelope_prepared": 1,
+        "real_repair_noop_result_source_target_count_9": 1,
+        "real_repair_noop_result_next_action_inspect": 1,
+        "real_repair_noop_result_operator_authorized": 1,
+        "real_repair_noop_result_repair_actions_executed": 0,
+        "real_repair_noop_result_repair_bundle_executed": 0,
+        "real_repair_noop_result_repair_command_executed": 0,
+        "real_repair_noop_result_rendered_command_executed": 0,
+        "real_repair_noop_result_dry_run_command_executed": 0,
+        "real_repair_noop_result_repair_execution_enabled": 0,
+        "real_repair_noop_result_real_execution_enabled": 0,
+        "real_repair_noop_result_subprocess_enabled": 0,
+        "real_repair_noop_result_repair_execution_performed": 0,
+        "real_repair_noop_result_repair_subprocess_invoked": 0,
+        "real_repair_noop_result_execution_performed": 1,
+        "real_repair_noop_result_subprocess_invoked": 1,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -1438,6 +1484,30 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_repair_dry_run_envelope_repair_subprocess_invoked": 0,
         "real_repair_dry_run_envelope_execution_performed": 0,
         "real_repair_dry_run_envelope_subprocess_invoked": 0,
+        "real_repair_noop_result_observed": True,
+        "real_repair_noop_result_records": 1,
+        "real_repair_noop_result_linkage_complete": True,
+        "real_repair_noop_result_orphans": 0,
+        "real_repair_noop_result_completed": 1,
+        "real_repair_noop_result_exit_code_zero": 1,
+        "real_repair_noop_result_noop_only": 1,
+        "real_repair_noop_result_stdout_marker_observed": 1,
+        "real_repair_noop_result_source_envelope_prepared": 1,
+        "real_repair_noop_result_source_target_count_9": 1,
+        "real_repair_noop_result_next_action_inspect": 1,
+        "real_repair_noop_result_operator_authorized": 1,
+        "real_repair_noop_result_repair_actions_executed": 0,
+        "real_repair_noop_result_repair_bundle_executed": 0,
+        "real_repair_noop_result_repair_command_executed": 0,
+        "real_repair_noop_result_rendered_command_executed": 0,
+        "real_repair_noop_result_dry_run_command_executed": 0,
+        "real_repair_noop_result_repair_execution_enabled": 0,
+        "real_repair_noop_result_real_execution_enabled": 0,
+        "real_repair_noop_result_subprocess_enabled": 0,
+        "real_repair_noop_result_repair_execution_performed": 0,
+        "real_repair_noop_result_repair_subprocess_invoked": 0,
+        "real_repair_noop_result_execution_performed": 1,
+        "real_repair_noop_result_subprocess_invoked": 1,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -2046,3 +2116,48 @@ def test_controlled_execution_readiness_fails_when_real_repair_dry_run_envelope_
         "real_repair_dry_run_envelope_did_not_enable_repair_execution"
         in failed
     )
+
+
+def test_controlled_execution_readiness_fails_for_real_repair_noop_result_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_noop_result_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_noop_result_links_to_repair_envelope" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_noop_executes_repair_actions() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_noop_result_repair_actions_executed={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_noop_result_did_not_execute_repair_actions" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_noop_does_not_invoke_noop_subprocess() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_noop_result_subprocess_invoked={"false": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_noop_result_invoked_controlled_noop_subprocess" in failed

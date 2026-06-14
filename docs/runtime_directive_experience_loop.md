@@ -1758,6 +1758,22 @@ The dry-run envelope artifact must keep `dry_run_only=true`,
 
 ---
 
+### Repair execution noop harness
+
+`replay_lifecycle_retry_real_execution_repair_noop_result` records a controlled
+noop subprocess after a prepared repair execution dry-run envelope. The noop
+harness may set `execution_performed=true` and `subprocess_invoked=true` only
+for the controlled noop marker, but it must not execute repair actions, execute
+the repair bundle, execute the repair command, or enable repair execution.
+
+The noop result artifact must keep `noop_only=true`,
+`repair_actions_executed=false`, `repair_bundle_executed=false`,
+`repair_command_executed=false`, `repair_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`repair_execution_performed=false`, and `repair_subprocess_invoked=false`. controlled noop subprocess.
+
+---
+
 ## Related modules
 
 ```text

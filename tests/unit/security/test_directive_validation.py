@@ -37,6 +37,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_repair_approval,
     validate_replay_lifecycle_retry_real_execution_repair_approval_transition,
     validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope,
+    validate_replay_lifecycle_retry_real_execution_repair_noop_result,
 )
 
 
@@ -3800,3 +3801,127 @@ def test_validate_retry_real_execution_repair_dry_run_envelope_rejects_target_co
 
     assert result["valid"] is False
     assert "repair_dry_run_envelope_target_count_mismatch" in result["reasons"]
+
+
+def _real_execution_repair_noop_result(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_repair_noop_result",
+        "real_execution_repair_noop_result_id": "repair-noop-1",
+        "real_execution_repair_dry_run_envelope_id": "repair-envelope-1",
+        "real_execution_repair_final_gate_id": "repair-final-gate-1",
+        "real_execution_repair_approval_transition_id": "repair-transition-1",
+        "real_execution_repair_approval_id": "repair-approval-1",
+        "real_execution_read_only_repair_action_bundle_id": "bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "rendered_command_id": "rendered-command-1",
+        "repair_noop_status": "completed",
+        "noop_only": True,
+        "noop_marker": "controlled-repair-noop-ok",
+        "noop_stdout_marker_observed": True,
+        "exit_code": 0,
+        "stdout": "controlled-repair-noop-ok\n",
+        "stderr": "",
+        "source_envelope_status": "prepared",
+        "source_dry_run_only": True,
+        "source_repair_dry_run_mode": "repair_action_bundle_validation",
+        "source_repair_dry_run_target_count": 9,
+        "source_final_gate_ready_blocked": True,
+        "source_transition_approved": True,
+        "operator_authorized": True,
+        "dry_run_envelope_executed": False,
+        "repair_dry_run_envelope_executed": False,
+        "repair_actions_executed": False,
+        "repair_bundle_executed": False,
+        "repair_command_executed": False,
+        "rendered_command_executed": False,
+        "dry_run_command_executed": False,
+        "bundle_execution_enabled": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "bundle_execution_performed": False,
+        "bundle_subprocess_invoked": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": True,
+        "subprocess_invoked": True,
+        "recommended_next_action": "inspect_repair_noop_result",
+        "reason": "repair_execution_noop_harness_completed",
+        "payload": {
+            "repair_actions_executed": False,
+            "repair_bundle_executed": False,
+            "repair_command_executed": False,
+            "rendered_command_executed": False,
+            "dry_run_command_executed": False,
+            "bundle_execution_enabled": False,
+            "repair_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "bundle_execution_performed": False,
+            "bundle_subprocess_invoked": False,
+            "repair_execution_performed": False,
+            "repair_subprocess_invoked": False,
+            "execution_performed": True,
+            "subprocess_invoked": True,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_repair_noop_result_accepts_completed_noop() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_result(
+        _real_execution_repair_noop_result()
+    )
+
+    assert result["valid"] is True
+    assert result["repair_noop_status"] == "completed"
+    assert result["noop_only"] is True
+    assert result["exit_code"] == 0
+    assert result["execution_performed"] is True
+    assert result["subprocess_invoked"] is True
+    assert result["repair_execution_performed"] is False
+    assert result["repair_subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_repair_noop_result_rejects_repair_actions_executed() -> None:
+    record = _real_execution_repair_noop_result(repair_actions_executed=True)
+    record["payload"]["repair_actions_executed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_result(record)
+
+    assert result["valid"] is False
+    assert "repair_noop_must_not_execute_repair_actions" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_noop_result_rejects_repair_execution_enabled() -> None:
+    record = _real_execution_repair_noop_result(repair_execution_enabled=True)
+    record["payload"]["repair_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_result(record)
+
+    assert result["valid"] is False
+    assert "repair_noop_must_not_enable_repair_execution" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_noop_result_rejects_repair_subprocess_invoked() -> None:
+    record = _real_execution_repair_noop_result(repair_subprocess_invoked=True)
+    record["payload"]["repair_subprocess_invoked"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_result(record)
+
+    assert result["valid"] is False
+    assert "repair_noop_must_not_invoke_repair_subprocess" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_noop_result_rejects_completed_without_marker() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_result(
+        _real_execution_repair_noop_result(
+            stdout="",
+            noop_stdout_marker_observed=False,
+        )
+    )
+
+    assert result["valid"] is False
+    assert "repair_noop_marker_missing_from_stdout" in result["reasons"]
+    assert "completed_repair_noop_result_requires_stdout_marker" in result["reasons"]

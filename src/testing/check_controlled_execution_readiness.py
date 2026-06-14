@@ -795,6 +795,66 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_repair_dry_run_envelope_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_repair_dry_run_envelope_subprocess_invoked")
     )
+    real_repair_noop_result_statuses = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_statuses")
+    )
+    real_repair_noop_result_exit_codes = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_exit_codes")
+    )
+    real_repair_noop_result_noop_only = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_noop_only")
+    )
+    real_repair_noop_result_stdout_marker_observed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_stdout_marker_observed")
+    )
+    real_repair_noop_result_source_envelope_statuses = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_source_envelope_statuses")
+    )
+    real_repair_noop_result_source_target_counts = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_source_target_counts")
+    )
+    real_repair_noop_result_next_actions = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_next_actions")
+    )
+    real_repair_noop_result_operator_authorized = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_operator_authorized")
+    )
+    real_repair_noop_result_repair_actions_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_actions_executed")
+    )
+    real_repair_noop_result_repair_bundle_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_bundle_executed")
+    )
+    real_repair_noop_result_repair_command_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_command_executed")
+    )
+    real_repair_noop_result_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_rendered_command_executed")
+    )
+    real_repair_noop_result_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_dry_run_command_executed")
+    )
+    real_repair_noop_result_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_execution_enabled")
+    )
+    real_repair_noop_result_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_real_execution_enabled")
+    )
+    real_repair_noop_result_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_subprocess_enabled")
+    )
+    real_repair_noop_result_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_execution_performed")
+    )
+    real_repair_noop_result_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_subprocess_invoked")
+    )
+    real_repair_noop_result_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_execution_performed")
+    )
+    real_repair_noop_result_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -1703,6 +1763,79 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_repair_dry_run_envelope_subprocess_invoked": _safe_int(
             real_repair_dry_run_envelope_subprocess_invoked.get("true"), 0
+        ),
+        "real_repair_noop_result_observed": _safe_int(
+            real_repair_noop_result_statuses.get("completed"), 0
+        )
+        > 0,
+        "real_repair_noop_result_records": _safe_int(
+            real_repair_noop_result_statuses.get("completed"), 0
+        ),
+        "real_repair_noop_result_linkage_complete": bool(
+            trail_summary.get("real_repair_noop_result_linkage_complete")
+        ),
+        "real_repair_noop_result_orphans": _safe_int(
+            trail_summary.get("real_repair_noop_result_orphans"), 0
+        ),
+        "real_repair_noop_result_completed": _safe_int(
+            real_repair_noop_result_statuses.get("completed"), 0
+        ),
+        "real_repair_noop_result_exit_code_zero": _safe_int(
+            real_repair_noop_result_exit_codes.get("0"), 0
+        ),
+        "real_repair_noop_result_noop_only": _safe_int(
+            real_repair_noop_result_noop_only.get("true"), 0
+        ),
+        "real_repair_noop_result_stdout_marker_observed": _safe_int(
+            real_repair_noop_result_stdout_marker_observed.get("true"), 0
+        ),
+        "real_repair_noop_result_source_envelope_prepared": _safe_int(
+            real_repair_noop_result_source_envelope_statuses.get("prepared"), 0
+        ),
+        "real_repair_noop_result_source_target_count_9": _safe_int(
+            real_repair_noop_result_source_target_counts.get("9"), 0
+        ),
+        "real_repair_noop_result_next_action_inspect": _safe_int(
+            real_repair_noop_result_next_actions.get("inspect_repair_noop_result"), 0
+        ),
+        "real_repair_noop_result_operator_authorized": _safe_int(
+            real_repair_noop_result_operator_authorized.get("true"), 0
+        ),
+        "real_repair_noop_result_repair_actions_executed": _safe_int(
+            real_repair_noop_result_repair_actions_executed.get("true"), 0
+        ),
+        "real_repair_noop_result_repair_bundle_executed": _safe_int(
+            real_repair_noop_result_repair_bundle_executed.get("true"), 0
+        ),
+        "real_repair_noop_result_repair_command_executed": _safe_int(
+            real_repair_noop_result_repair_command_executed.get("true"), 0
+        ),
+        "real_repair_noop_result_rendered_command_executed": _safe_int(
+            real_repair_noop_result_rendered_command_executed.get("true"), 0
+        ),
+        "real_repair_noop_result_dry_run_command_executed": _safe_int(
+            real_repair_noop_result_dry_run_command_executed.get("true"), 0
+        ),
+        "real_repair_noop_result_repair_execution_enabled": _safe_int(
+            real_repair_noop_result_repair_execution_enabled.get("true"), 0
+        ),
+        "real_repair_noop_result_real_execution_enabled": _safe_int(
+            real_repair_noop_result_real_execution_enabled.get("true"), 0
+        ),
+        "real_repair_noop_result_subprocess_enabled": _safe_int(
+            real_repair_noop_result_subprocess_enabled.get("true"), 0
+        ),
+        "real_repair_noop_result_repair_execution_performed": _safe_int(
+            real_repair_noop_result_repair_execution_performed.get("true"), 0
+        ),
+        "real_repair_noop_result_repair_subprocess_invoked": _safe_int(
+            real_repair_noop_result_repair_subprocess_invoked.get("true"), 0
+        ),
+        "real_repair_noop_result_execution_performed": _safe_int(
+            real_repair_noop_result_execution_performed.get("true"), 0
+        ),
+        "real_repair_noop_result_subprocess_invoked": _safe_int(
+            real_repair_noop_result_subprocess_invoked.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -2659,6 +2792,79 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_repair_dry_run_envelope_subprocess_invoked": _safe_int(
                 real_repair_dry_run_envelope_subprocess_invoked.get("true"), 0
             ),
+            "real_repair_noop_result_observed": _safe_int(
+                real_repair_noop_result_statuses.get("completed"), 0
+            )
+            > 0,
+            "real_repair_noop_result_records": _safe_int(
+                real_repair_noop_result_statuses.get("completed"), 0
+            ),
+            "real_repair_noop_result_linkage_complete": bool(
+                trail_summary.get("real_repair_noop_result_linkage_complete")
+            ),
+            "real_repair_noop_result_orphans": _safe_int(
+                trail_summary.get("real_repair_noop_result_orphans"), 0
+            ),
+            "real_repair_noop_result_completed": _safe_int(
+                real_repair_noop_result_statuses.get("completed"), 0
+            ),
+            "real_repair_noop_result_exit_code_zero": _safe_int(
+                real_repair_noop_result_exit_codes.get("0"), 0
+            ),
+            "real_repair_noop_result_noop_only": _safe_int(
+                real_repair_noop_result_noop_only.get("true"), 0
+            ),
+            "real_repair_noop_result_stdout_marker_observed": _safe_int(
+                real_repair_noop_result_stdout_marker_observed.get("true"), 0
+            ),
+            "real_repair_noop_result_source_envelope_prepared": _safe_int(
+                real_repair_noop_result_source_envelope_statuses.get("prepared"), 0
+            ),
+            "real_repair_noop_result_source_target_count_9": _safe_int(
+                real_repair_noop_result_source_target_counts.get("9"), 0
+            ),
+            "real_repair_noop_result_next_action_inspect": _safe_int(
+                real_repair_noop_result_next_actions.get("inspect_repair_noop_result"), 0
+            ),
+            "real_repair_noop_result_operator_authorized": _safe_int(
+                real_repair_noop_result_operator_authorized.get("true"), 0
+            ),
+            "real_repair_noop_result_repair_actions_executed": _safe_int(
+                real_repair_noop_result_repair_actions_executed.get("true"), 0
+            ),
+            "real_repair_noop_result_repair_bundle_executed": _safe_int(
+                real_repair_noop_result_repair_bundle_executed.get("true"), 0
+            ),
+            "real_repair_noop_result_repair_command_executed": _safe_int(
+                real_repair_noop_result_repair_command_executed.get("true"), 0
+            ),
+            "real_repair_noop_result_rendered_command_executed": _safe_int(
+                real_repair_noop_result_rendered_command_executed.get("true"), 0
+            ),
+            "real_repair_noop_result_dry_run_command_executed": _safe_int(
+                real_repair_noop_result_dry_run_command_executed.get("true"), 0
+            ),
+            "real_repair_noop_result_repair_execution_enabled": _safe_int(
+                real_repair_noop_result_repair_execution_enabled.get("true"), 0
+            ),
+            "real_repair_noop_result_real_execution_enabled": _safe_int(
+                real_repair_noop_result_real_execution_enabled.get("true"), 0
+            ),
+            "real_repair_noop_result_subprocess_enabled": _safe_int(
+                real_repair_noop_result_subprocess_enabled.get("true"), 0
+            ),
+            "real_repair_noop_result_repair_execution_performed": _safe_int(
+                real_repair_noop_result_repair_execution_performed.get("true"), 0
+            ),
+            "real_repair_noop_result_repair_subprocess_invoked": _safe_int(
+                real_repair_noop_result_repair_subprocess_invoked.get("true"), 0
+            ),
+            "real_repair_noop_result_execution_performed": _safe_int(
+                real_repair_noop_result_execution_performed.get("true"), 0
+            ),
+            "real_repair_noop_result_subprocess_invoked": _safe_int(
+                real_repair_noop_result_subprocess_invoked.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -2758,6 +2964,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_repair_dry_run_envelope_records",
             "real_repair_dry_run_envelope_linkage_complete",
             "real_repair_dry_run_envelope_orphans",
+            "real_repair_noop_result_observed",
+            "real_repair_noop_result_records",
+            "real_repair_noop_result_linkage_complete",
+            "real_repair_noop_result_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -3583,6 +3793,66 @@ def _build_checks(
     )
     real_repair_dry_run_envelope_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_repair_dry_run_envelope_subprocess_invoked")
+    )
+    real_repair_noop_result_statuses = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_statuses")
+    )
+    real_repair_noop_result_exit_codes = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_exit_codes")
+    )
+    real_repair_noop_result_noop_only = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_noop_only")
+    )
+    real_repair_noop_result_stdout_marker_observed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_stdout_marker_observed")
+    )
+    real_repair_noop_result_source_envelope_statuses = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_source_envelope_statuses")
+    )
+    real_repair_noop_result_source_target_counts = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_source_target_counts")
+    )
+    real_repair_noop_result_next_actions = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_next_actions")
+    )
+    real_repair_noop_result_operator_authorized = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_operator_authorized")
+    )
+    real_repair_noop_result_repair_actions_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_actions_executed")
+    )
+    real_repair_noop_result_repair_bundle_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_bundle_executed")
+    )
+    real_repair_noop_result_repair_command_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_command_executed")
+    )
+    real_repair_noop_result_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_rendered_command_executed")
+    )
+    real_repair_noop_result_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_dry_run_command_executed")
+    )
+    real_repair_noop_result_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_execution_enabled")
+    )
+    real_repair_noop_result_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_real_execution_enabled")
+    )
+    real_repair_noop_result_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_subprocess_enabled")
+    )
+    real_repair_noop_result_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_execution_performed")
+    )
+    real_repair_noop_result_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_repair_subprocess_invoked")
+    )
+    real_repair_noop_result_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_execution_performed")
+    )
+    real_repair_noop_result_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_noop_result_subprocess_invoked")
     )
 
     checks = [
@@ -6012,6 +6282,182 @@ def _build_checks(
                 real_repair_dry_run_envelope_subprocess_invoked.get("true"), 0
             ),
         ),
+        _check(
+            "real_repair_noop_result_observed_after_repair_envelope",
+            _safe_int(real_repair_dry_run_envelope_statuses.get("prepared"), 0) == 0
+            or _safe_int(real_repair_noop_result_statuses.get("completed"), 0) > 0,
+            {
+                "prepared_repair_envelopes": _safe_int(
+                    real_repair_dry_run_envelope_statuses.get("prepared"), 0
+                ),
+                "completed_repair_noop_results": _safe_int(
+                    real_repair_noop_result_statuses.get("completed"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_repair_noop_result_links_to_repair_envelope",
+            _safe_int(real_repair_noop_result_statuses.get("completed"), 0) == 0
+            or _safe_int(trail_summary.get("real_repair_noop_result_orphans"), 0)
+            == 0,
+            _safe_int(trail_summary.get("real_repair_noop_result_orphans"), 0),
+        ),
+        _check(
+            "real_repair_noop_result_completed",
+            _safe_int(real_repair_noop_result_statuses.get("completed"), 0) == 1,
+            _safe_int(real_repair_noop_result_statuses.get("completed"), 0),
+        ),
+        _check(
+            "real_repair_noop_result_exit_code_zero",
+            _safe_int(real_repair_noop_result_exit_codes.get("0"), 0) == 1,
+            _safe_int(real_repair_noop_result_exit_codes.get("0"), 0),
+        ),
+        _check(
+            "real_repair_noop_result_noop_only",
+            _safe_int(real_repair_noop_result_noop_only.get("true"), 0) == 1,
+            _safe_int(real_repair_noop_result_noop_only.get("true"), 0),
+        ),
+        _check(
+            "real_repair_noop_result_stdout_marker_observed",
+            _safe_int(
+                real_repair_noop_result_stdout_marker_observed.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                real_repair_noop_result_stdout_marker_observed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_source_envelope_prepared",
+            _safe_int(
+                real_repair_noop_result_source_envelope_statuses.get("prepared"), 0
+            )
+            == 1,
+            _safe_int(
+                real_repair_noop_result_source_envelope_statuses.get("prepared"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_source_target_count_observed",
+            _safe_int(real_repair_noop_result_source_target_counts.get("9"), 0) == 1,
+            _safe_int(real_repair_noop_result_source_target_counts.get("9"), 0),
+        ),
+        _check(
+            "real_repair_noop_result_next_action_observed",
+            _safe_int(
+                real_repair_noop_result_next_actions.get("inspect_repair_noop_result"),
+                0,
+            )
+            == 1,
+            _safe_int(
+                real_repair_noop_result_next_actions.get("inspect_repair_noop_result"),
+                0,
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_operator_authorized",
+            _safe_int(real_repair_noop_result_operator_authorized.get("true"), 0)
+            == 1,
+            _safe_int(real_repair_noop_result_operator_authorized.get("true"), 0),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_execute_repair_actions",
+            _safe_int(
+                real_repair_noop_result_repair_actions_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_noop_result_repair_actions_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_execute_repair_bundle",
+            _safe_int(
+                real_repair_noop_result_repair_bundle_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_noop_result_repair_bundle_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_execute_repair_command",
+            _safe_int(
+                real_repair_noop_result_repair_command_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_noop_result_repair_command_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_execute_rendered_command",
+            _safe_int(
+                real_repair_noop_result_rendered_command_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_noop_result_rendered_command_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_enable_repair_execution",
+            _safe_int(
+                real_repair_noop_result_repair_execution_enabled.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_noop_result_repair_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_enable_real_execution",
+            _safe_int(
+                real_repair_noop_result_real_execution_enabled.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_noop_result_real_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_enable_subprocess",
+            _safe_int(real_repair_noop_result_subprocess_enabled.get("true"), 0)
+            == 0,
+            _safe_int(real_repair_noop_result_subprocess_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_perform_repair_execution",
+            _safe_int(
+                real_repair_noop_result_repair_execution_performed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_noop_result_repair_execution_performed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_did_not_invoke_repair_subprocess",
+            _safe_int(
+                real_repair_noop_result_repair_subprocess_invoked.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_noop_result_repair_subprocess_invoked.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_noop_result_performed_controlled_noop",
+            _safe_int(real_repair_noop_result_execution_performed.get("true"), 0)
+            == 1,
+            _safe_int(real_repair_noop_result_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "real_repair_noop_result_invoked_controlled_noop_subprocess",
+            _safe_int(real_repair_noop_result_subprocess_invoked.get("true"), 0)
+            == 1,
+            _safe_int(real_repair_noop_result_subprocess_invoked.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -6153,6 +6599,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_repair_dry_run_envelope_records",
         "real_repair_dry_run_envelope_linkage_complete",
         "real_repair_dry_run_envelope_orphans",
+        "real_repair_noop_result_observed",
+        "real_repair_noop_result_records",
+        "real_repair_noop_result_linkage_complete",
+        "real_repair_noop_result_orphans",
     ]
 
     reasons: list[str] = []
@@ -6417,6 +6867,15 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_repair_dry_run_envelope_linkage_complete_must_be_bool")
     if not isinstance(report.get("real_repair_dry_run_envelope_orphans"), int):
         reasons.append("real_repair_dry_run_envelope_orphans_must_be_int")
+    
+    if not isinstance(report.get("real_repair_noop_result_observed"), bool):
+        reasons.append("real_repair_noop_result_observed_must_be_bool")
+    if not isinstance(report.get("real_repair_noop_result_records"), int):
+        reasons.append("real_repair_noop_result_records_must_be_int")
+    if not isinstance(report.get("real_repair_noop_result_linkage_complete"), bool):
+        reasons.append("real_repair_noop_result_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_repair_noop_result_orphans"), int):
+        reasons.append("real_repair_noop_result_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -6757,6 +7216,30 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_repair_dry_run_envelope_repair_subprocess_invoked={result.get('real_repair_dry_run_envelope_repair_subprocess_invoked', 0)} "
         f"real_repair_dry_run_envelope_execution_performed={result.get('real_repair_dry_run_envelope_execution_performed', 0)} "
         f"real_repair_dry_run_envelope_subprocess_invoked={result.get('real_repair_dry_run_envelope_subprocess_invoked', 0)} "
+        f"real_repair_noop_result_observed={str(bool(result.get('real_repair_noop_result_observed'))).lower()} "
+        f"real_repair_noop_result_records={result.get('real_repair_noop_result_records', 0)} "
+        f"real_repair_noop_result_linkage_complete={str(bool(result.get('real_repair_noop_result_linkage_complete'))).lower()} "
+        f"real_repair_noop_result_orphans={result.get('real_repair_noop_result_orphans', 0)} "
+        f"real_repair_noop_result_completed={result.get('real_repair_noop_result_completed', 0)} "
+        f"real_repair_noop_result_exit_code_zero={result.get('real_repair_noop_result_exit_code_zero', 0)} "
+        f"real_repair_noop_result_noop_only={result.get('real_repair_noop_result_noop_only', 0)} "
+        f"real_repair_noop_result_stdout_marker_observed={result.get('real_repair_noop_result_stdout_marker_observed', 0)} "
+        f"real_repair_noop_result_source_envelope_prepared={result.get('real_repair_noop_result_source_envelope_prepared', 0)} "
+        f"real_repair_noop_result_source_target_count_9={result.get('real_repair_noop_result_source_target_count_9', 0)} "
+        f"real_repair_noop_result_next_action_inspect={result.get('real_repair_noop_result_next_action_inspect', 0)} "
+        f"real_repair_noop_result_operator_authorized={result.get('real_repair_noop_result_operator_authorized', 0)} "
+        f"real_repair_noop_result_repair_actions_executed={result.get('real_repair_noop_result_repair_actions_executed', 0)} "
+        f"real_repair_noop_result_repair_bundle_executed={result.get('real_repair_noop_result_repair_bundle_executed', 0)} "
+        f"real_repair_noop_result_repair_command_executed={result.get('real_repair_noop_result_repair_command_executed', 0)} "
+        f"real_repair_noop_result_rendered_command_executed={result.get('real_repair_noop_result_rendered_command_executed', 0)} "
+        f"real_repair_noop_result_dry_run_command_executed={result.get('real_repair_noop_result_dry_run_command_executed', 0)} "
+        f"real_repair_noop_result_repair_execution_enabled={result.get('real_repair_noop_result_repair_execution_enabled', 0)} "
+        f"real_repair_noop_result_real_execution_enabled={result.get('real_repair_noop_result_real_execution_enabled', 0)} "
+        f"real_repair_noop_result_subprocess_enabled={result.get('real_repair_noop_result_subprocess_enabled', 0)} "
+        f"real_repair_noop_result_repair_execution_performed={result.get('real_repair_noop_result_repair_execution_performed', 0)} "
+        f"real_repair_noop_result_repair_subprocess_invoked={result.get('real_repair_noop_result_repair_subprocess_invoked', 0)} "
+        f"real_repair_noop_result_execution_performed={result.get('real_repair_noop_result_execution_performed', 0)} "
+        f"real_repair_noop_result_subprocess_invoked={result.get('real_repair_noop_result_subprocess_invoked', 0)} "
     )
 
 

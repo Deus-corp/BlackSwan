@@ -52,6 +52,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_repair_approval_transition",
     "replay_lifecycle_retry_real_execution_repair_final_gate",
     "replay_lifecycle_retry_real_execution_repair_dry_run_envelope",
+    "replay_lifecycle_retry_real_execution_repair_noop_result",
 }
 
 
@@ -505,6 +506,20 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_real_execution_repair_noop_result":
+            result = validate_replay_lifecycle_retry_real_execution_repair_noop_result(
+                record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -808,6 +823,26 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_repair_dry_run_envelope_repair_subprocess_invoked: dict[str, int] = {}
     real_repair_dry_run_envelope_execution_performed: dict[str, int] = {}
     real_repair_dry_run_envelope_subprocess_invoked: dict[str, int] = {}
+    real_repair_noop_result_statuses: dict[str, int] = {}
+    real_repair_noop_result_exit_codes: dict[str, int] = {}
+    real_repair_noop_result_noop_only: dict[str, int] = {}
+    real_repair_noop_result_stdout_marker_observed: dict[str, int] = {}
+    real_repair_noop_result_source_envelope_statuses: dict[str, int] = {}
+    real_repair_noop_result_source_target_counts: dict[str, int] = {}
+    real_repair_noop_result_next_actions: dict[str, int] = {}
+    real_repair_noop_result_operator_authorized: dict[str, int] = {}
+    real_repair_noop_result_repair_actions_executed: dict[str, int] = {}
+    real_repair_noop_result_repair_bundle_executed: dict[str, int] = {}
+    real_repair_noop_result_repair_command_executed: dict[str, int] = {}
+    real_repair_noop_result_rendered_command_executed: dict[str, int] = {}
+    real_repair_noop_result_dry_run_command_executed: dict[str, int] = {}
+    real_repair_noop_result_repair_execution_enabled: dict[str, int] = {}
+    real_repair_noop_result_real_execution_enabled: dict[str, int] = {}
+    real_repair_noop_result_subprocess_enabled: dict[str, int] = {}
+    real_repair_noop_result_repair_execution_performed: dict[str, int] = {}
+    real_repair_noop_result_repair_subprocess_invoked: dict[str, int] = {}
+    real_repair_noop_result_execution_performed: dict[str, int] = {}
+    real_repair_noop_result_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -2159,6 +2194,95 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
 
+        if record_type == "replay_lifecycle_retry_real_execution_repair_noop_result":
+            status = str(item.get("repair_noop_status") or "unknown").strip() or "unknown"
+            exit_code = str(item.get("exit_code"))
+            source_status = (
+                str(item.get("source_envelope_status") or "unknown").strip()
+                or "unknown"
+            )
+            target_count = str(item.get("source_repair_dry_run_target_count") or 0)
+            next_action = (
+                str(item.get("recommended_next_action") or "unknown").strip()
+                or "unknown"
+            )
+
+            real_repair_noop_result_statuses[status] = (
+                real_repair_noop_result_statuses.get(status, 0) + 1
+            )
+            real_repair_noop_result_exit_codes[exit_code] = (
+                real_repair_noop_result_exit_codes.get(exit_code, 0) + 1
+            )
+            real_repair_noop_result_source_envelope_statuses[source_status] = (
+                real_repair_noop_result_source_envelope_statuses.get(source_status, 0)
+                + 1
+            )
+            real_repair_noop_result_source_target_counts[target_count] = (
+                real_repair_noop_result_source_target_counts.get(target_count, 0) + 1
+            )
+            real_repair_noop_result_next_actions[next_action] = (
+                real_repair_noop_result_next_actions.get(next_action, 0) + 1
+            )
+
+            for target, key_name in (
+                (real_repair_noop_result_noop_only, "noop_only"),
+                (
+                    real_repair_noop_result_stdout_marker_observed,
+                    "noop_stdout_marker_observed",
+                ),
+                (real_repair_noop_result_operator_authorized, "operator_authorized"),
+                (
+                    real_repair_noop_result_repair_actions_executed,
+                    "repair_actions_executed",
+                ),
+                (
+                    real_repair_noop_result_repair_bundle_executed,
+                    "repair_bundle_executed",
+                ),
+                (
+                    real_repair_noop_result_repair_command_executed,
+                    "repair_command_executed",
+                ),
+                (
+                    real_repair_noop_result_rendered_command_executed,
+                    "rendered_command_executed",
+                ),
+                (
+                    real_repair_noop_result_dry_run_command_executed,
+                    "dry_run_command_executed",
+                ),
+                (
+                    real_repair_noop_result_repair_execution_enabled,
+                    "repair_execution_enabled",
+                ),
+                (
+                    real_repair_noop_result_real_execution_enabled,
+                    "real_execution_enabled",
+                ),
+                (
+                    real_repair_noop_result_subprocess_enabled,
+                    "subprocess_enabled",
+                ),
+                (
+                    real_repair_noop_result_repair_execution_performed,
+                    "repair_execution_performed",
+                ),
+                (
+                    real_repair_noop_result_repair_subprocess_invoked,
+                    "repair_subprocess_invoked",
+                ),
+                (
+                    real_repair_noop_result_execution_performed,
+                    "execution_performed",
+                ),
+                (
+                    real_repair_noop_result_subprocess_invoked,
+                    "subprocess_invoked",
+                ),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
+
     return {
         "type": "security_validation_summary",
         "validated_records": len(validation_list),
@@ -2796,6 +2920,58 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_repair_dry_run_envelope_subprocess_invoked": (
             real_repair_dry_run_envelope_subprocess_invoked
         ),
+        "real_repair_noop_result_statuses": real_repair_noop_result_statuses,
+        "real_repair_noop_result_exit_codes": real_repair_noop_result_exit_codes,
+        "real_repair_noop_result_noop_only": real_repair_noop_result_noop_only,
+        "real_repair_noop_result_stdout_marker_observed": (
+            real_repair_noop_result_stdout_marker_observed
+        ),
+        "real_repair_noop_result_source_envelope_statuses": (
+            real_repair_noop_result_source_envelope_statuses
+        ),
+        "real_repair_noop_result_source_target_counts": (
+            real_repair_noop_result_source_target_counts
+        ),
+        "real_repair_noop_result_next_actions": real_repair_noop_result_next_actions,
+        "real_repair_noop_result_operator_authorized": (
+            real_repair_noop_result_operator_authorized
+        ),
+        "real_repair_noop_result_repair_actions_executed": (
+            real_repair_noop_result_repair_actions_executed
+        ),
+        "real_repair_noop_result_repair_bundle_executed": (
+            real_repair_noop_result_repair_bundle_executed
+        ),
+        "real_repair_noop_result_repair_command_executed": (
+            real_repair_noop_result_repair_command_executed
+        ),
+        "real_repair_noop_result_rendered_command_executed": (
+            real_repair_noop_result_rendered_command_executed
+        ),
+        "real_repair_noop_result_dry_run_command_executed": (
+            real_repair_noop_result_dry_run_command_executed
+        ),
+        "real_repair_noop_result_repair_execution_enabled": (
+            real_repair_noop_result_repair_execution_enabled
+        ),
+        "real_repair_noop_result_real_execution_enabled": (
+            real_repair_noop_result_real_execution_enabled
+        ),
+        "real_repair_noop_result_subprocess_enabled": (
+            real_repair_noop_result_subprocess_enabled
+        ),
+        "real_repair_noop_result_repair_execution_performed": (
+            real_repair_noop_result_repair_execution_performed
+        ),
+        "real_repair_noop_result_repair_subprocess_invoked": (
+            real_repair_noop_result_repair_subprocess_invoked
+        ),
+        "real_repair_noop_result_execution_performed": (
+            real_repair_noop_result_execution_performed
+        ),
+        "real_repair_noop_result_subprocess_invoked": (
+            real_repair_noop_result_subprocess_invoked
+        ),
     }
 
 
@@ -3285,6 +3461,14 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_repair_approval_transition_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_repair_noop_result":
+        return str(
+            record.get("real_execution_repair_noop_result_id")
+            or record.get("real_execution_repair_dry_run_envelope_id")
+            or record.get("real_execution_repair_final_gate_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -3331,6 +3515,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_repair_approval_transition_id",
         "real_execution_repair_final_gate_id",
         "real_execution_repair_dry_run_envelope_id",
+        "real_execution_repair_noop_result_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -3374,6 +3559,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_repair_approval_transition_id",
             "real_execution_repair_final_gate_id",
             "real_execution_repair_dry_run_envelope_id",
+            "real_execution_repair_noop_result_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -7216,6 +7402,236 @@ def validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_repair_noop_result(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate repair execution noop result records.
+
+    This record is allowed to have execution_performed=true and
+    subprocess_invoked=true only for the controlled noop subprocess. It must
+    never execute repair actions, the repair bundle, the repair command, or the
+    original rendered command.
+    """
+    reasons: list[str] = []
+
+    result_id = str(record.get("real_execution_repair_noop_result_id") or "").strip()
+    envelope_id = str(
+        record.get("real_execution_repair_dry_run_envelope_id") or ""
+    ).strip()
+    final_gate_id = str(
+        record.get("real_execution_repair_final_gate_id") or ""
+    ).strip()
+    transition_id = str(
+        record.get("real_execution_repair_approval_transition_id") or ""
+    ).strip()
+    repair_approval_id = str(
+        record.get("real_execution_repair_approval_id") or ""
+    ).strip()
+    bundle_id = str(
+        record.get("real_execution_read_only_repair_action_bundle_id") or ""
+    ).strip()
+    repair_plan_id = str(
+        record.get("real_execution_read_only_repair_plan_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    status = str(record.get("repair_noop_status") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+    noop_marker = str(record.get("noop_marker") or "").strip()
+    stdout = str(record.get("stdout") or "")
+    stderr = str(record.get("stderr") or "")
+
+    exit_code = record.get("exit_code")
+    noop_only = bool(record.get("noop_only"))
+    stdout_marker_observed = bool(record.get("noop_stdout_marker_observed"))
+    source_dry_run_only = bool(record.get("source_dry_run_only"))
+    source_final_gate_ready_blocked = bool(
+        record.get("source_final_gate_ready_blocked")
+    )
+    source_transition_approved = bool(record.get("source_transition_approved"))
+    operator_authorized = bool(record.get("operator_authorized"))
+
+    source_envelope_status = str(record.get("source_envelope_status") or "").strip()
+    source_mode = str(record.get("source_repair_dry_run_mode") or "").strip()
+    source_target_count = record.get("source_repair_dry_run_target_count")
+
+    dry_run_envelope_executed = bool(record.get("dry_run_envelope_executed"))
+    repair_dry_run_envelope_executed = bool(
+        record.get("repair_dry_run_envelope_executed")
+    )
+    repair_actions_executed = bool(record.get("repair_actions_executed"))
+    repair_bundle_executed = bool(record.get("repair_bundle_executed"))
+    repair_command_executed = bool(record.get("repair_command_executed"))
+    rendered_command_executed = bool(record.get("rendered_command_executed"))
+    dry_run_command_executed = bool(record.get("dry_run_command_executed"))
+
+    bundle_execution_enabled = bool(record.get("bundle_execution_enabled"))
+    repair_execution_enabled = bool(record.get("repair_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    bundle_execution_performed = bool(record.get("bundle_execution_performed"))
+    bundle_subprocess_invoked = bool(record.get("bundle_subprocess_invoked"))
+    repair_execution_performed = bool(record.get("repair_execution_performed"))
+    repair_subprocess_invoked = bool(record.get("repair_subprocess_invoked"))
+
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not result_id:
+        reasons.append("missing_real_execution_repair_noop_result_id")
+    if not envelope_id:
+        reasons.append("missing_real_execution_repair_dry_run_envelope_id")
+    if not final_gate_id:
+        reasons.append("missing_real_execution_repair_final_gate_id")
+    if not transition_id:
+        reasons.append("missing_real_execution_repair_approval_transition_id")
+    if not repair_approval_id:
+        reasons.append("missing_real_execution_repair_approval_id")
+    if not bundle_id:
+        reasons.append("missing_real_execution_read_only_repair_action_bundle_id")
+    if not repair_plan_id:
+        reasons.append("missing_real_execution_read_only_repair_plan_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if status not in {"completed", "failed"}:
+        reasons.append("invalid_repair_noop_status")
+    if not noop_only:
+        reasons.append("repair_noop_result_must_be_noop_only")
+    if not noop_marker:
+        reasons.append("missing_repair_noop_marker")
+    if noop_marker and noop_marker not in stdout:
+        reasons.append("repair_noop_marker_missing_from_stdout")
+    if stdout_marker_observed != bool(noop_marker and noop_marker in stdout):
+        reasons.append("repair_noop_stdout_marker_observed_mismatch")
+
+    if status == "completed":
+        if exit_code != 0:
+            reasons.append("completed_repair_noop_result_requires_exit_code_zero")
+        if not stdout_marker_observed:
+            reasons.append("completed_repair_noop_result_requires_stdout_marker")
+        if reason != "repair_execution_noop_harness_completed":
+            reasons.append("invalid_completed_repair_noop_reason")
+        if next_action != "inspect_repair_noop_result":
+            reasons.append("invalid_completed_repair_noop_next_action")
+
+    if status == "failed":
+        if reason != "repair_execution_noop_harness_failed":
+            reasons.append("invalid_failed_repair_noop_reason")
+        if next_action != "investigate_repair_noop_harness_failure":
+            reasons.append("invalid_failed_repair_noop_next_action")
+
+    if source_envelope_status != "prepared":
+        reasons.append("repair_noop_source_envelope_must_be_prepared")
+    if not source_dry_run_only:
+        reasons.append("repair_noop_source_envelope_must_be_dry_run_only")
+    if source_mode != "repair_action_bundle_validation":
+        reasons.append("repair_noop_source_mode_must_be_repair_action_bundle_validation")
+    if not source_final_gate_ready_blocked:
+        reasons.append("repair_noop_source_final_gate_must_be_ready_blocked")
+    if not source_transition_approved:
+        reasons.append("repair_noop_source_transition_must_be_approved")
+    if not operator_authorized:
+        reasons.append("repair_noop_requires_operator_authorized")
+    if not isinstance(source_target_count, int) or source_target_count <= 0:
+        reasons.append("repair_noop_source_targets_required")
+
+    # Controlled noop subprocess must be observed.
+    if not execution_performed:
+        reasons.append("repair_noop_must_record_noop_execution_performed")
+    if not subprocess_invoked:
+        reasons.append("repair_noop_must_record_noop_subprocess_invoked")
+
+    # But repair execution must remain disabled and unperformed.
+    if dry_run_envelope_executed or bool(
+        payload_mapping.get("dry_run_envelope_executed")
+    ):
+        reasons.append("repair_noop_must_not_execute_dry_run_envelope")
+    if repair_dry_run_envelope_executed or bool(
+        payload_mapping.get("repair_dry_run_envelope_executed")
+    ):
+        reasons.append("repair_noop_must_not_execute_repair_dry_run_envelope")
+    if repair_actions_executed or bool(payload_mapping.get("repair_actions_executed")):
+        reasons.append("repair_noop_must_not_execute_repair_actions")
+    if repair_bundle_executed or bool(payload_mapping.get("repair_bundle_executed")):
+        reasons.append("repair_noop_must_not_execute_repair_bundle")
+    if repair_command_executed or bool(payload_mapping.get("repair_command_executed")):
+        reasons.append("repair_noop_must_not_execute_repair_command")
+    if rendered_command_executed or bool(payload_mapping.get("rendered_command_executed")):
+        reasons.append("repair_noop_must_not_execute_rendered_command")
+    if dry_run_command_executed or bool(payload_mapping.get("dry_run_command_executed")):
+        reasons.append("repair_noop_must_not_execute_dry_run_command")
+
+    if bundle_execution_enabled or bool(payload_mapping.get("bundle_execution_enabled")):
+        reasons.append("repair_noop_must_not_enable_bundle_execution")
+    if repair_execution_enabled or bool(payload_mapping.get("repair_execution_enabled")):
+        reasons.append("repair_noop_must_not_enable_repair_execution")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("repair_noop_must_not_enable_real_execution")
+    if subprocess_enabled or bool(payload_mapping.get("subprocess_enabled")):
+        reasons.append("repair_noop_must_not_enable_subprocess")
+    if bundle_execution_performed or bool(
+        payload_mapping.get("bundle_execution_performed")
+    ):
+        reasons.append("repair_noop_must_not_perform_bundle_execution")
+    if bundle_subprocess_invoked or bool(
+        payload_mapping.get("bundle_subprocess_invoked")
+    ):
+        reasons.append("repair_noop_must_not_invoke_bundle_subprocess")
+    if repair_execution_performed or bool(
+        payload_mapping.get("repair_execution_performed")
+    ):
+        reasons.append("repair_noop_must_not_perform_repair_execution")
+    if repair_subprocess_invoked or bool(payload_mapping.get("repair_subprocess_invoked")):
+        reasons.append("repair_noop_must_not_invoke_repair_subprocess")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_repair_noop_result",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": result_id or envelope_id,
+        "repair_noop_status": status or "unknown",
+        "noop_only": noop_only,
+        "noop_stdout_marker_observed": stdout_marker_observed,
+        "noop_marker": noop_marker or "unknown",
+        "exit_code": exit_code,
+        "stdout": stdout,
+        "stderr": stderr,
+        "source_envelope_status": source_envelope_status or "unknown",
+        "source_dry_run_only": source_dry_run_only,
+        "source_repair_dry_run_mode": source_mode or "unknown",
+        "source_repair_dry_run_target_count": source_target_count,
+        "source_final_gate_ready_blocked": source_final_gate_ready_blocked,
+        "source_transition_approved": source_transition_approved,
+        "operator_authorized": operator_authorized,
+        "dry_run_envelope_executed": dry_run_envelope_executed,
+        "repair_dry_run_envelope_executed": repair_dry_run_envelope_executed,
+        "repair_actions_executed": repair_actions_executed,
+        "repair_bundle_executed": repair_bundle_executed,
+        "repair_command_executed": repair_command_executed,
+        "rendered_command_executed": rendered_command_executed,
+        "dry_run_command_executed": dry_run_command_executed,
+        "bundle_execution_enabled": bundle_execution_enabled,
+        "repair_execution_enabled": repair_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "bundle_execution_performed": bundle_execution_performed,
+        "bundle_subprocess_invoked": bundle_subprocess_invoked,
+        "repair_execution_performed": repair_execution_performed,
+        "repair_subprocess_invoked": repair_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "recommended_next_action": next_action or "unknown",
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -7251,4 +7667,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_repair_approval_transition",
     "validate_replay_lifecycle_retry_real_execution_repair_final_gate",
     "validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope",
+    "validate_replay_lifecycle_retry_real_execution_repair_noop_result",
 ]

@@ -512,3 +512,11 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "must not apply changes" in text
     assert "dry_run_only=true" in text
     assert "repair_subprocess_invoked=false" in text
+    assert "Repair execution noop harness" in text
+    assert "replay_lifecycle_retry_real_execution_repair_noop_result" in text
+    assert "controlled noop subprocess" in text
+    assert "execution_performed=true" in text
+    assert "subprocess_invoked=true" in text
+    assert "must not execute repair actions" in text
+    assert "repair_actions_executed=false" in text
+    assert "repair_subprocess_invoked=false" in text
