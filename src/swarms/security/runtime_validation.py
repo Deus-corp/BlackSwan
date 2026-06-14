@@ -55,6 +55,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_repair_noop_result",
     "replay_lifecycle_retry_real_execution_repair_noop_feedback",
     "replay_lifecycle_retry_real_execution_repair_readiness_gate",
+    "replay_lifecycle_retry_guarded_repair_execution_result",
 }
 
 
@@ -554,6 +555,20 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_guarded_repair_execution_result":
+            result = validate_replay_lifecycle_retry_guarded_repair_execution_result(
+                record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -923,6 +938,32 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     real_repair_readiness_gate_repair_subprocess_invoked: dict[str, int] = {}
     real_repair_readiness_gate_execution_performed: dict[str, int] = {}
     real_repair_readiness_gate_subprocess_invoked: dict[str, int] = {}
+    guarded_repair_execution_statuses: dict[str, int] = {}
+    guarded_repair_execution_allowed: dict[str, int] = {}
+    guarded_repair_execution_marker_observed: dict[str, int] = {}
+    guarded_repair_execution_exit_codes: dict[str, int] = {}
+    guarded_repair_execution_target_counts: dict[str, int] = {}
+    guarded_repair_execution_next_actions: dict[str, int] = {}
+    guarded_repair_execution_source_gate_statuses: dict[str, int] = {}
+    guarded_repair_execution_source_feedback_statuses: dict[str, int] = {}
+    guarded_repair_execution_source_noop_statuses: dict[str, int] = {}
+    guarded_repair_execution_source_ready_guarded: dict[str, int] = {}
+    guarded_repair_execution_source_ready_repair: dict[str, int] = {}
+    guarded_repair_execution_source_would_execute: dict[str, int] = {}
+    guarded_repair_execution_source_execution_performed: dict[str, int] = {}
+    guarded_repair_execution_source_subprocess_invoked: dict[str, int] = {}
+    guarded_repair_execution_repair_actions_executed: dict[str, int] = {}
+    guarded_repair_execution_repair_bundle_executed: dict[str, int] = {}
+    guarded_repair_execution_repair_command_executed: dict[str, int] = {}
+    guarded_repair_execution_rendered_command_executed: dict[str, int] = {}
+    guarded_repair_execution_dry_run_command_executed: dict[str, int] = {}
+    guarded_repair_execution_repair_execution_enabled: dict[str, int] = {}
+    guarded_repair_execution_real_execution_enabled: dict[str, int] = {}
+    guarded_repair_execution_subprocess_enabled: dict[str, int] = {}
+    guarded_repair_execution_repair_execution_performed: dict[str, int] = {}
+    guarded_repair_execution_repair_subprocess_invoked: dict[str, int] = {}
+    guarded_repair_execution_execution_performed: dict[str, int] = {}
+    guarded_repair_execution_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -2578,6 +2619,47 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             ):
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
+        
+        if record_type == "replay_lifecycle_retry_guarded_repair_execution_result":
+            status = str(item.get("repair_execution_status") or "unknown").strip() or "unknown"
+            exit_code = str(item.get("exit_code"))
+            target_count = str(item.get("repair_action_target_count") or 0)
+            next_action = str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+            source_gate = str(item.get("source_gate_status") or "unknown").strip() or "unknown"
+            source_feedback = str(item.get("source_feedback_status") or "unknown").strip() or "unknown"
+            source_noop = str(item.get("source_noop_status") or "unknown").strip() or "unknown"
+
+            guarded_repair_execution_statuses[status] = guarded_repair_execution_statuses.get(status, 0) + 1
+            guarded_repair_execution_exit_codes[exit_code] = guarded_repair_execution_exit_codes.get(exit_code, 0) + 1
+            guarded_repair_execution_target_counts[target_count] = guarded_repair_execution_target_counts.get(target_count, 0) + 1
+            guarded_repair_execution_next_actions[next_action] = guarded_repair_execution_next_actions.get(next_action, 0) + 1
+            guarded_repair_execution_source_gate_statuses[source_gate] = guarded_repair_execution_source_gate_statuses.get(source_gate, 0) + 1
+            guarded_repair_execution_source_feedback_statuses[source_feedback] = guarded_repair_execution_source_feedback_statuses.get(source_feedback, 0) + 1
+            guarded_repair_execution_source_noop_statuses[source_noop] = guarded_repair_execution_source_noop_statuses.get(source_noop, 0) + 1
+
+            for target, key_name in (
+                (guarded_repair_execution_allowed, "repair_execution_allowed"),
+                (guarded_repair_execution_marker_observed, "guarded_repair_marker_observed"),
+                (guarded_repair_execution_source_ready_guarded, "source_ready_for_guarded_repair_execution"),
+                (guarded_repair_execution_source_ready_repair, "source_ready_for_repair_execution"),
+                (guarded_repair_execution_source_would_execute, "source_would_execute"),
+                (guarded_repair_execution_source_execution_performed, "source_execution_performed"),
+                (guarded_repair_execution_source_subprocess_invoked, "source_subprocess_invoked"),
+                (guarded_repair_execution_repair_actions_executed, "repair_actions_executed"),
+                (guarded_repair_execution_repair_bundle_executed, "repair_bundle_executed"),
+                (guarded_repair_execution_repair_command_executed, "repair_command_executed"),
+                (guarded_repair_execution_rendered_command_executed, "rendered_command_executed"),
+                (guarded_repair_execution_dry_run_command_executed, "dry_run_command_executed"),
+                (guarded_repair_execution_repair_execution_enabled, "repair_execution_enabled"),
+                (guarded_repair_execution_real_execution_enabled, "real_execution_enabled"),
+                (guarded_repair_execution_subprocess_enabled, "subprocess_enabled"),
+                (guarded_repair_execution_repair_execution_performed, "repair_execution_performed"),
+                (guarded_repair_execution_repair_subprocess_invoked, "repair_subprocess_invoked"),
+                (guarded_repair_execution_execution_performed, "execution_performed"),
+                (guarded_repair_execution_subprocess_invoked, "subprocess_invoked"),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
 
     return {
         "type": "security_validation_summary",
@@ -3390,6 +3472,32 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "real_repair_readiness_gate_subprocess_invoked": (
             real_repair_readiness_gate_subprocess_invoked
         ),
+        "guarded_repair_execution_statuses": guarded_repair_execution_statuses,
+        "guarded_repair_execution_allowed": guarded_repair_execution_allowed,
+        "guarded_repair_execution_marker_observed": guarded_repair_execution_marker_observed,
+        "guarded_repair_execution_exit_codes": guarded_repair_execution_exit_codes,
+        "guarded_repair_execution_target_counts": guarded_repair_execution_target_counts,
+        "guarded_repair_execution_next_actions": guarded_repair_execution_next_actions,
+        "guarded_repair_execution_source_gate_statuses": guarded_repair_execution_source_gate_statuses,
+        "guarded_repair_execution_source_feedback_statuses": guarded_repair_execution_source_feedback_statuses,
+        "guarded_repair_execution_source_noop_statuses": guarded_repair_execution_source_noop_statuses,
+        "guarded_repair_execution_source_ready_guarded": guarded_repair_execution_source_ready_guarded,
+        "guarded_repair_execution_source_ready_repair": guarded_repair_execution_source_ready_repair,
+        "guarded_repair_execution_source_would_execute": guarded_repair_execution_source_would_execute,
+        "guarded_repair_execution_source_execution_performed": guarded_repair_execution_source_execution_performed,
+        "guarded_repair_execution_source_subprocess_invoked": guarded_repair_execution_source_subprocess_invoked,
+        "guarded_repair_execution_repair_actions_executed": guarded_repair_execution_repair_actions_executed,
+        "guarded_repair_execution_repair_bundle_executed": guarded_repair_execution_repair_bundle_executed,
+        "guarded_repair_execution_repair_command_executed": guarded_repair_execution_repair_command_executed,
+        "guarded_repair_execution_rendered_command_executed": guarded_repair_execution_rendered_command_executed,
+        "guarded_repair_execution_dry_run_command_executed": guarded_repair_execution_dry_run_command_executed,
+        "guarded_repair_execution_repair_execution_enabled": guarded_repair_execution_repair_execution_enabled,
+        "guarded_repair_execution_real_execution_enabled": guarded_repair_execution_real_execution_enabled,
+        "guarded_repair_execution_subprocess_enabled": guarded_repair_execution_subprocess_enabled,
+        "guarded_repair_execution_repair_execution_performed": guarded_repair_execution_repair_execution_performed,
+        "guarded_repair_execution_repair_subprocess_invoked": guarded_repair_execution_repair_subprocess_invoked,
+        "guarded_repair_execution_execution_performed": guarded_repair_execution_execution_performed,
+        "guarded_repair_execution_subprocess_invoked": guarded_repair_execution_subprocess_invoked,
     }
 
 
@@ -3903,6 +4011,13 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_repair_noop_result_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_guarded_repair_execution_result":
+        return str(
+            record.get("guarded_repair_execution_result_id")
+            or record.get("real_execution_repair_readiness_gate_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -3952,6 +4067,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_repair_noop_result_id",
         "real_execution_repair_noop_feedback_id",
         "real_execution_repair_readiness_gate_id",
+        "guarded_repair_execution_result_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -3998,6 +4114,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_repair_noop_result_id",
             "real_execution_repair_noop_feedback_id",
             "real_execution_repair_readiness_gate_id",
+            "guarded_repair_execution_result_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -8593,6 +8710,233 @@ def validate_replay_lifecycle_retry_real_execution_repair_readiness_gate(
     }
 
 
+def validate_replay_lifecycle_retry_guarded_repair_execution_result(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate guarded repair execution result records."""
+    reasons: list[str] = []
+
+    result_id = str(record.get("guarded_repair_execution_result_id") or "").strip()
+    gate_id = str(record.get("real_execution_repair_readiness_gate_id") or "").strip()
+    feedback_id = str(record.get("real_execution_repair_noop_feedback_id") or "").strip()
+    noop_result_id = str(record.get("real_execution_repair_noop_result_id") or "").strip()
+    envelope_id = str(record.get("real_execution_repair_dry_run_envelope_id") or "").strip()
+    final_gate_id = str(record.get("real_execution_repair_final_gate_id") or "").strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    status = str(record.get("repair_execution_status") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+
+    repair_execution_allowed = bool(record.get("repair_execution_allowed"))
+    guarded_repair_execution = bool(record.get("guarded_repair_execution"))
+    marker_observed = bool(record.get("guarded_repair_marker_observed"))
+    exit_code = record.get("exit_code")
+    target_count = record.get("repair_action_target_count")
+
+    source_gate_status = str(record.get("source_gate_status") or "").strip()
+    source_ready_guarded = bool(record.get("source_ready_for_guarded_repair_execution"))
+    source_ready_repair = bool(record.get("source_ready_for_repair_execution"))
+    source_would_execute = bool(record.get("source_would_execute"))
+    source_feedback_status = str(record.get("source_feedback_status") or "").strip()
+    source_noop_status = str(record.get("source_noop_status") or "").strip()
+    source_noop_exit_code = record.get("source_noop_exit_code")
+    source_execution_performed = bool(record.get("source_execution_performed"))
+    source_subprocess_invoked = bool(record.get("source_subprocess_invoked"))
+    source_repair_readiness_satisfied = bool(
+        record.get("source_repair_readiness_satisfied")
+    )
+    source_repair_noop_verified = bool(record.get("source_repair_noop_verified"))
+    source_repair_path_can_proceed = bool(record.get("source_repair_path_can_proceed"))
+    source_repair_path_next_gate_allowed = bool(
+        record.get("source_repair_path_next_gate_allowed")
+    )
+    operator_authorized = bool(record.get("operator_authorized"))
+
+    repair_actions_executed = bool(record.get("repair_actions_executed"))
+    repair_bundle_executed = bool(record.get("repair_bundle_executed"))
+    repair_command_executed = bool(record.get("repair_command_executed"))
+    rendered_command_executed = bool(record.get("rendered_command_executed"))
+    dry_run_command_executed = bool(record.get("dry_run_command_executed"))
+
+    bundle_execution_enabled = bool(record.get("bundle_execution_enabled"))
+    repair_execution_enabled = bool(record.get("repair_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    bundle_execution_performed = bool(record.get("bundle_execution_performed"))
+    bundle_subprocess_invoked = bool(record.get("bundle_subprocess_invoked"))
+    repair_execution_performed = bool(record.get("repair_execution_performed"))
+    repair_subprocess_invoked = bool(record.get("repair_subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not result_id:
+        reasons.append("missing_guarded_repair_execution_result_id")
+    if not gate_id:
+        reasons.append("missing_real_execution_repair_readiness_gate_id")
+    if not feedback_id:
+        reasons.append("missing_real_execution_repair_noop_feedback_id")
+    if not noop_result_id:
+        reasons.append("missing_real_execution_repair_noop_result_id")
+    if not envelope_id:
+        reasons.append("missing_real_execution_repair_dry_run_envelope_id")
+    if not final_gate_id:
+        reasons.append("missing_real_execution_repair_final_gate_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if status not in {"succeeded", "failed", "rejected"}:
+        reasons.append("invalid_guarded_repair_execution_status")
+    if not guarded_repair_execution:
+        reasons.append("guarded_repair_execution_result_requires_guarded_marker")
+
+    if source_gate_status != "ready_blocked":
+        reasons.append("guarded_repair_execution_source_gate_must_be_ready_blocked")
+    if not source_repair_readiness_satisfied:
+        reasons.append("guarded_repair_execution_source_readiness_must_be_satisfied")
+    if not source_ready_guarded:
+        reasons.append("guarded_repair_execution_source_guarded_ready_required")
+    if source_ready_repair:
+        reasons.append("guarded_repair_execution_source_must_not_be_ready_for_repair")
+    if source_would_execute:
+        reasons.append("guarded_repair_execution_source_must_not_would_execute")
+    if source_feedback_status != "actionable":
+        reasons.append("guarded_repair_execution_source_feedback_must_be_actionable")
+    if not source_repair_noop_verified:
+        reasons.append("guarded_repair_execution_source_noop_must_be_verified")
+    if not source_repair_path_can_proceed:
+        reasons.append("guarded_repair_execution_source_path_must_proceed")
+    if not source_repair_path_next_gate_allowed:
+        reasons.append("guarded_repair_execution_source_next_gate_must_be_allowed")
+    if source_noop_status != "completed":
+        reasons.append("guarded_repair_execution_source_noop_must_be_completed")
+    if source_noop_exit_code != 0:
+        reasons.append("guarded_repair_execution_source_noop_exit_code_must_be_zero")
+    if not source_execution_performed:
+        reasons.append("guarded_repair_execution_source_noop_execution_required")
+    if not source_subprocess_invoked:
+        reasons.append("guarded_repair_execution_source_noop_subprocess_required")
+    if not operator_authorized:
+        reasons.append("guarded_repair_execution_requires_operator_authorized")
+
+    if not isinstance(target_count, int) or target_count <= 0:
+        reasons.append("guarded_repair_execution_targets_required")
+
+    if rendered_command_executed or bool(payload_mapping.get("rendered_command_executed")):
+        reasons.append("guarded_repair_execution_must_not_execute_rendered_command")
+    if dry_run_command_executed or bool(payload_mapping.get("dry_run_command_executed")):
+        reasons.append("guarded_repair_execution_must_not_execute_dry_run_command")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("guarded_repair_execution_must_not_enable_real_execution")
+
+    if status == "rejected":
+        if repair_execution_allowed:
+            reasons.append("rejected_guarded_repair_execution_must_not_be_allowed")
+        if execution_performed or subprocess_invoked:
+            reasons.append("rejected_guarded_repair_execution_must_not_execute")
+        if repair_actions_executed or repair_execution_performed:
+            reasons.append("rejected_guarded_repair_execution_must_not_repair")
+        if next_action != "authorize_guarded_repair_execution":
+            reasons.append("invalid_rejected_guarded_repair_execution_next_action")
+
+    if status == "succeeded":
+        if not repair_execution_allowed:
+            reasons.append("succeeded_guarded_repair_execution_requires_allowed")
+        if reason != "guarded_repair_execution_succeeded":
+            reasons.append("invalid_succeeded_guarded_repair_execution_reason")
+        if next_action != "run_post_repair_evidence_check":
+            reasons.append("invalid_succeeded_guarded_repair_execution_next_action")
+        if exit_code != 0:
+            reasons.append("succeeded_guarded_repair_execution_exit_code_must_be_zero")
+        if not marker_observed:
+            reasons.append("succeeded_guarded_repair_execution_marker_required")
+        if not bundle_execution_enabled:
+            reasons.append("succeeded_guarded_repair_execution_requires_bundle_enabled")
+        if not repair_execution_enabled:
+            reasons.append("succeeded_guarded_repair_execution_requires_repair_enabled")
+        if not subprocess_enabled:
+            reasons.append("succeeded_guarded_repair_execution_requires_subprocess_enabled")
+        if not bundle_execution_performed:
+            reasons.append("succeeded_guarded_repair_execution_requires_bundle_performed")
+        if not bundle_subprocess_invoked:
+            reasons.append("succeeded_guarded_repair_execution_requires_bundle_subprocess")
+        if not repair_actions_executed:
+            reasons.append("succeeded_guarded_repair_execution_requires_repair_actions")
+        if not repair_bundle_executed:
+            reasons.append("succeeded_guarded_repair_execution_requires_repair_bundle")
+        if not repair_command_executed:
+            reasons.append("succeeded_guarded_repair_execution_requires_repair_command")
+        if not repair_execution_performed:
+            reasons.append("succeeded_guarded_repair_execution_requires_repair_performed")
+        if not repair_subprocess_invoked:
+            reasons.append("succeeded_guarded_repair_execution_requires_repair_subprocess")
+        if not execution_performed:
+            reasons.append("succeeded_guarded_repair_execution_requires_execution")
+        if not subprocess_invoked:
+            reasons.append("succeeded_guarded_repair_execution_requires_subprocess")
+
+    if status == "failed":
+        if not repair_execution_allowed:
+            reasons.append("failed_guarded_repair_execution_requires_allowed")
+        if reason != "guarded_repair_execution_failed":
+            reasons.append("invalid_failed_guarded_repair_execution_reason")
+        if next_action != "investigate_guarded_repair_execution_failure":
+            reasons.append("invalid_failed_guarded_repair_execution_next_action")
+        if repair_actions_executed:
+            reasons.append("failed_guarded_repair_execution_must_not_mark_actions_executed")
+        if repair_execution_performed:
+            reasons.append("failed_guarded_repair_execution_must_not_mark_repair_performed")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_guarded_repair_execution_result",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": result_id or gate_id,
+        "repair_execution_status": status or "unknown",
+        "repair_execution_allowed": repair_execution_allowed,
+        "guarded_repair_execution": guarded_repair_execution,
+        "guarded_repair_marker_observed": marker_observed,
+        "exit_code": exit_code,
+        "repair_action_target_count": target_count,
+        "source_gate_status": source_gate_status or "unknown",
+        "source_ready_for_guarded_repair_execution": source_ready_guarded,
+        "source_ready_for_repair_execution": source_ready_repair,
+        "source_would_execute": source_would_execute,
+        "source_feedback_status": source_feedback_status or "unknown",
+        "source_noop_status": source_noop_status or "unknown",
+        "source_noop_exit_code": source_noop_exit_code,
+        "source_execution_performed": source_execution_performed,
+        "source_subprocess_invoked": source_subprocess_invoked,
+        "source_repair_readiness_satisfied": source_repair_readiness_satisfied,
+        "source_repair_noop_verified": source_repair_noop_verified,
+        "source_repair_path_can_proceed": source_repair_path_can_proceed,
+        "source_repair_path_next_gate_allowed": source_repair_path_next_gate_allowed,
+        "operator_authorized": operator_authorized,
+        "repair_actions_executed": repair_actions_executed,
+        "repair_bundle_executed": repair_bundle_executed,
+        "repair_command_executed": repair_command_executed,
+        "rendered_command_executed": rendered_command_executed,
+        "dry_run_command_executed": dry_run_command_executed,
+        "bundle_execution_enabled": bundle_execution_enabled,
+        "repair_execution_enabled": repair_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "bundle_execution_performed": bundle_execution_performed,
+        "bundle_subprocess_invoked": bundle_subprocess_invoked,
+        "repair_execution_performed": repair_execution_performed,
+        "repair_subprocess_invoked": repair_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "recommended_next_action": next_action or "unknown",
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -8631,4 +8975,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_repair_noop_result",
     "validate_replay_lifecycle_retry_real_execution_repair_noop_feedback",
     "validate_replay_lifecycle_retry_real_execution_repair_readiness_gate",
+    "validate_replay_lifecycle_retry_guarded_repair_execution_result",
 ]

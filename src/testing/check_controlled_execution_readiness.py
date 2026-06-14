@@ -993,6 +993,84 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_repair_readiness_gate_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_repair_readiness_gate_subprocess_invoked")
     )
+    guarded_repair_execution_statuses = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_statuses")
+    )
+    guarded_repair_execution_allowed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_allowed")
+    )
+    guarded_repair_execution_marker_observed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_marker_observed")
+    )
+    guarded_repair_execution_exit_codes = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_exit_codes")
+    )
+    guarded_repair_execution_target_counts = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_target_counts")
+    )
+    guarded_repair_execution_next_actions = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_next_actions")
+    )
+    guarded_repair_execution_source_gate_statuses = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_gate_statuses")
+    )
+    guarded_repair_execution_source_feedback_statuses = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_feedback_statuses")
+    )
+    guarded_repair_execution_source_noop_statuses = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_noop_statuses")
+    )
+    guarded_repair_execution_source_ready_guarded = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_ready_guarded")
+    )
+    guarded_repair_execution_source_ready_repair = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_ready_repair")
+    )
+    guarded_repair_execution_source_would_execute = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_would_execute")
+    )
+    guarded_repair_execution_source_execution_performed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_execution_performed")
+    )
+    guarded_repair_execution_source_subprocess_invoked = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_subprocess_invoked")
+    )
+    guarded_repair_execution_repair_actions_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_actions_executed")
+    )
+    guarded_repair_execution_repair_bundle_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_bundle_executed")
+    )
+    guarded_repair_execution_repair_command_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_command_executed")
+    )
+    guarded_repair_execution_rendered_command_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_rendered_command_executed")
+    )
+    guarded_repair_execution_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_dry_run_command_executed")
+    )
+    guarded_repair_execution_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_execution_enabled")
+    )
+    guarded_repair_execution_real_execution_enabled = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_real_execution_enabled")
+    )
+    guarded_repair_execution_subprocess_enabled = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_subprocess_enabled")
+    )
+    guarded_repair_execution_repair_execution_performed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_execution_performed")
+    )
+    guarded_repair_execution_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_subprocess_invoked")
+    )
+    guarded_repair_execution_execution_performed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_execution_performed")
+    )
+    guarded_repair_execution_subprocess_invoked = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -2144,6 +2222,73 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_repair_readiness_gate_subprocess_invoked": _safe_int(
             real_repair_readiness_gate_subprocess_invoked.get("true"), 0
+        ),
+        "guarded_repair_execution_observed": _safe_int(
+            guarded_repair_execution_statuses.get("succeeded"), 0
+        )
+        > 0,
+        "guarded_repair_execution_records": _safe_int(
+            guarded_repair_execution_statuses.get("succeeded"), 0
+        ),
+        "guarded_repair_execution_linkage_complete": bool(
+            trail_summary.get("guarded_repair_execution_linkage_complete")
+        ),
+        "guarded_repair_execution_orphans": _safe_int(
+            trail_summary.get("guarded_repair_execution_orphans"), 0
+        ),
+        "guarded_repair_execution_succeeded": _safe_int(
+            guarded_repair_execution_statuses.get("succeeded"), 0
+        ),
+        "guarded_repair_execution_allowed": _safe_int(
+            guarded_repair_execution_allowed.get("true"), 0
+        ),
+        "guarded_repair_execution_marker_observed": _safe_int(
+            guarded_repair_execution_marker_observed.get("true"), 0
+        ),
+        "guarded_repair_execution_exit_code_zero": _safe_int(
+            guarded_repair_execution_exit_codes.get("0"), 0
+        ),
+        "guarded_repair_execution_target_count_9": _safe_int(
+            guarded_repair_execution_target_counts.get("9"), 0
+        ),
+        "guarded_repair_execution_next_action_post_evidence": _safe_int(
+            guarded_repair_execution_next_actions.get("run_post_repair_evidence_check"), 0
+        ),
+        "guarded_repair_execution_repair_actions_executed": _safe_int(
+            guarded_repair_execution_repair_actions_executed.get("true"), 0
+        ),
+        "guarded_repair_execution_repair_bundle_executed": _safe_int(
+            guarded_repair_execution_repair_bundle_executed.get("true"), 0
+        ),
+        "guarded_repair_execution_repair_command_executed": _safe_int(
+            guarded_repair_execution_repair_command_executed.get("true"), 0
+        ),
+        "guarded_repair_execution_rendered_command_executed": _safe_int(
+            guarded_repair_execution_rendered_command_executed.get("true"), 0
+        ),
+        "guarded_repair_execution_dry_run_command_executed": _safe_int(
+            guarded_repair_execution_dry_run_command_executed.get("true"), 0
+        ),
+        "guarded_repair_execution_repair_execution_enabled": _safe_int(
+            guarded_repair_execution_repair_execution_enabled.get("true"), 0
+        ),
+        "guarded_repair_execution_real_execution_enabled": _safe_int(
+            guarded_repair_execution_real_execution_enabled.get("true"), 0
+        ),
+        "guarded_repair_execution_subprocess_enabled": _safe_int(
+            guarded_repair_execution_subprocess_enabled.get("true"), 0
+        ),
+        "guarded_repair_execution_repair_execution_performed": _safe_int(
+            guarded_repair_execution_repair_execution_performed.get("true"), 0
+        ),
+        "guarded_repair_execution_repair_subprocess_invoked": _safe_int(
+            guarded_repair_execution_repair_subprocess_invoked.get("true"), 0
+        ),
+        "guarded_repair_execution_execution_performed": _safe_int(
+            guarded_repair_execution_execution_performed.get("true"), 0
+        ),
+        "guarded_repair_execution_subprocess_invoked": _safe_int(
+            guarded_repair_execution_subprocess_invoked.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -3343,6 +3488,73 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_repair_readiness_gate_subprocess_invoked": _safe_int(
                 real_repair_readiness_gate_subprocess_invoked.get("true"), 0
             ),
+            "guarded_repair_execution_observed": _safe_int(
+                guarded_repair_execution_statuses.get("succeeded"), 0
+            )
+            > 0,
+            "guarded_repair_execution_records": _safe_int(
+                guarded_repair_execution_statuses.get("succeeded"), 0
+            ),
+            "guarded_repair_execution_linkage_complete": bool(
+                trail_summary.get("guarded_repair_execution_linkage_complete")
+            ),
+            "guarded_repair_execution_orphans": _safe_int(
+                trail_summary.get("guarded_repair_execution_orphans"), 0
+            ),
+            "guarded_repair_execution_succeeded": _safe_int(
+                guarded_repair_execution_statuses.get("succeeded"), 0
+            ),
+            "guarded_repair_execution_allowed": _safe_int(
+                guarded_repair_execution_allowed.get("true"), 0
+            ),
+            "guarded_repair_execution_marker_observed": _safe_int(
+                guarded_repair_execution_marker_observed.get("true"), 0
+            ),
+            "guarded_repair_execution_exit_code_zero": _safe_int(
+                guarded_repair_execution_exit_codes.get("0"), 0
+            ),
+            "guarded_repair_execution_target_count_9": _safe_int(
+                guarded_repair_execution_target_counts.get("9"), 0
+            ),
+            "guarded_repair_execution_next_action_post_evidence": _safe_int(
+                guarded_repair_execution_next_actions.get("run_post_repair_evidence_check"), 0
+            ),
+            "guarded_repair_execution_repair_actions_executed": _safe_int(
+                guarded_repair_execution_repair_actions_executed.get("true"), 0
+            ),
+            "guarded_repair_execution_repair_bundle_executed": _safe_int(
+                guarded_repair_execution_repair_bundle_executed.get("true"), 0
+            ),
+            "guarded_repair_execution_repair_command_executed": _safe_int(
+                guarded_repair_execution_repair_command_executed.get("true"), 0
+            ),
+            "guarded_repair_execution_rendered_command_executed": _safe_int(
+                guarded_repair_execution_rendered_command_executed.get("true"), 0
+            ),
+            "guarded_repair_execution_dry_run_command_executed": _safe_int(
+                guarded_repair_execution_dry_run_command_executed.get("true"), 0
+            ),
+            "guarded_repair_execution_repair_execution_enabled": _safe_int(
+                guarded_repair_execution_repair_execution_enabled.get("true"), 0
+            ),
+            "guarded_repair_execution_real_execution_enabled": _safe_int(
+                guarded_repair_execution_real_execution_enabled.get("true"), 0
+            ),
+            "guarded_repair_execution_subprocess_enabled": _safe_int(
+                guarded_repair_execution_subprocess_enabled.get("true"), 0
+            ),
+            "guarded_repair_execution_repair_execution_performed": _safe_int(
+                guarded_repair_execution_repair_execution_performed.get("true"), 0
+            ),
+            "guarded_repair_execution_repair_subprocess_invoked": _safe_int(
+                guarded_repair_execution_repair_subprocess_invoked.get("true"), 0
+            ),
+            "guarded_repair_execution_execution_performed": _safe_int(
+                guarded_repair_execution_execution_performed.get("true"), 0
+            ),
+            "guarded_repair_execution_subprocess_invoked": _safe_int(
+                guarded_repair_execution_subprocess_invoked.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -3454,6 +3666,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_repair_readiness_gate_records",
             "real_repair_readiness_gate_linkage_complete",
             "real_repair_readiness_gate_orphans",
+            "guarded_repair_execution_observed",
+            "guarded_repair_execution_records",
+            "guarded_repair_execution_linkage_complete",
+            "guarded_repair_execution_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -4477,6 +4693,84 @@ def _build_checks(
     )
     real_repair_readiness_gate_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_repair_readiness_gate_subprocess_invoked")
+    )
+    guarded_repair_execution_statuses = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_statuses")
+    )
+    guarded_repair_execution_allowed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_allowed")
+    )
+    guarded_repair_execution_marker_observed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_marker_observed")
+    )
+    guarded_repair_execution_exit_codes = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_exit_codes")
+    )
+    guarded_repair_execution_target_counts = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_target_counts")
+    )
+    guarded_repair_execution_next_actions = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_next_actions")
+    )
+    guarded_repair_execution_source_gate_statuses = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_gate_statuses")
+    )
+    guarded_repair_execution_source_feedback_statuses = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_feedback_statuses")
+    )
+    guarded_repair_execution_source_noop_statuses = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_noop_statuses")
+    )
+    guarded_repair_execution_source_ready_guarded = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_ready_guarded")
+    )
+    guarded_repair_execution_source_ready_repair = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_ready_repair")
+    )
+    guarded_repair_execution_source_would_execute = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_would_execute")
+    )
+    guarded_repair_execution_source_execution_performed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_execution_performed")
+    )
+    guarded_repair_execution_source_subprocess_invoked = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_source_subprocess_invoked")
+    )
+    guarded_repair_execution_repair_actions_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_actions_executed")
+    )
+    guarded_repair_execution_repair_bundle_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_bundle_executed")
+    )
+    guarded_repair_execution_repair_command_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_command_executed")
+    )
+    guarded_repair_execution_rendered_command_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_rendered_command_executed")
+    )
+    guarded_repair_execution_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_dry_run_command_executed")
+    )
+    guarded_repair_execution_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_execution_enabled")
+    )
+    guarded_repair_execution_real_execution_enabled = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_real_execution_enabled")
+    )
+    guarded_repair_execution_subprocess_enabled = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_subprocess_enabled")
+    )
+    guarded_repair_execution_repair_execution_performed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_execution_performed")
+    )
+    guarded_repair_execution_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_repair_subprocess_invoked")
+    )
+    guarded_repair_execution_execution_performed = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_execution_performed")
+    )
+    guarded_repair_execution_subprocess_invoked = _safe_mapping(
+        trail_summary.get("guarded_repair_execution_subprocess_invoked")
     )
 
     checks = [
@@ -7532,6 +7826,223 @@ def _build_checks(
             == 0,
             _safe_int(real_repair_readiness_gate_subprocess_invoked.get("true"), 0),
         ),
+        _check(
+            "guarded_repair_execution_observed_after_readiness_gate",
+            _safe_int(real_repair_readiness_gate_statuses.get("ready_blocked"), 0) == 0
+            or _safe_int(guarded_repair_execution_statuses.get("succeeded"), 0) > 0,
+            {
+                "ready_blocked_repair_readiness_gates": _safe_int(
+                    real_repair_readiness_gate_statuses.get("ready_blocked"), 0
+                ),
+                "succeeded_guarded_repair_execution_results": _safe_int(
+                    guarded_repair_execution_statuses.get("succeeded"), 0
+                ),
+            },
+        ),
+        _check(
+            "guarded_repair_execution_links_to_readiness_gate",
+            _safe_int(guarded_repair_execution_statuses.get("succeeded"), 0) == 0
+            or _safe_int(trail_summary.get("guarded_repair_execution_orphans"), 0)
+            == 0,
+            _safe_int(trail_summary.get("guarded_repair_execution_orphans"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_succeeded",
+            _safe_int(guarded_repair_execution_statuses.get("succeeded"), 0) == 1,
+            _safe_int(guarded_repair_execution_statuses.get("succeeded"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_allowed",
+            _safe_int(guarded_repair_execution_allowed.get("true"), 0) == 1,
+            _safe_int(guarded_repair_execution_allowed.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_marker_observed",
+            _safe_int(guarded_repair_execution_marker_observed.get("true"), 0) == 1,
+            _safe_int(guarded_repair_execution_marker_observed.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_exit_code_zero",
+            _safe_int(guarded_repair_execution_exit_codes.get("0"), 0) == 1,
+            _safe_int(guarded_repair_execution_exit_codes.get("0"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_target_count_observed",
+            _safe_int(guarded_repair_execution_target_counts.get("9"), 0) == 1,
+            _safe_int(guarded_repair_execution_target_counts.get("9"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_next_action_post_evidence",
+            _safe_int(
+                guarded_repair_execution_next_actions.get(
+                    "run_post_repair_evidence_check"
+                ),
+                0,
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_next_actions.get(
+                    "run_post_repair_evidence_check"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_source_gate_ready_blocked",
+            _safe_int(
+                guarded_repair_execution_source_gate_statuses.get("ready_blocked"), 0
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_source_gate_statuses.get("ready_blocked"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_source_feedback_actionable",
+            _safe_int(
+                guarded_repair_execution_source_feedback_statuses.get("actionable"), 0
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_source_feedback_statuses.get("actionable"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_source_noop_completed",
+            _safe_int(
+                guarded_repair_execution_source_noop_statuses.get("completed"), 0
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_source_noop_statuses.get("completed"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_source_guarded_ready",
+            _safe_int(guarded_repair_execution_source_ready_guarded.get("true"), 0)
+            == 1,
+            _safe_int(guarded_repair_execution_source_ready_guarded.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_source_not_ready_for_repair_execution",
+            _safe_int(guarded_repair_execution_source_ready_repair.get("true"), 0)
+            == 0,
+            _safe_int(guarded_repair_execution_source_ready_repair.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_source_would_not_execute",
+            _safe_int(guarded_repair_execution_source_would_execute.get("true"), 0)
+            == 0,
+            _safe_int(guarded_repair_execution_source_would_execute.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_source_noop_executed",
+            _safe_int(
+                guarded_repair_execution_source_execution_performed.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_source_execution_performed.get("true"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_source_noop_subprocess_invoked",
+            _safe_int(
+                guarded_repair_execution_source_subprocess_invoked.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_source_subprocess_invoked.get("true"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_repair_actions_executed",
+            _safe_int(guarded_repair_execution_repair_actions_executed.get("true"), 0)
+            == 1,
+            _safe_int(guarded_repair_execution_repair_actions_executed.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_repair_bundle_executed",
+            _safe_int(guarded_repair_execution_repair_bundle_executed.get("true"), 0)
+            == 1,
+            _safe_int(guarded_repair_execution_repair_bundle_executed.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_repair_command_executed",
+            _safe_int(guarded_repair_execution_repair_command_executed.get("true"), 0)
+            == 1,
+            _safe_int(guarded_repair_execution_repair_command_executed.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_did_not_execute_rendered_command",
+            _safe_int(
+                guarded_repair_execution_rendered_command_executed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                guarded_repair_execution_rendered_command_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_did_not_execute_dry_run_command",
+            _safe_int(guarded_repair_execution_dry_run_command_executed.get("true"), 0)
+            == 0,
+            _safe_int(guarded_repair_execution_dry_run_command_executed.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_repair_execution_enabled",
+            _safe_int(
+                guarded_repair_execution_repair_execution_enabled.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_repair_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_did_not_enable_real_execution",
+            _safe_int(guarded_repair_execution_real_execution_enabled.get("true"), 0)
+            == 0,
+            _safe_int(guarded_repair_execution_real_execution_enabled.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_subprocess_enabled",
+            _safe_int(guarded_repair_execution_subprocess_enabled.get("true"), 0)
+            == 1,
+            _safe_int(guarded_repair_execution_subprocess_enabled.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_repair_execution_performed",
+            _safe_int(
+                guarded_repair_execution_repair_execution_performed.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_repair_execution_performed.get("true"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_repair_subprocess_invoked",
+            _safe_int(
+                guarded_repair_execution_repair_subprocess_invoked.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                guarded_repair_execution_repair_subprocess_invoked.get("true"), 0
+            ),
+        ),
+        _check(
+            "guarded_repair_execution_execution_performed",
+            _safe_int(guarded_repair_execution_execution_performed.get("true"), 0)
+            == 1,
+            _safe_int(guarded_repair_execution_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "guarded_repair_execution_subprocess_invoked",
+            _safe_int(guarded_repair_execution_subprocess_invoked.get("true"), 0)
+            == 1,
+            _safe_int(guarded_repair_execution_subprocess_invoked.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -7685,6 +8196,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_repair_readiness_gate_records",
         "real_repair_readiness_gate_linkage_complete",
         "real_repair_readiness_gate_orphans",
+        "guarded_repair_execution_observed",
+        "guarded_repair_execution_records",
+        "guarded_repair_execution_linkage_complete",
+        "guarded_repair_execution_orphans",
     ]
 
     reasons: list[str] = []
@@ -7976,6 +8491,15 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_repair_readiness_gate_linkage_complete_must_be_bool")
     if not isinstance(report.get("real_repair_readiness_gate_orphans"), int):
         reasons.append("real_repair_readiness_gate_orphans_must_be_int")
+    
+    if not isinstance(report.get("guarded_repair_execution_observed"), bool):
+        reasons.append("guarded_repair_execution_observed_must_be_bool")
+    if not isinstance(report.get("guarded_repair_execution_records"), int):
+        reasons.append("guarded_repair_execution_records_must_be_int")
+    if not isinstance(report.get("guarded_repair_execution_linkage_complete"), bool):
+        reasons.append("guarded_repair_execution_linkage_complete_must_be_bool")
+    if not isinstance(report.get("guarded_repair_execution_orphans"), int):
+        reasons.append("guarded_repair_execution_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -8394,6 +8918,28 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_repair_readiness_gate_repair_subprocess_invoked={result.get('real_repair_readiness_gate_repair_subprocess_invoked', 0)} "
         f"real_repair_readiness_gate_execution_performed={result.get('real_repair_readiness_gate_execution_performed', 0)} "
         f"real_repair_readiness_gate_subprocess_invoked={result.get('real_repair_readiness_gate_subprocess_invoked', 0)} "
+        f"guarded_repair_execution_observed={str(bool(result.get('guarded_repair_execution_observed'))).lower()} "
+        f"guarded_repair_execution_records={result.get('guarded_repair_execution_records', 0)} "
+        f"guarded_repair_execution_linkage_complete={str(bool(result.get('guarded_repair_execution_linkage_complete'))).lower()} "
+        f"guarded_repair_execution_orphans={result.get('guarded_repair_execution_orphans', 0)} "
+        f"guarded_repair_execution_succeeded={result.get('guarded_repair_execution_succeeded', 0)} "
+        f"guarded_repair_execution_allowed={result.get('guarded_repair_execution_allowed', 0)} "
+        f"guarded_repair_execution_marker_observed={result.get('guarded_repair_execution_marker_observed', 0)} "
+        f"guarded_repair_execution_exit_code_zero={result.get('guarded_repair_execution_exit_code_zero', 0)} "
+        f"guarded_repair_execution_target_count_9={result.get('guarded_repair_execution_target_count_9', 0)} "
+        f"guarded_repair_execution_next_action_post_evidence={result.get('guarded_repair_execution_next_action_post_evidence', 0)} "
+        f"guarded_repair_execution_repair_actions_executed={result.get('guarded_repair_execution_repair_actions_executed', 0)} "
+        f"guarded_repair_execution_repair_bundle_executed={result.get('guarded_repair_execution_repair_bundle_executed', 0)} "
+        f"guarded_repair_execution_repair_command_executed={result.get('guarded_repair_execution_repair_command_executed', 0)} "
+        f"guarded_repair_execution_rendered_command_executed={result.get('guarded_repair_execution_rendered_command_executed', 0)} "
+        f"guarded_repair_execution_dry_run_command_executed={result.get('guarded_repair_execution_dry_run_command_executed', 0)} "
+        f"guarded_repair_execution_repair_execution_enabled={result.get('guarded_repair_execution_repair_execution_enabled', 0)} "
+        f"guarded_repair_execution_real_execution_enabled={result.get('guarded_repair_execution_real_execution_enabled', 0)} "
+        f"guarded_repair_execution_subprocess_enabled={result.get('guarded_repair_execution_subprocess_enabled', 0)} "
+        f"guarded_repair_execution_repair_execution_performed={result.get('guarded_repair_execution_repair_execution_performed', 0)} "
+        f"guarded_repair_execution_repair_subprocess_invoked={result.get('guarded_repair_execution_repair_subprocess_invoked', 0)} "
+        f"guarded_repair_execution_execution_performed={result.get('guarded_repair_execution_execution_performed', 0)} "
+        f"guarded_repair_execution_subprocess_invoked={result.get('guarded_repair_execution_subprocess_invoked', 0)} "
     )
 
 

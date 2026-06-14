@@ -108,6 +108,10 @@ def _report(**overrides):
         "real_repair_readiness_gate_records": 1,
         "real_repair_readiness_gate_linkage_complete": True,
         "real_repair_readiness_gate_orphans": 0,
+        "guarded_repair_execution_observed": True,
+        "guarded_repair_execution_records": 1,
+        "guarded_repair_execution_linkage_complete": True,
+        "guarded_repair_execution_orphans": 0,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -252,6 +256,10 @@ def _report(**overrides):
             "real_repair_readiness_gate_records",
             "real_repair_readiness_gate_linkage_complete",
             "real_repair_readiness_gate_orphans",
+            "guarded_repair_execution_observed",
+            "guarded_repair_execution_records",
+            "guarded_repair_execution_linkage_complete",
+            "guarded_repair_execution_orphans",
         ],
     }
     item.update(overrides)
@@ -410,6 +418,10 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_repair_readiness_gate_records",
             "real_repair_readiness_gate_linkage_complete",
             "real_repair_readiness_gate_orphans",
+            "guarded_repair_execution_observed",
+            "guarded_repair_execution_records",
+            "guarded_repair_execution_linkage_complete",
+            "guarded_repair_execution_orphans",
             "checks",
             "exit_codes",
         ]

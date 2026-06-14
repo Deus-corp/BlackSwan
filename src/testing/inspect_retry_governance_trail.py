@@ -50,6 +50,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_repair_noop_result",
     "replay_lifecycle_retry_real_execution_repair_noop_feedback",
     "replay_lifecycle_retry_real_execution_repair_readiness_gate",
+    "replay_lifecycle_retry_guarded_repair_execution_result",
 }
 
 
@@ -287,6 +288,12 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_repair_readiness_gate"
+    ]
+    guarded_repair_execution_results = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_guarded_repair_execution_result"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -1651,6 +1658,109 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in real_repair_readiness_gates
     )
+    guarded_repair_execution_statuses = Counter(
+        str(item.get("repair_execution_status") or "unknown").strip() or "unknown"
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_allowed = Counter(
+        str(bool(item.get("repair_execution_allowed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_marker_observed = Counter(
+        str(bool(item.get("guarded_repair_marker_observed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_exit_codes = Counter(
+        str(item.get("exit_code")) for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_target_counts = Counter(
+        str(item.get("repair_action_target_count") or 0)
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_source_gate_statuses = Counter(
+        str(item.get("source_gate_status") or "unknown").strip() or "unknown"
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_source_feedback_statuses = Counter(
+        str(item.get("source_feedback_status") or "unknown").strip() or "unknown"
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_source_noop_statuses = Counter(
+        str(item.get("source_noop_status") or "unknown").strip() or "unknown"
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_source_ready_guarded = Counter(
+        str(bool(item.get("source_ready_for_guarded_repair_execution"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_source_ready_repair = Counter(
+        str(bool(item.get("source_ready_for_repair_execution"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_source_would_execute = Counter(
+        str(bool(item.get("source_would_execute"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_source_execution_performed = Counter(
+        str(bool(item.get("source_execution_performed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_source_subprocess_invoked = Counter(
+        str(bool(item.get("source_subprocess_invoked"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_repair_actions_executed = Counter(
+        str(bool(item.get("repair_actions_executed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_repair_bundle_executed = Counter(
+        str(bool(item.get("repair_bundle_executed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_repair_command_executed = Counter(
+        str(bool(item.get("repair_command_executed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_rendered_command_executed = Counter(
+        str(bool(item.get("rendered_command_executed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_dry_run_command_executed = Counter(
+        str(bool(item.get("dry_run_command_executed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_repair_execution_enabled = Counter(
+        str(bool(item.get("repair_execution_enabled"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_subprocess_enabled = Counter(
+        str(bool(item.get("subprocess_enabled"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_repair_execution_performed = Counter(
+        str(bool(item.get("repair_execution_performed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_repair_subprocess_invoked = Counter(
+        str(bool(item.get("repair_subprocess_invoked"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in guarded_repair_execution_results
+    )
+    guarded_repair_execution_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in guarded_repair_execution_results
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -1686,6 +1796,7 @@ def inspect_retry_governance_trail_from_records(
         real_repair_noop_results=real_repair_noop_results,
         real_repair_noop_feedback_records=real_repair_noop_feedback_records,
         real_repair_readiness_gates=real_repair_readiness_gates,
+        guarded_repair_execution_results=guarded_repair_execution_results,
         results=results,
     )
 
@@ -1832,6 +1943,11 @@ def inspect_retry_governance_trail_from_records(
         )
     )
 
+    guarded_repair_execution_linkage = _guarded_repair_execution_linkage_summary(
+        real_repair_readiness_gates=real_repair_readiness_gates,
+        guarded_repair_execution_results=guarded_repair_execution_results,
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -1881,6 +1997,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_repair_noop_results": len(real_repair_noop_results),
             "real_execution_repair_noop_feedback_records": len(real_repair_noop_feedback_records),
             "real_execution_repair_readiness_gates": len(real_repair_readiness_gates),
+            "guarded_repair_execution_results": len(guarded_repair_execution_results),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -3124,6 +3241,100 @@ def inspect_retry_governance_trail_from_records(
                 "real_repair_readiness_gate_orphans", 0
             )
         ),
+        "guarded_repair_execution_statuses": dict(
+            guarded_repair_execution_statuses
+        ),
+        "guarded_repair_execution_allowed": dict(
+            guarded_repair_execution_allowed
+        ),
+        "guarded_repair_execution_marker_observed": dict(
+            guarded_repair_execution_marker_observed
+        ),
+        "guarded_repair_execution_exit_codes": dict(
+            guarded_repair_execution_exit_codes
+        ),
+        "guarded_repair_execution_target_counts": dict(
+            guarded_repair_execution_target_counts
+        ),
+        "guarded_repair_execution_next_actions": dict(
+            guarded_repair_execution_next_actions
+        ),
+        "guarded_repair_execution_source_gate_statuses": dict(
+            guarded_repair_execution_source_gate_statuses
+        ),
+        "guarded_repair_execution_source_feedback_statuses": dict(
+            guarded_repair_execution_source_feedback_statuses
+        ),
+        "guarded_repair_execution_source_noop_statuses": dict(
+            guarded_repair_execution_source_noop_statuses
+        ),
+        "guarded_repair_execution_source_ready_guarded": dict(
+            guarded_repair_execution_source_ready_guarded
+        ),
+        "guarded_repair_execution_source_ready_repair": dict(
+            guarded_repair_execution_source_ready_repair
+        ),
+        "guarded_repair_execution_source_would_execute": dict(
+            guarded_repair_execution_source_would_execute
+        ),
+        "guarded_repair_execution_source_execution_performed": dict(
+            guarded_repair_execution_source_execution_performed
+        ),
+        "guarded_repair_execution_source_subprocess_invoked": dict(
+            guarded_repair_execution_source_subprocess_invoked
+        ),
+        "guarded_repair_execution_repair_actions_executed": dict(
+            guarded_repair_execution_repair_actions_executed
+        ),
+        "guarded_repair_execution_repair_bundle_executed": dict(
+            guarded_repair_execution_repair_bundle_executed
+        ),
+        "guarded_repair_execution_repair_command_executed": dict(
+            guarded_repair_execution_repair_command_executed
+        ),
+        "guarded_repair_execution_rendered_command_executed": dict(
+            guarded_repair_execution_rendered_command_executed
+        ),
+        "guarded_repair_execution_dry_run_command_executed": dict(
+            guarded_repair_execution_dry_run_command_executed
+        ),
+        "guarded_repair_execution_repair_execution_enabled": dict(
+            guarded_repair_execution_repair_execution_enabled
+        ),
+        "guarded_repair_execution_real_execution_enabled": dict(
+            guarded_repair_execution_real_execution_enabled
+        ),
+        "guarded_repair_execution_subprocess_enabled": dict(
+            guarded_repair_execution_subprocess_enabled
+        ),
+        "guarded_repair_execution_repair_execution_performed": dict(
+            guarded_repair_execution_repair_execution_performed
+        ),
+        "guarded_repair_execution_repair_subprocess_invoked": dict(
+            guarded_repair_execution_repair_subprocess_invoked
+        ),
+        "guarded_repair_execution_execution_performed": dict(
+            guarded_repair_execution_execution_performed
+        ),
+        "guarded_repair_execution_subprocess_invoked": dict(
+            guarded_repair_execution_subprocess_invoked
+        ),
+        "guarded_repair_execution_linkage": guarded_repair_execution_linkage,
+        "guarded_repair_execution_linkage_complete": bool(
+            guarded_repair_execution_linkage.get(
+                "guarded_repair_execution_linkage_complete"
+            )
+        ),
+        "guarded_repair_execution_gate_matches": (
+            guarded_repair_execution_linkage.get(
+                "guarded_repair_execution_gate_matches", 0
+            )
+        ),
+        "guarded_repair_execution_orphans": (
+            guarded_repair_execution_linkage.get(
+                "guarded_repair_execution_orphans", 0
+            )
+        ),
     }
 
 def _missing_stages(
@@ -3301,6 +3512,7 @@ def _build_chain_ids(
     real_repair_noop_results: list[Mapping[str, Any]],
     real_repair_noop_feedback_records: list[Mapping[str, Any]],
     real_repair_readiness_gates: list[Mapping[str, Any]],
+    guarded_repair_execution_results: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -3335,6 +3547,7 @@ def _build_chain_ids(
         + real_repair_noop_results
         + real_repair_noop_feedback_records
         + real_repair_readiness_gates
+        + guarded_repair_execution_results
         + results
     )
 
@@ -3379,6 +3592,7 @@ def _build_chain_ids(
                 + real_repair_noop_results
                 + real_repair_noop_feedback_records
                 + real_repair_readiness_gates
+                + guarded_repair_execution_results
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -3415,6 +3629,7 @@ def _build_chain_ids(
                 + real_repair_noop_results
                 + real_repair_noop_feedback_records
                 + real_repair_readiness_gates
+                + guarded_repair_execution_results
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -3451,6 +3666,7 @@ def _build_chain_ids(
                     + real_repair_noop_results
                     + real_repair_noop_feedback_records
                     + real_repair_readiness_gates
+                    + guarded_repair_execution_results
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -3684,6 +3900,13 @@ def _build_chain_ids(
                 if str(
                     item.get("real_execution_repair_readiness_gate_id") or ""
                 ).strip()
+            }
+        ),
+        "guarded_repair_execution_result_ids": sorted(
+            {
+                str(item.get("guarded_repair_execution_result_id") or "").strip()
+                for item in guarded_repair_execution_results
+                if str(item.get("guarded_repair_execution_result_id") or "").strip()
             }
         ),
     }
@@ -4755,6 +4978,40 @@ def _real_repair_readiness_gate_linkage_summary(
             real_repair_readiness_gates
         )
         and gate_orphans == 0,
+    }
+
+
+def _guarded_repair_execution_linkage_summary(
+    *,
+    real_repair_readiness_gates: list[Mapping[str, Any]],
+    guarded_repair_execution_results: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    gate_ids = {
+        clean(item.get("real_execution_repair_readiness_gate_id"))
+        for item in real_repair_readiness_gates
+        if clean(item.get("real_execution_repair_readiness_gate_id"))
+    }
+
+    result_gate_matches = 0
+    result_orphans = 0
+
+    for result in guarded_repair_execution_results:
+        gate_id = clean(result.get("real_execution_repair_readiness_gate_id"))
+        if gate_id and gate_id in gate_ids:
+            result_gate_matches += 1
+        else:
+            result_orphans += 1
+
+    return {
+        "guarded_repair_execution_gate_matches": result_gate_matches,
+        "guarded_repair_execution_orphans": result_orphans,
+        "guarded_repair_execution_linkage_complete": bool(
+            guarded_repair_execution_results
+        )
+        and result_orphans == 0,
     }
 
 
