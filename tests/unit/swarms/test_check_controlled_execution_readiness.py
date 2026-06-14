@@ -432,6 +432,33 @@ def _trail_summary(**overrides):
         "real_repair_noop_feedback_subprocess_invoked": {"false": 1},
         "real_repair_noop_feedback_linkage_complete": True,
         "real_repair_noop_feedback_orphans": 0,
+        "real_repair_readiness_gate_statuses": {"ready_blocked": 1},
+        "real_repair_readiness_gate_satisfied": {"true": 1},
+        "real_repair_readiness_gate_guarded_ready": {"true": 1},
+        "real_repair_readiness_gate_ready_for_repair_execution": {"false": 1},
+        "real_repair_readiness_gate_would_execute": {"false": 1},
+        "real_repair_readiness_gate_next_actions": {
+            "prepare_guarded_repair_execution_harness": 1,
+        },
+        "real_repair_readiness_gate_source_feedback_statuses": {"actionable": 1},
+        "real_repair_readiness_gate_source_noop_statuses": {"completed": 1},
+        "real_repair_readiness_gate_source_exit_codes": {"0": 1},
+        "real_repair_readiness_gate_source_target_counts": {"9": 1},
+        "real_repair_readiness_gate_source_execution_performed": {"true": 1},
+        "real_repair_readiness_gate_source_subprocess_invoked": {"true": 1},
+        "real_repair_readiness_gate_source_repair_actions_executed": {"false": 1},
+        "real_repair_readiness_gate_source_repair_execution_enabled": {"false": 1},
+        "real_repair_readiness_gate_source_repair_execution_performed": {"false": 1},
+        "real_repair_readiness_gate_source_repair_subprocess_invoked": {"false": 1},
+        "real_repair_readiness_gate_repair_execution_enabled": {"false": 1},
+        "real_repair_readiness_gate_real_execution_enabled": {"false": 1},
+        "real_repair_readiness_gate_subprocess_enabled": {"false": 1},
+        "real_repair_readiness_gate_repair_execution_performed": {"false": 1},
+        "real_repair_readiness_gate_repair_subprocess_invoked": {"false": 1},
+        "real_repair_readiness_gate_execution_performed": {"false": 1},
+        "real_repair_readiness_gate_subprocess_invoked": {"false": 1},
+        "real_repair_readiness_gate_linkage_complete": True,
+        "real_repair_readiness_gate_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -1203,6 +1230,33 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_repair_noop_feedback_repair_subprocess_invoked": 0,
         "real_repair_noop_feedback_execution_performed": 0,
         "real_repair_noop_feedback_subprocess_invoked": 0,
+        "real_repair_readiness_gate_observed": True,
+        "real_repair_readiness_gate_records": 1,
+        "real_repair_readiness_gate_linkage_complete": True,
+        "real_repair_readiness_gate_orphans": 0,
+        "real_repair_readiness_gate_ready_blocked": 1,
+        "real_repair_readiness_gate_satisfied": 1,
+        "real_repair_readiness_gate_guarded_ready": 1,
+        "real_repair_readiness_gate_ready_for_repair_execution": 0,
+        "real_repair_readiness_gate_would_execute": 0,
+        "real_repair_readiness_gate_next_action_harness": 1,
+        "real_repair_readiness_gate_source_feedback_actionable": 1,
+        "real_repair_readiness_gate_source_noop_completed": 1,
+        "real_repair_readiness_gate_source_exit_code_zero": 1,
+        "real_repair_readiness_gate_source_target_count_9": 1,
+        "real_repair_readiness_gate_source_execution_performed": 1,
+        "real_repair_readiness_gate_source_subprocess_invoked": 1,
+        "real_repair_readiness_gate_source_repair_actions_executed": 0,
+        "real_repair_readiness_gate_source_repair_execution_enabled": 0,
+        "real_repair_readiness_gate_source_repair_execution_performed": 0,
+        "real_repair_readiness_gate_source_repair_subprocess_invoked": 0,
+        "real_repair_readiness_gate_repair_execution_enabled": 0,
+        "real_repair_readiness_gate_real_execution_enabled": 0,
+        "real_repair_readiness_gate_subprocess_enabled": 0,
+        "real_repair_readiness_gate_repair_execution_performed": 0,
+        "real_repair_readiness_gate_repair_subprocess_invoked": 0,
+        "real_repair_readiness_gate_execution_performed": 0,
+        "real_repair_readiness_gate_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -1589,6 +1643,33 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_repair_noop_feedback_repair_subprocess_invoked": 0,
         "real_repair_noop_feedback_execution_performed": 0,
         "real_repair_noop_feedback_subprocess_invoked": 0,
+        "real_repair_readiness_gate_observed": True,
+        "real_repair_readiness_gate_records": 1,
+        "real_repair_readiness_gate_linkage_complete": True,
+        "real_repair_readiness_gate_orphans": 0,
+        "real_repair_readiness_gate_ready_blocked": 1,
+        "real_repair_readiness_gate_satisfied": 1,
+        "real_repair_readiness_gate_guarded_ready": 1,
+        "real_repair_readiness_gate_ready_for_repair_execution": 0,
+        "real_repair_readiness_gate_would_execute": 0,
+        "real_repair_readiness_gate_next_action_harness": 1,
+        "real_repair_readiness_gate_source_feedback_actionable": 1,
+        "real_repair_readiness_gate_source_noop_completed": 1,
+        "real_repair_readiness_gate_source_exit_code_zero": 1,
+        "real_repair_readiness_gate_source_target_count_9": 1,
+        "real_repair_readiness_gate_source_execution_performed": 1,
+        "real_repair_readiness_gate_source_subprocess_invoked": 1,
+        "real_repair_readiness_gate_source_repair_actions_executed": 0,
+        "real_repair_readiness_gate_source_repair_execution_enabled": 0,
+        "real_repair_readiness_gate_source_repair_execution_performed": 0,
+        "real_repair_readiness_gate_source_repair_subprocess_invoked": 0,
+        "real_repair_readiness_gate_repair_execution_enabled": 0,
+        "real_repair_readiness_gate_real_execution_enabled": 0,
+        "real_repair_readiness_gate_subprocess_enabled": 0,
+        "real_repair_readiness_gate_repair_execution_performed": 0,
+        "real_repair_readiness_gate_repair_subprocess_invoked": 0,
+        "real_repair_readiness_gate_execution_performed": 0,
+        "real_repair_readiness_gate_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -2290,3 +2371,48 @@ def test_controlled_execution_readiness_fails_when_real_repair_noop_feedback_sou
         "real_repair_noop_feedback_source_did_not_execute_repair_actions"
         in failed
     )
+
+
+def test_controlled_execution_readiness_fails_for_real_repair_readiness_gate_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_readiness_gate_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_readiness_gate_links_to_noop_feedback" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_readiness_gate_executes() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_readiness_gate_execution_performed={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_readiness_gate_did_not_execute" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_readiness_gate_ready_for_repair_execution() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_readiness_gate_ready_for_repair_execution={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_readiness_gate_not_ready_for_repair_execution" in failed

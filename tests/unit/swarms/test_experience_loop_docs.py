@@ -526,3 +526,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "must not execute feedback logic via subprocess" in text
     assert "feedback_execution_performed=false" in text
     assert "repair_subprocess_invoked=false" in text
+    assert "Repair execution readiness gate" in text
+    assert "replay_lifecycle_retry_real_execution_repair_readiness_gate" in text
+    assert "ready_for_guarded_repair_execution=true" in text
+    assert "ready_for_repair_execution=false" in text
+    assert "repair_execution_enabled=false" in text
+    assert "repair_subprocess_invoked=false" in text

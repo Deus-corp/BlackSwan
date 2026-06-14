@@ -924,6 +924,75 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_repair_noop_feedback_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_repair_noop_feedback_subprocess_invoked")
     )
+    real_repair_readiness_gate_statuses = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_statuses")
+    )
+    real_repair_readiness_gate_satisfied = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_satisfied")
+    )
+    real_repair_readiness_gate_guarded_ready = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_guarded_ready")
+    )
+    real_repair_readiness_gate_ready_for_repair_execution = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_ready_for_repair_execution")
+    )
+    real_repair_readiness_gate_would_execute = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_would_execute")
+    )
+    real_repair_readiness_gate_next_actions = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_next_actions")
+    )
+    real_repair_readiness_gate_source_feedback_statuses = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_feedback_statuses")
+    )
+    real_repair_readiness_gate_source_noop_statuses = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_noop_statuses")
+    )
+    real_repair_readiness_gate_source_exit_codes = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_exit_codes")
+    )
+    real_repair_readiness_gate_source_target_counts = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_target_counts")
+    )
+    real_repair_readiness_gate_source_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_execution_performed")
+    )
+    real_repair_readiness_gate_source_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_subprocess_invoked")
+    )
+    real_repair_readiness_gate_source_repair_actions_executed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_repair_actions_executed")
+    )
+    real_repair_readiness_gate_source_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_repair_execution_enabled")
+    )
+    real_repair_readiness_gate_source_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_repair_execution_performed")
+    )
+    real_repair_readiness_gate_source_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_repair_subprocess_invoked")
+    )
+    real_repair_readiness_gate_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_repair_execution_enabled")
+    )
+    real_repair_readiness_gate_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_real_execution_enabled")
+    )
+    real_repair_readiness_gate_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_subprocess_enabled")
+    )
+    real_repair_readiness_gate_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_repair_execution_performed")
+    )
+    real_repair_readiness_gate_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_repair_subprocess_invoked")
+    )
+    real_repair_readiness_gate_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_execution_performed")
+    )
+    real_repair_readiness_gate_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -1990,6 +2059,91 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_repair_noop_feedback_subprocess_invoked": _safe_int(
             real_repair_noop_feedback_subprocess_invoked.get("true"), 0
+        ),
+        "real_repair_readiness_gate_observed": _safe_int(
+            real_repair_readiness_gate_statuses.get("ready_blocked"), 0
+        )
+        > 0,
+        "real_repair_readiness_gate_records": _safe_int(
+            real_repair_readiness_gate_statuses.get("ready_blocked"), 0
+        ),
+        "real_repair_readiness_gate_linkage_complete": bool(
+            trail_summary.get("real_repair_readiness_gate_linkage_complete")
+        ),
+        "real_repair_readiness_gate_orphans": _safe_int(
+            trail_summary.get("real_repair_readiness_gate_orphans"), 0
+        ),
+        "real_repair_readiness_gate_ready_blocked": _safe_int(
+            real_repair_readiness_gate_statuses.get("ready_blocked"), 0
+        ),
+        "real_repair_readiness_gate_satisfied": _safe_int(
+            real_repair_readiness_gate_satisfied.get("true"), 0
+        ),
+        "real_repair_readiness_gate_guarded_ready": _safe_int(
+            real_repair_readiness_gate_guarded_ready.get("true"), 0
+        ),
+        "real_repair_readiness_gate_ready_for_repair_execution": _safe_int(
+            real_repair_readiness_gate_ready_for_repair_execution.get("true"), 0
+        ),
+        "real_repair_readiness_gate_would_execute": _safe_int(
+            real_repair_readiness_gate_would_execute.get("true"), 0
+        ),
+        "real_repair_readiness_gate_next_action_harness": _safe_int(
+            real_repair_readiness_gate_next_actions.get(
+                "prepare_guarded_repair_execution_harness"
+            ),
+            0,
+        ),
+        "real_repair_readiness_gate_source_feedback_actionable": _safe_int(
+            real_repair_readiness_gate_source_feedback_statuses.get("actionable"), 0
+        ),
+        "real_repair_readiness_gate_source_noop_completed": _safe_int(
+            real_repair_readiness_gate_source_noop_statuses.get("completed"), 0
+        ),
+        "real_repair_readiness_gate_source_exit_code_zero": _safe_int(
+            real_repair_readiness_gate_source_exit_codes.get("0"), 0
+        ),
+        "real_repair_readiness_gate_source_target_count_9": _safe_int(
+            real_repair_readiness_gate_source_target_counts.get("9"), 0
+        ),
+        "real_repair_readiness_gate_source_execution_performed": _safe_int(
+            real_repair_readiness_gate_source_execution_performed.get("true"), 0
+        ),
+        "real_repair_readiness_gate_source_subprocess_invoked": _safe_int(
+            real_repair_readiness_gate_source_subprocess_invoked.get("true"), 0
+        ),
+        "real_repair_readiness_gate_source_repair_actions_executed": _safe_int(
+            real_repair_readiness_gate_source_repair_actions_executed.get("true"), 0
+        ),
+        "real_repair_readiness_gate_source_repair_execution_enabled": _safe_int(
+            real_repair_readiness_gate_source_repair_execution_enabled.get("true"), 0
+        ),
+        "real_repair_readiness_gate_source_repair_execution_performed": _safe_int(
+            real_repair_readiness_gate_source_repair_execution_performed.get("true"), 0
+        ),
+        "real_repair_readiness_gate_source_repair_subprocess_invoked": _safe_int(
+            real_repair_readiness_gate_source_repair_subprocess_invoked.get("true"), 0
+        ),
+        "real_repair_readiness_gate_repair_execution_enabled": _safe_int(
+            real_repair_readiness_gate_repair_execution_enabled.get("true"), 0
+        ),
+        "real_repair_readiness_gate_real_execution_enabled": _safe_int(
+            real_repair_readiness_gate_real_execution_enabled.get("true"), 0
+        ),
+        "real_repair_readiness_gate_subprocess_enabled": _safe_int(
+            real_repair_readiness_gate_subprocess_enabled.get("true"), 0
+        ),
+        "real_repair_readiness_gate_repair_execution_performed": _safe_int(
+            real_repair_readiness_gate_repair_execution_performed.get("true"), 0
+        ),
+        "real_repair_readiness_gate_repair_subprocess_invoked": _safe_int(
+            real_repair_readiness_gate_repair_subprocess_invoked.get("true"), 0
+        ),
+        "real_repair_readiness_gate_execution_performed": _safe_int(
+            real_repair_readiness_gate_execution_performed.get("true"), 0
+        ),
+        "real_repair_readiness_gate_subprocess_invoked": _safe_int(
+            real_repair_readiness_gate_subprocess_invoked.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -3104,6 +3258,91 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_repair_noop_feedback_subprocess_invoked": _safe_int(
                 real_repair_noop_feedback_subprocess_invoked.get("true"), 0
             ),
+            "real_repair_readiness_gate_observed": _safe_int(
+                real_repair_readiness_gate_statuses.get("ready_blocked"), 0
+            )
+            > 0,
+            "real_repair_readiness_gate_records": _safe_int(
+                real_repair_readiness_gate_statuses.get("ready_blocked"), 0
+            ),
+            "real_repair_readiness_gate_linkage_complete": bool(
+                trail_summary.get("real_repair_readiness_gate_linkage_complete")
+            ),
+            "real_repair_readiness_gate_orphans": _safe_int(
+                trail_summary.get("real_repair_readiness_gate_orphans"), 0
+            ),
+            "real_repair_readiness_gate_ready_blocked": _safe_int(
+                real_repair_readiness_gate_statuses.get("ready_blocked"), 0
+            ),
+            "real_repair_readiness_gate_satisfied": _safe_int(
+                real_repair_readiness_gate_satisfied.get("true"), 0
+            ),
+            "real_repair_readiness_gate_guarded_ready": _safe_int(
+                real_repair_readiness_gate_guarded_ready.get("true"), 0
+            ),
+            "real_repair_readiness_gate_ready_for_repair_execution": _safe_int(
+                real_repair_readiness_gate_ready_for_repair_execution.get("true"), 0
+            ),
+            "real_repair_readiness_gate_would_execute": _safe_int(
+                real_repair_readiness_gate_would_execute.get("true"), 0
+            ),
+            "real_repair_readiness_gate_next_action_harness": _safe_int(
+                real_repair_readiness_gate_next_actions.get(
+                    "prepare_guarded_repair_execution_harness"
+                ),
+                0,
+            ),
+            "real_repair_readiness_gate_source_feedback_actionable": _safe_int(
+                real_repair_readiness_gate_source_feedback_statuses.get("actionable"), 0
+            ),
+            "real_repair_readiness_gate_source_noop_completed": _safe_int(
+                real_repair_readiness_gate_source_noop_statuses.get("completed"), 0
+            ),
+            "real_repair_readiness_gate_source_exit_code_zero": _safe_int(
+                real_repair_readiness_gate_source_exit_codes.get("0"), 0
+            ),
+            "real_repair_readiness_gate_source_target_count_9": _safe_int(
+                real_repair_readiness_gate_source_target_counts.get("9"), 0
+            ),
+            "real_repair_readiness_gate_source_execution_performed": _safe_int(
+                real_repair_readiness_gate_source_execution_performed.get("true"), 0
+            ),
+            "real_repair_readiness_gate_source_subprocess_invoked": _safe_int(
+                real_repair_readiness_gate_source_subprocess_invoked.get("true"), 0
+            ),
+            "real_repair_readiness_gate_source_repair_actions_executed": _safe_int(
+                real_repair_readiness_gate_source_repair_actions_executed.get("true"), 0
+            ),
+            "real_repair_readiness_gate_source_repair_execution_enabled": _safe_int(
+                real_repair_readiness_gate_source_repair_execution_enabled.get("true"), 0
+            ),
+            "real_repair_readiness_gate_source_repair_execution_performed": _safe_int(
+                real_repair_readiness_gate_source_repair_execution_performed.get("true"), 0
+            ),
+            "real_repair_readiness_gate_source_repair_subprocess_invoked": _safe_int(
+                real_repair_readiness_gate_source_repair_subprocess_invoked.get("true"), 0
+            ),
+            "real_repair_readiness_gate_repair_execution_enabled": _safe_int(
+                real_repair_readiness_gate_repair_execution_enabled.get("true"), 0
+            ),
+            "real_repair_readiness_gate_real_execution_enabled": _safe_int(
+                real_repair_readiness_gate_real_execution_enabled.get("true"), 0
+            ),
+            "real_repair_readiness_gate_subprocess_enabled": _safe_int(
+                real_repair_readiness_gate_subprocess_enabled.get("true"), 0
+            ),
+            "real_repair_readiness_gate_repair_execution_performed": _safe_int(
+                real_repair_readiness_gate_repair_execution_performed.get("true"), 0
+            ),
+            "real_repair_readiness_gate_repair_subprocess_invoked": _safe_int(
+                real_repair_readiness_gate_repair_subprocess_invoked.get("true"), 0
+            ),
+            "real_repair_readiness_gate_execution_performed": _safe_int(
+                real_repair_readiness_gate_execution_performed.get("true"), 0
+            ),
+            "real_repair_readiness_gate_subprocess_invoked": _safe_int(
+                real_repair_readiness_gate_subprocess_invoked.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -3211,6 +3450,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_repair_noop_feedback_records",
             "real_repair_noop_feedback_linkage_complete",
             "real_repair_noop_feedback_orphans",
+            "real_repair_readiness_gate_observed",
+            "real_repair_readiness_gate_records",
+            "real_repair_readiness_gate_linkage_complete",
+            "real_repair_readiness_gate_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -4165,6 +4408,75 @@ def _build_checks(
     )
     real_repair_noop_feedback_subprocess_invoked = _safe_mapping(
         trail_summary.get("real_repair_noop_feedback_subprocess_invoked")
+    )
+    real_repair_readiness_gate_statuses = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_statuses")
+    )
+    real_repair_readiness_gate_satisfied = _safe_mapping(
+       trail_summary.get("real_repair_readiness_gate_satisfied")
+    )
+    real_repair_readiness_gate_guarded_ready = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_guarded_ready")
+    )
+    real_repair_readiness_gate_ready_for_repair_execution = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_ready_for_repair_execution")
+    )
+    real_repair_readiness_gate_would_execute = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_would_execute")
+    )
+    real_repair_readiness_gate_next_actions = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_next_actions")
+    )
+    real_repair_readiness_gate_source_feedback_statuses = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_feedback_statuses")
+    )
+    real_repair_readiness_gate_source_noop_statuses = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_noop_statuses")
+    )
+    real_repair_readiness_gate_source_exit_codes = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_exit_codes")
+    )
+    real_repair_readiness_gate_source_target_counts = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_target_counts")
+    )
+    real_repair_readiness_gate_source_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_execution_performed")
+    )
+    real_repair_readiness_gate_source_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_subprocess_invoked")
+    )
+    real_repair_readiness_gate_source_repair_actions_executed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_repair_actions_executed")
+    )
+    real_repair_readiness_gate_source_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_repair_execution_enabled")
+    )
+    real_repair_readiness_gate_source_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_repair_execution_performed")
+    )
+    real_repair_readiness_gate_source_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_source_repair_subprocess_invoked")
+    )
+    real_repair_readiness_gate_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_repair_execution_enabled")
+    )
+    real_repair_readiness_gate_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_real_execution_enabled")
+    )
+    real_repair_readiness_gate_subprocess_enabled = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_subprocess_enabled")
+    )
+    real_repair_readiness_gate_repair_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_repair_execution_performed")
+    )
+    real_repair_readiness_gate_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_repair_subprocess_invoked")
+    )
+    real_repair_readiness_gate_execution_performed = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_execution_performed")
+    )
+    real_repair_readiness_gate_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_repair_readiness_gate_subprocess_invoked")
     )
 
     checks = [
@@ -6996,6 +7308,230 @@ def _build_checks(
             == 0,
             _safe_int(real_repair_noop_feedback_subprocess_invoked.get("true"), 0),
         ),
+        _check(
+            "real_repair_readiness_gate_observed_after_noop_feedback",
+            _safe_int(real_repair_noop_feedback_statuses.get("actionable"), 0) == 0
+            or _safe_int(real_repair_readiness_gate_statuses.get("ready_blocked"), 0)
+            > 0,
+            {
+                "actionable_feedback_records": _safe_int(
+                    real_repair_noop_feedback_statuses.get("actionable"), 0
+                ),
+                "ready_blocked_readiness_gates": _safe_int(
+                    real_repair_readiness_gate_statuses.get("ready_blocked"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_repair_readiness_gate_links_to_noop_feedback",
+            _safe_int(real_repair_readiness_gate_statuses.get("ready_blocked"), 0) == 0
+            or _safe_int(trail_summary.get("real_repair_readiness_gate_orphans"), 0)
+            == 0,
+            _safe_int(trail_summary.get("real_repair_readiness_gate_orphans"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_ready_blocked",
+            _safe_int(real_repair_readiness_gate_statuses.get("ready_blocked"), 0)
+            == 1,
+            _safe_int(real_repair_readiness_gate_statuses.get("ready_blocked"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_satisfied",
+            _safe_int(real_repair_readiness_gate_satisfied.get("true"), 0) == 1,
+            _safe_int(real_repair_readiness_gate_satisfied.get("true"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_guarded_ready",
+            _safe_int(real_repair_readiness_gate_guarded_ready.get("true"), 0) == 1,
+            _safe_int(real_repair_readiness_gate_guarded_ready.get("true"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_not_ready_for_repair_execution",
+            _safe_int(
+                real_repair_readiness_gate_ready_for_repair_execution.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_readiness_gate_ready_for_repair_execution.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_would_not_execute",
+            _safe_int(real_repair_readiness_gate_would_execute.get("true"), 0)
+            == 0,
+            _safe_int(real_repair_readiness_gate_would_execute.get("true"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_next_action_observed",
+            _safe_int(
+                real_repair_readiness_gate_next_actions.get(
+                    "prepare_guarded_repair_execution_harness"
+                ),
+                0,
+            )
+            == 1,
+            _safe_int(
+                real_repair_readiness_gate_next_actions.get(
+                    "prepare_guarded_repair_execution_harness"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_feedback_actionable",
+            _safe_int(
+                real_repair_readiness_gate_source_feedback_statuses.get("actionable"),
+                0,
+            )
+            == 1,
+            _safe_int(
+                real_repair_readiness_gate_source_feedback_statuses.get("actionable"),
+                0,
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_noop_completed",
+            _safe_int(
+                real_repair_readiness_gate_source_noop_statuses.get("completed"), 0
+            )
+            == 1,
+            _safe_int(
+                real_repair_readiness_gate_source_noop_statuses.get("completed"), 0
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_exit_code_zero",
+            _safe_int(real_repair_readiness_gate_source_exit_codes.get("0"), 0) == 1,
+            _safe_int(real_repair_readiness_gate_source_exit_codes.get("0"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_target_count_observed",
+            _safe_int(real_repair_readiness_gate_source_target_counts.get("9"), 0)
+            == 1,
+            _safe_int(real_repair_readiness_gate_source_target_counts.get("9"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_noop_executed",
+            _safe_int(
+                real_repair_readiness_gate_source_execution_performed.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                real_repair_readiness_gate_source_execution_performed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_noop_subprocess_invoked",
+            _safe_int(
+                real_repair_readiness_gate_source_subprocess_invoked.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                real_repair_readiness_gate_source_subprocess_invoked.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_did_not_execute_repair_actions",
+            _safe_int(
+                real_repair_readiness_gate_source_repair_actions_executed.get("true"),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_repair_readiness_gate_source_repair_actions_executed.get("true"),
+                0,
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_did_not_enable_repair_execution",
+            _safe_int(
+                real_repair_readiness_gate_source_repair_execution_enabled.get("true"),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_repair_readiness_gate_source_repair_execution_enabled.get("true"),
+                0,
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_did_not_perform_repair_execution",
+            _safe_int(
+                real_repair_readiness_gate_source_repair_execution_performed.get("true"),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_repair_readiness_gate_source_repair_execution_performed.get("true"),
+                0,
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_source_did_not_invoke_repair_subprocess",
+            _safe_int(
+                real_repair_readiness_gate_source_repair_subprocess_invoked.get("true"),
+                0,
+            )
+            == 0,
+            _safe_int(
+                real_repair_readiness_gate_source_repair_subprocess_invoked.get("true"),
+                0,
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_did_not_enable_repair_execution",
+            _safe_int(
+                real_repair_readiness_gate_repair_execution_enabled.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_readiness_gate_repair_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_did_not_enable_real_execution",
+            _safe_int(real_repair_readiness_gate_real_execution_enabled.get("true"), 0)
+            == 0,
+            _safe_int(real_repair_readiness_gate_real_execution_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_did_not_enable_subprocess",
+            _safe_int(real_repair_readiness_gate_subprocess_enabled.get("true"), 0)
+            == 0,
+            _safe_int(real_repair_readiness_gate_subprocess_enabled.get("true"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_did_not_perform_repair_execution",
+            _safe_int(
+                real_repair_readiness_gate_repair_execution_performed.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_readiness_gate_repair_execution_performed.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_did_not_invoke_repair_subprocess",
+            _safe_int(
+                real_repair_readiness_gate_repair_subprocess_invoked.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                real_repair_readiness_gate_repair_subprocess_invoked.get("true"), 0
+            ),
+        ),
+        _check(
+            "real_repair_readiness_gate_did_not_execute",
+            _safe_int(real_repair_readiness_gate_execution_performed.get("true"), 0)
+            == 0,
+            _safe_int(real_repair_readiness_gate_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "real_repair_readiness_gate_did_not_invoke_subprocess",
+            _safe_int(real_repair_readiness_gate_subprocess_invoked.get("true"), 0)
+            == 0,
+            _safe_int(real_repair_readiness_gate_subprocess_invoked.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -7145,6 +7681,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_repair_noop_feedback_records",
         "real_repair_noop_feedback_linkage_complete",
         "real_repair_noop_feedback_orphans",
+        "real_repair_readiness_gate_observed",
+        "real_repair_readiness_gate_records",
+        "real_repair_readiness_gate_linkage_complete",
+        "real_repair_readiness_gate_orphans",
     ]
 
     reasons: list[str] = []
@@ -7427,6 +7967,15 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("real_repair_noop_feedback_linkage_complete_must_be_bool")
     if not isinstance(report.get("real_repair_noop_feedback_orphans"), int):
         reasons.append("real_repair_noop_feedback_orphans_must_be_int")
+    
+    if not isinstance(report.get("real_repair_readiness_gate_observed"), bool):
+        reasons.append("real_repair_readiness_gate_observed_must_be_bool")
+    if not isinstance(report.get("real_repair_readiness_gate_records"), int):
+        reasons.append("real_repair_readiness_gate_records_must_be_int")
+    if not isinstance(report.get("real_repair_readiness_gate_linkage_complete"), bool):
+        reasons.append("real_repair_readiness_gate_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_repair_readiness_gate_orphans"), int):
+        reasons.append("real_repair_readiness_gate_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -7818,6 +8367,33 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_repair_noop_feedback_repair_subprocess_invoked={result.get('real_repair_noop_feedback_repair_subprocess_invoked', 0)} "
         f"real_repair_noop_feedback_execution_performed={result.get('real_repair_noop_feedback_execution_performed', 0)} "
         f"real_repair_noop_feedback_subprocess_invoked={result.get('real_repair_noop_feedback_subprocess_invoked', 0)} "
+        f"real_repair_readiness_gate_observed={str(bool(result.get('real_repair_readiness_gate_observed'))).lower()} "
+        f"real_repair_readiness_gate_records={result.get('real_repair_readiness_gate_records', 0)} "
+        f"real_repair_readiness_gate_linkage_complete={str(bool(result.get('real_repair_readiness_gate_linkage_complete'))).lower()} "
+        f"real_repair_readiness_gate_orphans={result.get('real_repair_readiness_gate_orphans', 0)} "
+        f"real_repair_readiness_gate_ready_blocked={result.get('real_repair_readiness_gate_ready_blocked', 0)} "
+        f"real_repair_readiness_gate_satisfied={result.get('real_repair_readiness_gate_satisfied', 0)} "
+        f"real_repair_readiness_gate_guarded_ready={result.get('real_repair_readiness_gate_guarded_ready', 0)} "
+        f"real_repair_readiness_gate_ready_for_repair_execution={result.get('real_repair_readiness_gate_ready_for_repair_execution', 0)} "
+        f"real_repair_readiness_gate_would_execute={result.get('real_repair_readiness_gate_would_execute', 0)} "
+        f"real_repair_readiness_gate_next_action_harness={result.get('real_repair_readiness_gate_next_action_harness', 0)} "
+        f"real_repair_readiness_gate_source_feedback_actionable={result.get('real_repair_readiness_gate_source_feedback_actionable', 0)} "
+        f"real_repair_readiness_gate_source_noop_completed={result.get('real_repair_readiness_gate_source_noop_completed', 0)} "
+        f"real_repair_readiness_gate_source_exit_code_zero={result.get('real_repair_readiness_gate_source_exit_code_zero', 0)} "
+        f"real_repair_readiness_gate_source_target_count_9={result.get('real_repair_readiness_gate_source_target_count_9', 0)} "
+        f"real_repair_readiness_gate_source_execution_performed={result.get('real_repair_readiness_gate_source_execution_performed', 0)} "
+        f"real_repair_readiness_gate_source_subprocess_invoked={result.get('real_repair_readiness_gate_source_subprocess_invoked', 0)} "
+        f"real_repair_readiness_gate_source_repair_actions_executed={result.get('real_repair_readiness_gate_source_repair_actions_executed', 0)} "
+        f"real_repair_readiness_gate_source_repair_execution_enabled={result.get('real_repair_readiness_gate_source_repair_execution_enabled', 0)} "
+        f"real_repair_readiness_gate_source_repair_execution_performed={result.get('real_repair_readiness_gate_source_repair_execution_performed', 0)} "
+        f"real_repair_readiness_gate_source_repair_subprocess_invoked={result.get('real_repair_readiness_gate_source_repair_subprocess_invoked', 0)} "
+        f"real_repair_readiness_gate_repair_execution_enabled={result.get('real_repair_readiness_gate_repair_execution_enabled', 0)} "
+        f"real_repair_readiness_gate_real_execution_enabled={result.get('real_repair_readiness_gate_real_execution_enabled', 0)} "
+        f"real_repair_readiness_gate_subprocess_enabled={result.get('real_repair_readiness_gate_subprocess_enabled', 0)} "
+        f"real_repair_readiness_gate_repair_execution_performed={result.get('real_repair_readiness_gate_repair_execution_performed', 0)} "
+        f"real_repair_readiness_gate_repair_subprocess_invoked={result.get('real_repair_readiness_gate_repair_subprocess_invoked', 0)} "
+        f"real_repair_readiness_gate_execution_performed={result.get('real_repair_readiness_gate_execution_performed', 0)} "
+        f"real_repair_readiness_gate_subprocess_invoked={result.get('real_repair_readiness_gate_subprocess_invoked', 0)} "
     )
 
 

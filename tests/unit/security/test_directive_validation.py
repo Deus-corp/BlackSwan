@@ -39,6 +39,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope,
     validate_replay_lifecycle_retry_real_execution_repair_noop_result,
     validate_replay_lifecycle_retry_real_execution_repair_noop_feedback,
+    validate_replay_lifecycle_retry_real_execution_repair_readiness_gate,
 )
 
 
@@ -4057,3 +4058,128 @@ def test_validate_retry_real_execution_repair_noop_feedback_rejects_actionable_w
         "actionable_repair_noop_feedback_requires_next_gate_allowed"
         in result["reasons"]
     )
+
+
+def _real_execution_repair_readiness_gate(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_repair_readiness_gate",
+        "real_execution_repair_readiness_gate_id": "repair-readiness-gate-1",
+        "real_execution_repair_noop_feedback_id": "repair-feedback-1",
+        "real_execution_repair_noop_result_id": "repair-noop-1",
+        "real_execution_repair_dry_run_envelope_id": "repair-envelope-1",
+        "real_execution_repair_final_gate_id": "repair-final-gate-1",
+        "real_execution_repair_approval_transition_id": "repair-transition-1",
+        "real_execution_repair_approval_id": "repair-approval-1",
+        "rendered_command_id": "rendered-command-1",
+        "gate_status": "ready_blocked",
+        "repair_readiness_satisfied": True,
+        "ready_for_guarded_repair_execution": True,
+        "ready_for_repair_execution": False,
+        "would_execute": False,
+        "blocking_reasons": ["guarded_repair_execution_requires_separate_pr"],
+        "recommended_next_action": "prepare_guarded_repair_execution_harness",
+        "source_feedback_status": "actionable",
+        "source_repair_noop_verified": True,
+        "source_repair_path_can_proceed": True,
+        "source_repair_path_next_gate_allowed": True,
+        "source_noop_status": "completed",
+        "source_noop_exit_code": 0,
+        "source_noop_only": True,
+        "source_noop_stdout_marker_observed": True,
+        "source_execution_performed": True,
+        "source_subprocess_invoked": True,
+        "source_envelope_status": "prepared",
+        "source_dry_run_only": True,
+        "source_repair_dry_run_mode": "repair_action_bundle_validation",
+        "source_repair_dry_run_target_count": 9,
+        "source_final_gate_ready_blocked": True,
+        "source_transition_approved": True,
+        "operator_authorized": True,
+        "source_repair_actions_executed": False,
+        "source_repair_bundle_executed": False,
+        "source_repair_command_executed": False,
+        "source_repair_execution_enabled": False,
+        "source_repair_execution_performed": False,
+        "source_repair_subprocess_invoked": False,
+        "bundle_execution_enabled": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "bundle_execution_performed": False,
+        "bundle_subprocess_invoked": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "repair_execution_readiness_gate_recorded",
+        "payload": {
+            "bundle_execution_enabled": False,
+            "repair_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "bundle_execution_performed": False,
+            "bundle_subprocess_invoked": False,
+            "repair_execution_performed": False,
+            "repair_subprocess_invoked": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_repair_readiness_gate_accepts_ready_blocked() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_readiness_gate(
+        _real_execution_repair_readiness_gate()
+    )
+
+    assert result["valid"] is True
+    assert result["gate_status"] == "ready_blocked"
+    assert result["repair_readiness_satisfied"] is True
+    assert result["ready_for_guarded_repair_execution"] is True
+    assert result["ready_for_repair_execution"] is False
+    assert result["repair_execution_enabled"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_repair_readiness_gate_rejects_repair_execution_enabled() -> None:
+    record = _real_execution_repair_readiness_gate(repair_execution_enabled=True)
+    record["payload"]["repair_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_readiness_gate(record)
+
+    assert result["valid"] is False
+    assert "repair_readiness_gate_must_not_enable_repair_execution" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_readiness_gate_rejects_execution_performed() -> None:
+    record = _real_execution_repair_readiness_gate(execution_performed=True)
+    record["payload"]["execution_performed"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_readiness_gate(record)
+
+    assert result["valid"] is False
+    assert "repair_readiness_gate_must_not_execute" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_readiness_gate_rejects_source_repair_actions() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_readiness_gate(
+        _real_execution_repair_readiness_gate(source_repair_actions_executed=True)
+    )
+
+    assert result["valid"] is False
+    assert (
+        "repair_readiness_gate_source_must_not_execute_repair_actions"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_repair_readiness_gate_rejects_missing_separate_pr_blocker() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_readiness_gate(
+        _real_execution_repair_readiness_gate(blocking_reasons=[])
+    )
+
+    assert result["valid"] is False
+    assert "repair_readiness_gate_requires_separate_pr_blocker" in result["reasons"]

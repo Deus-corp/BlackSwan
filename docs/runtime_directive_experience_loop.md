@@ -1790,6 +1790,22 @@ The feedback artifact must keep `feedback_execution_performed=false`,
 
 ---
 
+### Repair execution readiness gate
+
+`replay_lifecycle_retry_real_execution_repair_readiness_gate` records that the
+repair path is ready for a later guarded repair execution harness after
+actionable repair noop feedback. The gate may set
+`ready_for_guarded_repair_execution=true`, but it remains `ready_blocked` and
+must keep `ready_for_repair_execution=false` until a separate guarded execution
+PR is implemented.
+
+The readiness gate must keep `repair_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`repair_execution_performed=false`, `repair_subprocess_invoked=false`,
+`execution_performed=false`, and `subprocess_invoked=false`.
+
+---
+
 ## Related modules
 
 ```text
