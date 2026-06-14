@@ -532,3 +532,8 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "ready_for_repair_execution=false" in text
     assert "repair_execution_enabled=false" in text
     assert "repair_subprocess_invoked=false" in text
+    assert "Post-repair evidence check" in text
+    assert "replay_lifecycle_retry_post_repair_evidence_check" in text
+    assert "close_repair_loop" in text
+    assert "repair_execution_enabled=false" in text
+    assert "repair_subprocess_invoked=false" in text

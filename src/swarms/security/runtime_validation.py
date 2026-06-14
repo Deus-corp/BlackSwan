@@ -56,6 +56,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_repair_noop_feedback",
     "replay_lifecycle_retry_real_execution_repair_readiness_gate",
     "replay_lifecycle_retry_guarded_repair_execution_result",
+    "replay_lifecycle_retry_post_repair_evidence_check",
 }
 
 
@@ -569,6 +570,20 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
             )
             continue
 
+        if record_type == "replay_lifecycle_retry_post_repair_evidence_check":
+            result = validate_replay_lifecycle_retry_post_repair_evidence_check(
+                record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
         validation = validate_runtime_record(record)
         results.append(
             {
@@ -964,6 +979,32 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
     guarded_repair_execution_repair_subprocess_invoked: dict[str, int] = {}
     guarded_repair_execution_execution_performed: dict[str, int] = {}
     guarded_repair_execution_subprocess_invoked: dict[str, int] = {}
+    post_repair_evidence_statuses: dict[str, int] = {}
+    post_repair_evidence_allowed: dict[str, int] = {}
+    post_repair_evidence_enabled: dict[str, int] = {}
+    post_repair_evidence_marker_observed: dict[str, int] = {}
+    post_repair_evidence_exit_codes: dict[str, int] = {}
+    post_repair_evidence_outcome_verified: dict[str, int] = {}
+    post_repair_evidence_expected_counts: dict[str, int] = {}
+    post_repair_evidence_verified_counts: dict[str, int] = {}
+    post_repair_evidence_missing_counts: dict[str, int] = {}
+    post_repair_evidence_unexpected_counts: dict[str, int] = {}
+    post_repair_evidence_next_actions: dict[str, int] = {}
+    post_repair_evidence_source_statuses: dict[str, int] = {}
+    post_repair_evidence_source_allowed: dict[str, int] = {}
+    post_repair_evidence_source_marker_observed: dict[str, int] = {}
+    post_repair_evidence_source_exit_codes: dict[str, int] = {}
+    post_repair_evidence_source_repair_actions_executed: dict[str, int] = {}
+    post_repair_evidence_source_repair_execution_enabled: dict[str, int] = {}
+    post_repair_evidence_source_real_execution_enabled: dict[str, int] = {}
+    post_repair_evidence_source_repair_execution_performed: dict[str, int] = {}
+    post_repair_evidence_source_repair_subprocess_invoked: dict[str, int] = {}
+    post_repair_evidence_execution_performed: dict[str, int] = {}
+    post_repair_evidence_subprocess_invoked: dict[str, int] = {}
+    post_repair_evidence_repair_execution_enabled: dict[str, int] = {}
+    post_repair_evidence_real_execution_enabled: dict[str, int] = {}
+    post_repair_evidence_repair_execution_performed: dict[str, int] = {}
+    post_repair_evidence_repair_subprocess_invoked: dict[str, int] = {}
 
     for item in validation_list:
         record_type = str(item.get("record_type") or "").strip()
@@ -2660,6 +2701,49 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
             ):
                 value = str(bool(item.get(key_name))).lower()
                 target[value] = target.get(value, 0) + 1
+        
+        if record_type == "replay_lifecycle_retry_post_repair_evidence_check":
+            status = str(item.get("post_repair_status") or "unknown").strip() or "unknown"
+            exit_code = str(item.get("post_repair_evidence_exit_code"))
+            expected_count = str(item.get("repair_targets_expected_count") or 0)
+            verified_count = str(item.get("repair_targets_verified_count") or 0)
+            missing_count = str(len(item.get("repair_targets_missing") or []))
+            unexpected_count = str(len(item.get("repair_targets_unexpected") or []))
+            next_action = str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+            source_status = str(item.get("source_guarded_repair_execution_status") or "unknown").strip() or "unknown"
+            source_exit_code = str(item.get("source_guarded_repair_exit_code"))
+
+            post_repair_evidence_statuses[status] = post_repair_evidence_statuses.get(status, 0) + 1
+            post_repair_evidence_exit_codes[exit_code] = post_repair_evidence_exit_codes.get(exit_code, 0) + 1
+            post_repair_evidence_expected_counts[expected_count] = post_repair_evidence_expected_counts.get(expected_count, 0) + 1
+            post_repair_evidence_verified_counts[verified_count] = post_repair_evidence_verified_counts.get(verified_count, 0) + 1
+            post_repair_evidence_missing_counts[missing_count] = post_repair_evidence_missing_counts.get(missing_count, 0) + 1
+            post_repair_evidence_unexpected_counts[unexpected_count] = post_repair_evidence_unexpected_counts.get(unexpected_count, 0) + 1
+            post_repair_evidence_next_actions[next_action] = post_repair_evidence_next_actions.get(next_action, 0) + 1
+            post_repair_evidence_source_statuses[source_status] = post_repair_evidence_source_statuses.get(source_status, 0) + 1
+            post_repair_evidence_source_exit_codes[source_exit_code] = post_repair_evidence_source_exit_codes.get(source_exit_code, 0) + 1
+
+            for target, key_name in (
+                (post_repair_evidence_allowed, "post_repair_evidence_check_allowed"),
+                (post_repair_evidence_enabled, "post_repair_evidence_check_enabled"),
+                (post_repair_evidence_marker_observed, "post_repair_evidence_marker_observed"),
+                (post_repair_evidence_outcome_verified, "repair_outcome_verified"),
+                (post_repair_evidence_source_allowed, "source_guarded_repair_execution_allowed"),
+                (post_repair_evidence_source_marker_observed, "source_guarded_repair_marker_observed"),
+                (post_repair_evidence_source_repair_actions_executed, "source_repair_actions_executed"),
+                (post_repair_evidence_source_repair_execution_enabled, "source_repair_execution_enabled"),
+                (post_repair_evidence_source_real_execution_enabled, "source_real_execution_enabled"),
+                (post_repair_evidence_source_repair_execution_performed, "source_repair_execution_performed"),
+                (post_repair_evidence_source_repair_subprocess_invoked, "source_repair_subprocess_invoked"),
+                (post_repair_evidence_execution_performed, "execution_performed"),
+                (post_repair_evidence_subprocess_invoked, "subprocess_invoked"),
+                (post_repair_evidence_repair_execution_enabled, "repair_execution_enabled"),
+                (post_repair_evidence_real_execution_enabled, "real_execution_enabled"),
+                (post_repair_evidence_repair_execution_performed, "repair_execution_performed"),
+                (post_repair_evidence_repair_subprocess_invoked, "repair_subprocess_invoked"),
+            ):
+                value = str(bool(item.get(key_name))).lower()
+                target[value] = target.get(value, 0) + 1
 
     return {
         "type": "security_validation_summary",
@@ -3498,6 +3582,32 @@ def summarize_runtime_validations(validations: Iterable[Mapping[str, Any]]) -> d
         "guarded_repair_execution_repair_subprocess_invoked": guarded_repair_execution_repair_subprocess_invoked,
         "guarded_repair_execution_execution_performed": guarded_repair_execution_execution_performed,
         "guarded_repair_execution_subprocess_invoked": guarded_repair_execution_subprocess_invoked,
+        "post_repair_evidence_statuses": post_repair_evidence_statuses,
+        "post_repair_evidence_allowed": post_repair_evidence_allowed,
+        "post_repair_evidence_enabled": post_repair_evidence_enabled,
+        "post_repair_evidence_marker_observed": post_repair_evidence_marker_observed,
+        "post_repair_evidence_exit_codes": post_repair_evidence_exit_codes,
+        "post_repair_evidence_outcome_verified": post_repair_evidence_outcome_verified,
+        "post_repair_evidence_expected_counts": post_repair_evidence_expected_counts,
+        "post_repair_evidence_verified_counts": post_repair_evidence_verified_counts,
+        "post_repair_evidence_missing_counts": post_repair_evidence_missing_counts,
+        "post_repair_evidence_unexpected_counts": post_repair_evidence_unexpected_counts,
+        "post_repair_evidence_next_actions": post_repair_evidence_next_actions,
+        "post_repair_evidence_source_statuses": post_repair_evidence_source_statuses,
+        "post_repair_evidence_source_allowed": post_repair_evidence_source_allowed,
+        "post_repair_evidence_source_marker_observed": post_repair_evidence_source_marker_observed,
+        "post_repair_evidence_source_exit_codes": post_repair_evidence_source_exit_codes,
+        "post_repair_evidence_source_repair_actions_executed": post_repair_evidence_source_repair_actions_executed,
+        "post_repair_evidence_source_repair_execution_enabled": post_repair_evidence_source_repair_execution_enabled,
+        "post_repair_evidence_source_real_execution_enabled": post_repair_evidence_source_real_execution_enabled,
+        "post_repair_evidence_source_repair_execution_performed": post_repair_evidence_source_repair_execution_performed,
+        "post_repair_evidence_source_repair_subprocess_invoked": post_repair_evidence_source_repair_subprocess_invoked,
+        "post_repair_evidence_execution_performed": post_repair_evidence_execution_performed,
+        "post_repair_evidence_subprocess_invoked": post_repair_evidence_subprocess_invoked,
+        "post_repair_evidence_repair_execution_enabled": post_repair_evidence_repair_execution_enabled,
+        "post_repair_evidence_real_execution_enabled": post_repair_evidence_real_execution_enabled,
+        "post_repair_evidence_repair_execution_performed": post_repair_evidence_repair_execution_performed,
+        "post_repair_evidence_repair_subprocess_invoked": post_repair_evidence_repair_subprocess_invoked,
     }
 
 
@@ -4018,6 +4128,13 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_repair_readiness_gate_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_post_repair_evidence_check":
+        return str(
+            record.get("post_repair_evidence_check_id")
+            or record.get("guarded_repair_execution_result_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -4068,6 +4185,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "real_execution_repair_noop_feedback_id",
         "real_execution_repair_readiness_gate_id",
         "guarded_repair_execution_result_id",
+        "post_repair_evidence_check_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -4115,6 +4233,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "real_execution_repair_noop_feedback_id",
             "real_execution_repair_readiness_gate_id",
             "guarded_repair_execution_result_id",
+            "post_repair_evidence_check_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -8937,6 +9056,270 @@ def validate_replay_lifecycle_retry_guarded_repair_execution_result(
     }
 
 
+def validate_replay_lifecycle_retry_post_repair_evidence_check(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate post-repair evidence check records."""
+    reasons: list[str] = []
+
+    check_id = str(record.get("post_repair_evidence_check_id") or "").strip()
+    guarded_result_id = str(
+        record.get("guarded_repair_execution_result_id") or ""
+    ).strip()
+    readiness_gate_id = str(
+        record.get("real_execution_repair_readiness_gate_id") or ""
+    ).strip()
+    feedback_id = str(
+        record.get("real_execution_repair_noop_feedback_id") or ""
+    ).strip()
+    noop_result_id = str(
+        record.get("real_execution_repair_noop_result_id") or ""
+    ).strip()
+    envelope_id = str(
+        record.get("real_execution_repair_dry_run_envelope_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    status = str(record.get("post_repair_status") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+
+    allowed = bool(record.get("post_repair_evidence_check_allowed"))
+    enabled = bool(record.get("post_repair_evidence_check_enabled"))
+    marker_observed = bool(record.get("post_repair_evidence_marker_observed"))
+    exit_code = record.get("post_repair_evidence_exit_code")
+    repair_outcome_verified = bool(record.get("repair_outcome_verified"))
+
+    expected_count = record.get("repair_targets_expected_count")
+    verified_count = record.get("repair_targets_verified_count")
+    missing_targets = record.get("repair_targets_missing")
+    unexpected_targets = record.get("repair_targets_unexpected")
+
+    source_status = str(
+        record.get("source_guarded_repair_execution_status") or ""
+    ).strip()
+    source_allowed = bool(record.get("source_guarded_repair_execution_allowed"))
+    source_marker = bool(record.get("source_guarded_repair_marker_observed"))
+    source_exit_code = record.get("source_guarded_repair_exit_code")
+    source_next_action = str(
+        record.get("source_guarded_repair_next_action") or ""
+    ).strip()
+
+    source_repair_actions_executed = bool(
+        record.get("source_repair_actions_executed")
+    )
+    source_repair_bundle_executed = bool(
+        record.get("source_repair_bundle_executed")
+    )
+    source_repair_command_executed = bool(
+        record.get("source_repair_command_executed")
+    )
+    source_rendered_command_executed = bool(
+        record.get("source_rendered_command_executed")
+    )
+    source_dry_run_command_executed = bool(
+        record.get("source_dry_run_command_executed")
+    )
+    source_repair_execution_enabled = bool(
+        record.get("source_repair_execution_enabled")
+    )
+    source_real_execution_enabled = bool(record.get("source_real_execution_enabled"))
+    source_repair_execution_performed = bool(
+        record.get("source_repair_execution_performed")
+    )
+    source_repair_subprocess_invoked = bool(
+        record.get("source_repair_subprocess_invoked")
+    )
+    operator_authorized = bool(record.get("operator_authorized"))
+
+    evidence_execution_performed = bool(
+        record.get("evidence_check_execution_performed")
+    )
+    evidence_subprocess_invoked = bool(
+        record.get("evidence_check_subprocess_invoked")
+    )
+
+    repair_execution_enabled = bool(record.get("repair_execution_enabled"))
+    real_execution_enabled = bool(record.get("real_execution_enabled"))
+    subprocess_enabled = bool(record.get("subprocess_enabled"))
+    repair_execution_performed = bool(record.get("repair_execution_performed"))
+    repair_subprocess_invoked = bool(record.get("repair_subprocess_invoked"))
+    execution_performed = bool(record.get("execution_performed"))
+    subprocess_invoked = bool(record.get("subprocess_invoked"))
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not check_id:
+        reasons.append("missing_post_repair_evidence_check_id")
+    if not guarded_result_id:
+        reasons.append("missing_guarded_repair_execution_result_id")
+    if not readiness_gate_id:
+        reasons.append("missing_real_execution_repair_readiness_gate_id")
+    if not feedback_id:
+        reasons.append("missing_real_execution_repair_noop_feedback_id")
+    if not noop_result_id:
+        reasons.append("missing_real_execution_repair_noop_result_id")
+    if not envelope_id:
+        reasons.append("missing_real_execution_repair_dry_run_envelope_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if status not in {"passed", "failed", "rejected"}:
+        reasons.append("invalid_post_repair_evidence_status")
+
+    if source_status != "succeeded":
+        reasons.append("post_repair_evidence_source_repair_must_be_succeeded")
+    if not source_allowed:
+        reasons.append("post_repair_evidence_source_repair_must_be_allowed")
+    if not source_marker:
+        reasons.append("post_repair_evidence_source_marker_required")
+    if source_exit_code != 0:
+        reasons.append("post_repair_evidence_source_exit_code_must_be_zero")
+    if source_next_action != "run_post_repair_evidence_check":
+        reasons.append("post_repair_evidence_source_next_action_invalid")
+
+    if not source_repair_actions_executed:
+        reasons.append("post_repair_evidence_source_repair_actions_required")
+    if not source_repair_bundle_executed:
+        reasons.append("post_repair_evidence_source_repair_bundle_required")
+    if not source_repair_command_executed:
+        reasons.append("post_repair_evidence_source_repair_command_required")
+    if source_rendered_command_executed:
+        reasons.append("post_repair_evidence_source_must_not_execute_rendered")
+    if source_dry_run_command_executed:
+        reasons.append("post_repair_evidence_source_must_not_execute_dry_run")
+    if not source_repair_execution_enabled:
+        reasons.append("post_repair_evidence_source_repair_enabled_required")
+    if source_real_execution_enabled:
+        reasons.append("post_repair_evidence_source_must_not_enable_real_execution")
+    if not source_repair_execution_performed:
+        reasons.append("post_repair_evidence_source_repair_performed_required")
+    if not source_repair_subprocess_invoked:
+        reasons.append("post_repair_evidence_source_repair_subprocess_required")
+    if not operator_authorized:
+        reasons.append("post_repair_evidence_requires_operator_authorized")
+
+    if not isinstance(expected_count, int) or expected_count <= 0:
+        reasons.append("post_repair_evidence_expected_targets_required")
+    if not isinstance(verified_count, int) or verified_count <= 0:
+        reasons.append("post_repair_evidence_verified_targets_required")
+    if expected_count != verified_count:
+        reasons.append("post_repair_evidence_target_count_mismatch")
+    if missing_targets != []:
+        reasons.append("post_repair_evidence_missing_targets_must_be_empty")
+    if unexpected_targets != []:
+        reasons.append("post_repair_evidence_unexpected_targets_must_be_empty")
+
+    if repair_execution_enabled or bool(payload_mapping.get("repair_execution_enabled")):
+        reasons.append("post_repair_evidence_must_not_enable_repair_execution")
+    if real_execution_enabled or bool(payload_mapping.get("real_execution_enabled")):
+        reasons.append("post_repair_evidence_must_not_enable_real_execution")
+    if repair_execution_performed or bool(
+        payload_mapping.get("repair_execution_performed")
+    ):
+        reasons.append("post_repair_evidence_must_not_perform_repair_execution")
+    if repair_subprocess_invoked or bool(payload_mapping.get("repair_subprocess_invoked")):
+        reasons.append("post_repair_evidence_must_not_invoke_repair_subprocess")
+
+    if status == "rejected":
+        if allowed:
+            reasons.append("rejected_post_repair_evidence_must_not_be_allowed")
+        if enabled:
+            reasons.append("rejected_post_repair_evidence_must_not_be_enabled")
+        if evidence_execution_performed or execution_performed:
+            reasons.append("rejected_post_repair_evidence_must_not_execute")
+        if evidence_subprocess_invoked or subprocess_invoked:
+            reasons.append("rejected_post_repair_evidence_must_not_invoke_subprocess")
+        if repair_outcome_verified:
+            reasons.append("rejected_post_repair_evidence_must_not_verify")
+        if next_action != "authorize_post_repair_evidence_check":
+            reasons.append("invalid_rejected_post_repair_evidence_next_action")
+
+    if status == "passed":
+        if not allowed:
+            reasons.append("passed_post_repair_evidence_requires_allowed")
+        if not enabled:
+            reasons.append("passed_post_repair_evidence_requires_enabled")
+        if reason != "post_repair_evidence_check_passed":
+            reasons.append("invalid_passed_post_repair_evidence_reason")
+        if next_action != "close_repair_loop":
+            reasons.append("invalid_passed_post_repair_evidence_next_action")
+        if exit_code != 0:
+            reasons.append("passed_post_repair_evidence_exit_code_must_be_zero")
+        if not marker_observed:
+            reasons.append("passed_post_repair_evidence_marker_required")
+        if not repair_outcome_verified:
+            reasons.append("passed_post_repair_evidence_requires_verified_outcome")
+        if not evidence_execution_performed:
+            reasons.append("passed_post_repair_evidence_requires_evidence_execution")
+        if not evidence_subprocess_invoked:
+            reasons.append("passed_post_repair_evidence_requires_evidence_subprocess")
+        if not subprocess_enabled:
+            reasons.append("passed_post_repair_evidence_requires_subprocess_enabled")
+        if not execution_performed:
+            reasons.append("passed_post_repair_evidence_requires_execution")
+        if not subprocess_invoked:
+            reasons.append("passed_post_repair_evidence_requires_subprocess")
+
+    if status == "failed":
+        if not allowed:
+            reasons.append("failed_post_repair_evidence_requires_allowed")
+        if not enabled:
+            reasons.append("failed_post_repair_evidence_requires_enabled")
+        if reason != "post_repair_evidence_check_failed":
+            reasons.append("invalid_failed_post_repair_evidence_reason")
+        if next_action != "investigate_post_repair_failure":
+            reasons.append("invalid_failed_post_repair_evidence_next_action")
+        if repair_outcome_verified:
+            reasons.append("failed_post_repair_evidence_must_not_verify_outcome")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_post_repair_evidence_check",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": check_id or guarded_result_id,
+        "post_repair_status": status or "unknown",
+        "post_repair_evidence_check_allowed": allowed,
+        "post_repair_evidence_check_enabled": enabled,
+        "post_repair_evidence_marker_observed": marker_observed,
+        "post_repair_evidence_exit_code": exit_code,
+        "repair_outcome_verified": repair_outcome_verified,
+        "repair_targets_expected_count": expected_count,
+        "repair_targets_verified_count": verified_count,
+        "repair_targets_missing": missing_targets,
+        "repair_targets_unexpected": unexpected_targets,
+        "source_guarded_repair_execution_status": source_status or "unknown",
+        "source_guarded_repair_execution_allowed": source_allowed,
+        "source_guarded_repair_marker_observed": source_marker,
+        "source_guarded_repair_exit_code": source_exit_code,
+        "source_guarded_repair_next_action": source_next_action or "unknown",
+        "source_repair_actions_executed": source_repair_actions_executed,
+        "source_repair_bundle_executed": source_repair_bundle_executed,
+        "source_repair_command_executed": source_repair_command_executed,
+        "source_rendered_command_executed": source_rendered_command_executed,
+        "source_dry_run_command_executed": source_dry_run_command_executed,
+        "source_repair_execution_enabled": source_repair_execution_enabled,
+        "source_real_execution_enabled": source_real_execution_enabled,
+        "source_repair_execution_performed": source_repair_execution_performed,
+        "source_repair_subprocess_invoked": source_repair_subprocess_invoked,
+        "operator_authorized": operator_authorized,
+        "evidence_check_execution_performed": evidence_execution_performed,
+        "evidence_check_subprocess_invoked": evidence_subprocess_invoked,
+        "repair_execution_enabled": repair_execution_enabled,
+        "real_execution_enabled": real_execution_enabled,
+        "subprocess_enabled": subprocess_enabled,
+        "repair_execution_performed": repair_execution_performed,
+        "repair_subprocess_invoked": repair_subprocess_invoked,
+        "execution_performed": execution_performed,
+        "subprocess_invoked": subprocess_invoked,
+        "recommended_next_action": next_action or "unknown",
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -8976,4 +9359,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_repair_noop_feedback",
     "validate_replay_lifecycle_retry_real_execution_repair_readiness_gate",
     "validate_replay_lifecycle_retry_guarded_repair_execution_result",
+    "validate_replay_lifecycle_retry_post_repair_evidence_check",
 ]

@@ -51,6 +51,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_repair_noop_feedback",
     "replay_lifecycle_retry_real_execution_repair_readiness_gate",
     "replay_lifecycle_retry_guarded_repair_execution_result",
+    "replay_lifecycle_retry_post_repair_evidence_check",
 }
 
 
@@ -294,6 +295,11 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_guarded_repair_execution_result"
+    ]
+    post_repair_evidence_checks = [
+        item
+        for item in trail_records
+        if item.get("type") == "replay_lifecycle_retry_post_repair_evidence_check"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -1761,6 +1767,111 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("subprocess_invoked"))).lower()
         for item in guarded_repair_execution_results
     )
+    post_repair_evidence_statuses = Counter(
+        str(item.get("post_repair_status") or "unknown").strip() or "unknown"
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_allowed = Counter(
+        str(bool(item.get("post_repair_evidence_check_allowed"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_enabled = Counter(
+        str(bool(item.get("post_repair_evidence_check_enabled"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_marker_observed = Counter(
+        str(bool(item.get("post_repair_evidence_marker_observed"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_exit_codes = Counter(
+        str(item.get("post_repair_evidence_exit_code"))
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_outcome_verified = Counter(
+        str(bool(item.get("repair_outcome_verified"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_expected_counts = Counter(
+        str(item.get("repair_targets_expected_count") or 0)
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_verified_counts = Counter(
+        str(item.get("repair_targets_verified_count") or 0)
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_missing_counts = Counter(
+        str(len(item.get("repair_targets_missing") or []))
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_unexpected_counts = Counter(
+        str(len(item.get("repair_targets_unexpected") or []))
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_statuses = Counter(
+        str(item.get("source_guarded_repair_execution_status") or "unknown").strip()
+        or "unknown"
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_allowed = Counter(
+        str(bool(item.get("source_guarded_repair_execution_allowed"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_marker_observed = Counter(
+        str(bool(item.get("source_guarded_repair_marker_observed"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_exit_codes = Counter(
+        str(item.get("source_guarded_repair_exit_code"))
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_repair_actions_executed = Counter(
+        str(bool(item.get("source_repair_actions_executed"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_repair_execution_enabled = Counter(
+        str(bool(item.get("source_repair_execution_enabled"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_real_execution_enabled = Counter(
+        str(bool(item.get("source_real_execution_enabled"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_repair_execution_performed = Counter(
+        str(bool(item.get("source_repair_execution_performed"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_source_repair_subprocess_invoked = Counter(
+        str(bool(item.get("source_repair_subprocess_invoked"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_repair_execution_enabled = Counter(
+        str(bool(item.get("repair_execution_enabled"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_repair_execution_performed = Counter(
+        str(bool(item.get("repair_execution_performed"))).lower()
+        for item in post_repair_evidence_checks
+    )
+    post_repair_evidence_repair_subprocess_invoked = Counter(
+        str(bool(item.get("repair_subprocess_invoked"))).lower()
+        for item in post_repair_evidence_checks
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -1797,6 +1908,7 @@ def inspect_retry_governance_trail_from_records(
         real_repair_noop_feedback_records=real_repair_noop_feedback_records,
         real_repair_readiness_gates=real_repair_readiness_gates,
         guarded_repair_execution_results=guarded_repair_execution_results,
+        post_repair_evidence_checks=post_repair_evidence_checks,
         results=results,
     )
 
@@ -1948,6 +2060,11 @@ def inspect_retry_governance_trail_from_records(
         guarded_repair_execution_results=guarded_repair_execution_results,
     )
 
+    post_repair_evidence_linkage = _post_repair_evidence_linkage_summary(
+        guarded_repair_execution_results=guarded_repair_execution_results,
+        post_repair_evidence_checks=post_repair_evidence_checks,
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -1998,6 +2115,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_repair_noop_feedback_records": len(real_repair_noop_feedback_records),
             "real_execution_repair_readiness_gates": len(real_repair_readiness_gates),
             "guarded_repair_execution_results": len(guarded_repair_execution_results),
+            "post_repair_evidence_checks": len(post_repair_evidence_checks),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -3335,6 +3453,88 @@ def inspect_retry_governance_trail_from_records(
                 "guarded_repair_execution_orphans", 0
             )
         ),
+        "post_repair_evidence_statuses": dict(post_repair_evidence_statuses),
+        "post_repair_evidence_allowed": dict(post_repair_evidence_allowed),
+        "post_repair_evidence_enabled": dict(post_repair_evidence_enabled),
+        "post_repair_evidence_marker_observed": dict(
+            post_repair_evidence_marker_observed
+        ),
+        "post_repair_evidence_exit_codes": dict(post_repair_evidence_exit_codes),
+        "post_repair_evidence_outcome_verified": dict(
+            post_repair_evidence_outcome_verified
+        ),
+        "post_repair_evidence_expected_counts": dict(
+            post_repair_evidence_expected_counts
+        ),
+        "post_repair_evidence_verified_counts": dict(
+            post_repair_evidence_verified_counts
+        ),
+        "post_repair_evidence_missing_counts": dict(
+            post_repair_evidence_missing_counts
+        ),
+        "post_repair_evidence_unexpected_counts": dict(
+            post_repair_evidence_unexpected_counts
+        ),
+        "post_repair_evidence_next_actions": dict(post_repair_evidence_next_actions),
+        "post_repair_evidence_source_statuses": dict(
+            post_repair_evidence_source_statuses
+        ),
+        "post_repair_evidence_source_allowed": dict(
+            post_repair_evidence_source_allowed
+        ),
+        "post_repair_evidence_source_marker_observed": dict(
+            post_repair_evidence_source_marker_observed
+        ),
+        "post_repair_evidence_source_exit_codes": dict(
+            post_repair_evidence_source_exit_codes
+        ),
+        "post_repair_evidence_source_repair_actions_executed": dict(
+            post_repair_evidence_source_repair_actions_executed
+        ),
+        "post_repair_evidence_source_repair_execution_enabled": dict(
+            post_repair_evidence_source_repair_execution_enabled
+        ),
+        "post_repair_evidence_source_real_execution_enabled": dict(
+            post_repair_evidence_source_real_execution_enabled
+        ),
+        "post_repair_evidence_source_repair_execution_performed": dict(
+            post_repair_evidence_source_repair_execution_performed
+        ),
+        "post_repair_evidence_source_repair_subprocess_invoked": dict(
+            post_repair_evidence_source_repair_subprocess_invoked
+        ),
+        "post_repair_evidence_execution_performed": dict(
+            post_repair_evidence_execution_performed
+        ),
+        "post_repair_evidence_subprocess_invoked": dict(
+            post_repair_evidence_subprocess_invoked
+        ),
+        "post_repair_evidence_repair_execution_enabled": dict(
+            post_repair_evidence_repair_execution_enabled
+        ),
+        "post_repair_evidence_real_execution_enabled": dict(
+            post_repair_evidence_real_execution_enabled
+        ),
+        "post_repair_evidence_repair_execution_performed": dict(
+            post_repair_evidence_repair_execution_performed
+        ),
+        "post_repair_evidence_repair_subprocess_invoked": dict(
+            post_repair_evidence_repair_subprocess_invoked
+        ),
+        "post_repair_evidence_linkage": post_repair_evidence_linkage,
+        "post_repair_evidence_linkage_complete": bool(
+            post_repair_evidence_linkage.get(
+                "post_repair_evidence_linkage_complete"
+            )
+        ),
+        "post_repair_evidence_guarded_result_matches": (
+            post_repair_evidence_linkage.get(
+                "post_repair_evidence_guarded_result_matches", 0
+            )
+        ),
+        "post_repair_evidence_orphans": post_repair_evidence_linkage.get(
+            "post_repair_evidence_orphans", 0
+        ),
     }
 
 def _missing_stages(
@@ -3513,6 +3713,7 @@ def _build_chain_ids(
     real_repair_noop_feedback_records: list[Mapping[str, Any]],
     real_repair_readiness_gates: list[Mapping[str, Any]],
     guarded_repair_execution_results: list[Mapping[str, Any]],
+    post_repair_evidence_checks: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -3548,6 +3749,7 @@ def _build_chain_ids(
         + real_repair_noop_feedback_records
         + real_repair_readiness_gates
         + guarded_repair_execution_results
+        + post_repair_evidence_checks
         + results
     )
 
@@ -3593,6 +3795,7 @@ def _build_chain_ids(
                 + real_repair_noop_feedback_records
                 + real_repair_readiness_gates
                 + guarded_repair_execution_results
+                + post_repair_evidence_checks
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -3630,6 +3833,7 @@ def _build_chain_ids(
                 + real_repair_noop_feedback_records
                 + real_repair_readiness_gates
                 + guarded_repair_execution_results
+                + post_repair_evidence_checks
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -3667,6 +3871,7 @@ def _build_chain_ids(
                     + real_repair_noop_feedback_records
                     + real_repair_readiness_gates
                     + guarded_repair_execution_results
+                    + post_repair_evidence_checks
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -3907,6 +4112,13 @@ def _build_chain_ids(
                 str(item.get("guarded_repair_execution_result_id") or "").strip()
                 for item in guarded_repair_execution_results
                 if str(item.get("guarded_repair_execution_result_id") or "").strip()
+            }
+        ),
+        "post_repair_evidence_check_ids": sorted(
+            {
+                str(item.get("post_repair_evidence_check_id") or "").strip()
+                for item in post_repair_evidence_checks
+                if str(item.get("post_repair_evidence_check_id") or "").strip()
             }
         ),
     }
@@ -5012,6 +5224,38 @@ def _guarded_repair_execution_linkage_summary(
             guarded_repair_execution_results
         )
         and result_orphans == 0,
+    }
+
+
+def _post_repair_evidence_linkage_summary(
+    *,
+    guarded_repair_execution_results: list[Mapping[str, Any]],
+    post_repair_evidence_checks: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    guarded_result_ids = {
+        clean(item.get("guarded_repair_execution_result_id"))
+        for item in guarded_repair_execution_results
+        if clean(item.get("guarded_repair_execution_result_id"))
+    }
+
+    check_result_matches = 0
+    check_orphans = 0
+
+    for check in post_repair_evidence_checks:
+        result_id = clean(check.get("guarded_repair_execution_result_id"))
+        if result_id and result_id in guarded_result_ids:
+            check_result_matches += 1
+        else:
+            check_orphans += 1
+
+    return {
+        "post_repair_evidence_guarded_result_matches": check_result_matches,
+        "post_repair_evidence_orphans": check_orphans,
+        "post_repair_evidence_linkage_complete": bool(post_repair_evidence_checks)
+        and check_orphans == 0,
     }
 
 

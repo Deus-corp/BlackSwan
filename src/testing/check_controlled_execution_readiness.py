@@ -1071,6 +1071,84 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     guarded_repair_execution_subprocess_invoked = _safe_mapping(
         trail_summary.get("guarded_repair_execution_subprocess_invoked")
     )
+    post_repair_evidence_statuses = _safe_mapping(
+        trail_summary.get("post_repair_evidence_statuses")
+    )
+    post_repair_evidence_allowed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_allowed")
+    )
+    post_repair_evidence_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_enabled")
+    )
+    post_repair_evidence_marker_observed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_marker_observed")
+    )
+    post_repair_evidence_exit_codes = _safe_mapping(
+        trail_summary.get("post_repair_evidence_exit_codes")
+    )
+    post_repair_evidence_outcome_verified = _safe_mapping(
+        trail_summary.get("post_repair_evidence_outcome_verified")
+    )
+    post_repair_evidence_expected_counts = _safe_mapping(
+        trail_summary.get("post_repair_evidence_expected_counts")
+    )
+    post_repair_evidence_verified_counts = _safe_mapping(
+        trail_summary.get("post_repair_evidence_verified_counts")
+    )
+    post_repair_evidence_missing_counts = _safe_mapping(
+        trail_summary.get("post_repair_evidence_missing_counts")
+    )
+    post_repair_evidence_unexpected_counts = _safe_mapping(
+        trail_summary.get("post_repair_evidence_unexpected_counts")
+    )
+    post_repair_evidence_next_actions = _safe_mapping(
+        trail_summary.get("post_repair_evidence_next_actions")
+    )
+    post_repair_evidence_source_statuses = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_statuses")
+    )
+    post_repair_evidence_source_allowed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_allowed")
+    )
+    post_repair_evidence_source_marker_observed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_marker_observed")
+    )
+    post_repair_evidence_source_exit_codes = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_exit_codes")
+    )
+    post_repair_evidence_source_repair_actions_executed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_repair_actions_executed")
+    )
+    post_repair_evidence_source_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_repair_execution_enabled")
+    )
+    post_repair_evidence_source_real_execution_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_real_execution_enabled")
+    )
+    post_repair_evidence_source_repair_execution_performed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_repair_execution_performed")
+    )
+    post_repair_evidence_source_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_repair_subprocess_invoked")
+    )
+    post_repair_evidence_execution_performed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_execution_performed")
+    )
+    post_repair_evidence_subprocess_invoked = _safe_mapping(
+        trail_summary.get("post_repair_evidence_subprocess_invoked")
+    )
+    post_repair_evidence_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_repair_execution_enabled")
+    )
+    post_repair_evidence_real_execution_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_real_execution_enabled")
+    )
+    post_repair_evidence_repair_execution_performed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_repair_execution_performed")
+    )
+    post_repair_evidence_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("post_repair_evidence_repair_subprocess_invoked")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -2289,6 +2367,97 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "guarded_repair_execution_subprocess_invoked": _safe_int(
             guarded_repair_execution_subprocess_invoked.get("true"), 0
+        ),
+        "post_repair_evidence_observed": _safe_int(
+            post_repair_evidence_statuses.get("passed"), 0
+        )
+        > 0,
+        "post_repair_evidence_records": _safe_int(
+            post_repair_evidence_statuses.get("passed"), 0
+        ),
+        "post_repair_evidence_linkage_complete": bool(
+            trail_summary.get("post_repair_evidence_linkage_complete")
+        ),
+        "post_repair_evidence_orphans": _safe_int(
+            trail_summary.get("post_repair_evidence_orphans"), 0
+        ),
+        "post_repair_evidence_passed": _safe_int(
+            post_repair_evidence_statuses.get("passed"), 0
+        ),
+        "post_repair_evidence_allowed": _safe_int(
+            post_repair_evidence_allowed.get("true"), 0
+        ),
+        "post_repair_evidence_enabled": _safe_int(
+            post_repair_evidence_enabled.get("true"), 0
+        ),
+        "post_repair_evidence_marker_observed": _safe_int(
+            post_repair_evidence_marker_observed.get("true"), 0
+        ),
+        "post_repair_evidence_exit_code_zero": _safe_int(
+            post_repair_evidence_exit_codes.get("0"), 0
+        ),
+        "post_repair_evidence_outcome_verified": _safe_int(
+            post_repair_evidence_outcome_verified.get("true"), 0
+        ),
+        "post_repair_evidence_expected_target_count_9": _safe_int(
+            post_repair_evidence_expected_counts.get("9"), 0
+        ),
+        "post_repair_evidence_verified_target_count_9": _safe_int(
+            post_repair_evidence_verified_counts.get("9"), 0
+        ),
+        "post_repair_evidence_missing_targets": _safe_int(
+            post_repair_evidence_missing_counts.get("0"), 0
+        ),
+        "post_repair_evidence_unexpected_targets": _safe_int(
+            post_repair_evidence_unexpected_counts.get("0"), 0
+        ),
+        "post_repair_evidence_next_action_close_loop": _safe_int(
+            post_repair_evidence_next_actions.get("close_repair_loop"), 0
+        ),
+        "post_repair_evidence_source_guarded_repair_succeeded": _safe_int(
+            post_repair_evidence_source_statuses.get("succeeded"), 0
+        ),
+        "post_repair_evidence_source_guarded_repair_allowed": _safe_int(
+            post_repair_evidence_source_allowed.get("true"), 0
+        ),
+        "post_repair_evidence_source_marker_observed": _safe_int(
+            post_repair_evidence_source_marker_observed.get("true"), 0
+        ),
+        "post_repair_evidence_source_exit_code_zero": _safe_int(
+            post_repair_evidence_source_exit_codes.get("0"), 0
+        ),
+        "post_repair_evidence_source_repair_actions_executed": _safe_int(
+            post_repair_evidence_source_repair_actions_executed.get("true"), 0
+        ),
+        "post_repair_evidence_source_repair_execution_enabled": _safe_int(
+            post_repair_evidence_source_repair_execution_enabled.get("true"), 0
+        ),
+        "post_repair_evidence_source_real_execution_enabled": _safe_int(
+            post_repair_evidence_source_real_execution_enabled.get("true"), 0
+        ),
+        "post_repair_evidence_source_repair_execution_performed": _safe_int(
+            post_repair_evidence_source_repair_execution_performed.get("true"), 0
+        ),
+        "post_repair_evidence_source_repair_subprocess_invoked": _safe_int(
+            post_repair_evidence_source_repair_subprocess_invoked.get("true"), 0
+        ),
+        "post_repair_evidence_execution_performed": _safe_int(
+            post_repair_evidence_execution_performed.get("true"), 0
+        ),
+        "post_repair_evidence_subprocess_invoked": _safe_int(
+            post_repair_evidence_subprocess_invoked.get("true"), 0
+        ),
+        "post_repair_evidence_repair_execution_enabled": _safe_int(
+            post_repair_evidence_repair_execution_enabled.get("true"), 0
+        ),
+        "post_repair_evidence_real_execution_enabled": _safe_int(
+            post_repair_evidence_real_execution_enabled.get("true"), 0
+        ),
+        "post_repair_evidence_repair_execution_performed": _safe_int(
+            post_repair_evidence_repair_execution_performed.get("true"), 0
+        ),
+        "post_repair_evidence_repair_subprocess_invoked": _safe_int(
+            post_repair_evidence_repair_subprocess_invoked.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -3555,6 +3724,97 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "guarded_repair_execution_subprocess_invoked": _safe_int(
                 guarded_repair_execution_subprocess_invoked.get("true"), 0
             ),
+            "post_repair_evidence_observed": _safe_int(
+                post_repair_evidence_statuses.get("passed"), 0
+            )
+            > 0,
+            "post_repair_evidence_records": _safe_int(
+                post_repair_evidence_statuses.get("passed"), 0
+            ),
+            "post_repair_evidence_linkage_complete": bool(
+                trail_summary.get("post_repair_evidence_linkage_complete")
+            ),
+            "post_repair_evidence_orphans": _safe_int(
+                trail_summary.get("post_repair_evidence_orphans"), 0
+            ),
+            "post_repair_evidence_passed": _safe_int(
+                post_repair_evidence_statuses.get("passed"), 0
+            ),
+            "post_repair_evidence_allowed": _safe_int(
+                post_repair_evidence_allowed.get("true"), 0
+            ),
+            "post_repair_evidence_enabled": _safe_int(
+                post_repair_evidence_enabled.get("true"), 0
+            ),
+            "post_repair_evidence_marker_observed": _safe_int(
+                post_repair_evidence_marker_observed.get("true"), 0
+            ),
+            "post_repair_evidence_exit_code_zero": _safe_int(
+                post_repair_evidence_exit_codes.get("0"), 0
+            ),
+            "post_repair_evidence_outcome_verified": _safe_int(
+                post_repair_evidence_outcome_verified.get("true"), 0
+            ),
+            "post_repair_evidence_expected_target_count_9": _safe_int(
+                post_repair_evidence_expected_counts.get("9"), 0
+            ),
+            "post_repair_evidence_verified_target_count_9": _safe_int(
+                post_repair_evidence_verified_counts.get("9"), 0
+            ),
+            "post_repair_evidence_missing_targets": _safe_int(
+                post_repair_evidence_missing_counts.get("0"), 0
+            ),
+            "post_repair_evidence_unexpected_targets": _safe_int(
+                post_repair_evidence_unexpected_counts.get("0"), 0
+            ),
+            "post_repair_evidence_next_action_close_loop": _safe_int(
+                post_repair_evidence_next_actions.get("close_repair_loop"), 0
+            ),
+            "post_repair_evidence_source_guarded_repair_succeeded": _safe_int(
+                post_repair_evidence_source_statuses.get("succeeded"), 0
+            ),
+            "post_repair_evidence_source_guarded_repair_allowed": _safe_int(
+                post_repair_evidence_source_allowed.get("true"), 0
+            ),
+            "post_repair_evidence_source_marker_observed": _safe_int(
+                post_repair_evidence_source_marker_observed.get("true"), 0
+            ),
+            "post_repair_evidence_source_exit_code_zero": _safe_int(
+                post_repair_evidence_source_exit_codes.get("0"), 0
+            ),
+            "post_repair_evidence_source_repair_actions_executed": _safe_int(
+                post_repair_evidence_source_repair_actions_executed.get("true"), 0
+            ),
+            "post_repair_evidence_source_repair_execution_enabled": _safe_int(
+                post_repair_evidence_source_repair_execution_enabled.get("true"), 0
+            ),
+            "post_repair_evidence_source_real_execution_enabled": _safe_int(
+                post_repair_evidence_source_real_execution_enabled.get("true"), 0
+            ),
+            "post_repair_evidence_source_repair_execution_performed": _safe_int(
+                post_repair_evidence_source_repair_execution_performed.get("true"), 0
+            ),
+            "post_repair_evidence_source_repair_subprocess_invoked": _safe_int(
+                post_repair_evidence_source_repair_subprocess_invoked.get("true"), 0
+            ),
+            "post_repair_evidence_execution_performed": _safe_int(
+                post_repair_evidence_execution_performed.get("true"), 0
+            ),
+            "post_repair_evidence_subprocess_invoked": _safe_int(
+                post_repair_evidence_subprocess_invoked.get("true"), 0
+            ),
+            "post_repair_evidence_repair_execution_enabled": _safe_int(
+                post_repair_evidence_repair_execution_enabled.get("true"), 0
+            ),
+            "post_repair_evidence_real_execution_enabled": _safe_int(
+                post_repair_evidence_real_execution_enabled.get("true"), 0
+            ),
+            "post_repair_evidence_repair_execution_performed": _safe_int(
+                post_repair_evidence_repair_execution_performed.get("true"), 0
+            ),
+            "post_repair_evidence_repair_subprocess_invoked": _safe_int(
+                post_repair_evidence_repair_subprocess_invoked.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -3670,6 +3930,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "guarded_repair_execution_records",
             "guarded_repair_execution_linkage_complete",
             "guarded_repair_execution_orphans",
+            "post_repair_evidence_observed",
+            "post_repair_evidence_records",
+            "post_repair_evidence_linkage_complete",
+            "post_repair_evidence_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -4771,6 +5035,84 @@ def _build_checks(
     )
     guarded_repair_execution_subprocess_invoked = _safe_mapping(
         trail_summary.get("guarded_repair_execution_subprocess_invoked")
+    )
+    post_repair_evidence_statuses = _safe_mapping(
+        trail_summary.get("post_repair_evidence_statuses")
+    )
+    post_repair_evidence_allowed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_allowed")
+    )
+    post_repair_evidence_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_enabled")
+    )
+    post_repair_evidence_marker_observed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_marker_observed")
+    )
+    post_repair_evidence_exit_codes = _safe_mapping(
+        trail_summary.get("post_repair_evidence_exit_codes")
+    )
+    post_repair_evidence_outcome_verified = _safe_mapping(
+        trail_summary.get("post_repair_evidence_outcome_verified")
+    )
+    post_repair_evidence_expected_counts = _safe_mapping(
+        trail_summary.get("post_repair_evidence_expected_counts")
+    )
+    post_repair_evidence_verified_counts = _safe_mapping(
+        trail_summary.get("post_repair_evidence_verified_counts")
+    )
+    post_repair_evidence_missing_counts = _safe_mapping(
+        trail_summary.get("post_repair_evidence_missing_counts")
+    )
+    post_repair_evidence_unexpected_counts = _safe_mapping(
+        trail_summary.get("post_repair_evidence_unexpected_counts")
+    )
+    post_repair_evidence_next_actions = _safe_mapping(
+        trail_summary.get("post_repair_evidence_next_actions")
+    )
+    post_repair_evidence_source_statuses = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_statuses")
+    )
+    post_repair_evidence_source_allowed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_allowed")
+    )
+    post_repair_evidence_source_marker_observed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_marker_observed")
+    )
+    post_repair_evidence_source_exit_codes = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_exit_codes")
+    )
+    post_repair_evidence_source_repair_actions_executed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_repair_actions_executed")
+    )
+    post_repair_evidence_source_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_repair_execution_enabled")
+    )
+    post_repair_evidence_source_real_execution_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_real_execution_enabled")
+    )
+    post_repair_evidence_source_repair_execution_performed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_repair_execution_performed")
+    )
+    post_repair_evidence_source_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("post_repair_evidence_source_repair_subprocess_invoked")
+    )
+    post_repair_evidence_execution_performed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_execution_performed")
+    )
+    post_repair_evidence_subprocess_invoked = _safe_mapping(
+       trail_summary.get("post_repair_evidence_subprocess_invoked")
+    )
+    post_repair_evidence_repair_execution_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_repair_execution_enabled")
+    )
+    post_repair_evidence_real_execution_enabled = _safe_mapping(
+        trail_summary.get("post_repair_evidence_real_execution_enabled")
+    )
+    post_repair_evidence_repair_execution_performed = _safe_mapping(
+        trail_summary.get("post_repair_evidence_repair_execution_performed")
+    )
+    post_repair_evidence_repair_subprocess_invoked = _safe_mapping(
+        trail_summary.get("post_repair_evidence_repair_subprocess_invoked")
     )
 
     checks = [
@@ -8043,6 +8385,186 @@ def _build_checks(
             == 1,
             _safe_int(guarded_repair_execution_subprocess_invoked.get("true"), 0),
         ),
+        _check(
+            "post_repair_evidence_observed_after_guarded_repair_execution",
+            _safe_int(guarded_repair_execution_statuses.get("succeeded"), 0) == 0
+            or _safe_int(post_repair_evidence_statuses.get("passed"), 0) > 0,
+            {
+                "succeeded_guarded_repair_execution_results": _safe_int(
+                    guarded_repair_execution_statuses.get("succeeded"), 0
+                ),
+                "passed_post_repair_evidence_checks": _safe_int(
+                    post_repair_evidence_statuses.get("passed"), 0
+                ),
+            },
+        ),
+        _check(
+            "post_repair_evidence_links_to_guarded_repair_execution",
+            _safe_int(post_repair_evidence_statuses.get("passed"), 0) == 0
+            or _safe_int(trail_summary.get("post_repair_evidence_orphans"), 0) == 0,
+            _safe_int(trail_summary.get("post_repair_evidence_orphans"), 0),
+        ),
+        _check(
+            "post_repair_evidence_passed",
+            _safe_int(post_repair_evidence_statuses.get("passed"), 0) == 1,
+            _safe_int(post_repair_evidence_statuses.get("passed"), 0),
+        ),
+        _check(
+            "post_repair_evidence_allowed",
+            _safe_int(post_repair_evidence_allowed.get("true"), 0) == 1,
+            _safe_int(post_repair_evidence_allowed.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_enabled",
+            _safe_int(post_repair_evidence_enabled.get("true"), 0) == 1,
+            _safe_int(post_repair_evidence_enabled.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_marker_observed",
+            _safe_int(post_repair_evidence_marker_observed.get("true"), 0) == 1,
+            _safe_int(post_repair_evidence_marker_observed.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_exit_code_zero",
+            _safe_int(post_repair_evidence_exit_codes.get("0"), 0) == 1,
+            _safe_int(post_repair_evidence_exit_codes.get("0"), 0),
+        ),
+        _check(
+            "post_repair_evidence_outcome_verified",
+            _safe_int(post_repair_evidence_outcome_verified.get("true"), 0) == 1,
+            _safe_int(post_repair_evidence_outcome_verified.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_expected_target_count_observed",
+            _safe_int(post_repair_evidence_expected_counts.get("9"), 0) == 1,
+            _safe_int(post_repair_evidence_expected_counts.get("9"), 0),
+        ),
+        _check(
+            "post_repair_evidence_verified_target_count_observed",
+            _safe_int(post_repair_evidence_verified_counts.get("9"), 0) == 1,
+            _safe_int(post_repair_evidence_verified_counts.get("9"), 0),
+        ),
+        _check(
+            "post_repair_evidence_no_missing_targets",
+            _safe_int(post_repair_evidence_missing_counts.get("0"), 0) == 1,
+            _safe_int(post_repair_evidence_missing_counts.get("0"), 0),
+        ),
+        _check(
+            "post_repair_evidence_no_unexpected_targets",
+            _safe_int(post_repair_evidence_unexpected_counts.get("0"), 0) == 1,
+            _safe_int(post_repair_evidence_unexpected_counts.get("0"), 0),
+        ),
+        _check(
+            "post_repair_evidence_next_action_close_loop",
+            _safe_int(post_repair_evidence_next_actions.get("close_repair_loop"), 0)
+            == 1,
+            _safe_int(post_repair_evidence_next_actions.get("close_repair_loop"), 0),
+        ),
+        _check(
+            "post_repair_evidence_source_guarded_repair_succeeded",
+            _safe_int(post_repair_evidence_source_statuses.get("succeeded"), 0) == 1,
+            _safe_int(post_repair_evidence_source_statuses.get("succeeded"), 0),
+        ),
+        _check(
+            "post_repair_evidence_source_guarded_repair_allowed",
+            _safe_int(post_repair_evidence_source_allowed.get("true"), 0) == 1,
+            _safe_int(post_repair_evidence_source_allowed.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_source_marker_observed",
+            _safe_int(post_repair_evidence_source_marker_observed.get("true"), 0)
+            == 1,
+            _safe_int(post_repair_evidence_source_marker_observed.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_source_exit_code_zero",
+            _safe_int(post_repair_evidence_source_exit_codes.get("0"), 0) == 1,
+            _safe_int(post_repair_evidence_source_exit_codes.get("0"), 0),
+        ),
+        _check(
+            "post_repair_evidence_source_repair_actions_executed",
+            _safe_int(
+                post_repair_evidence_source_repair_actions_executed.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                post_repair_evidence_source_repair_actions_executed.get("true"), 0
+            ),
+        ),
+        _check(
+            "post_repair_evidence_source_repair_execution_enabled",
+            _safe_int(
+                post_repair_evidence_source_repair_execution_enabled.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                post_repair_evidence_source_repair_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "post_repair_evidence_source_did_not_enable_real_execution",
+            _safe_int(
+                post_repair_evidence_source_real_execution_enabled.get("true"), 0
+            )
+            == 0,
+            _safe_int(
+                post_repair_evidence_source_real_execution_enabled.get("true"), 0
+            ),
+        ),
+        _check(
+            "post_repair_evidence_source_repair_execution_performed",
+            _safe_int(
+                post_repair_evidence_source_repair_execution_performed.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                post_repair_evidence_source_repair_execution_performed.get("true"), 0
+            ),
+        ),
+        _check(
+            "post_repair_evidence_source_repair_subprocess_invoked",
+            _safe_int(
+                post_repair_evidence_source_repair_subprocess_invoked.get("true"), 0
+            )
+            == 1,
+            _safe_int(
+                post_repair_evidence_source_repair_subprocess_invoked.get("true"), 0
+            ),
+        ),
+        _check(
+            "post_repair_evidence_execution_performed",
+            _safe_int(post_repair_evidence_execution_performed.get("true"), 0) == 1,
+            _safe_int(post_repair_evidence_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_subprocess_invoked",
+            _safe_int(post_repair_evidence_subprocess_invoked.get("true"), 0) == 1,
+            _safe_int(post_repair_evidence_subprocess_invoked.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_did_not_enable_repair_execution",
+            _safe_int(post_repair_evidence_repair_execution_enabled.get("true"), 0)
+            == 0,
+            _safe_int(post_repair_evidence_repair_execution_enabled.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_did_not_enable_real_execution",
+            _safe_int(post_repair_evidence_real_execution_enabled.get("true"), 0)
+            == 0,
+            _safe_int(post_repair_evidence_real_execution_enabled.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_did_not_perform_repair_execution",
+            _safe_int(post_repair_evidence_repair_execution_performed.get("true"), 0)
+            == 0,
+            _safe_int(post_repair_evidence_repair_execution_performed.get("true"), 0),
+        ),
+        _check(
+            "post_repair_evidence_did_not_invoke_repair_subprocess",
+            _safe_int(post_repair_evidence_repair_subprocess_invoked.get("true"), 0)
+            == 0,
+            _safe_int(post_repair_evidence_repair_subprocess_invoked.get("true"), 0),
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -8200,6 +8722,10 @@ def validate_controlled_execution_readiness_report_schema(
         "guarded_repair_execution_records",
         "guarded_repair_execution_linkage_complete",
         "guarded_repair_execution_orphans",
+        "post_repair_evidence_observed",
+        "post_repair_evidence_records",
+        "post_repair_evidence_linkage_complete",
+        "post_repair_evidence_orphans",
     ]
 
     reasons: list[str] = []
@@ -8500,6 +9026,15 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("guarded_repair_execution_linkage_complete_must_be_bool")
     if not isinstance(report.get("guarded_repair_execution_orphans"), int):
         reasons.append("guarded_repair_execution_orphans_must_be_int")
+
+    if not isinstance(report.get("post_repair_evidence_observed"), bool):
+        reasons.append("post_repair_evidence_observed_must_be_bool")
+    if not isinstance(report.get("post_repair_evidence_records"), int):
+        reasons.append("post_repair_evidence_records_must_be_int")
+    if not isinstance(report.get("post_repair_evidence_linkage_complete"), bool):
+        reasons.append("post_repair_evidence_linkage_complete_must_be_bool")
+    if not isinstance(report.get("post_repair_evidence_orphans"), int):
+        reasons.append("post_repair_evidence_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -8940,6 +9475,36 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"guarded_repair_execution_repair_subprocess_invoked={result.get('guarded_repair_execution_repair_subprocess_invoked', 0)} "
         f"guarded_repair_execution_execution_performed={result.get('guarded_repair_execution_execution_performed', 0)} "
         f"guarded_repair_execution_subprocess_invoked={result.get('guarded_repair_execution_subprocess_invoked', 0)} "
+        f"post_repair_evidence_observed={str(bool(result.get('post_repair_evidence_observed'))).lower()} "
+        f"post_repair_evidence_records={result.get('post_repair_evidence_records', 0)} "
+        f"post_repair_evidence_linkage_complete={str(bool(result.get('post_repair_evidence_linkage_complete'))).lower()} "
+        f"post_repair_evidence_orphans={result.get('post_repair_evidence_orphans', 0)} "
+        f"post_repair_evidence_passed={result.get('post_repair_evidence_passed', 0)} "
+        f"post_repair_evidence_allowed={result.get('post_repair_evidence_allowed', 0)} "
+        f"post_repair_evidence_enabled={result.get('post_repair_evidence_enabled', 0)} "
+        f"post_repair_evidence_marker_observed={result.get('post_repair_evidence_marker_observed', 0)} "
+        f"post_repair_evidence_exit_code_zero={result.get('post_repair_evidence_exit_code_zero', 0)} "
+        f"post_repair_evidence_outcome_verified={result.get('post_repair_evidence_outcome_verified', 0)} "
+        f"post_repair_evidence_expected_target_count_9={result.get('post_repair_evidence_expected_target_count_9', 0)} "
+        f"post_repair_evidence_verified_target_count_9={result.get('post_repair_evidence_verified_target_count_9', 0)} "
+        f"post_repair_evidence_missing_targets={result.get('post_repair_evidence_missing_targets', 0)} "
+        f"post_repair_evidence_unexpected_targets={result.get('post_repair_evidence_unexpected_targets', 0)} "
+        f"post_repair_evidence_next_action_close_loop={result.get('post_repair_evidence_next_action_close_loop', 0)} "
+        f"post_repair_evidence_source_guarded_repair_succeeded={result.get('post_repair_evidence_source_guarded_repair_succeeded', 0)} "
+        f"post_repair_evidence_source_guarded_repair_allowed={result.get('post_repair_evidence_source_guarded_repair_allowed', 0)} "
+        f"post_repair_evidence_source_marker_observed={result.get('post_repair_evidence_source_marker_observed', 0)} "
+        f"post_repair_evidence_source_exit_code_zero={result.get('post_repair_evidence_source_exit_code_zero', 0)} "
+        f"post_repair_evidence_source_repair_actions_executed={result.get('post_repair_evidence_source_repair_actions_executed', 0)} "
+        f"post_repair_evidence_source_repair_execution_enabled={result.get('post_repair_evidence_source_repair_execution_enabled', 0)} "
+        f"post_repair_evidence_source_real_execution_enabled={result.get('post_repair_evidence_source_real_execution_enabled', 0)} "
+        f"post_repair_evidence_source_repair_execution_performed={result.get('post_repair_evidence_source_repair_execution_performed', 0)} "
+        f"post_repair_evidence_source_repair_subprocess_invoked={result.get('post_repair_evidence_source_repair_subprocess_invoked', 0)} "
+        f"post_repair_evidence_execution_performed={result.get('post_repair_evidence_execution_performed', 0)} "
+        f"post_repair_evidence_subprocess_invoked={result.get('post_repair_evidence_subprocess_invoked', 0)} "
+        f"post_repair_evidence_repair_execution_enabled={result.get('post_repair_evidence_repair_execution_enabled', 0)} "
+        f"post_repair_evidence_real_execution_enabled={result.get('post_repair_evidence_real_execution_enabled', 0)} "
+        f"post_repair_evidence_repair_execution_performed={result.get('post_repair_evidence_repair_execution_performed', 0)} "
+        f"post_repair_evidence_repair_subprocess_invoked={result.get('post_repair_evidence_repair_subprocess_invoked', 0)} "
     )
 
 

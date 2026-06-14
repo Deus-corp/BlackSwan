@@ -1806,6 +1806,20 @@ The readiness gate must keep `repair_execution_enabled=false`,
 
 ---
 
+### Post-repair evidence check
+
+`replay_lifecycle_retry_post_repair_evidence_check` records the final
+verification after a succeeded guarded repair execution result. A passed check
+requires the post-repair marker, zero evidence-check exit code, all expected
+repair targets verified, and no missing or unexpected targets.
+
+This artifact may execute only the evidence-check subprocess. It must keep
+`repair_execution_enabled=false`, `real_execution_enabled=false`,
+`repair_execution_performed=false`, and `repair_subprocess_invoked=false`.
+A passed check recommends `close_repair_loop`.
+
+---
+
 ## Related modules
 
 ```text
