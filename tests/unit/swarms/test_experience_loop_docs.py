@@ -520,3 +520,9 @@ def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> No
     assert "must not execute repair actions" in text
     assert "repair_actions_executed=false" in text
     assert "repair_subprocess_invoked=false" in text
+    assert "Repair noop feedback" in text
+    assert "replay_lifecycle_retry_real_execution_repair_noop_feedback" in text
+    assert "prepare_repair_execution_readiness_gate" in text
+    assert "must not execute feedback logic via subprocess" in text
+    assert "feedback_execution_performed=false" in text
+    assert "repair_subprocess_invoked=false" in text

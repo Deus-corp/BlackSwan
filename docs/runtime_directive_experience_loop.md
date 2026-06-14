@@ -1774,6 +1774,22 @@ The noop result artifact must keep `noop_only=true`,
 
 ---
 
+### Repair noop feedback
+
+`replay_lifecycle_retry_real_execution_repair_noop_feedback` records the
+decision after a completed repair noop result. An actionable feedback record may
+allow the next readiness gate with
+`recommended_next_action=prepare_repair_execution_readiness_gate`, but it must
+not execute feedback logic via subprocess and must not enable repair execution.
+
+The feedback artifact must keep `feedback_execution_performed=false`,
+`feedback_subprocess_invoked=false`, `repair_execution_enabled=false`,
+`real_execution_enabled=false`, `subprocess_enabled=false`,
+`repair_execution_performed=false`, `repair_subprocess_invoked=false`,
+`execution_performed=false`, and `subprocess_invoked=false`. must not execute feedback logic via subprocess.
+
+---
+
 ## Related modules
 
 ```text

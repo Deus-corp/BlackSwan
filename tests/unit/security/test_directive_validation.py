@@ -38,6 +38,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_repair_approval_transition,
     validate_replay_lifecycle_retry_real_execution_repair_dry_run_envelope,
     validate_replay_lifecycle_retry_real_execution_repair_noop_result,
+    validate_replay_lifecycle_retry_real_execution_repair_noop_feedback,
 )
 
 
@@ -3925,3 +3926,134 @@ def test_validate_retry_real_execution_repair_noop_result_rejects_completed_with
     assert result["valid"] is False
     assert "repair_noop_marker_missing_from_stdout" in result["reasons"]
     assert "completed_repair_noop_result_requires_stdout_marker" in result["reasons"]
+
+
+def _real_execution_repair_noop_feedback(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_repair_noop_feedback",
+        "real_execution_repair_noop_feedback_id": "repair-feedback-1",
+        "real_execution_repair_noop_result_id": "repair-noop-1",
+        "real_execution_repair_dry_run_envelope_id": "repair-envelope-1",
+        "real_execution_repair_final_gate_id": "repair-final-gate-1",
+        "real_execution_repair_approval_transition_id": "repair-transition-1",
+        "real_execution_repair_approval_id": "repair-approval-1",
+        "real_execution_read_only_repair_action_bundle_id": "bundle-1",
+        "real_execution_read_only_repair_plan_id": "repair-plan-1",
+        "rendered_command_id": "rendered-command-1",
+        "feedback_status": "actionable",
+        "repair_noop_verified": True,
+        "repair_path_can_proceed": True,
+        "repair_path_next_gate_allowed": True,
+        "recommended_next_action": "prepare_repair_execution_readiness_gate",
+        "source_noop_status": "completed",
+        "source_noop_exit_code": 0,
+        "source_noop_only": True,
+        "source_noop_stdout_marker_observed": True,
+        "source_execution_performed": True,
+        "source_subprocess_invoked": True,
+        "source_envelope_status": "prepared",
+        "source_dry_run_only": True,
+        "source_repair_dry_run_mode": "repair_action_bundle_validation",
+        "source_repair_dry_run_target_count": 9,
+        "source_final_gate_ready_blocked": True,
+        "source_transition_approved": True,
+        "operator_authorized": True,
+        "source_repair_actions_executed": False,
+        "source_repair_bundle_executed": False,
+        "source_repair_command_executed": False,
+        "source_repair_execution_enabled": False,
+        "source_repair_execution_performed": False,
+        "source_repair_subprocess_invoked": False,
+        "feedback_execution_performed": False,
+        "feedback_subprocess_invoked": False,
+        "ready_for_repair_execution": False,
+        "would_execute": False,
+        "bundle_execution_enabled": False,
+        "repair_execution_enabled": False,
+        "real_execution_enabled": False,
+        "subprocess_enabled": False,
+        "bundle_execution_performed": False,
+        "bundle_subprocess_invoked": False,
+        "repair_execution_performed": False,
+        "repair_subprocess_invoked": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "reason": "repair_execution_noop_feedback_recorded",
+        "payload": {
+            "feedback_execution_performed": False,
+            "feedback_subprocess_invoked": False,
+            "bundle_execution_enabled": False,
+            "repair_execution_enabled": False,
+            "real_execution_enabled": False,
+            "subprocess_enabled": False,
+            "bundle_execution_performed": False,
+            "bundle_subprocess_invoked": False,
+            "repair_execution_performed": False,
+            "repair_subprocess_invoked": False,
+            "execution_performed": False,
+            "subprocess_invoked": False,
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_repair_noop_feedback_accepts_actionable_disabled() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_feedback(
+        _real_execution_repair_noop_feedback()
+    )
+
+    assert result["valid"] is True
+    assert result["feedback_status"] == "actionable"
+    assert result["repair_noop_verified"] is True
+    assert result["repair_path_can_proceed"] is True
+    assert result["repair_path_next_gate_allowed"] is True
+    assert result["repair_execution_enabled"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+
+
+def test_validate_retry_real_execution_repair_noop_feedback_rejects_repair_execution_enabled() -> None:
+    record = _real_execution_repair_noop_feedback(repair_execution_enabled=True)
+    record["payload"]["repair_execution_enabled"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_feedback(record)
+
+    assert result["valid"] is False
+    assert "repair_noop_feedback_must_not_enable_repair_execution" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_noop_feedback_rejects_feedback_subprocess() -> None:
+    record = _real_execution_repair_noop_feedback(feedback_subprocess_invoked=True)
+    record["payload"]["feedback_subprocess_invoked"] = True
+
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_feedback(record)
+
+    assert result["valid"] is False
+    assert "repair_noop_feedback_must_not_invoke_feedback_subprocess" in result["reasons"]
+
+
+def test_validate_retry_real_execution_repair_noop_feedback_rejects_source_repair_actions() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_feedback(
+        _real_execution_repair_noop_feedback(source_repair_actions_executed=True)
+    )
+
+    assert result["valid"] is False
+    assert (
+        "repair_noop_feedback_source_must_not_execute_repair_actions"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_repair_noop_feedback_rejects_actionable_without_next_gate_allowed() -> None:
+    result = validate_replay_lifecycle_retry_real_execution_repair_noop_feedback(
+        _real_execution_repair_noop_feedback(
+            repair_path_next_gate_allowed=False,
+        )
+    )
+
+    assert result["valid"] is False
+    assert (
+        "actionable_repair_noop_feedback_requires_next_gate_allowed"
+        in result["reasons"]
+    )

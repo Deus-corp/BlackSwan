@@ -405,6 +405,33 @@ def _trail_summary(**overrides):
         "real_repair_noop_result_subprocess_invoked": {"true": 1},
         "real_repair_noop_result_linkage_complete": True,
         "real_repair_noop_result_orphans": 0,
+        "real_repair_noop_feedback_statuses": {"actionable": 1},
+        "real_repair_noop_feedback_verified": {"true": 1},
+        "real_repair_noop_feedback_path_can_proceed": {"true": 1},
+        "real_repair_noop_feedback_next_gate_allowed": {"true": 1},
+        "real_repair_noop_feedback_next_actions": {
+            "prepare_repair_execution_readiness_gate": 1,
+        },
+        "real_repair_noop_feedback_source_noop_statuses": {"completed": 1},
+        "real_repair_noop_feedback_source_exit_codes": {"0": 1},
+        "real_repair_noop_feedback_source_target_counts": {"9": 1},
+        "real_repair_noop_feedback_source_execution_performed": {"true": 1},
+        "real_repair_noop_feedback_source_subprocess_invoked": {"true": 1},
+        "real_repair_noop_feedback_source_repair_actions_executed": {"false": 1},
+        "real_repair_noop_feedback_source_repair_execution_enabled": {"false": 1},
+        "real_repair_noop_feedback_source_repair_execution_performed": {"false": 1},
+        "real_repair_noop_feedback_source_repair_subprocess_invoked": {"false": 1},
+        "real_repair_noop_feedback_feedback_execution_performed": {"false": 1},
+        "real_repair_noop_feedback_feedback_subprocess_invoked": {"false": 1},
+        "real_repair_noop_feedback_repair_execution_enabled": {"false": 1},
+        "real_repair_noop_feedback_real_execution_enabled": {"false": 1},
+        "real_repair_noop_feedback_subprocess_enabled": {"false": 1},
+        "real_repair_noop_feedback_repair_execution_performed": {"false": 1},
+        "real_repair_noop_feedback_repair_subprocess_invoked": {"false": 1},
+        "real_repair_noop_feedback_execution_performed": {"false": 1},
+        "real_repair_noop_feedback_subprocess_invoked": {"false": 1},
+        "real_repair_noop_feedback_linkage_complete": True,
+        "real_repair_noop_feedback_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -1149,6 +1176,33 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_repair_noop_result_repair_subprocess_invoked": 0,
         "real_repair_noop_result_execution_performed": 1,
         "real_repair_noop_result_subprocess_invoked": 1,
+        "real_repair_noop_feedback_observed": True,
+        "real_repair_noop_feedback_records": 1,
+        "real_repair_noop_feedback_linkage_complete": True,
+        "real_repair_noop_feedback_orphans": 0,
+        "real_repair_noop_feedback_actionable": 1,
+        "real_repair_noop_feedback_verified": 1,
+        "real_repair_noop_feedback_path_can_proceed": 1,
+        "real_repair_noop_feedback_next_gate_allowed": 1,
+        "real_repair_noop_feedback_next_action_readiness_gate": 1,
+        "real_repair_noop_feedback_source_noop_completed": 1,
+        "real_repair_noop_feedback_source_exit_code_zero": 1,
+        "real_repair_noop_feedback_source_target_count_9": 1,
+        "real_repair_noop_feedback_source_execution_performed": 1,
+        "real_repair_noop_feedback_source_subprocess_invoked": 1,
+        "real_repair_noop_feedback_source_repair_actions_executed": 0,
+        "real_repair_noop_feedback_source_repair_execution_enabled": 0,
+        "real_repair_noop_feedback_source_repair_execution_performed": 0,
+        "real_repair_noop_feedback_source_repair_subprocess_invoked": 0,
+        "real_repair_noop_feedback_feedback_execution_performed": 0,
+        "real_repair_noop_feedback_feedback_subprocess_invoked": 0,
+        "real_repair_noop_feedback_repair_execution_enabled": 0,
+        "real_repair_noop_feedback_real_execution_enabled": 0,
+        "real_repair_noop_feedback_subprocess_enabled": 0,
+        "real_repair_noop_feedback_repair_execution_performed": 0,
+        "real_repair_noop_feedback_repair_subprocess_invoked": 0,
+        "real_repair_noop_feedback_execution_performed": 0,
+        "real_repair_noop_feedback_subprocess_invoked": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -1508,6 +1562,33 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_repair_noop_result_repair_subprocess_invoked": 0,
         "real_repair_noop_result_execution_performed": 1,
         "real_repair_noop_result_subprocess_invoked": 1,
+        "real_repair_noop_feedback_observed": True,
+        "real_repair_noop_feedback_records": 1,
+        "real_repair_noop_feedback_linkage_complete": True,
+        "real_repair_noop_feedback_orphans": 0,
+        "real_repair_noop_feedback_actionable": 1,
+        "real_repair_noop_feedback_verified": 1,
+        "real_repair_noop_feedback_path_can_proceed": 1,
+        "real_repair_noop_feedback_next_gate_allowed": 1,
+        "real_repair_noop_feedback_next_action_readiness_gate": 1,
+        "real_repair_noop_feedback_source_noop_completed": 1,
+        "real_repair_noop_feedback_source_exit_code_zero": 1,
+        "real_repair_noop_feedback_source_target_count_9": 1,
+        "real_repair_noop_feedback_source_execution_performed": 1,
+        "real_repair_noop_feedback_source_subprocess_invoked": 1,
+        "real_repair_noop_feedback_source_repair_actions_executed": 0,
+        "real_repair_noop_feedback_source_repair_execution_enabled": 0,
+        "real_repair_noop_feedback_source_repair_execution_performed": 0,
+        "real_repair_noop_feedback_source_repair_subprocess_invoked": 0,
+        "real_repair_noop_feedback_feedback_execution_performed": 0,
+        "real_repair_noop_feedback_feedback_subprocess_invoked": 0,
+        "real_repair_noop_feedback_repair_execution_enabled": 0,
+        "real_repair_noop_feedback_real_execution_enabled": 0,
+        "real_repair_noop_feedback_subprocess_enabled": 0,
+        "real_repair_noop_feedback_repair_execution_performed": 0,
+        "real_repair_noop_feedback_repair_subprocess_invoked": 0,
+        "real_repair_noop_feedback_execution_performed": 0,
+        "real_repair_noop_feedback_subprocess_invoked": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
@@ -2161,3 +2242,51 @@ def test_controlled_execution_readiness_fails_when_real_repair_noop_does_not_inv
     failed = [item["name"] for item in checks if item["status"] != "passed"]
 
     assert "real_repair_noop_result_invoked_controlled_noop_subprocess" in failed
+
+
+def test_controlled_execution_readiness_fails_for_real_repair_noop_feedback_orphan() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_noop_feedback_orphans=1,
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_noop_feedback_links_to_noop_result" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_noop_feedback_executes() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_noop_feedback_execution_performed={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert "real_repair_noop_feedback_did_not_execute" in failed
+
+
+def test_controlled_execution_readiness_fails_when_real_repair_noop_feedback_source_executed_repair_actions() -> None:
+    checks = _build_checks(
+        trail_summary=_trail_summary(
+            real_repair_noop_feedback_source_repair_actions_executed={"true": 1},
+        ),
+        retry_observability=_retry_observability(),
+        controlled_observability=_controlled_observability(),
+        require_operator_authorized=True,
+    )
+
+    failed = [item["name"] for item in checks if item["status"] != "passed"]
+
+    assert (
+        "real_repair_noop_feedback_source_did_not_execute_repair_actions"
+        in failed
+    )
