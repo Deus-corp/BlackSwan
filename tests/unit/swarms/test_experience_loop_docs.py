@@ -71,6 +71,51 @@ def test_runtime_directive_experience_loop_docs_include_real_adapter_preflight_c
     assert "real_adapter_requires_explicit_pr=true" in text
 
 
+def test_runtime_directive_experience_loop_docs_include_verified_guarded_repair_loop() -> None:
+    text = DOC_PATH.read_text(encoding="utf-8")
+
+    assert "Guarded repair execution result" in text
+    assert "replay_lifecycle_retry_guarded_repair_execution_result" in text
+    assert "repair_execution_status=succeeded" in text
+    assert "repair_execution_allowed=true" in text
+    assert "guarded_repair_marker_observed=true" in text
+    assert "repair_action_target_count=9" in text
+    assert "repair_actions_executed=true" in text
+    assert "repair_bundle_executed=true" in text
+    assert "repair_command_executed=true" in text
+    assert "run_post_repair_evidence_check" in text
+    assert "real_execution_enabled=false" in text
+    assert "rendered_command_executed=false" in text
+    assert "dry_run_command_executed=false" in text
+    assert "repair_execution_performed=true" in text
+    assert "repair_subprocess_invoked=true" in text
+
+    assert "Verified guarded repair loop" in text
+    assert "PostRepairEvidence" in text
+    assert "close_repair_loop" in text
+    assert "replay_lifecycle_retry_post_repair_evidence_check" in text
+    assert "post_repair_status=passed" in text
+    assert "post_repair_evidence_check_allowed=true" in text
+    assert "post_repair_evidence_check_enabled=true" in text
+    assert "post_repair_evidence_marker_observed=true" in text
+    assert "post_repair_evidence_exit_code=0" in text
+    assert "repair_outcome_verified=true" in text
+    assert "repair_targets_expected_count=9" in text
+    assert "repair_targets_verified_count=9" in text
+    assert "repair_targets_missing=[]" in text
+    assert "repair_targets_unexpected=[]" in text
+    assert "source_guarded_repair_execution_status=succeeded" in text
+    assert "source_guarded_repair_execution_allowed=true" in text
+    assert "source_guarded_repair_marker_observed=true" in text
+    assert "source_guarded_repair_exit_code=0" in text
+    assert "recommended_next_action=close_repair_loop" in text
+    assert "repair_execution_enabled=false" in text
+    assert "repair_execution_performed=false" in text
+    assert "repair_subprocess_invoked=false" in text
+    assert "run_guarded_repair_execution.py" in text
+    assert "run_post_repair_evidence_check.py" in text
+
+
 def test_runtime_directive_experience_loop_doc_exists_and_mentions_chain() -> None:
     path = Path("docs/runtime_directive_experience_loop.md")
 

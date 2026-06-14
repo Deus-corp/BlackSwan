@@ -11,6 +11,34 @@ Directive
 
 This loop turns a safe runtime action into verified evidence and then into memory that can be ingested, reviewed, exported, replayed, or used by future swarm intelligence.
 
+The same audit-first pattern now extends into controlled retry governance,
+guarded read-only execution, repair planning, guarded repair execution, and
+post-repair verification:
+
+```text
+RetryGovernance
+  -> ControlledExecution
+  -> RealExecutionPreflight
+  -> DryRunEnvelope
+  -> NoopHarness
+  -> GuardedReadOnlyExecution
+  -> ReadOnlyFeedback
+  -> RepairPlan
+  -> RepairActionBundleReview
+  -> RepairApproval
+  -> RepairDryRunEnvelope
+  -> RepairNoopHarness
+  -> RepairReadinessGate
+  -> GuardedRepairExecution
+  -> PostRepairEvidence
+  -> close_repair_loop
+```
+
+The current verified milestone is the guarded repair loop. It proves that a
+failed read-only evidence path can produce actionable feedback, a reviewed repair
+plan, guarded repair execution, and a post-repair evidence check while keeping
+arbitrary real execution disabled.
+
 The first validated directive is:
 
 ```text
@@ -1806,6 +1834,95 @@ The readiness gate must keep `repair_execution_enabled=false`,
 
 ---
 
+### Guarded repair execution result
+
+`replay_lifecycle_retry_guarded_repair_execution_result` records the first
+guarded repair execution outcome after a satisfied repair readiness gate. It is
+valid only after the repair path has passed explicit approval, dry-run envelope,
+noop harness, noop feedback, and readiness lineage.
+
+A successful guarded repair execution result reports:
+
+```text
+repair_execution_status=succeeded
+repair_execution_allowed=true
+guarded_repair_marker_observed=true
+exit_code=0
+repair_action_target_count=9
+repair_actions_executed=true
+repair_bundle_executed=true
+repair_command_executed=true
+recommended_next_action=run_post_repair_evidence_check
+```
+
+The guarded repair harness is still a controlled harness, not arbitrary real
+execution. It must keep:
+
+```text
+real_execution_enabled=false
+rendered_command_executed=false
+dry_run_command_executed=false
+```
+
+The result may enable and perform only the guarded repair harness subprocess:
+
+```text
+repair_execution_enabled=true
+subprocess_enabled=true
+repair_execution_performed=true
+repair_subprocess_invoked=true
+execution_performed=true
+subprocess_invoked=true
+```
+
+Security, inspector, readiness, and Overseer metrics must surface the guarded
+repair execution result before the loop can be considered ready for post-repair
+verification.
+
+---
+
+### Verified guarded repair loop
+
+The full verified repair loop is closed only when the post-repair evidence check
+passes after a succeeded guarded repair execution result.
+
+Expected final verification signals:
+
+```text
+post_repair_status=passed
+post_repair_evidence_check_allowed=true
+post_repair_evidence_check_enabled=true
+post_repair_evidence_marker_observed=true
+post_repair_evidence_exit_code=0
+repair_outcome_verified=true
+repair_targets_expected_count=9
+repair_targets_verified_count=9
+repair_targets_missing=[]
+repair_targets_unexpected=[]
+source_guarded_repair_execution_status=succeeded
+source_guarded_repair_execution_allowed=true
+source_guarded_repair_marker_observed=true
+source_guarded_repair_exit_code=0
+source_guarded_repair_next_action=run_post_repair_evidence_check
+recommended_next_action=close_repair_loop
+```
+
+The post-repair evidence check may execute only the verification subprocess. It
+must not perform another repair execution:
+
+```text
+repair_execution_enabled=false
+real_execution_enabled=false
+repair_execution_performed=false
+repair_subprocess_invoked=false
+```
+
+This gives the runtime an auditable path from failed read-only evidence to
+reviewed repair, guarded repair execution, verified outcome, and
+`close_repair_loop`.
+
+---
+
 ### Post-repair evidence check
 
 `replay_lifecycle_retry_post_repair_evidence_check` records the final
@@ -1817,6 +1934,12 @@ This artifact may execute only the evidence-check subprocess. It must keep
 `repair_execution_enabled=false`, `real_execution_enabled=false`,
 `repair_execution_performed=false`, and `repair_subprocess_invoked=false`.
 A passed check recommends `close_repair_loop`.
+
+Security validation, the governance trail inspector, the controlled execution
+readiness report, and Overseer summaries must agree on the final verified state:
+`post_repair_status=passed`, `repair_outcome_verified=true`,
+`repair_targets_verified_count=9`, no missing or unexpected targets, and
+`recommended_next_action=close_repair_loop`.
 
 ---
 
@@ -1834,6 +1957,12 @@ src/testing/evidence_memory_bridge.py
 
 src/swarms/trade/node_core/directive_consumer.py
 src/swarms/trade/node_core/crdt_refresh.py
+
+src/testing/run_guarded_repair_execution.py
+src/testing/run_post_repair_evidence_check.py
+src/testing/check_controlled_execution_readiness.py
+src/testing/inspect_retry_governance_trail.py
+src/swarms/security/runtime_validation.py
 ```
 
 ---
