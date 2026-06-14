@@ -1,15 +1,29 @@
 name: Deploy MkDocs
+
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
       - '.github/workflows/mkdocs.yml'
+      - '!docs/runtime_directive_experience_loop.md'
+      - '!docs/controlled_retry_guarded_repair_runbook.md'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mkdocs-pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
 
