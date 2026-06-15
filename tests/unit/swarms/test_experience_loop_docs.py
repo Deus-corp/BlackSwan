@@ -71,6 +71,21 @@ def test_policy_gated_real_execution_adapter_adr_documents_fail_closed_contract(
     assert "request_execution_enabled=false" in text
     assert "prepare_capability_registry_and_policy_matrix" in text
 
+    assert "replay_lifecycle_retry_real_execution_capability_policy_matrix" in text
+    assert "capability_registry_exists=true" in text
+    assert "policy_matrix_exists=true" in text
+    assert "capability_count=7" in text
+    assert "enabled_capability_count=5" in text
+    assert "blocked_capability_count=2" in text
+    assert "policy_rule_count=7" in text
+    assert "approved_policy_count=5" in text
+    assert "blocked_policy_count=2" in text
+    assert "sandbox_real_blocked=true" in text
+    assert "policy_gated_real_blocked=true" in text
+    assert "capability_execution_enabled=false" in text
+    assert "policy_execution_enabled=false" in text
+    assert "prepare_sandbox_adapter_scaffold" in text
+
 
 def test_controlled_retry_guarded_repair_runbook_documents_verified_golden_path() -> None:
     assert RUNBOOK_PATH.exists()

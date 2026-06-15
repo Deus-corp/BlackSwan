@@ -507,6 +507,52 @@ production_secrets_accessed=false
 recommended_next_action=prepare_capability_registry_and_policy_matrix
 ```
 
+## Acceptance criteria for PR 38.4a
+
+The concrete PR 38.4a artifact is:
+
+```text
+replay_lifecycle_retry_real_execution_capability_policy_matrix
+```
+
+It defines the initial capability registry and policy matrix for future adapter
+request generation.
+
+It is still not runnable and must keep:
+```text
+capability_registry_exists=true
+policy_matrix_exists=true
+capability_count=7
+enabled_capability_count=5
+blocked_capability_count=2
+policy_rule_count=7
+approved_policy_count=5
+blocked_policy_count=2
+unknown_capability_rejected=true
+unknown_policy_rejected=true
+deny_by_default=true
+fail_closed_default=true
+sandbox_real_blocked=true
+policy_gated_real_blocked=true
+external_side_effects_allowed=false
+production_paths_allowed=false
+production_secrets_allowed=false
+capability_execution_enabled=false
+policy_execution_enabled=false
+adapter_request_generation_enabled=false
+adapter_request_execution_enabled=false
+adapter_result_generation_enabled=false
+sandbox_execution_enabled=false
+policy_gated_real_execution_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+recommended_next_action=prepare_sandbox_adapter_scaffold
+```
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.
