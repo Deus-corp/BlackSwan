@@ -3,6 +3,60 @@ from pathlib import Path
 
 DOC_PATH = Path("docs/runtime_directive_experience_loop.md")
 RUNBOOK_PATH = Path("docs/controlled_retry_guarded_repair_runbook.md")
+POLICY_GATED_REAL_EXECUTION_ADR_PATH = Path(
+    "docs/adr/adr_008_policy_gated_real_execution_adapter.md"
+)
+
+
+def test_policy_gated_real_execution_adapter_adr_documents_fail_closed_contract() -> None:
+    assert POLICY_GATED_REAL_EXECUTION_ADR_PATH.exists()
+
+    text = POLICY_GATED_REAL_EXECUTION_ADR_PATH.read_text(encoding="utf-8")
+
+    assert "ADR-008: Policy-Gated Real Execution Adapter" in text
+    assert "This ADR does not enable arbitrary real execution." in text
+    assert "policy-gated adapter contract" in text
+    assert "fail-closed by default" in text
+    assert "sandbox-first" in text
+    assert "capability-scoped" in text
+    assert "rollback-aware" in text
+    assert "post-execution evidence" in text
+
+    assert "advisory" in text
+    assert "dry-run" in text
+    assert "noop" in text
+    assert "guarded-read-only" in text
+    assert "guarded-repair" in text
+    assert "sandbox-real" in text
+    assert "policy-gated-real" in text
+
+    assert "adapter_request_id" in text
+    assert "adapter_result_id" in text
+    assert "capability_id" in text
+    assert "policy_id" in text
+    assert "rollback_plan_id" in text
+    assert "post_execution_evidence_id" in text
+
+    assert "operator_authorized=true" in text
+    assert "policy_authorized=true" in text
+    assert "capability_allowed=true" in text
+    assert "rollback_plan_present=true" in text
+    assert "post_execution_evidence_required=true" in text
+
+    assert "unknown_capability_rejected=true" in text
+    assert "unknown_policy_rejected=true" in text
+    assert "missing_rollback_plan_rejected=true" in text
+    assert "missing_post_execution_evidence_rejected=true" in text
+
+    assert "ready_for_real_execution=false" in text
+    assert "real_execution_enabled=false" in text
+    assert "external_side_effects_performed=false" in text
+    assert "production_paths_mutated=false" in text
+    assert "production_secrets_accessed=false" in text
+
+    assert "PR 38.1 — real execution adapter contract and schemas, still not runnable" in text
+    assert "PR 38.7 — golden-path sandbox execution smoke" in text
+    assert "arbitrary real execution remains disabled" in text
 
 
 def test_controlled_retry_guarded_repair_runbook_documents_verified_golden_path() -> None:

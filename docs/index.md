@@ -16,6 +16,7 @@ The project is at **TRL‑4**: all core components are laboratory‑validated an
 ## Where to start
 
 - **[Getting Started](getting_started.md)** — launch your first 4‑node swarm in under 5 minutes.
+- **[Runtime directive experience loop](runtime_directive_experience_loop.md)**
 - **[Controlled retry and guarded repair runbook](controlled_retry_guarded_repair_runbook.md)**
 - **[Design Principles](design_principles.en.md)** — the philosophy behind BlackSwan's architecture.
 - **[Glossary](glossary.en.md)** — definitions of all key system terms.
