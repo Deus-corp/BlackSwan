@@ -1332,6 +1332,153 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_execution_adapter_request_schema_source_verified_counts = _safe_mapping(
         trail_summary.get("real_execution_adapter_request_schema_source_verified_counts")
     )
+    real_execution_capability_policy_matrix_statuses = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_statuses")
+    )
+    real_execution_capability_policy_matrix_schema_versions = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_schema_versions")
+    )
+    real_execution_capability_policy_matrix_next_actions = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_next_actions")
+    )
+    real_execution_capability_policy_matrix_capability_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_capability_counts")
+    )
+    real_execution_capability_policy_matrix_enabled_capability_counts = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_enabled_capability_counts"
+        )
+    )
+    real_execution_capability_policy_matrix_blocked_capability_counts = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_blocked_capability_counts"
+        )
+    )
+    real_execution_capability_policy_matrix_policy_rule_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_policy_rule_counts")
+    )
+    real_execution_capability_policy_matrix_approved_policy_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_approved_policy_counts")
+    )
+    real_execution_capability_policy_matrix_blocked_policy_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_blocked_policy_counts")
+    )
+    real_execution_capability_policy_matrix_registry_exists = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_registry_exists")
+    )
+    real_execution_capability_policy_matrix_policy_exists = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_policy_exists")
+    )
+    real_execution_capability_policy_matrix_unknown_capability_rejected = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_unknown_capability_rejected"
+        )
+    )
+    real_execution_capability_policy_matrix_unknown_policy_rejected = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_unknown_policy_rejected")
+    )
+    real_execution_capability_policy_matrix_deny_by_default = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_deny_by_default")
+    )
+    real_execution_capability_policy_matrix_fail_closed_default = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_fail_closed_default")
+    )
+    real_execution_capability_policy_matrix_sandbox_real_blocked = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_sandbox_real_blocked")
+    )
+    real_execution_capability_policy_matrix_policy_gated_real_blocked = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_policy_gated_real_blocked"
+        )
+    )
+    real_execution_capability_policy_matrix_external_side_effects_allowed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_external_side_effects_allowed"
+        )
+    )
+    real_execution_capability_policy_matrix_production_paths_allowed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_production_paths_allowed"
+        )
+    )
+    real_execution_capability_policy_matrix_production_secrets_allowed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_production_secrets_allowed"
+        )
+    )
+    real_execution_capability_policy_matrix_capability_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_capability_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_policy_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_policy_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_adapter_request_generation_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_adapter_request_generation_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_adapter_request_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_adapter_request_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_adapter_result_generation_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_adapter_result_generation_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_sandbox_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_sandbox_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_policy_gated_real_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_policy_gated_real_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_execution_performed = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_execution_performed")
+    )
+    real_execution_capability_policy_matrix_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_subprocess_invoked")
+    )
+    real_execution_capability_policy_matrix_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_real_execution_enabled")
+    )
+    real_execution_capability_policy_matrix_external_side_effects_performed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_external_side_effects_performed"
+        )
+    )
+    real_execution_capability_policy_matrix_production_paths_mutated = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_production_paths_mutated"
+        )
+    )
+    real_execution_capability_policy_matrix_production_secrets_accessed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_production_secrets_accessed"
+        )
+    )
+    real_execution_capability_policy_matrix_source_request_schema_statuses = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_source_request_schema_statuses"
+        )
+    )
+    real_execution_capability_policy_matrix_source_verified = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_source_verified")
+    )
+    real_execution_capability_policy_matrix_source_expected_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_source_expected_counts")
+    )
+    real_execution_capability_policy_matrix_source_verified_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_source_verified_counts")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -2814,6 +2961,124 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_execution_adapter_request_schema_source_verified_count_9": _safe_int(
             real_execution_adapter_request_schema_source_verified_counts.get("9"), 0
+        ),
+        "real_execution_capability_policy_matrix_observed": _safe_int(
+            real_execution_capability_policy_matrix_statuses.get("defined"), 0
+        )
+        > 0,
+        "real_execution_capability_policy_matrix_records": _safe_int(
+            real_execution_capability_policy_matrix_statuses.get("defined"), 0
+        ),
+        "real_execution_capability_policy_matrix_linkage_complete": bool(
+            trail_summary.get("real_execution_capability_policy_matrix_linkage_complete")
+        ),
+        "real_execution_capability_policy_matrix_orphans": _safe_int(
+            trail_summary.get("real_execution_capability_policy_matrix_orphans"), 0
+        ),
+        "real_execution_capability_policy_matrix_defined": _safe_int(
+            real_execution_capability_policy_matrix_statuses.get("defined"), 0
+        ),
+        "real_execution_capability_policy_matrix_registry_exists": _safe_int(
+            real_execution_capability_policy_matrix_registry_exists.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_policy_exists": _safe_int(
+            real_execution_capability_policy_matrix_policy_exists.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_capability_count_7": _safe_int(
+            real_execution_capability_policy_matrix_capability_counts.get("7"), 0
+        ),
+        "real_execution_capability_policy_matrix_enabled_capability_count_5": _safe_int(
+            real_execution_capability_policy_matrix_enabled_capability_counts.get("5"), 0
+        ),
+        "real_execution_capability_policy_matrix_blocked_capability_count_2": _safe_int(
+            real_execution_capability_policy_matrix_blocked_capability_counts.get("2"), 0
+        ),
+        "real_execution_capability_policy_matrix_policy_rule_count_7": _safe_int(
+            real_execution_capability_policy_matrix_policy_rule_counts.get("7"), 0
+        ),
+        "real_execution_capability_policy_matrix_approved_policy_count_5": _safe_int(
+            real_execution_capability_policy_matrix_approved_policy_counts.get("5"), 0
+        ),
+        "real_execution_capability_policy_matrix_blocked_policy_count_2": _safe_int(
+            real_execution_capability_policy_matrix_blocked_policy_counts.get("2"), 0
+        ),
+        "real_execution_capability_policy_matrix_unknown_capability_rejected": _safe_int(
+            real_execution_capability_policy_matrix_unknown_capability_rejected.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_unknown_policy_rejected": _safe_int(
+            real_execution_capability_policy_matrix_unknown_policy_rejected.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_deny_by_default": _safe_int(
+            real_execution_capability_policy_matrix_deny_by_default.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_fail_closed": _safe_int(
+            real_execution_capability_policy_matrix_fail_closed_default.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_sandbox_real_blocked": _safe_int(
+            real_execution_capability_policy_matrix_sandbox_real_blocked.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_policy_gated_real_blocked": _safe_int(
+            real_execution_capability_policy_matrix_policy_gated_real_blocked.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_external_side_effects_allowed": _safe_int(
+            real_execution_capability_policy_matrix_external_side_effects_allowed.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_production_paths_allowed": _safe_int(
+            real_execution_capability_policy_matrix_production_paths_allowed.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_production_secrets_allowed": _safe_int(
+            real_execution_capability_policy_matrix_production_secrets_allowed.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_capability_execution_enabled": _safe_int(
+            real_execution_capability_policy_matrix_capability_execution_enabled.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_policy_execution_enabled": _safe_int(
+            real_execution_capability_policy_matrix_policy_execution_enabled.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_adapter_request_generation_enabled": _safe_int(
+            real_execution_capability_policy_matrix_adapter_request_generation_enabled.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_adapter_request_execution_enabled": _safe_int(
+            real_execution_capability_policy_matrix_adapter_request_execution_enabled.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_adapter_result_generation_enabled": _safe_int(
+            real_execution_capability_policy_matrix_adapter_result_generation_enabled.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_sandbox_execution_enabled": _safe_int(
+            real_execution_capability_policy_matrix_sandbox_execution_enabled.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_policy_gated_real_execution_enabled": _safe_int(
+            real_execution_capability_policy_matrix_policy_gated_real_execution_enabled.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_execution_performed": _safe_int(
+            real_execution_capability_policy_matrix_execution_performed.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_subprocess_invoked": _safe_int(
+            real_execution_capability_policy_matrix_subprocess_invoked.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_real_execution_enabled": _safe_int(
+            real_execution_capability_policy_matrix_real_execution_enabled.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_external_side_effects_performed": _safe_int(
+            real_execution_capability_policy_matrix_external_side_effects_performed.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_production_paths_mutated": _safe_int(
+            real_execution_capability_policy_matrix_production_paths_mutated.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_production_secrets_accessed": _safe_int(
+            real_execution_capability_policy_matrix_production_secrets_accessed.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_source_request_schema_defined": _safe_int(
+            real_execution_capability_policy_matrix_source_request_schema_statuses.get("defined"), 0
+        ),
+        "real_execution_capability_policy_matrix_source_verified": _safe_int(
+            real_execution_capability_policy_matrix_source_verified.get("true"), 0
+        ),
+        "real_execution_capability_policy_matrix_source_expected_count_9": _safe_int(
+            real_execution_capability_policy_matrix_source_expected_counts.get("9"), 0
+        ),
+        "real_execution_capability_policy_matrix_source_verified_count_9": _safe_int(
+            real_execution_capability_policy_matrix_source_verified_counts.get("9"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -4344,6 +4609,124 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_execution_adapter_request_schema_source_verified_count_9": _safe_int(
                 real_execution_adapter_request_schema_source_verified_counts.get("9"), 0
             ),
+            "real_execution_capability_policy_matrix_observed": _safe_int(
+                real_execution_capability_policy_matrix_statuses.get("defined"), 0
+            )
+            > 0,
+            "real_execution_capability_policy_matrix_records": _safe_int(
+                real_execution_capability_policy_matrix_statuses.get("defined"), 0
+            ),
+            "real_execution_capability_policy_matrix_linkage_complete": bool(
+                trail_summary.get("real_execution_capability_policy_matrix_linkage_complete")
+            ),
+            "real_execution_capability_policy_matrix_orphans": _safe_int(
+                trail_summary.get("real_execution_capability_policy_matrix_orphans"), 0
+            ),
+            "real_execution_capability_policy_matrix_defined": _safe_int(
+                real_execution_capability_policy_matrix_statuses.get("defined"), 0
+            ),
+            "real_execution_capability_policy_matrix_registry_exists": _safe_int(
+                real_execution_capability_policy_matrix_registry_exists.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_policy_exists": _safe_int(
+                real_execution_capability_policy_matrix_policy_exists.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_capability_count_7": _safe_int(
+                real_execution_capability_policy_matrix_capability_counts.get("7"), 0
+            ),
+            "real_execution_capability_policy_matrix_enabled_capability_count_5": _safe_int(
+                real_execution_capability_policy_matrix_enabled_capability_counts.get("5"), 0
+            ),
+            "real_execution_capability_policy_matrix_blocked_capability_count_2": _safe_int(
+                real_execution_capability_policy_matrix_blocked_capability_counts.get("2"), 0
+            ),
+            "real_execution_capability_policy_matrix_policy_rule_count_7": _safe_int(
+                real_execution_capability_policy_matrix_policy_rule_counts.get("7"), 0
+            ),
+            "real_execution_capability_policy_matrix_approved_policy_count_5": _safe_int(
+                real_execution_capability_policy_matrix_approved_policy_counts.get("5"), 0
+            ),
+            "real_execution_capability_policy_matrix_blocked_policy_count_2": _safe_int(
+                real_execution_capability_policy_matrix_blocked_policy_counts.get("2"), 0
+            ),
+            "real_execution_capability_policy_matrix_unknown_capability_rejected": _safe_int(
+                real_execution_capability_policy_matrix_unknown_capability_rejected.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_unknown_policy_rejected": _safe_int(
+                real_execution_capability_policy_matrix_unknown_policy_rejected.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_deny_by_default": _safe_int(
+                real_execution_capability_policy_matrix_deny_by_default.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_fail_closed": _safe_int(
+                real_execution_capability_policy_matrix_fail_closed_default.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_sandbox_real_blocked": _safe_int(
+                real_execution_capability_policy_matrix_sandbox_real_blocked.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_policy_gated_real_blocked": _safe_int(
+                real_execution_capability_policy_matrix_policy_gated_real_blocked.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_external_side_effects_allowed": _safe_int(
+                real_execution_capability_policy_matrix_external_side_effects_allowed.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_production_paths_allowed": _safe_int(
+                real_execution_capability_policy_matrix_production_paths_allowed.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_production_secrets_allowed": _safe_int(
+                real_execution_capability_policy_matrix_production_secrets_allowed.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_capability_execution_enabled": _safe_int(
+                real_execution_capability_policy_matrix_capability_execution_enabled.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_policy_execution_enabled": _safe_int(
+                real_execution_capability_policy_matrix_policy_execution_enabled.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_adapter_request_generation_enabled": _safe_int(
+                real_execution_capability_policy_matrix_adapter_request_generation_enabled.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_adapter_request_execution_enabled": _safe_int(
+                real_execution_capability_policy_matrix_adapter_request_execution_enabled.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_adapter_result_generation_enabled": _safe_int(
+                real_execution_capability_policy_matrix_adapter_result_generation_enabled.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_sandbox_execution_enabled": _safe_int(
+                real_execution_capability_policy_matrix_sandbox_execution_enabled.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_policy_gated_real_execution_enabled": _safe_int(
+                real_execution_capability_policy_matrix_policy_gated_real_execution_enabled.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_execution_performed": _safe_int(
+                real_execution_capability_policy_matrix_execution_performed.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_subprocess_invoked": _safe_int(
+                real_execution_capability_policy_matrix_subprocess_invoked.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_real_execution_enabled": _safe_int(
+                real_execution_capability_policy_matrix_real_execution_enabled.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_external_side_effects_performed": _safe_int(
+                real_execution_capability_policy_matrix_external_side_effects_performed.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_production_paths_mutated": _safe_int(
+                real_execution_capability_policy_matrix_production_paths_mutated.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_production_secrets_accessed": _safe_int(
+                real_execution_capability_policy_matrix_production_secrets_accessed.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_source_request_schema_defined": _safe_int(
+                real_execution_capability_policy_matrix_source_request_schema_statuses.get("defined"), 0
+            ),
+            "real_execution_capability_policy_matrix_source_verified": _safe_int(
+                real_execution_capability_policy_matrix_source_verified.get("true"), 0
+            ),
+            "real_execution_capability_policy_matrix_source_expected_count_9": _safe_int(
+                real_execution_capability_policy_matrix_source_expected_counts.get("9"), 0
+            ),
+            "real_execution_capability_policy_matrix_source_verified_count_9": _safe_int(
+                real_execution_capability_policy_matrix_source_verified_counts.get("9"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -4471,6 +4854,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_execution_adapter_request_schema_records",
             "real_execution_adapter_request_schema_linkage_complete",
             "real_execution_adapter_request_schema_orphans",
+            "real_execution_capability_policy_matrix_observed",
+            "real_execution_capability_policy_matrix_records",
+            "real_execution_capability_policy_matrix_linkage_complete",
+            "real_execution_capability_policy_matrix_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -5833,6 +6220,153 @@ def _build_checks(
     )
     real_execution_adapter_request_schema_source_verified_counts = _safe_mapping(
         trail_summary.get("real_execution_adapter_request_schema_source_verified_counts")
+    )
+    real_execution_capability_policy_matrix_statuses = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_statuses")
+    )
+    real_execution_capability_policy_matrix_schema_versions = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_schema_versions")
+    )
+    real_execution_capability_policy_matrix_next_actions = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_next_actions")
+    )
+    real_execution_capability_policy_matrix_capability_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_capability_counts")
+    )
+    real_execution_capability_policy_matrix_enabled_capability_counts = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_enabled_capability_counts"
+        )
+    )
+    real_execution_capability_policy_matrix_blocked_capability_counts = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_blocked_capability_counts"
+        )
+    )
+    real_execution_capability_policy_matrix_policy_rule_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_policy_rule_counts")
+    )
+    real_execution_capability_policy_matrix_approved_policy_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_approved_policy_counts")
+    )
+    real_execution_capability_policy_matrix_blocked_policy_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_blocked_policy_counts")
+    )
+    real_execution_capability_policy_matrix_registry_exists = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_registry_exists")
+    )
+    real_execution_capability_policy_matrix_policy_exists = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_policy_exists")
+    )
+    real_execution_capability_policy_matrix_unknown_capability_rejected = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_unknown_capability_rejected"
+        )
+    )
+    real_execution_capability_policy_matrix_unknown_policy_rejected = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_unknown_policy_rejected")
+    )
+    real_execution_capability_policy_matrix_deny_by_default = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_deny_by_default")
+    )
+    real_execution_capability_policy_matrix_fail_closed_default = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_fail_closed_default")
+    )
+    real_execution_capability_policy_matrix_sandbox_real_blocked = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_sandbox_real_blocked")
+    )
+    real_execution_capability_policy_matrix_policy_gated_real_blocked = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_policy_gated_real_blocked"
+        )
+    )
+    real_execution_capability_policy_matrix_external_side_effects_allowed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_external_side_effects_allowed"
+        )
+    )
+    real_execution_capability_policy_matrix_production_paths_allowed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_production_paths_allowed"
+        )
+    )
+    real_execution_capability_policy_matrix_production_secrets_allowed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_production_secrets_allowed"
+        )
+    )
+    real_execution_capability_policy_matrix_capability_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_capability_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_policy_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_policy_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_adapter_request_generation_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_adapter_request_generation_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_adapter_request_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_adapter_request_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_adapter_result_generation_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_adapter_result_generation_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_sandbox_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_sandbox_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_policy_gated_real_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_policy_gated_real_execution_enabled"
+        )
+    )
+    real_execution_capability_policy_matrix_execution_performed = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_execution_performed")
+    )
+    real_execution_capability_policy_matrix_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_subprocess_invoked")
+    )
+    real_execution_capability_policy_matrix_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_real_execution_enabled")
+    )
+    real_execution_capability_policy_matrix_external_side_effects_performed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_external_side_effects_performed"
+        )
+    )
+    real_execution_capability_policy_matrix_production_paths_mutated = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_production_paths_mutated"
+        )
+    )
+    real_execution_capability_policy_matrix_production_secrets_accessed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_production_secrets_accessed"
+        )
+    )
+    real_execution_capability_policy_matrix_source_request_schema_statuses = _safe_mapping(
+        trail_summary.get(
+            "real_execution_capability_policy_matrix_source_request_schema_statuses"
+        )
+    )
+    real_execution_capability_policy_matrix_source_verified = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_source_verified")
+    )
+    real_execution_capability_policy_matrix_source_expected_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_source_expected_counts")
+    )
+    real_execution_capability_policy_matrix_source_verified_counts = _safe_mapping(
+        trail_summary.get("real_execution_capability_policy_matrix_source_verified_counts")
     )
 
     checks = [
@@ -9839,6 +10373,427 @@ def _build_checks(
             == 1,
             real_execution_adapter_request_schema_source_verified_counts,
         ),
+        _check(
+            "real_execution_capability_policy_matrix_observed_after_request_schema",
+            _safe_int(real_execution_adapter_request_schema_statuses.get("defined"), 0)
+            == 0
+            or _safe_int(
+                real_execution_capability_policy_matrix_statuses.get("defined"), 0
+            )
+            > 0,
+            {
+                "defined_request_schemas": _safe_int(
+                    real_execution_adapter_request_schema_statuses.get("defined"), 0
+                ),
+                "defined_policy_matrices": _safe_int(
+                    real_execution_capability_policy_matrix_statuses.get("defined"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_links_to_request_schema",
+            _safe_int(
+                real_execution_capability_policy_matrix_statuses.get("defined"), 0
+            )
+            == 0
+            or _safe_int(
+                trail_summary.get(
+                    "real_execution_capability_policy_matrix_orphans"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                trail_summary.get(
+                    "real_execution_capability_policy_matrix_orphans"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_defined",
+            _safe_int(
+                real_execution_capability_policy_matrix_statuses.get("defined"), 0
+            )
+            == 1,
+            real_execution_capability_policy_matrix_statuses,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_schema_version",
+            _safe_int(
+                real_execution_capability_policy_matrix_schema_versions.get(
+                    "real-execution-capability-policy-matrix/v1"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_schema_versions,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_next_action_sandbox_scaffold",
+            _safe_int(
+                real_execution_capability_policy_matrix_next_actions.get(
+                    "prepare_sandbox_adapter_scaffold"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_next_actions,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_registry_exists",
+            _safe_int(
+                real_execution_capability_policy_matrix_registry_exists.get("true"), 0
+            )
+            == 1,
+            real_execution_capability_policy_matrix_registry_exists,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_policy_exists",
+            _safe_int(
+                real_execution_capability_policy_matrix_policy_exists.get("true"), 0
+            )
+            == 1,
+            real_execution_capability_policy_matrix_policy_exists,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_capability_count_7",
+            _safe_int(
+                real_execution_capability_policy_matrix_capability_counts.get("7"), 0
+            )
+            == 1,
+            real_execution_capability_policy_matrix_capability_counts,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_enabled_capability_count_5",
+            _safe_int(
+                real_execution_capability_policy_matrix_enabled_capability_counts.get(
+                    "5"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_enabled_capability_counts,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_blocked_capability_count_2",
+            _safe_int(
+                real_execution_capability_policy_matrix_blocked_capability_counts.get(
+                    "2"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_blocked_capability_counts,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_policy_rule_count_7",
+            _safe_int(
+                real_execution_capability_policy_matrix_policy_rule_counts.get("7"), 0
+            )
+            == 1,
+            real_execution_capability_policy_matrix_policy_rule_counts,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_approved_policy_count_5",
+            _safe_int(
+                real_execution_capability_policy_matrix_approved_policy_counts.get(
+                    "5"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_approved_policy_counts,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_blocked_policy_count_2",
+            _safe_int(
+                real_execution_capability_policy_matrix_blocked_policy_counts.get("2"),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_blocked_policy_counts,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_unknown_capability_rejected",
+            _safe_int(
+                real_execution_capability_policy_matrix_unknown_capability_rejected.get(
+                    "true"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_unknown_capability_rejected,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_unknown_policy_rejected",
+            _safe_int(
+                real_execution_capability_policy_matrix_unknown_policy_rejected.get(
+                    "true"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_unknown_policy_rejected,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_deny_by_default",
+            _safe_int(
+                real_execution_capability_policy_matrix_deny_by_default.get("true"), 0
+            )
+            == 1,
+            real_execution_capability_policy_matrix_deny_by_default,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_fail_closed",
+            _safe_int(
+                real_execution_capability_policy_matrix_fail_closed_default.get(
+                    "true"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_fail_closed_default,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_sandbox_real_blocked",
+            _safe_int(
+                real_execution_capability_policy_matrix_sandbox_real_blocked.get(
+                    "true"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_sandbox_real_blocked,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_policy_gated_real_blocked",
+            _safe_int(
+                real_execution_capability_policy_matrix_policy_gated_real_blocked.get(
+                    "true"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_policy_gated_real_blocked,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_no_external_side_effects_allowed",
+            _safe_int(
+                real_execution_capability_policy_matrix_external_side_effects_allowed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_external_side_effects_allowed,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_no_production_paths_allowed",
+            _safe_int(
+                real_execution_capability_policy_matrix_production_paths_allowed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_production_paths_allowed,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_no_production_secrets_allowed",
+            _safe_int(
+                real_execution_capability_policy_matrix_production_secrets_allowed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_production_secrets_allowed,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_capability_execution_disabled",
+            _safe_int(
+                real_execution_capability_policy_matrix_capability_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_capability_execution_enabled,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_policy_execution_disabled",
+            _safe_int(
+                real_execution_capability_policy_matrix_policy_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_policy_execution_enabled,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_adapter_request_generation_disabled",
+            _safe_int(
+                real_execution_capability_policy_matrix_adapter_request_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_adapter_request_generation_enabled,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_adapter_request_execution_disabled",
+            _safe_int(
+                real_execution_capability_policy_matrix_adapter_request_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_adapter_request_execution_enabled,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_adapter_result_generation_disabled",
+            _safe_int(
+                real_execution_capability_policy_matrix_adapter_result_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_adapter_result_generation_enabled,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_sandbox_execution_disabled",
+            _safe_int(
+                real_execution_capability_policy_matrix_sandbox_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_sandbox_execution_enabled,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_policy_gated_real_execution_disabled",
+            _safe_int(
+                real_execution_capability_policy_matrix_policy_gated_real_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_policy_gated_real_execution_enabled,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_did_not_execute",
+            _safe_int(
+                real_execution_capability_policy_matrix_execution_performed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_execution_performed,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_did_not_invoke_subprocess",
+            _safe_int(
+                real_execution_capability_policy_matrix_subprocess_invoked.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_subprocess_invoked,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_did_not_enable_real_execution",
+            _safe_int(
+                real_execution_capability_policy_matrix_real_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_real_execution_enabled,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_no_external_side_effects",
+            _safe_int(
+                real_execution_capability_policy_matrix_external_side_effects_performed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_external_side_effects_performed,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_no_production_paths_mutated",
+            _safe_int(
+                real_execution_capability_policy_matrix_production_paths_mutated.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_production_paths_mutated,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_no_production_secrets_accessed",
+            _safe_int(
+                real_execution_capability_policy_matrix_production_secrets_accessed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_capability_policy_matrix_production_secrets_accessed,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_source_request_schema_defined",
+            _safe_int(
+                real_execution_capability_policy_matrix_source_request_schema_statuses.get(
+                    "defined"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_source_request_schema_statuses,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_source_verified",
+            _safe_int(
+                real_execution_capability_policy_matrix_source_verified.get("true"), 0
+            )
+            == 1,
+            real_execution_capability_policy_matrix_source_verified,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_source_expected_count_9",
+            _safe_int(
+                real_execution_capability_policy_matrix_source_expected_counts.get(
+                    "9"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_source_expected_counts,
+        ),
+        _check(
+            "real_execution_capability_policy_matrix_source_verified_count_9",
+            _safe_int(
+                real_execution_capability_policy_matrix_source_verified_counts.get(
+                    "9"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_capability_policy_matrix_source_verified_counts,
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -10008,6 +10963,10 @@ def validate_controlled_execution_readiness_report_schema(
         "real_execution_adapter_request_schema_records",
         "real_execution_adapter_request_schema_linkage_complete",
         "real_execution_adapter_request_schema_orphans",
+        "real_execution_capability_policy_matrix_observed",
+        "real_execution_capability_policy_matrix_records",
+        "real_execution_capability_policy_matrix_linkage_complete",
+        "real_execution_capability_policy_matrix_orphans",
     ]
 
     reasons: list[str] = []
@@ -10341,6 +11300,19 @@ def validate_controlled_execution_readiness_report_schema(
         )
     if not isinstance(report.get("real_execution_adapter_request_schema_orphans"), int):
         reasons.append("real_execution_adapter_request_schema_orphans_must_be_int")
+    
+    if not isinstance(report.get("real_execution_capability_policy_matrix_observed"), bool):
+        reasons.append("real_execution_capability_policy_matrix_observed_must_be_bool")
+    if not isinstance(report.get("real_execution_capability_policy_matrix_records"), int):
+        reasons.append("real_execution_capability_policy_matrix_records_must_be_int")
+    if not isinstance(
+        report.get("real_execution_capability_policy_matrix_linkage_complete"), bool
+    ):
+        reasons.append(
+            "real_execution_capability_policy_matrix_linkage_complete_must_be_bool"
+        )
+    if not isinstance(report.get("real_execution_capability_policy_matrix_orphans"), int):
+        reasons.append("real_execution_capability_policy_matrix_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -10868,6 +11840,45 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_execution_adapter_request_schema_source_verified={result.get('real_execution_adapter_request_schema_source_verified', 0)} "
         f"real_execution_adapter_request_schema_source_expected_count_9={result.get('real_execution_adapter_request_schema_source_expected_count_9', 0)} "
         f"real_execution_adapter_request_schema_source_verified_count_9={result.get('real_execution_adapter_request_schema_source_verified_count_9', 0)} "
+        f"real_execution_capability_policy_matrix_observed={str(bool(result.get('real_execution_capability_policy_matrix_observed'))).lower()} "
+        f"real_execution_capability_policy_matrix_records={result.get('real_execution_capability_policy_matrix_records', 0)} "
+        f"real_execution_capability_policy_matrix_linkage_complete={str(bool(result.get('real_execution_capability_policy_matrix_linkage_complete'))).lower()} "
+        f"real_execution_capability_policy_matrix_orphans={result.get('real_execution_capability_policy_matrix_orphans', 0)} "
+        f"real_execution_capability_policy_matrix_defined={result.get('real_execution_capability_policy_matrix_defined', 0)} "
+        f"real_execution_capability_policy_matrix_registry_exists={result.get('real_execution_capability_policy_matrix_registry_exists', 0)} "
+        f"real_execution_capability_policy_matrix_policy_exists={result.get('real_execution_capability_policy_matrix_policy_exists', 0)} "
+        f"real_execution_capability_policy_matrix_capability_count_7={result.get('real_execution_capability_policy_matrix_capability_count_7', 0)} "
+        f"real_execution_capability_policy_matrix_enabled_capability_count_5={result.get('real_execution_capability_policy_matrix_enabled_capability_count_5', 0)} "
+        f"real_execution_capability_policy_matrix_blocked_capability_count_2={result.get('real_execution_capability_policy_matrix_blocked_capability_count_2', 0)} "
+        f"real_execution_capability_policy_matrix_policy_rule_count_7={result.get('real_execution_capability_policy_matrix_policy_rule_count_7', 0)} "
+        f"real_execution_capability_policy_matrix_approved_policy_count_5={result.get('real_execution_capability_policy_matrix_approved_policy_count_5', 0)} "
+        f"real_execution_capability_policy_matrix_blocked_policy_count_2={result.get('real_execution_capability_policy_matrix_blocked_policy_count_2', 0)} "
+        f"real_execution_capability_policy_matrix_unknown_capability_rejected={result.get('real_execution_capability_policy_matrix_unknown_capability_rejected', 0)} "
+        f"real_execution_capability_policy_matrix_unknown_policy_rejected={result.get('real_execution_capability_policy_matrix_unknown_policy_rejected', 0)} "
+        f"real_execution_capability_policy_matrix_deny_by_default={result.get('real_execution_capability_policy_matrix_deny_by_default', 0)} "
+        f"real_execution_capability_policy_matrix_fail_closed={result.get('real_execution_capability_policy_matrix_fail_closed', 0)} "
+        f"real_execution_capability_policy_matrix_sandbox_real_blocked={result.get('real_execution_capability_policy_matrix_sandbox_real_blocked', 0)} "
+        f"real_execution_capability_policy_matrix_policy_gated_real_blocked={result.get('real_execution_capability_policy_matrix_policy_gated_real_blocked', 0)} "
+        f"real_execution_capability_policy_matrix_external_side_effects_allowed={result.get('real_execution_capability_policy_matrix_external_side_effects_allowed', 0)} "
+        f"real_execution_capability_policy_matrix_production_paths_allowed={result.get('real_execution_capability_policy_matrix_production_paths_allowed', 0)} "
+        f"real_execution_capability_policy_matrix_production_secrets_allowed={result.get('real_execution_capability_policy_matrix_production_secrets_allowed', 0)} "
+        f"real_execution_capability_policy_matrix_capability_execution_enabled={result.get('real_execution_capability_policy_matrix_capability_execution_enabled', 0)} "
+        f"real_execution_capability_policy_matrix_policy_execution_enabled={result.get('real_execution_capability_policy_matrix_policy_execution_enabled', 0)} "
+        f"real_execution_capability_policy_matrix_adapter_request_generation_enabled={result.get('real_execution_capability_policy_matrix_adapter_request_generation_enabled', 0)} "
+        f"real_execution_capability_policy_matrix_adapter_request_execution_enabled={result.get('real_execution_capability_policy_matrix_adapter_request_execution_enabled', 0)} "
+        f"real_execution_capability_policy_matrix_adapter_result_generation_enabled={result.get('real_execution_capability_policy_matrix_adapter_result_generation_enabled', 0)} "
+        f"real_execution_capability_policy_matrix_sandbox_execution_enabled={result.get('real_execution_capability_policy_matrix_sandbox_execution_enabled', 0)} "
+        f"real_execution_capability_policy_matrix_policy_gated_real_execution_enabled={result.get('real_execution_capability_policy_matrix_policy_gated_real_execution_enabled', 0)} "
+        f"real_execution_capability_policy_matrix_execution_performed={result.get('real_execution_capability_policy_matrix_execution_performed', 0)} "
+        f"real_execution_capability_policy_matrix_subprocess_invoked={result.get('real_execution_capability_policy_matrix_subprocess_invoked', 0)} "
+        f"real_execution_capability_policy_matrix_real_execution_enabled={result.get('real_execution_capability_policy_matrix_real_execution_enabled', 0)} "
+        f"real_execution_capability_policy_matrix_external_side_effects_performed={result.get('real_execution_capability_policy_matrix_external_side_effects_performed', 0)} "
+        f"real_execution_capability_policy_matrix_production_paths_mutated={result.get('real_execution_capability_policy_matrix_production_paths_mutated', 0)} "
+        f"real_execution_capability_policy_matrix_production_secrets_accessed={result.get('real_execution_capability_policy_matrix_production_secrets_accessed', 0)} "
+        f"real_execution_capability_policy_matrix_source_request_schema_defined={result.get('real_execution_capability_policy_matrix_source_request_schema_defined', 0)} "
+        f"real_execution_capability_policy_matrix_source_verified={result.get('real_execution_capability_policy_matrix_source_verified', 0)} "
+        f"real_execution_capability_policy_matrix_source_expected_count_9={result.get('real_execution_capability_policy_matrix_source_expected_count_9', 0)} "
+        f"real_execution_capability_policy_matrix_source_verified_count_9={result.get('real_execution_capability_policy_matrix_source_verified_count_9', 0)} "
     )
 
 

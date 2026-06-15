@@ -59,6 +59,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_post_repair_evidence_check",
     "replay_lifecycle_retry_real_execution_adapter_contract",
     "replay_lifecycle_retry_real_execution_adapter_request_schema",
+    "replay_lifecycle_retry_real_execution_capability_policy_matrix",
 }
 
 
@@ -603,6 +604,22 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
         if record_type == "replay_lifecycle_retry_real_execution_adapter_request_schema":
             result = (
                 validate_replay_lifecycle_retry_real_execution_adapter_request_schema(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
+        if record_type == "replay_lifecycle_retry_real_execution_capability_policy_matrix":
+            result = (
+                validate_replay_lifecycle_retry_real_execution_capability_policy_matrix(
                     record
                 )
             )
@@ -4284,6 +4301,13 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("real_execution_adapter_contract_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_capability_policy_matrix":
+        return str(
+            record.get("real_execution_capability_policy_matrix_id")
+            or record.get("real_execution_adapter_request_schema_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -4337,6 +4361,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "post_repair_evidence_check_id",
         "real_execution_adapter_contract_id",
         "real_execution_adapter_request_schema_id",
+        "real_execution_capability_policy_matrix_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -4387,6 +4412,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "post_repair_evidence_check_id",
             "real_execution_adapter_contract_id",
             "real_execution_adapter_request_schema_id",
+            "real_execution_capability_policy_matrix_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -10136,6 +10162,342 @@ def validate_replay_lifecycle_retry_real_execution_adapter_request_schema(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_capability_policy_matrix(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate fail-closed real execution capability policy matrix records."""
+    reasons: list[str] = []
+
+    matrix_id = str(
+        record.get("real_execution_capability_policy_matrix_id") or ""
+    ).strip()
+    request_schema_id = str(
+        record.get("real_execution_adapter_request_schema_id") or ""
+    ).strip()
+    contract_id = str(
+        record.get("real_execution_adapter_contract_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    proposal_id = str(record.get("proposal_id") or "").strip()
+
+    schema_version = str(record.get("schema_version") or "").strip()
+    registry_version = str(record.get("capability_registry_version") or "").strip()
+    policy_version = str(record.get("policy_matrix_version") or "").strip()
+    matrix_status = str(record.get("matrix_status") or "").strip()
+    matrix_kind = str(record.get("matrix_kind") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    capabilities = record.get("capabilities")
+    policy_rules = record.get("policy_rules")
+    enabled_capabilities = record.get("enabled_capabilities")
+    blocked_capabilities = record.get("blocked_capabilities")
+    approved_policies = record.get("approved_policies")
+    blocked_policies = record.get("blocked_policies")
+
+    capability_count = record.get("capability_count")
+    enabled_capability_count = record.get("enabled_capability_count")
+    blocked_capability_count = record.get("blocked_capability_count")
+    policy_rule_count = record.get("policy_rule_count")
+    approved_policy_count = record.get("approved_policy_count")
+    blocked_policy_count = record.get("blocked_policy_count")
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not matrix_id:
+        reasons.append("missing_real_execution_capability_policy_matrix_id")
+    if not request_schema_id:
+        reasons.append("missing_real_execution_adapter_request_schema_id")
+    if not contract_id:
+        reasons.append("missing_real_execution_adapter_contract_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+    if not proposal_id:
+        reasons.append("missing_proposal_id")
+
+    if schema_version != "real-execution-capability-policy-matrix/v1":
+        reasons.append("invalid_real_execution_capability_policy_matrix_schema_version")
+    if registry_version != "real-execution-capability-registry/v1":
+        reasons.append("invalid_real_execution_capability_registry_version")
+    if policy_version != "real-execution-policy-matrix/v1":
+        reasons.append("invalid_real_execution_policy_matrix_version")
+    if matrix_status != "defined":
+        reasons.append("real_execution_capability_policy_matrix_status_must_be_defined")
+    if matrix_kind != "capability_registry_policy_matrix":
+        reasons.append("invalid_real_execution_capability_policy_matrix_kind")
+    if next_action != "prepare_sandbox_adapter_scaffold":
+        reasons.append("invalid_real_execution_capability_policy_matrix_next_action")
+    if reason != "real_execution_capability_policy_matrix_defined_not_runnable":
+        reasons.append("invalid_real_execution_capability_policy_matrix_reason")
+
+    for flag_name in (
+        "capability_registry_exists",
+        "policy_matrix_exists",
+        "unknown_capability_rejected",
+        "unknown_policy_rejected",
+        "deny_by_default",
+        "fail_closed_default",
+        "sandbox_real_blocked",
+        "policy_gated_real_blocked",
+        "sandbox_real_requires_separate_adapter_pr",
+        "policy_gated_real_requires_future_reviewed_milestone",
+        "source_adapter_request_schema_exists",
+        "source_adapter_contract_exists",
+        "source_adapter_result_schema_exists",
+        "source_fail_closed_default",
+        "source_deny_by_default",
+        "source_unknown_capability_rejected",
+        "source_unknown_policy_rejected",
+        "source_repair_outcome_verified",
+    ):
+        if not bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_true")
+
+    for flag_name in (
+        "external_side_effects_allowed",
+        "production_paths_allowed",
+        "production_secrets_allowed",
+        "capability_execution_enabled",
+        "policy_execution_enabled",
+        "adapter_request_generation_enabled",
+        "adapter_request_execution_enabled",
+        "adapter_result_generation_enabled",
+        "sandbox_execution_enabled",
+        "policy_gated_real_execution_enabled",
+        "execution_performed",
+        "subprocess_invoked",
+        "real_execution_enabled",
+        "external_side_effects_performed",
+        "production_paths_mutated",
+        "production_secrets_accessed",
+        "source_request_generation_enabled",
+        "source_request_execution_enabled",
+        "source_sandbox_execution_enabled",
+        "source_policy_gated_real_execution_enabled",
+        "source_execution_performed",
+        "source_subprocess_invoked",
+        "source_real_execution_enabled",
+        "source_external_side_effects_performed",
+    ):
+        if bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_false")
+
+    for flag_name in (
+        "capability_execution_enabled",
+        "policy_execution_enabled",
+        "adapter_request_generation_enabled",
+        "adapter_request_execution_enabled",
+        "adapter_result_generation_enabled",
+        "sandbox_execution_enabled",
+        "policy_gated_real_execution_enabled",
+        "execution_performed",
+        "subprocess_invoked",
+        "real_execution_enabled",
+        "external_side_effects_performed",
+        "production_paths_mutated",
+        "production_secrets_accessed",
+    ):
+        if bool(payload_mapping.get(flag_name)):
+            reasons.append(f"payload_{flag_name}_must_be_false")
+
+    if capability_count != 7:
+        reasons.append("capability_count_must_be_7")
+    if enabled_capability_count != 5:
+        reasons.append("enabled_capability_count_must_be_5")
+    if blocked_capability_count != 2:
+        reasons.append("blocked_capability_count_must_be_2")
+    if policy_rule_count != 7:
+        reasons.append("policy_rule_count_must_be_7")
+    if approved_policy_count != 5:
+        reasons.append("approved_policy_count_must_be_5")
+    if blocked_policy_count != 2:
+        reasons.append("blocked_policy_count_must_be_2")
+
+    if not isinstance(capabilities, list):
+        reasons.append("capabilities_must_be_list")
+        capabilities = []
+    if not isinstance(policy_rules, list):
+        reasons.append("policy_rules_must_be_list")
+        policy_rules = []
+    if not isinstance(enabled_capabilities, list):
+        reasons.append("enabled_capabilities_must_be_list")
+        enabled_capabilities = []
+    if not isinstance(blocked_capabilities, list):
+        reasons.append("blocked_capabilities_must_be_list")
+        blocked_capabilities = []
+    if not isinstance(approved_policies, list):
+        reasons.append("approved_policies_must_be_list")
+        approved_policies = []
+    if not isinstance(blocked_policies, list):
+        reasons.append("blocked_policies_must_be_list")
+        blocked_policies = []
+
+    required_capabilities = {
+        "capability.advisory.observe",
+        "capability.dry_run.validate_bundle",
+        "capability.noop.marker_check",
+        "capability.guarded_read_only.evidence_check",
+        "capability.guarded_repair.harness",
+        "capability.sandbox_real.repair_workspace",
+        "capability.policy_gated_real.production_effect",
+    }
+    observed_capabilities = {
+        str(item.get("capability_id") or "").strip()
+        for item in capabilities
+        if isinstance(item, Mapping)
+    }
+    if not required_capabilities.issubset(observed_capabilities):
+        reasons.append("capability_registry_missing_required_capabilities")
+
+    required_blocked_capabilities = {
+        "capability.sandbox_real.repair_workspace",
+        "capability.policy_gated_real.production_effect",
+    }
+    if not required_blocked_capabilities.issubset(set(blocked_capabilities)):
+        reasons.append("blocked_capabilities_missing_real_execution_capabilities")
+
+    required_approved_policies = {
+        "policy.advisory.allowed",
+        "policy.dry_run.allowed",
+        "policy.noop.allowed",
+        "policy.guarded_read_only.allowed",
+        "policy.guarded_repair.allowed",
+    }
+    if not required_approved_policies.issubset(set(approved_policies)):
+        reasons.append("approved_policies_missing_safe_levels")
+
+    required_blocked_policies = {
+        "policy.sandbox_real.blocked_until_adapter_pr",
+        "policy.policy_gated_real.blocked_until_future_milestone",
+    }
+    if not required_blocked_policies.issubset(set(blocked_policies)):
+        reasons.append("blocked_policies_missing_real_execution_levels")
+
+    for capability in capabilities:
+        if not isinstance(capability, Mapping):
+            reasons.append("capability_entry_must_be_mapping")
+            continue
+        capability_id = str(capability.get("capability_id") or "").strip()
+        execution_level = str(capability.get("execution_level") or "").strip()
+        enabled = bool(capability.get("enabled"))
+        external_allowed = bool(capability.get("external_side_effects_allowed"))
+        production_paths_allowed = bool(capability.get("production_paths_allowed"))
+        production_secrets_allowed = bool(capability.get("production_secrets_allowed"))
+
+        if not capability_id:
+            reasons.append("capability_entry_missing_capability_id")
+        if not execution_level:
+            reasons.append("capability_entry_missing_execution_level")
+        if external_allowed:
+            reasons.append(f"capability_external_side_effects_allowed:{capability_id}")
+        if production_paths_allowed:
+            reasons.append(f"capability_production_paths_allowed:{capability_id}")
+        if production_secrets_allowed:
+            reasons.append(f"capability_production_secrets_allowed:{capability_id}")
+        if execution_level in {"sandbox-real", "policy-gated-real"} and enabled:
+            reasons.append(f"real_execution_capability_must_be_disabled:{capability_id}")
+
+    for policy in policy_rules:
+        if not isinstance(policy, Mapping):
+            reasons.append("policy_rule_entry_must_be_mapping")
+            continue
+        policy_id = str(policy.get("policy_id") or "").strip()
+        execution_level = str(policy.get("execution_level") or "").strip()
+        decision = str(policy.get("decision") or "").strip()
+
+        if not policy_id:
+            reasons.append("policy_rule_missing_policy_id")
+        if not execution_level:
+            reasons.append("policy_rule_missing_execution_level")
+        if not decision:
+            reasons.append("policy_rule_missing_decision")
+        if execution_level in {"sandbox-real", "policy-gated-real"} and decision != "blocked":
+            reasons.append(f"real_execution_policy_must_be_blocked:{policy_id}")
+
+    if str(record.get("source_request_schema_status") or "").strip() != "defined":
+        reasons.append("source_request_schema_status_must_be_defined")
+    if str(record.get("source_post_repair_status") or "").strip() != "passed":
+        reasons.append("source_post_repair_status_must_be_passed")
+
+    source_expected_count = record.get("source_repair_targets_expected_count")
+    source_verified_count = record.get("source_repair_targets_verified_count")
+    if source_expected_count != source_verified_count:
+        reasons.append("source_repair_target_counts_must_match")
+    if not isinstance(source_expected_count, int) or source_expected_count <= 0:
+        reasons.append("source_repair_targets_expected_count_required")
+    if not isinstance(source_verified_count, int) or source_verified_count <= 0:
+        reasons.append("source_repair_targets_verified_count_required")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_capability_policy_matrix",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": matrix_id or request_schema_id,
+        "matrix_status": matrix_status or "unknown",
+        "schema_version": schema_version or "unknown",
+        "capability_registry_version": registry_version or "unknown",
+        "policy_matrix_version": policy_version or "unknown",
+        "capability_registry_exists": bool(record.get("capability_registry_exists")),
+        "policy_matrix_exists": bool(record.get("policy_matrix_exists")),
+        "capability_count": capability_count,
+        "enabled_capability_count": enabled_capability_count,
+        "blocked_capability_count": blocked_capability_count,
+        "policy_rule_count": policy_rule_count,
+        "approved_policy_count": approved_policy_count,
+        "blocked_policy_count": blocked_policy_count,
+        "unknown_capability_rejected": bool(record.get("unknown_capability_rejected")),
+        "unknown_policy_rejected": bool(record.get("unknown_policy_rejected")),
+        "deny_by_default": bool(record.get("deny_by_default")),
+        "fail_closed_default": bool(record.get("fail_closed_default")),
+        "sandbox_real_blocked": bool(record.get("sandbox_real_blocked")),
+        "policy_gated_real_blocked": bool(record.get("policy_gated_real_blocked")),
+        "external_side_effects_allowed": bool(
+            record.get("external_side_effects_allowed")
+        ),
+        "production_paths_allowed": bool(record.get("production_paths_allowed")),
+        "production_secrets_allowed": bool(record.get("production_secrets_allowed")),
+        "capability_execution_enabled": bool(
+            record.get("capability_execution_enabled")
+        ),
+        "policy_execution_enabled": bool(record.get("policy_execution_enabled")),
+        "adapter_request_generation_enabled": bool(
+            record.get("adapter_request_generation_enabled")
+        ),
+        "adapter_request_execution_enabled": bool(
+            record.get("adapter_request_execution_enabled")
+        ),
+        "adapter_result_generation_enabled": bool(
+            record.get("adapter_result_generation_enabled")
+        ),
+        "sandbox_execution_enabled": bool(record.get("sandbox_execution_enabled")),
+        "policy_gated_real_execution_enabled": bool(
+            record.get("policy_gated_real_execution_enabled")
+        ),
+        "execution_performed": bool(record.get("execution_performed")),
+        "subprocess_invoked": bool(record.get("subprocess_invoked")),
+        "real_execution_enabled": bool(record.get("real_execution_enabled")),
+        "external_side_effects_performed": bool(
+            record.get("external_side_effects_performed")
+        ),
+        "production_paths_mutated": bool(record.get("production_paths_mutated")),
+        "production_secrets_accessed": bool(record.get("production_secrets_accessed")),
+        "source_request_schema_status": str(
+            record.get("source_request_schema_status") or "unknown"
+        ).strip()
+        or "unknown",
+        "source_repair_outcome_verified": bool(
+            record.get("source_repair_outcome_verified")
+        ),
+        "source_repair_targets_expected_count": source_expected_count,
+        "source_repair_targets_verified_count": source_verified_count,
+        "recommended_next_action": next_action or "unknown",
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -10178,4 +10540,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_post_repair_evidence_check",
     "validate_replay_lifecycle_retry_real_execution_adapter_contract",
     "validate_replay_lifecycle_retry_real_execution_adapter_request_schema",
+    "validate_replay_lifecycle_retry_real_execution_capability_policy_matrix",
 ]

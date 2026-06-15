@@ -54,6 +54,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_post_repair_evidence_check",
     "replay_lifecycle_retry_real_execution_adapter_contract",
     "replay_lifecycle_retry_real_execution_adapter_request_schema",
+    "replay_lifecycle_retry_real_execution_capability_policy_matrix",
 }
 
 
@@ -314,6 +315,12 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_adapter_request_schema"
+    ]
+    real_execution_capability_policy_matrices = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_capability_policy_matrix"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -2112,6 +2119,137 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("source_repair_outcome_verified"))).lower()
         for item in real_execution_adapter_request_schemas
     )
+    real_execution_capability_policy_matrix_statuses = Counter(
+        str(item.get("matrix_status") or "unknown").strip() or "unknown"
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_schema_versions = Counter(
+        str(item.get("schema_version") or "unknown").strip() or "unknown"
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_capability_counts = Counter(
+        str(item.get("capability_count") or 0)
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_enabled_capability_counts = Counter(
+        str(item.get("enabled_capability_count") or 0)
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_blocked_capability_counts = Counter(
+        str(item.get("blocked_capability_count") or 0)
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_policy_rule_counts = Counter(
+        str(item.get("policy_rule_count") or 0)
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_approved_policy_counts = Counter(
+        str(item.get("approved_policy_count") or 0)
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_blocked_policy_counts = Counter(
+        str(item.get("blocked_policy_count") or 0)
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_source_request_schema_statuses = Counter(
+        str(item.get("source_request_schema_status") or "unknown").strip()
+        or "unknown"
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_source_expected_counts = Counter(
+        str(item.get("source_repair_targets_expected_count") or 0)
+        for item in real_execution_capability_policy_matrices
+    )
+    real_execution_capability_policy_matrix_source_verified_counts = Counter(
+        str(item.get("source_repair_targets_verified_count") or 0)
+        for item in real_execution_capability_policy_matrices
+    )
+
+    def _bool_counter(key: str) -> Counter[str]:
+        return Counter(
+            str(bool(item.get(key))).lower()
+            for item in real_execution_capability_policy_matrices
+        )
+
+    real_execution_capability_policy_matrix_registry_exists = _bool_counter(
+        "capability_registry_exists"
+    )
+    real_execution_capability_policy_matrix_policy_exists = _bool_counter(
+        "policy_matrix_exists"
+    )
+    real_execution_capability_policy_matrix_unknown_capability_rejected = _bool_counter(
+        "unknown_capability_rejected"
+    )
+    real_execution_capability_policy_matrix_unknown_policy_rejected = _bool_counter(
+        "unknown_policy_rejected"
+    )
+    real_execution_capability_policy_matrix_deny_by_default = _bool_counter(
+        "deny_by_default"
+    )
+    real_execution_capability_policy_matrix_fail_closed_default = _bool_counter(
+        "fail_closed_default"
+    )
+    real_execution_capability_policy_matrix_sandbox_real_blocked = _bool_counter(
+        "sandbox_real_blocked"
+    )
+    real_execution_capability_policy_matrix_policy_gated_real_blocked = _bool_counter(
+        "policy_gated_real_blocked"
+    )
+    real_execution_capability_policy_matrix_external_side_effects_allowed = _bool_counter(
+        "external_side_effects_allowed"
+    )
+    real_execution_capability_policy_matrix_production_paths_allowed = _bool_counter(
+        "production_paths_allowed"
+    )
+    real_execution_capability_policy_matrix_production_secrets_allowed = _bool_counter(
+        "production_secrets_allowed"
+    )
+    real_execution_capability_policy_matrix_capability_execution_enabled = _bool_counter(
+        "capability_execution_enabled"
+    )
+    real_execution_capability_policy_matrix_policy_execution_enabled = _bool_counter(
+        "policy_execution_enabled"
+    )
+    real_execution_capability_policy_matrix_adapter_request_generation_enabled = _bool_counter(
+        "adapter_request_generation_enabled"
+    )
+    real_execution_capability_policy_matrix_adapter_request_execution_enabled = _bool_counter(
+        "adapter_request_execution_enabled"
+    )
+    real_execution_capability_policy_matrix_adapter_result_generation_enabled = _bool_counter(
+        "adapter_result_generation_enabled"
+    )
+    real_execution_capability_policy_matrix_sandbox_execution_enabled = _bool_counter(
+        "sandbox_execution_enabled"
+    )
+    real_execution_capability_policy_matrix_policy_gated_real_execution_enabled = _bool_counter(
+        "policy_gated_real_execution_enabled"
+    )
+    real_execution_capability_policy_matrix_execution_performed = _bool_counter(
+        "execution_performed"
+    )
+    real_execution_capability_policy_matrix_subprocess_invoked = _bool_counter(
+        "subprocess_invoked"
+    )
+    real_execution_capability_policy_matrix_real_execution_enabled = _bool_counter(
+        "real_execution_enabled"
+    )
+    real_execution_capability_policy_matrix_external_side_effects_performed = _bool_counter(
+        "external_side_effects_performed"
+    )
+    real_execution_capability_policy_matrix_production_paths_mutated = _bool_counter(
+        "production_paths_mutated"
+    )
+    real_execution_capability_policy_matrix_production_secrets_accessed = _bool_counter(
+        "production_secrets_accessed"
+    )
+    real_execution_capability_policy_matrix_source_verified = _bool_counter(
+        "source_repair_outcome_verified"
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -2151,6 +2289,7 @@ def inspect_retry_governance_trail_from_records(
         post_repair_evidence_checks=post_repair_evidence_checks,
         real_execution_adapter_contracts=real_execution_adapter_contracts,
         real_execution_adapter_request_schemas=real_execution_adapter_request_schemas,
+        real_execution_capability_policy_matrices=real_execution_capability_policy_matrices,
         results=results,
     )
 
@@ -2321,6 +2460,13 @@ def inspect_retry_governance_trail_from_records(
         )
     )
 
+    real_execution_capability_policy_matrix_linkage = (
+        _real_execution_capability_policy_matrix_linkage_summary(
+            real_execution_adapter_request_schemas=real_execution_adapter_request_schemas,
+            real_execution_capability_policy_matrices=real_execution_capability_policy_matrices,
+        )
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -2374,6 +2520,7 @@ def inspect_retry_governance_trail_from_records(
             "post_repair_evidence_checks": len(post_repair_evidence_checks),
             "real_execution_adapter_contracts": len(real_execution_adapter_contracts),
             "real_execution_adapter_request_schemas": len(real_execution_adapter_request_schemas),
+            "real_execution_capability_policy_matrices": len(real_execution_capability_policy_matrices),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -3994,6 +4141,135 @@ def inspect_retry_governance_trail_from_records(
                 "real_execution_adapter_request_schema_orphans", 0
             )
         ),
+        "real_execution_capability_policy_matrix_statuses": dict(
+            real_execution_capability_policy_matrix_statuses
+        ),
+        "real_execution_capability_policy_matrix_schema_versions": dict(
+            real_execution_capability_policy_matrix_schema_versions
+        ),
+        "real_execution_capability_policy_matrix_next_actions": dict(
+            real_execution_capability_policy_matrix_next_actions
+        ),
+        "real_execution_capability_policy_matrix_capability_counts": dict(
+            real_execution_capability_policy_matrix_capability_counts
+        ),
+        "real_execution_capability_policy_matrix_enabled_capability_counts": dict(
+            real_execution_capability_policy_matrix_enabled_capability_counts
+        ),
+        "real_execution_capability_policy_matrix_blocked_capability_counts": dict(
+            real_execution_capability_policy_matrix_blocked_capability_counts
+        ),
+        "real_execution_capability_policy_matrix_policy_rule_counts": dict(
+            real_execution_capability_policy_matrix_policy_rule_counts
+        ),
+        "real_execution_capability_policy_matrix_approved_policy_counts": dict(
+            real_execution_capability_policy_matrix_approved_policy_counts
+        ),
+        "real_execution_capability_policy_matrix_blocked_policy_counts": dict(
+            real_execution_capability_policy_matrix_blocked_policy_counts
+        ),
+        "real_execution_capability_policy_matrix_registry_exists": dict(
+            real_execution_capability_policy_matrix_registry_exists
+        ),
+        "real_execution_capability_policy_matrix_policy_exists": dict(
+            real_execution_capability_policy_matrix_policy_exists
+        ),
+        "real_execution_capability_policy_matrix_unknown_capability_rejected": dict(
+            real_execution_capability_policy_matrix_unknown_capability_rejected
+        ),
+        "real_execution_capability_policy_matrix_unknown_policy_rejected": dict(
+            real_execution_capability_policy_matrix_unknown_policy_rejected
+        ),
+        "real_execution_capability_policy_matrix_deny_by_default": dict(
+            real_execution_capability_policy_matrix_deny_by_default
+        ),
+        "real_execution_capability_policy_matrix_fail_closed_default": dict(
+            real_execution_capability_policy_matrix_fail_closed_default
+        ),
+        "real_execution_capability_policy_matrix_sandbox_real_blocked": dict(
+            real_execution_capability_policy_matrix_sandbox_real_blocked
+        ),
+        "real_execution_capability_policy_matrix_policy_gated_real_blocked": dict(
+            real_execution_capability_policy_matrix_policy_gated_real_blocked
+        ),
+        "real_execution_capability_policy_matrix_external_side_effects_allowed": dict(
+            real_execution_capability_policy_matrix_external_side_effects_allowed
+        ),
+        "real_execution_capability_policy_matrix_production_paths_allowed": dict(
+            real_execution_capability_policy_matrix_production_paths_allowed
+        ),
+        "real_execution_capability_policy_matrix_production_secrets_allowed": dict(
+            real_execution_capability_policy_matrix_production_secrets_allowed
+        ),
+        "real_execution_capability_policy_matrix_capability_execution_enabled": dict(
+            real_execution_capability_policy_matrix_capability_execution_enabled
+        ),
+        "real_execution_capability_policy_matrix_policy_execution_enabled": dict(
+            real_execution_capability_policy_matrix_policy_execution_enabled
+        ),
+        "real_execution_capability_policy_matrix_adapter_request_generation_enabled": dict(
+            real_execution_capability_policy_matrix_adapter_request_generation_enabled
+        ),
+        "real_execution_capability_policy_matrix_adapter_request_execution_enabled": dict(
+            real_execution_capability_policy_matrix_adapter_request_execution_enabled
+        ),
+        "real_execution_capability_policy_matrix_adapter_result_generation_enabled": dict(
+            real_execution_capability_policy_matrix_adapter_result_generation_enabled
+        ),
+        "real_execution_capability_policy_matrix_sandbox_execution_enabled": dict(
+            real_execution_capability_policy_matrix_sandbox_execution_enabled
+        ),
+        "real_execution_capability_policy_matrix_policy_gated_real_execution_enabled": dict(
+            real_execution_capability_policy_matrix_policy_gated_real_execution_enabled
+        ),
+        "real_execution_capability_policy_matrix_execution_performed": dict(
+            real_execution_capability_policy_matrix_execution_performed
+        ),
+        "real_execution_capability_policy_matrix_subprocess_invoked": dict(
+            real_execution_capability_policy_matrix_subprocess_invoked
+        ),
+        "real_execution_capability_policy_matrix_real_execution_enabled": dict(
+            real_execution_capability_policy_matrix_real_execution_enabled
+        ),
+        "real_execution_capability_policy_matrix_external_side_effects_performed": dict(
+            real_execution_capability_policy_matrix_external_side_effects_performed
+        ),
+        "real_execution_capability_policy_matrix_production_paths_mutated": dict(
+            real_execution_capability_policy_matrix_production_paths_mutated
+        ),
+        "real_execution_capability_policy_matrix_production_secrets_accessed": dict(
+            real_execution_capability_policy_matrix_production_secrets_accessed
+        ),
+        "real_execution_capability_policy_matrix_source_request_schema_statuses": dict(
+            real_execution_capability_policy_matrix_source_request_schema_statuses
+        ),
+        "real_execution_capability_policy_matrix_source_verified": dict(
+            real_execution_capability_policy_matrix_source_verified
+        ),
+        "real_execution_capability_policy_matrix_source_expected_counts": dict(
+            real_execution_capability_policy_matrix_source_expected_counts
+        ),
+        "real_execution_capability_policy_matrix_source_verified_counts": dict(
+            real_execution_capability_policy_matrix_source_verified_counts
+        ),
+        "real_execution_capability_policy_matrix_linkage": (
+            real_execution_capability_policy_matrix_linkage
+        ),
+        "real_execution_capability_policy_matrix_linkage_complete": bool(
+            real_execution_capability_policy_matrix_linkage.get(
+                "real_execution_capability_policy_matrix_linkage_complete"
+            )
+        ),
+        "real_execution_capability_policy_matrix_request_schema_matches": (
+            real_execution_capability_policy_matrix_linkage.get(
+                "real_execution_capability_policy_matrix_request_schema_matches", 0
+            )
+        ),
+        "real_execution_capability_policy_matrix_orphans": (
+            real_execution_capability_policy_matrix_linkage.get(
+                "real_execution_capability_policy_matrix_orphans", 0
+            )
+        ),
     }
 
 def _missing_stages(
@@ -4175,6 +4451,7 @@ def _build_chain_ids(
     post_repair_evidence_checks: list[Mapping[str, Any]],
     real_execution_adapter_contracts: list[Mapping[str, Any]],
     real_execution_adapter_request_schemas: list[Mapping[str, Any]],
+    real_execution_capability_policy_matrices: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -4213,6 +4490,7 @@ def _build_chain_ids(
         + post_repair_evidence_checks
         + real_execution_adapter_contracts
         + real_execution_adapter_request_schemas
+        + real_execution_capability_policy_matrices
         + results
     )
 
@@ -4261,6 +4539,7 @@ def _build_chain_ids(
                 + post_repair_evidence_checks
                 + real_execution_adapter_contracts
                 + real_execution_adapter_request_schemas
+                + real_execution_capability_policy_matrices
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -4301,6 +4580,7 @@ def _build_chain_ids(
                 + post_repair_evidence_checks
                 + real_execution_adapter_contracts
                 + real_execution_adapter_request_schemas
+                + real_execution_capability_policy_matrices
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -4341,6 +4621,7 @@ def _build_chain_ids(
                     + post_repair_evidence_checks
                     + real_execution_adapter_contracts
                     + real_execution_adapter_request_schemas
+                    + real_execution_capability_policy_matrices
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -4605,6 +4886,17 @@ def _build_chain_ids(
                 for item in real_execution_adapter_request_schemas
                 if str(
                     item.get("real_execution_adapter_request_schema_id") or ""
+                ).strip()
+            }
+        ),
+        "real_execution_capability_policy_matrix_ids": sorted(
+            {
+                str(
+                    item.get("real_execution_capability_policy_matrix_id") or ""
+                ).strip()
+                for item in real_execution_capability_policy_matrices
+                if str(
+                    item.get("real_execution_capability_policy_matrix_id") or ""
                 ).strip()
             }
         ),
@@ -5815,6 +6107,42 @@ def _real_execution_adapter_request_schema_linkage_summary(
             real_execution_adapter_request_schemas
         )
         and request_schema_orphans == 0,
+    }
+
+
+def _real_execution_capability_policy_matrix_linkage_summary(
+    *,
+    real_execution_adapter_request_schemas: list[Mapping[str, Any]],
+    real_execution_capability_policy_matrices: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    request_schema_ids = {
+        clean(item.get("real_execution_adapter_request_schema_id"))
+        for item in real_execution_adapter_request_schemas
+        if clean(item.get("real_execution_adapter_request_schema_id"))
+    }
+
+    matrix_request_schema_matches = 0
+    matrix_orphans = 0
+
+    for matrix in real_execution_capability_policy_matrices:
+        request_schema_id = clean(matrix.get("real_execution_adapter_request_schema_id"))
+        if request_schema_id and request_schema_id in request_schema_ids:
+            matrix_request_schema_matches += 1
+        else:
+            matrix_orphans += 1
+
+    return {
+        "real_execution_capability_policy_matrix_request_schema_matches": (
+            matrix_request_schema_matches
+        ),
+        "real_execution_capability_policy_matrix_orphans": matrix_orphans,
+        "real_execution_capability_policy_matrix_linkage_complete": bool(
+            real_execution_capability_policy_matrices
+        )
+        and matrix_orphans == 0,
     }
 
 
