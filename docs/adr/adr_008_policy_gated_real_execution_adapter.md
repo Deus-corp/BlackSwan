@@ -480,6 +480,33 @@ production_paths_mutated=false
 production_secrets_accessed=false
 ```
 
+## Acceptance criteria for PR 38.3a
+
+The concrete PR 38.3a artifact is:
+
+```text
+replay_lifecycle_retry_real_execution_adapter_request_schema
+```
+It is a schema/scaffold record only. It is valid after a defined
+replay_lifecycle_retry_real_execution_adapter_contract and must keep:
+```text
+adapter_request_schema_status=defined
+adapter_request_schema_exists=true
+request_generation_enabled=false
+request_execution_enabled=false
+adapter_implementation_enabled=false
+adapter_result_generation_enabled=false
+sandbox_execution_enabled=false
+policy_gated_real_execution_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+recommended_next_action=prepare_capability_registry_and_policy_matrix
+```
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.

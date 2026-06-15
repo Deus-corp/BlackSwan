@@ -65,6 +65,12 @@ def test_policy_gated_real_execution_adapter_adr_documents_fail_closed_contract(
     assert "production_paths_mutated=false" in text
     assert "production_secrets_accessed=false" in text
 
+    assert "replay_lifecycle_retry_real_execution_adapter_request_schema" in text
+    assert "adapter_request_schema_status=defined" in text
+    assert "request_generation_enabled=false" in text
+    assert "request_execution_enabled=false" in text
+    assert "prepare_capability_registry_and_policy_matrix" in text
+
 
 def test_controlled_retry_guarded_repair_runbook_documents_verified_golden_path() -> None:
     assert RUNBOOK_PATH.exists()
