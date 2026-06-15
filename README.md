@@ -2,9 +2,11 @@
 
 **Autonomous, self-improving multi-swarm AI platform.**
 
-BlackSwan is not a trading bot. Trading is one proving ground inside a broader system: an autonomous, self-improving, coordinated swarm platform where multiple specialized swarms share state, memory, simulation results, risk signals, and decisions through a common runtime.
+BlackSwan is a research platform for coordinated autonomous swarms. It is designed around shared runtime state, memory, simulation, security validation, governance records, and controlled execution paths that allow specialized swarms to observe, reason, coordinate, recover, and improve over time.
 
-The long-term goal is a system that can launch, observe itself, survive failures, improve its own strategies, test changes in simulation, coordinate specialized swarms, and reduce the amount of direct human intervention to initial bootstrapping and high-level governance.
+The system treats autonomy as an auditable lifecycle rather than a direct action loop. Swarms communicate through CRDT-backed records, validated directives, runtime evidence, memory signals, simulation results, risk signals, retry governance, guarded repair flows, and post-action verification.
+
+The long-term goal is a platform that can launch, observe itself, survive failures, test changes in simulation, coordinate specialized swarms, improve its own strategies, and reduce direct human involvement to bootstrapping, policy design, review gates, and high-level governance.
 
 [![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
@@ -18,7 +20,7 @@ BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime wit
 
 Validated in the current architecture:
 
-* ✅ 930+ unit/runtime tests passing.
+* ✅ 940+ tests passing.
 * ✅ Retry governance smoke test passing.
 * ✅ Swarm runtime smoke test passing.
 * ✅ Trade runtime command loop passing.
