@@ -457,6 +457,29 @@ real_execution_enabled=false
 external_side_effects_performed=false
 ```
 
+The concrete PR 38.1 artifact is:
+
+```text
+replay_lifecycle_retry_real_execution_adapter_contract
+```
+
+It is a contract/schema record only. It is valid after a passed post-repair
+evidence check and must keep:
+
+```text
+adapter_contract_exists=true
+adapter_request_schema_exists=true
+adapter_result_schema_exists=true
+unknown_capability_rejected=true
+unknown_policy_rejected=true
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.

@@ -58,6 +58,13 @@ def test_policy_gated_real_execution_adapter_adr_documents_fail_closed_contract(
     assert "PR 38.7 — golden-path sandbox execution smoke" in text
     assert "arbitrary real execution remains disabled" in text
 
+    assert "replay_lifecycle_retry_real_execution_adapter_contract" in text
+    assert "adapter_contract_exists=true" in text
+    assert "adapter_request_schema_exists=true" in text
+    assert "adapter_result_schema_exists=true" in text
+    assert "production_paths_mutated=false" in text
+    assert "production_secrets_accessed=false" in text
+
 
 def test_controlled_retry_guarded_repair_runbook_documents_verified_golden_path() -> None:
     assert RUNBOOK_PATH.exists()
