@@ -86,6 +86,22 @@ def test_policy_gated_real_execution_adapter_adr_documents_fail_closed_contract(
     assert "policy_execution_enabled=false" in text
     assert "prepare_sandbox_adapter_scaffold" in text
 
+    assert "replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold" in text
+    assert "sandbox_adapter_scaffold_status=defined" in text
+    assert "sandbox_workspace_strategy=ephemeral_temp_workspace" in text
+    assert "sandbox_input_strategy=explicit_allowlist_only" in text
+    assert "sandbox_output_strategy=explicit_allowlist_only" in text
+    assert "sandbox_rollback_strategy=workspace_destruction" in text
+    assert "sandbox_evidence_strategy=post_execution_evidence_required" in text
+    assert "sandbox_network_policy=deny" in text
+    assert "sandbox_secret_policy=deny" in text
+    assert "sandbox_filesystem_policy=no_production_writes" in text
+    assert "sandbox_adapter_fail_closed=true" in text
+    assert "sandbox_adapter_implementation_enabled=false" in text
+    assert "sandbox_workspace_creation_enabled=false" in text
+    assert "sandbox_execution_enabled=false" in text
+    assert "surface_sandbox_adapter_scaffold_observability" in text
+
 
 def test_controlled_retry_guarded_repair_runbook_documents_verified_golden_path() -> None:
     assert RUNBOOK_PATH.exists()

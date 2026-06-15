@@ -553,6 +553,65 @@ production_secrets_accessed=false
 recommended_next_action=prepare_sandbox_adapter_scaffold
 ```
 
+## Acceptance criteria for PR 38.5a
+
+The concrete PR 38.5a artifact is:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold
+```
+It defines a fail-closed sandbox adapter scaffold after the capability registry
+and policy matrix exist.
+
+It is still not runnable and must keep:
+```text
+sandbox_adapter_scaffold_status=defined
+sandbox_adapter_scaffold_exists=true
+sandbox_adapter_contract_exists=true
+sandbox_workspace_strategy=ephemeral_temp_workspace
+sandbox_input_strategy=explicit_allowlist_only
+sandbox_output_strategy=explicit_allowlist_only
+sandbox_rollback_strategy=workspace_destruction
+sandbox_evidence_strategy=post_execution_evidence_required
+sandbox_network_policy=deny
+sandbox_secret_policy=deny
+sandbox_filesystem_policy=no_production_writes
+sandbox_production_write_policy=deny
+sandbox_external_side_effect_policy=deny
+sandbox_adapter_fail_closed=true
+sandbox_adapter_deny_by_default=true
+sandbox_adapter_requires_policy_matrix=true
+sandbox_adapter_requires_known_capability=true
+sandbox_adapter_requires_known_policy=true
+sandbox_adapter_requires_operator_authorization=true
+sandbox_adapter_requires_approval_lineage=true
+sandbox_adapter_requires_final_gate=true
+sandbox_adapter_requires_dry_run_envelope=true
+sandbox_adapter_requires_rollback_plan=true
+sandbox_adapter_requires_post_execution_evidence=true
+sandbox_adapter_rejects_unknown_capability=true
+sandbox_adapter_rejects_unknown_policy=true
+sandbox_adapter_implementation_enabled=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+adapter_request_generation_enabled=false
+adapter_request_execution_enabled=false
+adapter_result_generation_enabled=false
+capability_execution_enabled=false
+policy_execution_enabled=false
+policy_gated_real_execution_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+recommended_next_action=surface_sandbox_adapter_scaffold_observability
+```
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.
