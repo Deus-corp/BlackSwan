@@ -60,6 +60,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_adapter_contract",
     "replay_lifecycle_retry_real_execution_adapter_request_schema",
     "replay_lifecycle_retry_real_execution_capability_policy_matrix",
+    "replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold",
 }
 
 
@@ -620,6 +621,22 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
         if record_type == "replay_lifecycle_retry_real_execution_capability_policy_matrix":
             result = (
                 validate_replay_lifecycle_retry_real_execution_capability_policy_matrix(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
+        if record_type == "replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold":
+            result = (
+                validate_replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold(
                     record
                 )
             )
@@ -10498,6 +10515,181 @@ def validate_replay_lifecycle_retry_real_execution_capability_policy_matrix(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate fail-closed real execution sandbox adapter scaffold records."""
+    reasons: list[str] = []
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    scaffold_id = str(
+        record.get("real_execution_sandbox_adapter_scaffold_id") or ""
+    ).strip()
+    matrix_id = str(
+        record.get("real_execution_capability_policy_matrix_id") or ""
+    ).strip()
+    request_schema_id = str(
+        record.get("real_execution_adapter_request_schema_id") or ""
+    ).strip()
+    contract_id = str(record.get("real_execution_adapter_contract_id") or "").strip()
+    proposal_id = str(record.get("proposal_id") or "").strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    schema_version = str(record.get("schema_version") or "").strip()
+    contract_version = str(record.get("sandbox_adapter_contract_version") or "").strip()
+    status = str(record.get("sandbox_adapter_scaffold_status") or "").strip()
+    kind = str(record.get("sandbox_adapter_scaffold_kind") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    if not scaffold_id:
+        reasons.append("missing_real_execution_sandbox_adapter_scaffold_id")
+    if not matrix_id:
+        reasons.append("missing_real_execution_capability_policy_matrix_id")
+    if not request_schema_id:
+        reasons.append("missing_real_execution_adapter_request_schema_id")
+    if not contract_id:
+        reasons.append("missing_real_execution_adapter_contract_id")
+    if not proposal_id:
+        reasons.append("missing_proposal_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if schema_version != "real-execution-sandbox-adapter-scaffold/v1":
+        reasons.append("invalid_real_execution_sandbox_adapter_scaffold_schema_version")
+    if contract_version != "real-execution-sandbox-adapter/v1":
+        reasons.append("invalid_sandbox_adapter_contract_version")
+    if status != "defined":
+        reasons.append("sandbox_adapter_scaffold_status_must_be_defined")
+    if kind != "fail_closed_sandbox_adapter_scaffold":
+        reasons.append("invalid_sandbox_adapter_scaffold_kind")
+    if next_action != "surface_sandbox_adapter_scaffold_observability":
+        reasons.append("invalid_sandbox_adapter_scaffold_next_action")
+    if reason != "real_execution_sandbox_adapter_scaffold_defined_not_runnable":
+        reasons.append("invalid_sandbox_adapter_scaffold_reason")
+
+    expected_strings = {
+        "sandbox_workspace_strategy": "ephemeral_temp_workspace",
+        "sandbox_input_strategy": "explicit_allowlist_only",
+        "sandbox_output_strategy": "explicit_allowlist_only",
+        "sandbox_rollback_strategy": "workspace_destruction",
+        "sandbox_evidence_strategy": "post_execution_evidence_required",
+        "sandbox_network_policy": "deny",
+        "sandbox_secret_policy": "deny",
+        "sandbox_filesystem_policy": "no_production_writes",
+        "sandbox_production_write_policy": "deny",
+        "sandbox_external_side_effect_policy": "deny",
+    }
+    for key, expected in expected_strings.items():
+        if str(record.get(key) or "").strip() != expected:
+            reasons.append(f"{key}_must_be_{expected}")
+
+    required_true_flags = (
+        "sandbox_adapter_scaffold_exists",
+        "sandbox_adapter_contract_exists",
+        "sandbox_adapter_fail_closed",
+        "sandbox_adapter_deny_by_default",
+        "sandbox_adapter_requires_policy_matrix",
+        "sandbox_adapter_requires_known_capability",
+        "sandbox_adapter_requires_known_policy",
+        "sandbox_adapter_requires_operator_authorization",
+        "sandbox_adapter_requires_approval_lineage",
+        "sandbox_adapter_requires_final_gate",
+        "sandbox_adapter_requires_dry_run_envelope",
+        "sandbox_adapter_requires_rollback_plan",
+        "sandbox_adapter_requires_post_execution_evidence",
+        "sandbox_adapter_rejects_unknown_capability",
+        "sandbox_adapter_rejects_unknown_policy",
+        "sandbox_adapter_rejects_orphans",
+        "sandbox_adapter_rejects_stale_records",
+        "source_capability_registry_exists",
+        "source_policy_matrix_exists",
+        "source_unknown_capability_rejected",
+        "source_unknown_policy_rejected",
+        "source_deny_by_default",
+        "source_fail_closed_default",
+        "source_sandbox_real_blocked",
+        "source_policy_gated_real_blocked",
+        "source_repair_outcome_verified",
+    )
+    for flag_name in required_true_flags:
+        if not bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_true")
+
+    required_false_flags = (
+        "sandbox_adapter_implementation_enabled",
+        "sandbox_workspace_creation_enabled",
+        "sandbox_input_materialization_enabled",
+        "sandbox_command_rendering_enabled",
+        "sandbox_execution_enabled",
+        "sandbox_result_generation_enabled",
+        "adapter_request_generation_enabled",
+        "adapter_request_execution_enabled",
+        "adapter_result_generation_enabled",
+        "capability_execution_enabled",
+        "policy_execution_enabled",
+        "policy_gated_real_execution_enabled",
+        "execution_performed",
+        "subprocess_invoked",
+        "real_execution_enabled",
+        "external_side_effects_performed",
+        "production_paths_mutated",
+        "production_secrets_accessed",
+        "source_capability_execution_enabled",
+        "source_policy_execution_enabled",
+        "source_adapter_request_generation_enabled",
+        "source_sandbox_execution_enabled",
+        "source_policy_gated_real_execution_enabled",
+        "source_execution_performed",
+        "source_subprocess_invoked",
+        "source_real_execution_enabled",
+        "source_external_side_effects_performed",
+    )
+    for flag_name in required_false_flags:
+        if bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_false")
+        if bool(payload_mapping.get(flag_name)):
+            reasons.append(f"payload_{flag_name}_must_be_false")
+
+    if int(record.get("source_capability_count") or 0) != 7:
+        reasons.append("source_capability_count_must_be_7")
+    if int(record.get("source_enabled_capability_count") or 0) != 5:
+        reasons.append("source_enabled_capability_count_must_be_5")
+    if int(record.get("source_blocked_capability_count") or 0) != 2:
+        reasons.append("source_blocked_capability_count_must_be_2")
+    if int(record.get("source_policy_rule_count") or 0) != 7:
+        reasons.append("source_policy_rule_count_must_be_7")
+    if int(record.get("source_approved_policy_count") or 0) != 5:
+        reasons.append("source_approved_policy_count_must_be_5")
+    if int(record.get("source_blocked_policy_count") or 0) != 2:
+        reasons.append("source_blocked_policy_count_must_be_2")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": scaffold_id or matrix_id,
+        "schema_version": schema_version or "unknown",
+        "sandbox_adapter_scaffold_status": status or "unknown",
+        "sandbox_adapter_fail_closed": bool(record.get("sandbox_adapter_fail_closed")),
+        "sandbox_adapter_deny_by_default": bool(record.get("sandbox_adapter_deny_by_default")),
+        "sandbox_execution_enabled": bool(record.get("sandbox_execution_enabled")),
+        "execution_performed": bool(record.get("execution_performed")),
+        "subprocess_invoked": bool(record.get("subprocess_invoked")),
+        "real_execution_enabled": bool(record.get("real_execution_enabled")),
+        "external_side_effects_performed": bool(
+            record.get("external_side_effects_performed")
+        ),
+        "production_paths_mutated": bool(record.get("production_paths_mutated")),
+        "production_secrets_accessed": bool(record.get("production_secrets_accessed")),
+        "recommended_next_action": next_action or "unknown",
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -10541,4 +10733,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_adapter_contract",
     "validate_replay_lifecycle_retry_real_execution_adapter_request_schema",
     "validate_replay_lifecycle_retry_real_execution_capability_policy_matrix",
+    "validate_replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold",
 ]

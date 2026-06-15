@@ -1479,6 +1479,42 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_execution_capability_policy_matrix_source_verified_counts = _safe_mapping(
         trail_summary.get("real_execution_capability_policy_matrix_source_verified_counts")
     )
+    real_execution_sandbox_adapter_scaffold_statuses = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_statuses")
+    )
+    real_execution_sandbox_adapter_scaffold_fail_closed = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_fail_closed")
+    )
+    real_execution_sandbox_adapter_scaffold_deny_by_default = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_deny_by_default")
+    )
+    real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled"
+        )
+    )
+    real_execution_sandbox_adapter_scaffold_execution_performed = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_execution_performed")
+    )
+    real_execution_sandbox_adapter_scaffold_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_subprocess_invoked")
+    )
+    real_execution_sandbox_adapter_scaffold_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_real_execution_enabled")
+    )
+    real_execution_sandbox_adapter_scaffold_external_side_effects = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_external_side_effects")
+    )
+    real_execution_sandbox_adapter_scaffold_production_paths_mutated = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_scaffold_production_paths_mutated"
+        )
+    )
+    real_execution_sandbox_adapter_scaffold_production_secrets_accessed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_scaffold_production_secrets_accessed"
+        )
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -3079,6 +3115,49 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_execution_capability_policy_matrix_source_verified_count_9": _safe_int(
             real_execution_capability_policy_matrix_source_verified_counts.get("9"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_observed": _safe_int(
+            real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0
+        )
+        > 0,
+        "real_execution_sandbox_adapter_scaffold_records": _safe_int(
+            real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_linkage_complete": bool(
+            trail_summary.get("real_execution_sandbox_adapter_scaffold_linkage_complete")
+        ),
+        "real_execution_sandbox_adapter_scaffold_orphans": _safe_int(
+            trail_summary.get("real_execution_sandbox_adapter_scaffold_orphans"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_defined": _safe_int(
+            real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_fail_closed": _safe_int(
+            real_execution_sandbox_adapter_scaffold_fail_closed.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_deny_by_default": _safe_int(
+            real_execution_sandbox_adapter_scaffold_deny_by_default.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled": _safe_int(
+            real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_execution_performed": _safe_int(
+            real_execution_sandbox_adapter_scaffold_execution_performed.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_subprocess_invoked": _safe_int(
+            real_execution_sandbox_adapter_scaffold_subprocess_invoked.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_real_execution_enabled": _safe_int(
+            real_execution_sandbox_adapter_scaffold_real_execution_enabled.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_external_side_effects": _safe_int(
+            real_execution_sandbox_adapter_scaffold_external_side_effects.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_production_paths_mutated": _safe_int(
+            real_execution_sandbox_adapter_scaffold_production_paths_mutated.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_scaffold_production_secrets_accessed": _safe_int(
+            real_execution_sandbox_adapter_scaffold_production_secrets_accessed.get("true"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -4727,6 +4806,49 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_execution_capability_policy_matrix_source_verified_count_9": _safe_int(
                 real_execution_capability_policy_matrix_source_verified_counts.get("9"), 0
             ),
+            "real_execution_sandbox_adapter_scaffold_observed": _safe_int(
+                real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0
+            )
+            > 0,
+            "real_execution_sandbox_adapter_scaffold_records": _safe_int(
+                real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_linkage_complete": bool(
+                trail_summary.get("real_execution_sandbox_adapter_scaffold_linkage_complete")
+            ),
+            "real_execution_sandbox_adapter_scaffold_orphans": _safe_int(
+                trail_summary.get("real_execution_sandbox_adapter_scaffold_orphans"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_defined": _safe_int(
+                real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_fail_closed": _safe_int(
+                real_execution_sandbox_adapter_scaffold_fail_closed.get("true"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_deny_by_default": _safe_int(
+                real_execution_sandbox_adapter_scaffold_deny_by_default.get("true"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled": _safe_int(
+                real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled.get("true"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_execution_performed": _safe_int(
+                real_execution_sandbox_adapter_scaffold_execution_performed.get("true"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_subprocess_invoked": _safe_int(
+                real_execution_sandbox_adapter_scaffold_subprocess_invoked.get("true"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_real_execution_enabled": _safe_int(
+                real_execution_sandbox_adapter_scaffold_real_execution_enabled.get("true"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_external_side_effects": _safe_int(
+                real_execution_sandbox_adapter_scaffold_external_side_effects.get("true"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_production_paths_mutated": _safe_int(
+                real_execution_sandbox_adapter_scaffold_production_paths_mutated.get("true"), 0
+            ),
+            "real_execution_sandbox_adapter_scaffold_production_secrets_accessed": _safe_int(
+                real_execution_sandbox_adapter_scaffold_production_secrets_accessed.get("true"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -4858,6 +4980,20 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_execution_capability_policy_matrix_records",
             "real_execution_capability_policy_matrix_linkage_complete",
             "real_execution_capability_policy_matrix_orphans",
+            "real_execution_sandbox_adapter_scaffold_observed",
+            "real_execution_sandbox_adapter_scaffold_records",
+            "real_execution_sandbox_adapter_scaffold_linkage_complete",
+            "real_execution_sandbox_adapter_scaffold_orphans",
+            "real_execution_sandbox_adapter_scaffold_defined",
+            "real_execution_sandbox_adapter_scaffold_fail_closed",
+            "real_execution_sandbox_adapter_scaffold_deny_by_default",
+            "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled",
+            "real_execution_sandbox_adapter_scaffold_execution_performed",
+            "real_execution_sandbox_adapter_scaffold_subprocess_invoked",
+            "real_execution_sandbox_adapter_scaffold_real_execution_enabled",
+            "real_execution_sandbox_adapter_scaffold_external_side_effects_performed",
+            "real_execution_sandbox_adapter_scaffold_production_paths_mutated",
+            "real_execution_sandbox_adapter_scaffold_production_secrets_accessed",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -6367,6 +6503,42 @@ def _build_checks(
     )
     real_execution_capability_policy_matrix_source_verified_counts = _safe_mapping(
         trail_summary.get("real_execution_capability_policy_matrix_source_verified_counts")
+    )
+    real_execution_sandbox_adapter_scaffold_statuses = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_statuses")
+    )
+    real_execution_sandbox_adapter_scaffold_fail_closed = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_fail_closed")
+    )
+    real_execution_sandbox_adapter_scaffold_deny_by_default = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_deny_by_default")
+    )
+    real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled"
+        )
+    )
+    real_execution_sandbox_adapter_scaffold_execution_performed = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_execution_performed")
+    )
+    real_execution_sandbox_adapter_scaffold_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_subprocess_invoked")
+    )
+    real_execution_sandbox_adapter_scaffold_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_real_execution_enabled")
+    )
+    real_execution_sandbox_adapter_scaffold_external_side_effects = _safe_mapping(
+        trail_summary.get("real_execution_sandbox_adapter_scaffold_external_side_effects")
+    )
+    real_execution_sandbox_adapter_scaffold_production_paths_mutated = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_scaffold_production_paths_mutated"
+        )
+    )
+    real_execution_sandbox_adapter_scaffold_production_secrets_accessed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_scaffold_production_secrets_accessed"
+        )
     )
 
     checks = [
@@ -10794,6 +10966,66 @@ def _build_checks(
             == 1,
             real_execution_capability_policy_matrix_source_verified_counts,
         ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_observed_after_policy_matrix",
+            _safe_int(real_execution_capability_policy_matrix_statuses.get("defined"), 0) == 0
+            or _safe_int(real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0) > 0,
+            {
+                "policy_matrices": _safe_int(
+                    real_execution_capability_policy_matrix_statuses.get("defined"), 0
+                ),
+                "sandbox_scaffolds": _safe_int(
+                    real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_links_to_policy_matrix",
+            _safe_int(real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0) == 0
+            or _safe_int(
+                trail_summary.get("real_execution_sandbox_adapter_scaffold_orphans"), 0
+            ) == 0,
+            _safe_int(
+                trail_summary.get("real_execution_sandbox_adapter_scaffold_orphans"), 0
+            ),
+        ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_defined",
+            _safe_int(real_execution_sandbox_adapter_scaffold_statuses.get("defined"), 0) == 1,
+            real_execution_sandbox_adapter_scaffold_statuses,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_fail_closed",
+            _safe_int(real_execution_sandbox_adapter_scaffold_fail_closed.get("true"), 0) == 1,
+            real_execution_sandbox_adapter_scaffold_fail_closed,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_deny_by_default",
+            _safe_int(real_execution_sandbox_adapter_scaffold_deny_by_default.get("true"), 0) == 1,
+            real_execution_sandbox_adapter_scaffold_deny_by_default,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_does_not_enable_sandbox_execution",
+            _safe_int(
+                real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled.get("true"), 0
+            ) == 0,
+            real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_does_not_execute",
+            _safe_int(real_execution_sandbox_adapter_scaffold_execution_performed.get("true"), 0) == 0,
+            real_execution_sandbox_adapter_scaffold_execution_performed,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_does_not_invoke_subprocess",
+            _safe_int(real_execution_sandbox_adapter_scaffold_subprocess_invoked.get("true"), 0) == 0,
+            real_execution_sandbox_adapter_scaffold_subprocess_invoked,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_scaffold_does_not_enable_real_execution",
+            _safe_int(real_execution_sandbox_adapter_scaffold_real_execution_enabled.get("true"), 0) == 0,
+            real_execution_sandbox_adapter_scaffold_real_execution_enabled,
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -10967,6 +11199,20 @@ def validate_controlled_execution_readiness_report_schema(
         "real_execution_capability_policy_matrix_records",
         "real_execution_capability_policy_matrix_linkage_complete",
         "real_execution_capability_policy_matrix_orphans",
+        "real_execution_sandbox_adapter_scaffold_observed",
+        "real_execution_sandbox_adapter_scaffold_records",
+        "real_execution_sandbox_adapter_scaffold_linkage_complete",
+        "real_execution_sandbox_adapter_scaffold_orphans",
+        "real_execution_sandbox_adapter_scaffold_defined",
+        "real_execution_sandbox_adapter_scaffold_fail_closed",
+        "real_execution_sandbox_adapter_scaffold_deny_by_default",
+        "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled",
+        "real_execution_sandbox_adapter_scaffold_execution_performed",
+        "real_execution_sandbox_adapter_scaffold_subprocess_invoked",
+        "real_execution_sandbox_adapter_scaffold_real_execution_enabled",
+        "real_execution_sandbox_adapter_scaffold_external_side_effects_performed",
+        "real_execution_sandbox_adapter_scaffold_production_paths_mutated",
+        "real_execution_sandbox_adapter_scaffold_production_secrets_accessed",
     ]
 
     reasons: list[str] = []
@@ -11313,6 +11559,47 @@ def validate_controlled_execution_readiness_report_schema(
         )
     if not isinstance(report.get("real_execution_capability_policy_matrix_orphans"), int):
         reasons.append("real_execution_capability_policy_matrix_orphans_must_be_int")
+    
+    if not isinstance(
+        report.get("real_execution_sandbox_adapter_scaffold_observed"), bool
+    ):
+        reasons.append(
+            "real_execution_sandbox_adapter_scaffold_observed_must_be_bool"
+        )
+    if not isinstance(
+        report.get("real_execution_sandbox_adapter_scaffold_records"), int
+    ):
+        reasons.append(
+            "real_execution_sandbox_adapter_scaffold_records_must_be_int"
+        )
+    if not isinstance(
+        report.get("real_execution_sandbox_adapter_scaffold_linkage_complete"),
+        bool,
+    ):
+        reasons.append(
+            "real_execution_sandbox_adapter_scaffold_linkage_complete_must_be_bool"
+        )
+    if not isinstance(
+        report.get("real_execution_sandbox_adapter_scaffold_orphans"), int
+    ):
+        reasons.append(
+            "real_execution_sandbox_adapter_scaffold_orphans_must_be_int"
+        )
+
+    for int_field in (
+        "real_execution_sandbox_adapter_scaffold_defined",
+        "real_execution_sandbox_adapter_scaffold_fail_closed",
+        "real_execution_sandbox_adapter_scaffold_deny_by_default",
+        "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled",
+        "real_execution_sandbox_adapter_scaffold_execution_performed",
+        "real_execution_sandbox_adapter_scaffold_subprocess_invoked",
+        "real_execution_sandbox_adapter_scaffold_real_execution_enabled",
+        "real_execution_sandbox_adapter_scaffold_external_side_effects_performed",
+        "real_execution_sandbox_adapter_scaffold_production_paths_mutated",
+        "real_execution_sandbox_adapter_scaffold_production_secrets_accessed",
+    ):
+        if not isinstance(report.get(int_field), int):
+            reasons.append(f"{int_field}_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
