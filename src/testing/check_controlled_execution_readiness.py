@@ -1149,6 +1149,93 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     post_repair_evidence_repair_subprocess_invoked = _safe_mapping(
         trail_summary.get("post_repair_evidence_repair_subprocess_invoked")
     )
+    real_execution_adapter_contract_statuses = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_statuses")
+    )
+    real_execution_adapter_contract_schema_versions = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_schema_versions")
+    )
+    real_execution_adapter_contract_request_schema_versions = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_request_schema_versions")
+    )
+    real_execution_adapter_contract_result_schema_versions = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_result_schema_versions")
+    )
+    real_execution_adapter_contract_next_actions = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_next_actions")
+    )
+    real_execution_adapter_contract_exists = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_exists")
+    )
+    real_execution_adapter_contract_request_schema_exists = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_request_schema_exists")
+    )
+    real_execution_adapter_contract_result_schema_exists = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_result_schema_exists")
+    )
+    real_execution_adapter_contract_fail_closed_default = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_fail_closed_default")
+    )
+    real_execution_adapter_contract_sandbox_first = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_sandbox_first")
+    )
+    real_execution_adapter_contract_capability_scoped = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_capability_scoped")
+    )
+    real_execution_adapter_contract_policy_gated = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_policy_gated")
+    )
+    real_execution_adapter_contract_unknown_capability_rejected = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_unknown_capability_rejected")
+    )
+    real_execution_adapter_contract_unknown_policy_rejected = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_unknown_policy_rejected")
+    )
+    real_execution_adapter_contract_adapter_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_adapter_enabled")
+    )
+    real_execution_adapter_contract_request_generation_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_request_generation_enabled")
+    )
+    real_execution_adapter_contract_result_generation_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_result_generation_enabled")
+    )
+    real_execution_adapter_contract_sandbox_execution_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_sandbox_execution_enabled")
+    )
+    real_execution_adapter_contract_policy_gated_real_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_policy_gated_real_enabled")
+    )
+    real_execution_adapter_contract_execution_performed = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_execution_performed")
+    )
+    real_execution_adapter_contract_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_subprocess_invoked")
+    )
+    real_execution_adapter_contract_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_real_execution_enabled")
+    )
+    real_execution_adapter_contract_external_side_effects = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_external_side_effects")
+    )
+    real_execution_adapter_contract_production_paths_mutated = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_production_paths_mutated")
+    )
+    real_execution_adapter_contract_production_secrets_accessed = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_production_secrets_accessed")
+    )
+    real_execution_adapter_contract_source_post_repair_statuses = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_source_post_repair_statuses")
+    )
+    real_execution_adapter_contract_source_verified = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_source_verified")
+    )
+    real_execution_adapter_contract_source_expected_counts = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_source_expected_counts")
+    )
+    real_execution_adapter_contract_source_verified_counts = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_source_verified_counts")
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -2458,6 +2545,94 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "post_repair_evidence_repair_subprocess_invoked": _safe_int(
             post_repair_evidence_repair_subprocess_invoked.get("true"), 0
+        ),
+        "real_execution_adapter_contract_observed": _safe_int(
+            real_execution_adapter_contract_statuses.get("defined"), 0
+        )
+        > 0,
+        "real_execution_adapter_contract_records": _safe_int(
+            real_execution_adapter_contract_statuses.get("defined"), 0
+        ),
+        "real_execution_adapter_contract_linkage_complete": bool(
+            trail_summary.get("real_execution_adapter_contract_linkage_complete")
+        ),
+        "real_execution_adapter_contract_orphans": _safe_int(
+            trail_summary.get("real_execution_adapter_contract_orphans"), 0
+        ),
+        "real_execution_adapter_contract_defined": _safe_int(
+            real_execution_adapter_contract_statuses.get("defined"), 0
+        ),
+        "real_execution_adapter_contract_exists": _safe_int(
+            real_execution_adapter_contract_exists.get("true"), 0
+        ),
+        "real_execution_adapter_request_schema_exists": _safe_int(
+            real_execution_adapter_contract_request_schema_exists.get("true"), 0
+        ),
+        "real_execution_adapter_result_schema_exists": _safe_int(
+            real_execution_adapter_contract_result_schema_exists.get("true"), 0
+        ),
+        "real_execution_adapter_contract_fail_closed": _safe_int(
+            real_execution_adapter_contract_fail_closed_default.get("true"), 0
+        ),
+        "real_execution_adapter_contract_sandbox_first": _safe_int(
+            real_execution_adapter_contract_sandbox_first.get("true"), 0
+        ),
+        "real_execution_adapter_contract_capability_scoped": _safe_int(
+            real_execution_adapter_contract_capability_scoped.get("true"), 0
+        ),
+        "real_execution_adapter_contract_policy_gated": _safe_int(
+            real_execution_adapter_contract_policy_gated.get("true"), 0
+        ),
+        "real_execution_adapter_unknown_capability_rejected": _safe_int(
+            real_execution_adapter_contract_unknown_capability_rejected.get("true"), 0
+        ),
+        "real_execution_adapter_unknown_policy_rejected": _safe_int(
+            real_execution_adapter_contract_unknown_policy_rejected.get("true"), 0
+        ),
+        "real_execution_adapter_contract_adapter_enabled": _safe_int(
+            real_execution_adapter_contract_adapter_enabled.get("true"), 0
+        ),
+        "real_execution_adapter_request_generation_enabled": _safe_int(
+            real_execution_adapter_contract_request_generation_enabled.get("true"), 0
+        ),
+        "real_execution_adapter_result_generation_enabled": _safe_int(
+            real_execution_adapter_contract_result_generation_enabled.get("true"), 0
+        ),
+        "real_execution_adapter_sandbox_execution_enabled": _safe_int(
+            real_execution_adapter_contract_sandbox_execution_enabled.get("true"), 0
+        ),
+        "real_execution_adapter_policy_gated_real_enabled": _safe_int(
+            real_execution_adapter_contract_policy_gated_real_enabled.get("true"), 0
+        ),
+        "real_execution_adapter_contract_execution_performed": _safe_int(
+            real_execution_adapter_contract_execution_performed.get("true"), 0
+        ),
+        "real_execution_adapter_contract_subprocess_invoked": _safe_int(
+            real_execution_adapter_contract_subprocess_invoked.get("true"), 0
+        ),
+        "real_execution_adapter_contract_real_execution_enabled": _safe_int(
+            real_execution_adapter_contract_real_execution_enabled.get("true"), 0
+        ),
+        "real_execution_adapter_contract_external_side_effects": _safe_int(
+            real_execution_adapter_contract_external_side_effects.get("true"), 0
+        ),
+        "real_execution_adapter_contract_production_paths_mutated": _safe_int(
+            real_execution_adapter_contract_production_paths_mutated.get("true"), 0
+        ),
+        "real_execution_adapter_contract_production_secrets_accessed": _safe_int(
+            real_execution_adapter_contract_production_secrets_accessed.get("true"), 0
+        ),
+        "real_execution_adapter_contract_source_post_repair_passed": _safe_int(
+            real_execution_adapter_contract_source_post_repair_statuses.get("passed"), 0
+        ),
+        "real_execution_adapter_contract_source_verified": _safe_int(
+            real_execution_adapter_contract_source_verified.get("true"), 0
+        ),
+        "real_execution_adapter_contract_source_expected_count_9": _safe_int(
+            real_execution_adapter_contract_source_expected_counts.get("9"), 0
+        ),
+        "real_execution_adapter_contract_source_verified_count_9": _safe_int(
+            real_execution_adapter_contract_source_verified_counts.get("9"), 0
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -3815,6 +3990,94 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "post_repair_evidence_repair_subprocess_invoked": _safe_int(
                 post_repair_evidence_repair_subprocess_invoked.get("true"), 0
             ),
+            "real_execution_adapter_contract_observed": _safe_int(
+                real_execution_adapter_contract_statuses.get("defined"), 0
+            )
+            > 0,
+            "real_execution_adapter_contract_records": _safe_int(
+                real_execution_adapter_contract_statuses.get("defined"), 0
+            ),
+            "real_execution_adapter_contract_linkage_complete": bool(
+                trail_summary.get("real_execution_adapter_contract_linkage_complete")
+            ),
+            "real_execution_adapter_contract_orphans": _safe_int(
+                trail_summary.get("real_execution_adapter_contract_orphans"), 0
+            ),
+            "real_execution_adapter_contract_defined": _safe_int(
+                real_execution_adapter_contract_statuses.get("defined"), 0
+            ),
+            "real_execution_adapter_contract_exists": _safe_int(
+                real_execution_adapter_contract_exists.get("true"), 0
+            ),
+            "real_execution_adapter_request_schema_exists": _safe_int(
+                real_execution_adapter_contract_request_schema_exists.get("true"), 0
+            ),
+            "real_execution_adapter_result_schema_exists": _safe_int(
+                real_execution_adapter_contract_result_schema_exists.get("true"), 0
+            ),
+            "real_execution_adapter_contract_fail_closed": _safe_int(
+                real_execution_adapter_contract_fail_closed_default.get("true"), 0
+            ),
+            "real_execution_adapter_contract_sandbox_first": _safe_int(
+                real_execution_adapter_contract_sandbox_first.get("true"), 0
+            ),
+            "real_execution_adapter_contract_capability_scoped": _safe_int(
+                real_execution_adapter_contract_capability_scoped.get("true"), 0
+            ),
+            "real_execution_adapter_contract_policy_gated": _safe_int(
+                real_execution_adapter_contract_policy_gated.get("true"), 0
+            ),
+            "real_execution_adapter_unknown_capability_rejected": _safe_int(
+                real_execution_adapter_contract_unknown_capability_rejected.get("true"), 0
+            ),
+            "real_execution_adapter_unknown_policy_rejected": _safe_int(
+                real_execution_adapter_contract_unknown_policy_rejected.get("true"), 0
+            ),
+            "real_execution_adapter_contract_adapter_enabled": _safe_int(
+                real_execution_adapter_contract_adapter_enabled.get("true"), 0
+            ),
+            "real_execution_adapter_request_generation_enabled": _safe_int(
+                real_execution_adapter_contract_request_generation_enabled.get("true"), 0
+            ),
+            "real_execution_adapter_result_generation_enabled": _safe_int(
+                real_execution_adapter_contract_result_generation_enabled.get("true"), 0
+            ),
+            "real_execution_adapter_sandbox_execution_enabled": _safe_int(
+                real_execution_adapter_contract_sandbox_execution_enabled.get("true"), 0
+            ),
+            "real_execution_adapter_policy_gated_real_enabled": _safe_int(
+                real_execution_adapter_contract_policy_gated_real_enabled.get("true"), 0
+            ),
+            "real_execution_adapter_contract_execution_performed": _safe_int(
+                real_execution_adapter_contract_execution_performed.get("true"), 0
+            ),
+            "real_execution_adapter_contract_subprocess_invoked": _safe_int(
+                real_execution_adapter_contract_subprocess_invoked.get("true"), 0
+            ),
+            "real_execution_adapter_contract_real_execution_enabled": _safe_int(
+                real_execution_adapter_contract_real_execution_enabled.get("true"), 0
+            ),
+            "real_execution_adapter_contract_external_side_effects": _safe_int(
+                real_execution_adapter_contract_external_side_effects.get("true"), 0
+            ),
+            "real_execution_adapter_contract_production_paths_mutated": _safe_int(
+                real_execution_adapter_contract_production_paths_mutated.get("true"), 0
+            ),
+            "real_execution_adapter_contract_production_secrets_accessed": _safe_int(
+                real_execution_adapter_contract_production_secrets_accessed.get("true"), 0
+            ),
+            "real_execution_adapter_contract_source_post_repair_passed": _safe_int(
+                real_execution_adapter_contract_source_post_repair_statuses.get("passed"), 0
+            ),
+            "real_execution_adapter_contract_source_verified": _safe_int(
+                real_execution_adapter_contract_source_verified.get("true"), 0
+            ),
+            "real_execution_adapter_contract_source_expected_count_9": _safe_int(
+                real_execution_adapter_contract_source_expected_counts.get("9"), 0
+            ),
+            "real_execution_adapter_contract_source_verified_count_9": _safe_int(
+                real_execution_adapter_contract_source_verified_counts.get("9"), 0
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -3934,6 +4197,10 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "post_repair_evidence_records",
             "post_repair_evidence_linkage_complete",
             "post_repair_evidence_orphans",
+            "real_execution_adapter_contract_observed",
+            "real_execution_adapter_contract_records",
+            "real_execution_adapter_contract_linkage_complete",
+            "real_execution_adapter_contract_orphans",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -5113,6 +5380,93 @@ def _build_checks(
     )
     post_repair_evidence_repair_subprocess_invoked = _safe_mapping(
         trail_summary.get("post_repair_evidence_repair_subprocess_invoked")
+    )
+    real_execution_adapter_contract_statuses = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_statuses")
+    )
+    real_execution_adapter_contract_schema_versions = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_schema_versions")
+    )
+    real_execution_adapter_contract_request_schema_versions = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_request_schema_versions")
+    )
+    real_execution_adapter_contract_result_schema_versions = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_result_schema_versions")
+    )
+    real_execution_adapter_contract_next_actions = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_next_actions")
+    )
+    real_execution_adapter_contract_exists = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_exists")
+    )
+    real_execution_adapter_contract_request_schema_exists = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_request_schema_exists")
+    )
+    real_execution_adapter_contract_result_schema_exists = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_result_schema_exists")
+    )
+    real_execution_adapter_contract_fail_closed_default = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_fail_closed_default")
+    )
+    real_execution_adapter_contract_sandbox_first = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_sandbox_first")
+    )
+    real_execution_adapter_contract_capability_scoped = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_capability_scoped")
+    )
+    real_execution_adapter_contract_policy_gated = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_policy_gated")
+    )
+    real_execution_adapter_contract_unknown_capability_rejected = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_unknown_capability_rejected")
+    )
+    real_execution_adapter_contract_unknown_policy_rejected = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_unknown_policy_rejected")
+    )
+    real_execution_adapter_contract_adapter_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_adapter_enabled")
+    )
+    real_execution_adapter_contract_request_generation_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_request_generation_enabled")
+    )
+    real_execution_adapter_contract_result_generation_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_result_generation_enabled")
+    )
+    real_execution_adapter_contract_sandbox_execution_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_sandbox_execution_enabled")
+    )
+    real_execution_adapter_contract_policy_gated_real_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_policy_gated_real_enabled")
+    )
+    real_execution_adapter_contract_execution_performed = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_execution_performed")
+    )
+    real_execution_adapter_contract_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_subprocess_invoked")
+    )
+    real_execution_adapter_contract_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_real_execution_enabled")
+    )
+    real_execution_adapter_contract_external_side_effects = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_external_side_effects")
+    )
+    real_execution_adapter_contract_production_paths_mutated = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_production_paths_mutated")
+    )
+    real_execution_adapter_contract_production_secrets_accessed = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_production_secrets_accessed")
+    )
+    real_execution_adapter_contract_source_post_repair_statuses = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_source_post_repair_statuses")
+    )
+    real_execution_adapter_contract_source_verified = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_source_verified")
+    )
+    real_execution_adapter_contract_source_expected_counts = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_source_expected_counts")
+    )
+    real_execution_adapter_contract_source_verified_counts = _safe_mapping(
+        trail_summary.get("real_execution_adapter_contract_source_verified_counts")
     )
 
     checks = [
@@ -8565,6 +8919,277 @@ def _build_checks(
             == 0,
             _safe_int(post_repair_evidence_repair_subprocess_invoked.get("true"), 0),
         ),
+        _check(
+            "real_execution_adapter_contract_observed_after_post_repair",
+            _safe_int(post_repair_evidence_statuses.get("passed"), 0) == 0
+            or _safe_int(real_execution_adapter_contract_statuses.get("defined"), 0)
+            > 0,
+            {
+                "passed_post_repair_evidence_checks": _safe_int(
+                    post_repair_evidence_statuses.get("passed"), 0
+                ),
+                "defined_adapter_contracts": _safe_int(
+                    real_execution_adapter_contract_statuses.get("defined"), 0
+                ),
+            },
+        ),
+        _check(
+            "real_execution_adapter_contract_links_to_post_repair",
+            _safe_int(real_execution_adapter_contract_statuses.get("defined"), 0)
+            == 0
+            or _safe_int(
+                trail_summary.get("real_execution_adapter_contract_orphans"), 0
+            )
+            == 0,
+            _safe_int(
+                trail_summary.get("real_execution_adapter_contract_orphans"), 0
+            ),
+        ),
+        _check(
+            "real_execution_adapter_contract_defined",
+            _safe_int(real_execution_adapter_contract_statuses.get("defined"), 0)
+            == 1,
+            _safe_int(real_execution_adapter_contract_statuses.get("defined"), 0),
+        ),
+        _check(
+            "real_execution_adapter_contract_schema_version",
+            _safe_int(
+                real_execution_adapter_contract_schema_versions.get(
+                    "real-execution-adapter-contract/v1"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_adapter_contract_schema_versions,
+        ),
+        _check(
+            "real_execution_adapter_request_schema_version",
+            _safe_int(
+                real_execution_adapter_contract_request_schema_versions.get(
+                    "real-execution-adapter-request/v1"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_adapter_contract_request_schema_versions,
+        ),
+        _check(
+            "real_execution_adapter_result_schema_version",
+            _safe_int(
+                real_execution_adapter_contract_result_schema_versions.get(
+                    "real-execution-adapter-result/v1"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_adapter_contract_result_schema_versions,
+        ),
+        _check(
+            "real_execution_adapter_contract_next_action_request_schema",
+            _safe_int(
+                real_execution_adapter_contract_next_actions.get(
+                    "prepare_real_execution_adapter_request_schema"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_adapter_contract_next_actions,
+        ),
+        _check(
+            "real_execution_adapter_contract_exists",
+            _safe_int(real_execution_adapter_contract_exists.get("true"), 0) == 1,
+            real_execution_adapter_contract_exists,
+        ),
+        _check(
+            "real_execution_adapter_request_schema_exists",
+            _safe_int(
+                real_execution_adapter_contract_request_schema_exists.get("true"), 0
+            )
+            == 1,
+            real_execution_adapter_contract_request_schema_exists,
+        ),
+        _check(
+            "real_execution_adapter_result_schema_exists",
+            _safe_int(
+                real_execution_adapter_contract_result_schema_exists.get("true"), 0
+            )
+            == 1,
+            real_execution_adapter_contract_result_schema_exists,
+        ),
+        _check(
+            "real_execution_adapter_contract_fail_closed",
+            _safe_int(
+                real_execution_adapter_contract_fail_closed_default.get("true"), 0
+            )
+            == 1,
+            real_execution_adapter_contract_fail_closed_default,
+        ),
+        _check(
+            "real_execution_adapter_contract_sandbox_first",
+            _safe_int(real_execution_adapter_contract_sandbox_first.get("true"), 0)
+            == 1,
+            real_execution_adapter_contract_sandbox_first,
+        ),
+        _check(
+            "real_execution_adapter_contract_capability_scoped",
+            _safe_int(
+                real_execution_adapter_contract_capability_scoped.get("true"), 0
+            )
+            == 1,
+            real_execution_adapter_contract_capability_scoped,
+        ),
+        _check(
+            "real_execution_adapter_contract_policy_gated",
+            _safe_int(real_execution_adapter_contract_policy_gated.get("true"), 0)
+            == 1,
+            real_execution_adapter_contract_policy_gated,
+        ),
+        _check(
+            "real_execution_adapter_unknown_capability_rejected",
+            _safe_int(
+                real_execution_adapter_contract_unknown_capability_rejected.get(
+                    "true"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_adapter_contract_unknown_capability_rejected,
+        ),
+        _check(
+            "real_execution_adapter_unknown_policy_rejected",
+            _safe_int(
+                real_execution_adapter_contract_unknown_policy_rejected.get("true"), 0
+            )
+            == 1,
+            real_execution_adapter_contract_unknown_policy_rejected,
+        ),
+        _check(
+            "real_execution_adapter_contract_not_runnable",
+            _safe_int(real_execution_adapter_contract_adapter_enabled.get("true"), 0)
+            == 0,
+            real_execution_adapter_contract_adapter_enabled,
+        ),
+        _check(
+            "real_execution_adapter_request_generation_disabled",
+            _safe_int(
+                real_execution_adapter_contract_request_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_adapter_contract_request_generation_enabled,
+        ),
+        _check(
+            "real_execution_adapter_result_generation_disabled",
+            _safe_int(
+                real_execution_adapter_contract_result_generation_enabled.get("true"),
+                0,
+            )
+            == 0,
+            real_execution_adapter_contract_result_generation_enabled,
+        ),
+        _check(
+            "real_execution_adapter_sandbox_execution_disabled",
+            _safe_int(
+                real_execution_adapter_contract_sandbox_execution_enabled.get("true"),
+                0,
+            )
+            == 0,
+            real_execution_adapter_contract_sandbox_execution_enabled,
+        ),
+        _check(
+            "real_execution_adapter_policy_gated_real_disabled",
+            _safe_int(
+                real_execution_adapter_contract_policy_gated_real_enabled.get("true"),
+                0,
+            )
+            == 0,
+            real_execution_adapter_contract_policy_gated_real_enabled,
+        ),
+        _check(
+            "real_execution_adapter_contract_did_not_execute",
+            _safe_int(
+                real_execution_adapter_contract_execution_performed.get("true"), 0
+            )
+            == 0,
+            real_execution_adapter_contract_execution_performed,
+        ),
+        _check(
+            "real_execution_adapter_contract_did_not_invoke_subprocess",
+            _safe_int(real_execution_adapter_contract_subprocess_invoked.get("true"), 0)
+            == 0,
+            real_execution_adapter_contract_subprocess_invoked,
+        ),
+        _check(
+            "real_execution_adapter_contract_did_not_enable_real_execution",
+            _safe_int(
+                real_execution_adapter_contract_real_execution_enabled.get("true"), 0
+            )
+            == 0,
+            real_execution_adapter_contract_real_execution_enabled,
+        ),
+        _check(
+            "real_execution_adapter_contract_no_external_side_effects",
+            _safe_int(
+                real_execution_adapter_contract_external_side_effects.get("true"), 0
+            )
+            == 0,
+            real_execution_adapter_contract_external_side_effects,
+        ),
+        _check(
+            "real_execution_adapter_contract_no_production_paths_mutated",
+            _safe_int(
+                real_execution_adapter_contract_production_paths_mutated.get("true"),
+                0,
+            )
+            == 0,
+            real_execution_adapter_contract_production_paths_mutated,
+        ),
+        _check(
+            "real_execution_adapter_contract_no_production_secrets_accessed",
+            _safe_int(
+                real_execution_adapter_contract_production_secrets_accessed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_adapter_contract_production_secrets_accessed,
+        ),
+        _check(
+            "real_execution_adapter_contract_source_post_repair_passed",
+            _safe_int(
+                real_execution_adapter_contract_source_post_repair_statuses.get(
+                    "passed"
+                ),
+                0,
+            )
+            == 1,
+            real_execution_adapter_contract_source_post_repair_statuses,
+        ),
+        _check(
+            "real_execution_adapter_contract_source_verified",
+            _safe_int(real_execution_adapter_contract_source_verified.get("true"), 0)
+            == 1,
+            real_execution_adapter_contract_source_verified,
+        ),
+        _check(
+            "real_execution_adapter_contract_source_expected_count_9",
+            _safe_int(
+                real_execution_adapter_contract_source_expected_counts.get("9"), 0
+            )
+            == 1,
+            real_execution_adapter_contract_source_expected_counts,
+        ),
+        _check(
+            "real_execution_adapter_contract_source_verified_count_9",
+            _safe_int(
+                real_execution_adapter_contract_source_verified_counts.get("9"), 0
+            )
+            == 1,
+            real_execution_adapter_contract_source_verified_counts,
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -8726,6 +9351,10 @@ def validate_controlled_execution_readiness_report_schema(
         "post_repair_evidence_records",
         "post_repair_evidence_linkage_complete",
         "post_repair_evidence_orphans",
+        "real_execution_adapter_contract_observed",
+        "real_execution_adapter_contract_records",
+        "real_execution_adapter_contract_linkage_complete",
+        "real_execution_adapter_contract_orphans",
     ]
 
     reasons: list[str] = []
@@ -9035,6 +9664,17 @@ def validate_controlled_execution_readiness_report_schema(
         reasons.append("post_repair_evidence_linkage_complete_must_be_bool")
     if not isinstance(report.get("post_repair_evidence_orphans"), int):
         reasons.append("post_repair_evidence_orphans_must_be_int")
+    
+    if not isinstance(report.get("real_execution_adapter_contract_observed"), bool):
+        reasons.append("real_execution_adapter_contract_observed_must_be_bool")
+    if not isinstance(report.get("real_execution_adapter_contract_records"), int):
+        reasons.append("real_execution_adapter_contract_records_must_be_int")
+    if not isinstance(
+        report.get("real_execution_adapter_contract_linkage_complete"), bool
+    ):
+        reasons.append("real_execution_adapter_contract_linkage_complete_must_be_bool")
+    if not isinstance(report.get("real_execution_adapter_contract_orphans"), int):
+        reasons.append("real_execution_adapter_contract_orphans_must_be_int")
 
     return {
         "type": "controlled_execution_readiness_schema_validation",
@@ -9505,6 +10145,35 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"post_repair_evidence_real_execution_enabled={result.get('post_repair_evidence_real_execution_enabled', 0)} "
         f"post_repair_evidence_repair_execution_performed={result.get('post_repair_evidence_repair_execution_performed', 0)} "
         f"post_repair_evidence_repair_subprocess_invoked={result.get('post_repair_evidence_repair_subprocess_invoked', 0)} "
+        f"real_execution_adapter_contract_observed={str(bool(result.get('real_execution_adapter_contract_observed'))).lower()} "
+        f"real_execution_adapter_contract_records={result.get('real_execution_adapter_contract_records', 0)} "
+        f"real_execution_adapter_contract_linkage_complete={str(bool(result.get('real_execution_adapter_contract_linkage_complete'))).lower()} "
+        f"real_execution_adapter_contract_orphans={result.get('real_execution_adapter_contract_orphans', 0)} "
+        f"real_execution_adapter_contract_defined={result.get('real_execution_adapter_contract_defined', 0)} "
+        f"real_execution_adapter_contract_exists={result.get('real_execution_adapter_contract_exists', 0)} "
+        f"real_execution_adapter_request_schema_exists={result.get('real_execution_adapter_request_schema_exists', 0)} "
+        f"real_execution_adapter_result_schema_exists={result.get('real_execution_adapter_result_schema_exists', 0)} "
+        f"real_execution_adapter_contract_fail_closed={result.get('real_execution_adapter_contract_fail_closed', 0)} "
+        f"real_execution_adapter_contract_sandbox_first={result.get('real_execution_adapter_contract_sandbox_first', 0)} "
+        f"real_execution_adapter_contract_capability_scoped={result.get('real_execution_adapter_contract_capability_scoped', 0)} "
+        f"real_execution_adapter_contract_policy_gated={result.get('real_execution_adapter_contract_policy_gated', 0)} "
+        f"real_execution_adapter_unknown_capability_rejected={result.get('real_execution_adapter_unknown_capability_rejected', 0)} "
+        f"real_execution_adapter_unknown_policy_rejected={result.get('real_execution_adapter_unknown_policy_rejected', 0)} "
+        f"real_execution_adapter_contract_adapter_enabled={result.get('real_execution_adapter_contract_adapter_enabled', 0)} "
+        f"real_execution_adapter_request_generation_enabled={result.get('real_execution_adapter_request_generation_enabled', 0)} "
+        f"real_execution_adapter_result_generation_enabled={result.get('real_execution_adapter_result_generation_enabled', 0)} "
+        f"real_execution_adapter_sandbox_execution_enabled={result.get('real_execution_adapter_sandbox_execution_enabled', 0)} "
+        f"real_execution_adapter_policy_gated_real_enabled={result.get('real_execution_adapter_policy_gated_real_enabled', 0)} "
+        f"real_execution_adapter_contract_execution_performed={result.get('real_execution_adapter_contract_execution_performed', 0)} "
+        f"real_execution_adapter_contract_subprocess_invoked={result.get('real_execution_adapter_contract_subprocess_invoked', 0)} "
+        f"real_execution_adapter_contract_real_execution_enabled={result.get('real_execution_adapter_contract_real_execution_enabled', 0)} "
+        f"real_execution_adapter_contract_external_side_effects={result.get('real_execution_adapter_contract_external_side_effects', 0)} "
+        f"real_execution_adapter_contract_production_paths_mutated={result.get('real_execution_adapter_contract_production_paths_mutated', 0)} "
+        f"real_execution_adapter_contract_production_secrets_accessed={result.get('real_execution_adapter_contract_production_secrets_accessed', 0)} "
+        f"real_execution_adapter_contract_source_post_repair_passed={result.get('real_execution_adapter_contract_source_post_repair_passed', 0)} "
+        f"real_execution_adapter_contract_source_verified={result.get('real_execution_adapter_contract_source_verified', 0)} "
+        f"real_execution_adapter_contract_source_expected_count_9={result.get('real_execution_adapter_contract_source_expected_count_9', 0)} "
+        f"real_execution_adapter_contract_source_verified_count_9={result.get('real_execution_adapter_contract_source_verified_count_9', 0)} "
     )
 
 

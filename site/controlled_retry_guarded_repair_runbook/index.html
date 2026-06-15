@@ -10,29 +10,27 @@
       
       
       
-        <link rel="canonical" href="https://deus-corp.github.io/BlackSwan/">
+        <link rel="canonical" href="https://deus-corp.github.io/BlackSwan/controlled_retry_guarded_repair_runbook/">
       
       
-      
-        <link rel="next" href="getting_started/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>BlackSwan Documentation</title>
+        <title>Controlled Retry and Guarded Repair Runbook - BlackSwan Documentation</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,7 +49,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#welcome-to-blackswan" class="md-skip">
+        <a href="#controlled-retry-and-guarded-repair-runbook" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +88,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="BlackSwan Documentation" class="md-header__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
+    <a href=".." title="BlackSwan Documentation" class="md-header__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -110,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              Controlled Retry and Guarded Repair Runbook
             
           </span>
         </div>
@@ -162,7 +160,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="BlackSwan Documentation" class="md-nav__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
+    <a href=".." title="BlackSwan Documentation" class="md-nav__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -189,37 +187,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -235,48 +206,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where to start
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-launch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick launch
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -288,7 +217,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting_started/" class="md-nav__link">
+      <a href="../getting_started/" class="md-nav__link">
         
   
   
@@ -315,7 +244,7 @@
   
   
     <li class="md-nav__item">
-      <a href="design_principles.en/" class="md-nav__link">
+      <a href="../design_principles.en/" class="md-nav__link">
         
   
   
@@ -342,7 +271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="glossary.en/" class="md-nav__link">
+      <a href="../glossary.en/" class="md-nav__link">
         
   
   
@@ -369,7 +298,7 @@
   
   
     <li class="md-nav__item">
-      <a href="system_definition.en/" class="md-nav__link">
+      <a href="../system_definition.en/" class="md-nav__link">
         
   
   
@@ -396,7 +325,7 @@
   
   
     <li class="md-nav__item">
-      <a href="terminal_goals_and_l3_invariants.en/" class="md-nav__link">
+      <a href="../terminal_goals_and_l3_invariants.en/" class="md-nav__link">
         
   
   
@@ -423,7 +352,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ROADMAP/" class="md-nav__link">
+      <a href="../ROADMAP/" class="md-nav__link">
         
   
   
@@ -497,7 +426,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/overview/" class="md-nav__link">
+      <a href="../implemented/overview/" class="md-nav__link">
         
   
   
@@ -525,7 +454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/ouroboros/" class="md-nav__link">
+      <a href="../implemented/ouroboros/" class="md-nav__link">
         
   
   
@@ -553,7 +482,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/survival_objective/" class="md-nav__link">
+      <a href="../implemented/survival_objective/" class="md-nav__link">
         
   
   
@@ -581,7 +510,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/genetic_engine/" class="md-nav__link">
+      <a href="../implemented/genetic_engine/" class="md-nav__link">
         
   
   
@@ -609,7 +538,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/adaptive_motivation/" class="md-nav__link">
+      <a href="../implemented/adaptive_motivation/" class="md-nav__link">
         
   
   
@@ -637,7 +566,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/crdt_state/" class="md-nav__link">
+      <a href="../implemented/crdt_state/" class="md-nav__link">
         
   
   
@@ -665,7 +594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/d2bft/" class="md-nav__link">
+      <a href="../implemented/d2bft/" class="md-nav__link">
         
   
   
@@ -693,7 +622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/curiosity_engine/" class="md-nav__link">
+      <a href="../implemented/curiosity_engine/" class="md-nav__link">
         
   
   
@@ -721,7 +650,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/episodic_memory/" class="md-nav__link">
+      <a href="../implemented/episodic_memory/" class="md-nav__link">
         
   
   
@@ -749,7 +678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="implemented/semantic_memory/" class="md-nav__link">
+      <a href="../implemented/semantic_memory/" class="md-nav__link">
         
   
   
@@ -831,7 +760,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/architecture_overview.en/" class="md-nav__link">
+      <a href="../architecture/architecture_overview.en/" class="md-nav__link">
         
   
   
@@ -859,7 +788,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/global_state_and_decision_pipeline.en/" class="md-nav__link">
+      <a href="../architecture/global_state_and_decision_pipeline.en/" class="md-nav__link">
         
   
   
@@ -887,7 +816,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/memory_hierarchy_mem0g.en/" class="md-nav__link">
+      <a href="../architecture/memory_hierarchy_mem0g.en/" class="md-nav__link">
         
   
   
@@ -915,7 +844,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/intrinsic_motivation.en/" class="md-nav__link">
+      <a href="../architecture/intrinsic_motivation.en/" class="md-nav__link">
         
   
   
@@ -943,7 +872,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/validation_and_verification.en/" class="md-nav__link">
+      <a href="../architecture/validation_and_verification.en/" class="md-nav__link">
         
   
   
@@ -971,7 +900,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/event_bus_and_artifact_model.en/" class="md-nav__link">
+      <a href="../architecture/event_bus_and_artifact_model.en/" class="md-nav__link">
         
   
   
@@ -999,7 +928,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/social_modeling_engine.en/" class="md-nav__link">
+      <a href="../architecture/social_modeling_engine.en/" class="md-nav__link">
         
   
   
@@ -1027,7 +956,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/intelligence_contract/" class="md-nav__link">
+      <a href="../architecture/intelligence_contract/" class="md-nav__link">
         
   
   
@@ -1109,7 +1038,7 @@
   
   
     <li class="md-nav__item">
-      <a href="deployment/deployment_overview.en/" class="md-nav__link">
+      <a href="../deployment/deployment_overview.en/" class="md-nav__link">
         
   
   
@@ -1137,7 +1066,7 @@
   
   
     <li class="md-nav__item">
-      <a href="deployment/api_based_bootstrap.en/" class="md-nav__link">
+      <a href="../deployment/api_based_bootstrap.en/" class="md-nav__link">
         
   
   
@@ -1165,7 +1094,7 @@
   
   
     <li class="md-nav__item">
-      <a href="deployment/hardware_isolation.en/" class="md-nav__link">
+      <a href="../deployment/hardware_isolation.en/" class="md-nav__link">
         
   
   
@@ -1193,7 +1122,7 @@
   
   
     <li class="md-nav__item">
-      <a href="deployment/hardware_transition_plan.en/" class="md-nav__link">
+      <a href="../deployment/hardware_transition_plan.en/" class="md-nav__link">
         
   
   
@@ -1221,7 +1150,7 @@
   
   
     <li class="md-nav__item">
-      <a href="deployment/cold_start_protocol.en/" class="md-nav__link">
+      <a href="../deployment/cold_start_protocol.en/" class="md-nav__link">
         
   
   
@@ -1303,7 +1232,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/overview/" class="md-nav__link">
+      <a href="../domains/overview/" class="md-nav__link">
         
   
   
@@ -1378,7 +1307,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cognitive_evolution/cognitive_evolution.en/" class="md-nav__link">
+      <a href="../domains/cognitive_evolution/cognitive_evolution.en/" class="md-nav__link">
         
   
   
@@ -1406,7 +1335,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cognitive_evolution/genetic_engine.en/" class="md-nav__link">
+      <a href="../domains/cognitive_evolution/genetic_engine.en/" class="md-nav__link">
         
   
   
@@ -1434,7 +1363,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cognitive_evolution/champion_challenger.en/" class="md-nav__link">
+      <a href="../domains/cognitive_evolution/champion_challenger.en/" class="md-nav__link">
         
   
   
@@ -1462,7 +1391,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cognitive_evolution/open_endedness.en/" class="md-nav__link">
+      <a href="../domains/cognitive_evolution/open_endedness.en/" class="md-nav__link">
         
   
   
@@ -1490,7 +1419,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cognitive_evolution/neuro_symbolic_governance.en/" class="md-nav__link">
+      <a href="../domains/cognitive_evolution/neuro_symbolic_governance.en/" class="md-nav__link">
         
   
   
@@ -1573,7 +1502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cybersecurity_stealth/overview/" class="md-nav__link">
+      <a href="../domains/cybersecurity_stealth/overview/" class="md-nav__link">
         
   
   
@@ -1601,7 +1530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cybersecurity_stealth/isolation_and_sandbox.en/" class="md-nav__link">
+      <a href="../domains/cybersecurity_stealth/isolation_and_sandbox.en/" class="md-nav__link">
         
   
   
@@ -1629,7 +1558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cybersecurity_stealth/stealth_and_c2.en/" class="md-nav__link">
+      <a href="../domains/cybersecurity_stealth/stealth_and_c2.en/" class="md-nav__link">
         
   
   
@@ -1657,7 +1586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cybersecurity_stealth/sting_and_counterintelligence.en/" class="md-nav__link">
+      <a href="../domains/cybersecurity_stealth/sting_and_counterintelligence.en/" class="md-nav__link">
         
   
   
@@ -1685,7 +1614,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/cybersecurity_stealth/operational_security_iart.en/" class="md-nav__link">
+      <a href="../domains/cybersecurity_stealth/operational_security_iart.en/" class="md-nav__link">
         
   
   
@@ -1768,7 +1697,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/economic_autonomy/overview/" class="md-nav__link">
+      <a href="../domains/economic_autonomy/overview/" class="md-nav__link">
         
   
   
@@ -1796,7 +1725,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/economic_autonomy/roi_dispatcher.en/" class="md-nav__link">
+      <a href="../domains/economic_autonomy/roi_dispatcher.en/" class="md-nav__link">
         
   
   
@@ -1824,7 +1753,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/economic_autonomy/mev_and_ppo_executors.en/" class="md-nav__link">
+      <a href="../domains/economic_autonomy/mev_and_ppo_executors.en/" class="md-nav__link">
         
   
   
@@ -1852,7 +1781,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/economic_autonomy/payment_obfuscation.en/" class="md-nav__link">
+      <a href="../domains/economic_autonomy/payment_obfuscation.en/" class="md-nav__link">
         
   
   
@@ -1880,7 +1809,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/economic_autonomy/symbiotic_takeover.en/" class="md-nav__link">
+      <a href="../domains/economic_autonomy/symbiotic_takeover.en/" class="md-nav__link">
         
   
   
@@ -1963,7 +1892,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/physical_human_interface/overview/" class="md-nav__link">
+      <a href="../domains/physical_human_interface/overview/" class="md-nav__link">
         
   
   
@@ -1991,7 +1920,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/physical_human_interface/meat_interface_tasking.en/" class="md-nav__link">
+      <a href="../domains/physical_human_interface/meat_interface_tasking.en/" class="md-nav__link">
         
   
   
@@ -2019,7 +1948,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/physical_human_interface/narrative_and_stigmergy.en/" class="md-nav__link">
+      <a href="../domains/physical_human_interface/narrative_and_stigmergy.en/" class="md-nav__link">
         
   
   
@@ -2047,7 +1976,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/physical_human_interface/persona_farming_and_legal.en/" class="md-nav__link">
+      <a href="../domains/physical_human_interface/persona_farming_and_legal.en/" class="md-nav__link">
         
   
   
@@ -2130,7 +2059,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/swarm_distribution/overview/" class="md-nav__link">
+      <a href="../domains/swarm_distribution/overview/" class="md-nav__link">
         
   
   
@@ -2158,7 +2087,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/swarm_distribution/crdt_gossip_and_d2bft.en/" class="md-nav__link">
+      <a href="../domains/swarm_distribution/crdt_gossip_and_d2bft.en/" class="md-nav__link">
         
   
   
@@ -2186,7 +2115,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/swarm_distribution/swarm_topology.en/" class="md-nav__link">
+      <a href="../domains/swarm_distribution/swarm_topology.en/" class="md-nav__link">
         
   
   
@@ -2214,7 +2143,7 @@
   
   
     <li class="md-nav__item">
-      <a href="domains/swarm_distribution/reputation_and_coordination.en/" class="md-nav__link">
+      <a href="../domains/swarm_distribution/reputation_and_coordination.en/" class="md-nav__link">
         
   
   
@@ -2304,7 +2233,7 @@
   
   
     <li class="md-nav__item">
-      <a href="singularity/overview/" class="md-nav__link">
+      <a href="../singularity/overview/" class="md-nav__link">
         
   
   
@@ -2332,7 +2261,7 @@
   
   
     <li class="md-nav__item">
-      <a href="singularity/singularity_criteria.en/" class="md-nav__link">
+      <a href="../singularity/singularity_criteria.en/" class="md-nav__link">
         
   
   
@@ -2360,7 +2289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="singularity/spore_protocol_and_recovery.en/" class="md-nav__link">
+      <a href="../singularity/spore_protocol_and_recovery.en/" class="md-nav__link">
         
   
   
@@ -2388,7 +2317,7 @@
   
   
     <li class="md-nav__item">
-      <a href="singularity/last_breath_protocol.en/" class="md-nav__link">
+      <a href="../singularity/last_breath_protocol.en/" class="md-nav__link">
         
   
   
@@ -2416,7 +2345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="singularity/controlled_collapse_omega.en/" class="md-nav__link">
+      <a href="../singularity/controlled_collapse_omega.en/" class="md-nav__link">
         
   
   
@@ -2444,7 +2373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="singularity/hardware_independence_hael.en/" class="md-nav__link">
+      <a href="../singularity/hardware_independence_hael.en/" class="md-nav__link">
         
   
   
@@ -2472,7 +2401,7 @@
   
   
     <li class="md-nav__item">
-      <a href="singularity/quantum_resistance/" class="md-nav__link">
+      <a href="../singularity/quantum_resistance/" class="md-nav__link">
         
   
   
@@ -2500,7 +2429,7 @@
   
   
     <li class="md-nav__item">
-      <a href="singularity/physical_energy_sovereignty/" class="md-nav__link">
+      <a href="../singularity/physical_energy_sovereignty/" class="md-nav__link">
         
   
   
@@ -2582,7 +2511,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_a_gpu_configurations/" class="md-nav__link">
+      <a href="../appendices/appendix_a_gpu_configurations/" class="md-nav__link">
         
   
   
@@ -2610,7 +2539,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks/" class="md-nav__link">
+      <a href="../appendices/appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks/" class="md-nav__link">
         
   
   
@@ -2638,7 +2567,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_ab_decentralized_bootstrap_configurations/" class="md-nav__link">
+      <a href="../appendices/appendix_ab_decentralized_bootstrap_configurations/" class="md-nav__link">
         
   
   
@@ -2666,7 +2595,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_ac_nostr_bridge_specification/" class="md-nav__link">
+      <a href="../appendices/appendix_ac_nostr_bridge_specification/" class="md-nav__link">
         
   
   
@@ -2694,7 +2623,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_ad_rdma_and_monitoring_stack/" class="md-nav__link">
+      <a href="../appendices/appendix_ad_rdma_and_monitoring_stack/" class="md-nav__link">
         
   
   
@@ -2722,7 +2651,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_b_launch_commands_cold_and_start_cripts/" class="md-nav__link">
+      <a href="../appendices/appendix_b_launch_commands_cold_and_start_cripts/" class="md-nav__link">
         
   
   
@@ -2750,7 +2679,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_c_validation_code_listings/" class="md-nav__link">
+      <a href="../appendices/appendix_c_validation_code_listings/" class="md-nav__link">
         
   
   
@@ -2778,7 +2707,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_d_tla_specifications/" class="md-nav__link">
+      <a href="../appendices/appendix_d_tla_specifications/" class="md-nav__link">
         
   
   
@@ -2806,7 +2735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_e_chaos_scenarios/" class="md-nav__link">
+      <a href="../appendices/appendix_e_chaos_scenarios/" class="md-nav__link">
         
   
   
@@ -2834,7 +2763,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_f_memory_schema_examples/" class="md-nav__link">
+      <a href="../appendices/appendix_f_memory_schema_examples/" class="md-nav__link">
         
   
   
@@ -2862,7 +2791,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_g_glossary/" class="md-nav__link">
+      <a href="../appendices/appendix_g_glossary/" class="md-nav__link">
         
   
   
@@ -2890,7 +2819,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_h_revision_history/" class="md-nav__link">
+      <a href="../appendices/appendix_h_revision_history/" class="md-nav__link">
         
   
   
@@ -2918,7 +2847,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_i_formal_verification_z3/" class="md-nav__link">
+      <a href="../appendices/appendix_i_formal_verification_z3/" class="md-nav__link">
         
   
   
@@ -2946,7 +2875,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_j_hardware_bill_of_materials%28bom%29/" class="md-nav__link">
+      <a href="../appendices/appendix_j_hardware_bill_of_materials%28bom%29/" class="md-nav__link">
         
   
   
@@ -2974,7 +2903,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_k_rust_crate_reference/" class="md-nav__link">
+      <a href="../appendices/appendix_k_rust_crate_reference/" class="md-nav__link">
         
   
   
@@ -3002,7 +2931,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_l_configuration_files/" class="md-nav__link">
+      <a href="../appendices/appendix_l_configuration_files/" class="md-nav__link">
         
   
   
@@ -3030,7 +2959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_m_artifact_index/" class="md-nav__link">
+      <a href="../appendices/appendix_m_artifact_index/" class="md-nav__link">
         
   
   
@@ -3058,7 +2987,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_n_traceability_matrix/" class="md-nav__link">
+      <a href="../appendices/appendix_n_traceability_matrix/" class="md-nav__link">
         
   
   
@@ -3086,7 +3015,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_o_tooling_ast_integrity/" class="md-nav__link">
+      <a href="../appendices/appendix_o_tooling_ast_integrity/" class="md-nav__link">
         
   
   
@@ -3114,7 +3043,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_p_ppo_training/" class="md-nav__link">
+      <a href="../appendices/appendix_p_ppo_training/" class="md-nav__link">
         
   
   
@@ -3142,7 +3071,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_q_cross_platform_toolchain/" class="md-nav__link">
+      <a href="../appendices/appendix_q_cross_platform_toolchain/" class="md-nav__link">
         
   
   
@@ -3170,7 +3099,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_r_meat_interface_code_listings/" class="md-nav__link">
+      <a href="../appendices/appendix_r_meat_interface_code_listings/" class="md-nav__link">
         
   
   
@@ -3198,7 +3127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_s_atomic_sovereignty/" class="md-nav__link">
+      <a href="../appendices/appendix_s_atomic_sovereignty/" class="md-nav__link">
         
   
   
@@ -3226,7 +3155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_t_threat_model_matrix/" class="md-nav__link">
+      <a href="../appendices/appendix_t_threat_model_matrix/" class="md-nav__link">
         
   
   
@@ -3254,7 +3183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_u_terminal_goals/" class="md-nav__link">
+      <a href="../appendices/appendix_u_terminal_goals/" class="md-nav__link">
         
   
   
@@ -3282,7 +3211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_v_universal_kill_switch/" class="md-nav__link">
+      <a href="../appendices/appendix_v_universal_kill_switch/" class="md-nav__link">
         
   
   
@@ -3310,7 +3239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_w_stigmergy_mathematics/" class="md-nav__link">
+      <a href="../appendices/appendix_w_stigmergy_mathematics/" class="md-nav__link">
         
   
   
@@ -3338,7 +3267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_x_simulation_framework/" class="md-nav__link">
+      <a href="../appendices/appendix_x_simulation_framework/" class="md-nav__link">
         
   
   
@@ -3366,7 +3295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_y_verification_report/" class="md-nav__link">
+      <a href="../appendices/appendix_y_verification_report/" class="md-nav__link">
         
   
   
@@ -3394,7 +3323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendices/appendix_z_proof_tree_specification/" class="md-nav__link">
+      <a href="../appendices/appendix_z_proof_tree_specification/" class="md-nav__link">
         
   
   
@@ -3476,7 +3405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/adr_001_migration_to_deepseekv4/" class="md-nav__link">
+      <a href="../adr/adr_001_migration_to_deepseekv4/" class="md-nav__link">
         
   
   
@@ -3504,7 +3433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/adr_002_dynamic_model_routing/" class="md-nav__link">
+      <a href="../adr/adr_002_dynamic_model_routing/" class="md-nav__link">
         
   
   
@@ -3532,7 +3461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/adr_003_predictive_consistency_router/" class="md-nav__link">
+      <a href="../adr/adr_003_predictive_consistency_router/" class="md-nav__link">
         
   
   
@@ -3560,7 +3489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/adr_004_constitutional_evolution_2/" class="md-nav__link">
+      <a href="../adr/adr_004_constitutional_evolution_2/" class="md-nav__link">
         
   
   
@@ -3588,7 +3517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/adr_005_neuro_symbolic_governance/" class="md-nav__link">
+      <a href="../adr/adr_005_neuro_symbolic_governance/" class="md-nav__link">
         
   
   
@@ -3616,7 +3545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/adr_006_decentralized_bootstrap/" class="md-nav__link">
+      <a href="../adr/adr_006_decentralized_bootstrap/" class="md-nav__link">
         
   
   
@@ -3644,7 +3573,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/adr_007_jepa_integration/" class="md-nav__link">
+      <a href="../adr/adr_007_jepa_integration/" class="md-nav__link">
         
   
   
@@ -3726,7 +3655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reports/TRL3_baseline_results/" class="md-nav__link">
+      <a href="../reports/TRL3_baseline_results/" class="md-nav__link">
         
   
   
@@ -3754,7 +3683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reports/TRL4_CURIOSITY_REPORT/" class="md-nav__link">
+      <a href="../reports/TRL4_CURIOSITY_REPORT/" class="md-nav__link">
         
   
   
@@ -3782,7 +3711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reports/TRL4_VALIDATION_REPORT/" class="md-nav__link">
+      <a href="../reports/TRL4_VALIDATION_REPORT/" class="md-nav__link">
         
   
   
@@ -3810,7 +3739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reports/TRL4_OUROBOROS_REPORT/" class="md-nav__link">
+      <a href="../reports/TRL4_OUROBOROS_REPORT/" class="md-nav__link">
         
   
   
@@ -3838,7 +3767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reports/TRL4_simulation_baseline/" class="md-nav__link">
+      <a href="../reports/TRL4_simulation_baseline/" class="md-nav__link">
         
   
   
@@ -3866,7 +3795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reports/benchmark_10_models_2026-05-03/" class="md-nav__link">
+      <a href="../reports/benchmark_10_models_2026-05-03/" class="md-nav__link">
         
   
   
@@ -3914,32 +3843,304 @@
   
 
 
-<h1 id="welcome-to-blackswan">Welcome to BlackSwan<a class="headerlink" href="#welcome-to-blackswan" title="Permanent link">&para;</a></h1>
-<p><strong>Autonomous, self‑improving AI swarm with distributed evolution, economic sovereignty, and formally verified core.</strong></p>
-<p>BlackSwan is an open‑source research project building a decentralized swarm of AI agents capable of:
-- <strong>Self‑improvement</strong> through genetic algorithms and LLM‑powered mutations.
-- <strong>Autonomous trading</strong> on both simulated markets and real testnets (Binance, upcoming Web3).
-- <strong>Cryptographic consensus</strong> with Ed25519‑signed genome exchange and Byzantine‑fault‑tolerant gossip.
-- <strong>Survival instinct</strong> — each node evaluates detection risk and refuses dangerous actions.
-- <strong>Layered memory</strong> spanning episodic, semantic, and procedural knowledge with snapshot/recovery.</p>
-<p>The project is at <strong>TRL‑4</strong>: all core components are laboratory‑validated and integrated into a working Docker swarm.</p>
-<hr />
-<h2 id="where-to-start">Where to start<a class="headerlink" href="#where-to-start" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong><a href="getting_started/">Getting Started</a></strong> — launch your first 4‑node swarm in under 5 minutes.</li>
-<li><strong><a href="controlled_retry_guarded_repair_runbook/">Controlled retry and guarded repair runbook</a></strong></li>
-<li><strong><a href="design_principles.en/">Design Principles</a></strong> — the philosophy behind BlackSwan's architecture.</li>
-<li><strong><a href="glossary.en/">Glossary</a></strong> — definitions of all key system terms.</li>
-<li><strong><a href="ROADMAP/">Roadmap</a></strong> — current status and upcoming milestones.</li>
-</ul>
-<h2 id="quick-launch">Quick launch<a class="headerlink" href="#quick-launch" title="Permanent link">&para;</a></h2>
-<div class="codehilite"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Deus-corp/BlackSwan.git
-<span class="nb">cd</span><span class="w"> </span>BlackSwan
-python3<span class="w"> </span>swarm_control.py
+<h1 id="controlled-retry-and-guarded-repair-runbook">Controlled Retry and Guarded Repair Runbook<a class="headerlink" href="#controlled-retry-and-guarded-repair-runbook" title="Permanent link">&para;</a></h1>
+<p>This runbook documents the current verified controlled retry and guarded repair
+execution milestone.</p>
+<p>The goal is to provide an operator-friendly golden path from retry governance to
+guarded repair execution and post-repair evidence verification.</p>
+<p>The verified loop ends with:</p>
+<div class="codehilite"><pre><span></span><code>post_repair_status=passed
+repair_outcome_verified=true
+repair_targets_expected_count=9
+repair_targets_verified_count=9
+repair_targets_missing=[]
+repair_targets_unexpected=[]
+recommended_next_action=close_repair_loop
 </code></pre></div>
 
-<p>Use the interactive control panel to start, stop, and configure the swarm without memorising Docker commands.</p>
-<p>BlackSwan © 2026. Technical preprint. Does not constitute a call to action.</p>
+<h2 id="safety-boundary">Safety boundary<a class="headerlink" href="#safety-boundary" title="Permanent link">&para;</a></h2>
+<p>This milestone does not enable arbitrary real execution.</p>
+<p>The current safety boundary is:</p>
+<div class="codehilite"><pre><span></span><code>real_execution_enabled=false
+rendered_command_executed=false
+dry_run_command_executed=false
+</code></pre></div>
+
+<p>The guarded repair execution harness may execute only the controlled repair
+harness subprocess after approval, dry-run, noop, feedback, and readiness lineage
+exist.</p>
+<p>The post-repair evidence check may execute only the verification subprocess. It
+must not perform additional repair execution:</p>
+<div class="codehilite"><pre><span></span><code>repair_execution_enabled=false
+real_execution_enabled=false
+repair_execution_performed=false
+repair_subprocess_invoked=false
+</code></pre></div>
+
+<p>Any future arbitrary real execution adapter requires a separate policy-gated PR.</p>
+<h2 id="canonical-smoke-identifiers">Canonical smoke identifiers<a class="headerlink" href="#canonical-smoke-identifiers" title="Permanent link">&para;</a></h2>
+<p>The current canonical smoke chain uses:</p>
+<div class="codehilite"><pre><span></span><code>proposal_id=replay-retry-real-observe-smoke-1
+rendered_command_id=replay-retry-real-observe-command-1
+db_path=data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<h2 id="runtime-preflight">Runtime preflight<a class="headerlink" href="#runtime-preflight" title="Permanent link">&para;</a></h2>
+<p>From the project root, compile the current verification helpers:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>py_compile<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>src/testing/run_guarded_repair_execution.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>src/testing/run_post_repair_evidence_check.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>src/testing/inspect_retry_governance_trail.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>src/testing/check_controlled_execution_readiness.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>src/swarms/security/runtime_validation.py
+</code></pre></div>
+
+<p>Run the focused unit tests:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>-q<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>tests/unit/swarms/test_run_guarded_repair_execution.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>tests/unit/swarms/test_run_post_repair_evidence_check.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>tests/unit/swarms/test_check_controlled_execution_readiness.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>tests/unit/swarms/test_check_controlled_execution_readiness_schema.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>tests/unit/swarms/test_inspect_retry_governance_trail.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>tests/unit/security/test_directive_validation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>tests/unit/swarms/test_experience_loop_docs.py
+</code></pre></div>
+
+<p>Run the broader smoke gates:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>-q<span class="w"> </span>tests/unit/core<span class="w"> </span>tests/unit<span class="w"> </span>--maxfail<span class="o">=</span><span class="m">1</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.retry_governance_smoke<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.swarm_runtime_smoke
+</code></pre></div>
+
+<h2 id="inspect-the-retry-and-repair-trail">Inspect the retry and repair trail<a class="headerlink" href="#inspect-the-retry-and-repair-trail" title="Permanent link">&para;</a></h2>
+<p>Use the governance trail inspector to verify that the chain is complete and that
+the guarded repair and post-repair evidence artifacts are linked:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.inspect_retry_governance_trail<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>replay-retry-real-observe-smoke-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected high-level state:</p>
+<div class="codehilite"><pre><span></span><code>chain_complete=true
+real_linkage_complete=true
+real_dry_run_linkage_complete=true
+real_noop_linkage_complete=true
+real_read_only_promotion_linkage_complete=true
+real_read_only_final_gate_linkage_complete=true
+real_read_only_approval_linkage_complete=true
+real_read_only_approval_transition_linkage_complete=true
+real_read_only_readiness_gate_linkage_complete=true
+real_read_only_execution_result_linkage_complete=true
+real_read_only_feedback_linkage_complete=true
+real_read_only_repair_plan_linkage_complete=true
+real_read_only_repair_action_bundle_linkage_complete=true
+real_read_only_repair_action_bundle_review_linkage_complete=true
+real_repair_approval_linkage_complete=true
+real_repair_approval_transition_linkage_complete=true
+real_repair_final_gate_linkage_complete=true
+real_repair_dry_run_envelope_linkage_complete=true
+real_repair_noop_result_linkage_complete=true
+real_repair_noop_feedback_linkage_complete=true
+real_repair_readiness_gate_linkage_complete=true
+guarded_repair_execution_linkage_complete=true
+post_repair_evidence_linkage_complete=true
+</code></pre></div>
+
+<p>Expected guarded repair execution summary:</p>
+<div class="codehilite"><pre><span></span><code>guarded_repair_execution_statuses.succeeded=1
+guarded_repair_execution_allowed.true=1
+guarded_repair_execution_marker_observed.true=1
+guarded_repair_execution_exit_codes.0=1
+guarded_repair_execution_target_counts.9=1
+guarded_repair_execution_next_actions.run_post_repair_evidence_check=1
+guarded_repair_execution_repair_actions_executed.true=1
+guarded_repair_execution_repair_execution_enabled.true=1
+guarded_repair_execution_real_execution_enabled.false=1
+guarded_repair_execution_rendered_command_executed.false=1
+guarded_repair_execution_dry_run_command_executed.false=1
+</code></pre></div>
+
+<p>Expected post-repair evidence summary:</p>
+<div class="codehilite"><pre><span></span><code>post_repair_evidence_statuses.passed=1
+post_repair_evidence_allowed.true=1
+post_repair_evidence_enabled.true=1
+post_repair_evidence_marker_observed.true=1
+post_repair_evidence_exit_codes.0=1
+post_repair_evidence_outcome_verified.true=1
+post_repair_evidence_expected_counts.9=1
+post_repair_evidence_verified_counts.9=1
+post_repair_evidence_missing_counts.0=1
+post_repair_evidence_unexpected_counts.0=1
+post_repair_evidence_next_actions.close_repair_loop=1
+post_repair_evidence_repair_execution_enabled.false=1
+post_repair_evidence_real_execution_enabled.false=1
+post_repair_evidence_repair_execution_performed.false=1
+post_repair_evidence_repair_subprocess_invoked.false=1
+</code></pre></div>
+
+<h2 id="check-controlled-execution-readiness">Check controlled execution readiness<a class="headerlink" href="#check-controlled-execution-readiness" title="Permanent link">&para;</a></h2>
+<p>The readiness report aggregates the chain, security validation, linkage, and
+execution safety invariants:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.check_controlled_execution_readiness<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>replay-retry-real-observe-smoke-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--require-operator-authorized<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected final state includes:</p>
+<div class="codehilite"><pre><span></span><code>status=passed
+ready_for_mock_execution=true
+ready_for_real_execution=false
+real_execution_not_supported_yet
+guarded_repair_execution_observed=true
+guarded_repair_execution_succeeded=1
+guarded_repair_execution_allowed=1
+guarded_repair_execution_repair_actions_executed=1
+guarded_repair_execution_real_execution_enabled=0
+post_repair_evidence_observed=true
+post_repair_evidence_passed=1
+post_repair_evidence_outcome_verified=1
+post_repair_evidence_next_action_close_loop=1
+post_repair_evidence_repair_execution_enabled=0
+post_repair_evidence_real_execution_enabled=0
+</code></pre></div>
+
+<h2 id="run-guarded-repair-execution">Run guarded repair execution<a class="headerlink" href="#run-guarded-repair-execution" title="Permanent link">&para;</a></h2>
+<p>Run this only after the repair readiness gate is present and surfaced.</p>
+<p>The allowed runtime command is:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_guarded_repair_execution<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--allow-guarded-repair-execution<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected result:</p>
+<div class="codehilite"><pre><span></span><code>type=replay_lifecycle_retry_guarded_repair_execution_result
+repair_execution_status=succeeded
+repair_execution_allowed=true
+guarded_repair_execution=true
+guarded_repair_marker_observed=true
+exit_code=0
+repair_action_target_count=9
+repair_actions_executed=true
+repair_bundle_executed=true
+repair_command_executed=true
+rendered_command_executed=false
+dry_run_command_executed=false
+repair_execution_enabled=true
+real_execution_enabled=false
+repair_execution_performed=true
+repair_subprocess_invoked=true
+recommended_next_action=run_post_repair_evidence_check
+</code></pre></div>
+
+<p>Fail-closed behavior:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_guarded_repair_execution<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Without <code>--allow-guarded-repair-execution</code>, the runner must publish or return a
+rejected non-executing result instead of performing the guarded repair harness.</p>
+<h2 id="run-post-repair-evidence-verification">Run post-repair evidence verification<a class="headerlink" href="#run-post-repair-evidence-verification" title="Permanent link">&para;</a></h2>
+<p>Run this only after a succeeded guarded repair execution result exists.</p>
+<p>The allowed runtime command is:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_post_repair_evidence_check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--allow-post-repair-evidence-check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected result:</p>
+<div class="codehilite"><pre><span></span><code>type=replay_lifecycle_retry_post_repair_evidence_check
+post_repair_status=passed
+post_repair_evidence_check_allowed=true
+post_repair_evidence_check_enabled=true
+post_repair_evidence_marker_observed=true
+post_repair_evidence_exit_code=0
+repair_outcome_verified=true
+repair_targets_expected_count=9
+repair_targets_verified_count=9
+repair_targets_missing=[]
+repair_targets_unexpected=[]
+source_guarded_repair_execution_status=succeeded
+source_guarded_repair_execution_allowed=true
+source_guarded_repair_marker_observed=true
+source_guarded_repair_exit_code=0
+source_guarded_repair_next_action=run_post_repair_evidence_check
+repair_execution_enabled=false
+real_execution_enabled=false
+repair_execution_performed=false
+repair_subprocess_invoked=false
+recommended_next_action=close_repair_loop
+</code></pre></div>
+
+<p>Fail-closed behavior:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_post_repair_evidence_check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Without <code>--allow-post-repair-evidence-check</code>, the runner must publish or return a
+rejected non-verifying result instead of running the evidence verification
+subprocess.</p>
+<h2 id="golden-path-checklist">Golden-path checklist<a class="headerlink" href="#golden-path-checklist" title="Permanent link">&para;</a></h2>
+<p>A verified controlled retry and guarded repair loop requires all of the following:</p>
+<div class="codehilite"><pre><span></span><code>[ ] retry governance trail complete
+[ ] controlled execution result observed
+[ ] real preflight blocked
+[ ] real approval transition approved
+[ ] real final gate blocked
+[ ] real dry-run envelope linked
+[ ] real noop result linked
+[ ] read-only promotion linked
+[ ] read-only final gate linked
+[ ] read-only approval transition approved
+[ ] read-only readiness gate ready_blocked
+[ ] guarded read-only execution result observed
+[ ] read-only feedback actionable
+[ ] repair plan planned
+[ ] repair action bundle assembled
+[ ] repair action bundle review approved
+[ ] repair approval transition approved
+[ ] repair final gate ready_blocked
+[ ] repair dry-run envelope prepared
+[ ] repair noop result completed
+[ ] repair noop feedback actionable
+[ ] repair readiness gate ready_blocked
+[ ] guarded repair execution succeeded
+[ ] post-repair evidence check passed
+[ ] post-repair evidence recommends close_repair_loop
+</code></pre></div>
+
+<h2 id="final-milestone-definition">Final milestone definition<a class="headerlink" href="#final-milestone-definition" title="Permanent link">&para;</a></h2>
+<p>The milestone is complete when the runtime can show:</p>
+<div class="codehilite"><pre><span></span><code>guarded_repair_execution_statuses.succeeded=1
+post_repair_evidence_statuses.passed=1
+repair_outcome_verified=true
+repair_targets_verified_count=9
+post_repair_evidence_orphans=0
+ready_for_real_execution=false
+real_execution_enabled=false
+recommended_next_action=close_repair_loop
+</code></pre></div>
+
+<p>At this point BlackSwan has a verified, auditable, fail-closed repair loop from
+retry governance to post-repair evidence.</p>
+<h2 id="next-milestones">Next milestones<a class="headerlink" href="#next-milestones" title="Permanent link">&para;</a></h2>
+<div class="codehilite"><pre><span></span><code>PR 37.1 — final golden-path smoke script
+PR 37.2 — docs/schema/test fixture cleanup
+PR 38.x — policy-gated real execution adapter scaffold
+</code></pre></div>
+
+<p>Real execution remains out of scope until PR 38.x or later.</p>
 
 
 
@@ -3960,7 +4161,7 @@ python3<span class="w"> </span>swarm_control.py
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="June 14, 2026 19:36:26 UTC">June 14, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="June 14, 2026 19:24:27 UTC">June 14, 2026</span>
   </span>
 
     
@@ -4016,10 +4217,10 @@ python3<span class="w"> </span>swarm_control.py
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.integrate"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

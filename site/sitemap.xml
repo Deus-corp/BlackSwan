@@ -2,430 +2,438 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/ROADMAP/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
+    </url>
+    <url>
+         <loc>https://deus-corp.github.io/BlackSwan/controlled_retry_guarded_repair_runbook/</loc>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/design_principles.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/getting_started/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/glossary.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
+    </url>
+    <url>
+         <loc>https://deus-corp.github.io/BlackSwan/runtime_directive_experience_loop/</loc>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/system_definition.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/terminal_goals_and_l3_invariants.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/adr/adr_001_migration_to_deepseekv4/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/adr/adr_002_dynamic_model_routing/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/adr/adr_003_predictive_consistency_router/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/adr/adr_004_constitutional_evolution_2/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/adr/adr_005_neuro_symbolic_governance/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/adr/adr_006_decentralized_bootstrap/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/adr/adr_007_jepa_integration/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_a_gpu_configurations/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_ab_decentralized_bootstrap_configurations/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_ac_nostr_bridge_specification/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_ad_rdma_and_monitoring_stack/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_b_launch_commands_cold_and_start_cripts/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_c_validation_code_listings/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_d_tla_specifications/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_e_chaos_scenarios/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_f_memory_schema_examples/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_g_glossary/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_h_revision_history/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_i_formal_verification_z3/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_j_hardware_bill_of_materials%28bom%29/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_k_rust_crate_reference/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_l_configuration_files/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_m_artifact_index/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_n_traceability_matrix/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_o_tooling_ast_integrity/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_p_ppo_training/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_q_cross_platform_toolchain/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_r_meat_interface_code_listings/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_s_atomic_sovereignty/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_t_threat_model_matrix/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_u_terminal_goals/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_v_universal_kill_switch/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_w_stigmergy_mathematics/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_x_simulation_framework/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_y_verification_report/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/appendices/appendix_z_proof_tree_specification/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/architecture/architecture_overview.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/architecture/event_bus_and_artifact_model.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/architecture/global_state_and_decision_pipeline.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/architecture/intelligence_contract/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/architecture/intrinsic_motivation.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/architecture/memory_hierarchy_mem0g.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/architecture/social_modeling_engine.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/architecture/validation_and_verification.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/deployment/api_based_bootstrap.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/deployment/cold_start_protocol.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/deployment/deployment_overview.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/deployment/hardware_isolation.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/deployment/hardware_transition_plan.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/overview/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cognitive_evolution/champion_challenger.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cognitive_evolution/cognitive_evolution.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cognitive_evolution/genetic_engine.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cognitive_evolution/neuro_symbolic_governance.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cognitive_evolution/open_endedness.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cognitive_evolution/overview/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cybersecurity_stealth/isolation_and_sandbox.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cybersecurity_stealth/operational_security_iart.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cybersecurity_stealth/overview/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cybersecurity_stealth/stealth_and_c2.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/cybersecurity_stealth/sting_and_counterintelligence.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/economic_autonomy/mev_and_ppo_executors.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/economic_autonomy/overview/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/economic_autonomy/payment_obfuscation.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/economic_autonomy/roi_dispatcher.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/economic_autonomy/symbiotic_takeover.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/physical_human_interface/meat_interface_tasking.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/physical_human_interface/narrative_and_stigmergy.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/physical_human_interface/overview/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/physical_human_interface/persona_farming_and_legal.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/swarm_distribution/README.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/swarm_distribution/crdt_gossip_and_d2bft.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/swarm_distribution/overview/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/swarm_distribution/reputation_and_coordination.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/domains/swarm_distribution/swarm_topology.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/adaptive_motivation/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/crdt_state/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/curiosity_engine/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/d2bft/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/episodic_memory/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/genetic_engine/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/ouroboros/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/overview/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/semantic_memory/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/implemented/survival_objective/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/reports/TRL3_baseline_results/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/reports/TRL4_CURIOSITY_REPORT/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/reports/TRL4_OUROBOROS_REPORT/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/reports/TRL4_VALIDATION_REPORT/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/reports/TRL4_simulation_baseline/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/reports/benchmark_10_models_2026-05-03/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/singularity/controlled_collapse_omega.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/singularity/hardware_independence_hael.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/singularity/last_breath_protocol.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/singularity/overview/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/singularity/physical_energy_sovereignty/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/singularity/quantum_resistance/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/singularity/singularity_criteria.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
     <url>
          <loc>https://deus-corp.github.io/BlackSwan/singularity/spore_protocol_and_recovery.en/</loc>
-         <lastmod>2026-05-06</lastmod>
+         <lastmod>2026-06-14</lastmod>
     </url>
 </urlset>

@@ -1,0 +1,5583 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Autonomous AI swarm – architecture, guides, benchmarks">
+      
+      
+      
+        <link rel="canonical" href="https://deus-corp.github.io/BlackSwan/runtime_directive_experience_loop/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Runtime Directive Experience Loop - BlackSwan Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#runtime-directive-experience-loop" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BlackSwan Documentation" class="md-header__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BlackSwan Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Runtime Directive Experience Loop
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Deus-corp/BlackSwan" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BlackSwan Documentation" class="md-nav__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BlackSwan Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Deus-corp/BlackSwan" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design_principles.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glossary.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../system_definition.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Definition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../terminal_goals_and_l3_invariants.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal Goals & L3 Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Implemented Protocols
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Implemented Protocols
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/ouroboros/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ouroboros (Self-Improvement)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/survival_objective/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Survival Objective
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/genetic_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Genetic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/adaptive_motivation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adaptive Intrinsic Motivation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/crdt_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDT State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/d2bft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D2BFT Consensus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/curiosity_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curiosity Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/episodic_memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Episodic Memory (L1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implemented/semantic_memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic Memory (L2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/architecture_overview.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/global_state_and_decision_pipeline.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Global State & Decision Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/memory_hierarchy_mem0g.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory Hierarchy (Mem0g)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/intrinsic_motivation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intrinsic Motivation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/validation_and_verification.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/event_bus_and_artifact_model.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Bus & Artifact Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/social_modeling_engine.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Social Modeling Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/intelligence_contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/deployment_overview.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/api_based_bootstrap.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/hardware_isolation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/hardware_transition_plan.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Transition Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/cold_start_protocol.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cold Start Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Domains
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Domains
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_2" id="__nav_11_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cognitive Evolution
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cognitive Evolution
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cognitive_evolution/cognitive_evolution.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cognitive_evolution/genetic_engine.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Genetic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cognitive_evolution/champion_challenger.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Champion/Challenger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cognitive_evolution/open_endedness.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Open-Endedness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cognitive_evolution/neuro_symbolic_governance.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Neuro-Symbolic Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_3" id="__nav_11_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cybersecurity & Stealth
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cybersecurity & Stealth
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cybersecurity_stealth/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cybersecurity_stealth/isolation_and_sandbox.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Isolation & Sandbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cybersecurity_stealth/stealth_and_c2.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stealth & C2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cybersecurity_stealth/sting_and_counterintelligence.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sting & Counterintelligence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/cybersecurity_stealth/operational_security_iart.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operational Security & IART
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_4" id="__nav_11_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Economic Autonomy
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Economic Autonomy
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/economic_autonomy/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/economic_autonomy/roi_dispatcher.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ROI Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/economic_autonomy/mev_and_ppo_executors.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MEV & PPO Executors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/economic_autonomy/payment_obfuscation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Payment Obfuscation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/economic_autonomy/symbiotic_takeover.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Symbiotic Takeover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_5" id="__nav_11_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Physical & Human Interface
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Physical & Human Interface
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/physical_human_interface/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/physical_human_interface/meat_interface_tasking.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Meat Interface Tasking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/physical_human_interface/narrative_and_stigmergy.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Narrative & Stigmergy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/physical_human_interface/persona_farming_and_legal.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Farming & Legal
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_6" id="__nav_11_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Swarm & Distribution
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Swarm & Distribution
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/swarm_distribution/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/swarm_distribution/crdt_gossip_and_d2bft.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDT, Gossip & D2BFT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/swarm_distribution/swarm_topology.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Swarm Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../domains/swarm_distribution/reputation_and_coordination.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reputation & Coordination
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Singularity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Singularity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../singularity/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../singularity/singularity_criteria.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Singularity Criteria
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../singularity/spore_protocol_and_recovery.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spore Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../singularity/last_breath_protocol.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Breath Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../singularity/controlled_collapse_omega.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omega Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../singularity/hardware_independence_hael.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Independence (HAEL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../singularity/quantum_resistance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quantum Resistance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../singularity/physical_energy_sovereignty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Physical Energy Sovereignty
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendices
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Appendices
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_a_gpu_configurations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A - GPU Configurations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AA - Fine-Tuning DeepSeek V4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_ab_decentralized_bootstrap_configurations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AB - Decentralized Bootstrap Config.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_ac_nostr_bridge_specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC - Nostr Bridge Spec.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_ad_rdma_and_monitoring_stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD - RDMA and Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_b_launch_commands_cold_and_start_cripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B - Launch Commands & Cold Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_c_validation_code_listings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    C - Validation Code Listings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_d_tla_specifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D - TLA+ Specifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_e_chaos_scenarios/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E - Chaos Scenarios
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_f_memory_schema_examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    F - Memory Schema (JSON)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_g_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G - Glossary (Machine)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_h_revision_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H - Revision History
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_i_formal_verification_z3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    I - Formal Verification Z3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_j_hardware_bill_of_materials%28bom%29/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    J - Hardware BOM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_k_rust_crate_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    K - Rust Crate Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_l_configuration_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    L - Configuration Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_m_artifact_index/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M - Artifact Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_n_traceability_matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    N - Traceability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_o_tooling_ast_integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O - Tooling AST Integrity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_p_ppo_training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P - PPO Training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_q_cross_platform_toolchain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Q - Cross-Platform Toolchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_r_meat_interface_code_listings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    R - Meat Interface Code Listings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_s_atomic_sovereignty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    S - Atomic Sovereignty
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_t_threat_model_matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    T - Threat Model Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_u_terminal_goals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    U - Terminal Goals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_v_universal_kill_switch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    V - Universal Kill Switch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_w_stigmergy_mathematics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    W - Stigmergy Mathematics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_x_simulation_framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X - Simulation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_y_verification_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Y - Verification Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/appendix_z_proof_tree_specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Z - Proof Tree Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ADR
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/adr_001_migration_to_deepseekv4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    001 - Migration to DeepSeek V4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/adr_002_dynamic_model_routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    002 - Dynamic Model Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/adr_003_predictive_consistency_router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    003 - Predictive Consistency Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/adr_004_constitutional_evolution_2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    004 - Constitutional Evolution 2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/adr_005_neuro_symbolic_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    005 - Neuro-Symbolic Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/adr_006_decentralized_bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    006 - Decentralized Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/adr_007_jepa_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    007 - JEPA Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reports
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reports
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/TRL3_baseline_results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL3_baseline_results.md
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/TRL4_CURIOSITY_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL-4 Curiosity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/TRL4_VALIDATION_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL-4 Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/TRL4_OUROBOROS_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ouroboros Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/TRL4_simulation_baseline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation Baseline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/benchmark_10_models_2026-05-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark 10 Models 2026-05-03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="runtime-directive-experience-loop">Runtime Directive Experience Loop<a class="headerlink" href="#runtime-directive-experience-loop" title="Permanent link">&para;</a></h1>
+<p>BlackSwan now supports a controlled runtime experience loop:</p>
+<div class="codehilite"><pre><span></span><code>Directive
+  -&gt; DirectiveResult
+  -&gt; EvidenceRecord
+  -&gt; MemoryRecord
+</code></pre></div>
+
+<p>This loop turns a safe runtime action into verified evidence and then into memory that can be ingested, reviewed, exported, replayed, or used by future swarm intelligence.</p>
+<p>The same audit-first pattern now extends into controlled retry governance,
+guarded read-only execution, repair planning, guarded repair execution, and
+post-repair verification:</p>
+<div class="codehilite"><pre><span></span><code>RetryGovernance
+  -&gt; ControlledExecution
+  -&gt; RealExecutionPreflight
+  -&gt; DryRunEnvelope
+  -&gt; NoopHarness
+  -&gt; GuardedReadOnlyExecution
+  -&gt; ReadOnlyFeedback
+  -&gt; RepairPlan
+  -&gt; RepairActionBundleReview
+  -&gt; RepairApproval
+  -&gt; RepairDryRunEnvelope
+  -&gt; RepairNoopHarness
+  -&gt; RepairReadinessGate
+  -&gt; GuardedRepairExecution
+  -&gt; PostRepairEvidence
+  -&gt; close_repair_loop
+</code></pre></div>
+
+<p>The current verified milestone is the guarded repair loop. It proves that a
+failed read-only evidence path can produce actionable feedback, a reviewed repair
+plan, guarded repair execution, and a post-repair evidence check while keeping
+arbitrary real execution disabled.</p>
+<p>The first validated directive is:</p>
+<div class="codehilite"><pre><span></span><code>REDUCE_RISK
+</code></pre></div>
+
+<p>It targets the trade swarm and safely forces:</p>
+<div class="codehilite"><pre><span></span><code>dry_run=True
+execution_enabled=False
+</code></pre></div>
+
+<p>It never enables live execution.</p>
+<hr />
+<h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
+<p>This flow gives LLM agents and swarm coordinators a clean operational memory path.</p>
+<p>Instead of reasoning from noisy logs, the system can record:</p>
+<ol>
+<li>what instruction was issued,</li>
+<li>which node applied it,</li>
+<li>whether the application was verified,</li>
+<li>what memory should be kept from the event.</li>
+</ol>
+<p>This is the foundation for LLM-friendly runtime learning.</p>
+<hr />
+<h2 id="runtime-chain">Runtime chain<a class="headerlink" href="#runtime-chain" title="Permanent link">&para;</a></h2>
+<div class="codehilite"><pre><span></span><code>manual or Overseer seed
+  -&gt; swarm_directive in CRDT
+  -&gt; trade command loop refreshes CRDT
+  -&gt; trade applies safe directive
+  -&gt; swarm_directive_result in CRDT
+  -&gt; evidence_record from directive lifecycle
+  -&gt; memory_record from evidence
+</code></pre></div>
+
+<hr />
+<h2 id="start-a-local-runtime">Start a local runtime<a class="headerlink" href="#start-a-local-runtime" title="Permanent link">&para;</a></h2>
+<p>From the project root:</p>
+<div class="codehilite"><pre><span></span><code>rm<span class="w"> </span>-f<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db*
+rm<span class="w"> </span>-f<span class="w"> </span>data/cluster_runtime/latest/ledgers/events.local.db*
+
+python<span class="w"> </span>-m<span class="w"> </span>src.swarms.runtime.cluster_cli<span class="w"> </span>up<span class="w"> </span>--duration<span class="w"> </span><span class="m">0</span><span class="w"> </span>--no-strict
+</code></pre></div>
+
+<p>Keep this terminal running.</p>
+<hr />
+<h2 id="seed-a-safe-directive">Seed a safe directive<a class="headerlink" href="#seed-a-safe-directive" title="Permanent link">&para;</a></h2>
+<p>In another terminal:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.seed_directive<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>REDUCE_RISK<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target<span class="w"> </span>trade<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-type<span class="w"> </span>swarm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>overseer-seed<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected seed log:</p>
+<div class="codehilite"><pre><span></span><code>Seeded directive: id=runtime-reduce-risk-1 action=REDUCE_RISK target=swarm:trade
+</code></pre></div>
+
+<hr />
+<h2 id="verify-directive-result">Verify directive result<a class="headerlink" href="#verify-directive-result" title="Permanent link">&para;</a></h2>
+<p>Check logs:</p>
+<div class="codehilite"><pre><span></span><code>grep<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;runtime-reduce-risk-1\|Published directive result\|directive_applied\|REDUCE_RISK\|command loop failed\|service exited: trade-1&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>data/cluster_runtime/latest/logs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-240
+</code></pre></div>
+
+<p>Expected trade log:</p>
+<div class="codehilite"><pre><span></span><code>Published directive result: directive_id=runtime-reduce-risk-1 status=applied
+</code></pre></div>
+
+<p>Check CRDT:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="s">from src.core.crdt_adapter import CRDTAdapter</span>
+
+<span class="s">path = &quot;data/cluster_runtime/latest/ledgers/swarm_crdt.local.db&quot;</span>
+<span class="s">crdt = CRDTAdapter(node_id=&quot;debug-reader&quot;, db_path=path)</span>
+<span class="s">state = getattr(crdt, &quot;state&quot;, {}) or {}</span>
+
+<span class="s">for item in state.values():</span>
+<span class="s">    if isinstance(item, dict) and item.get(&quot;type&quot;) in {</span>
+<span class="s">        &quot;swarm_directive&quot;,</span>
+<span class="s">        &quot;swarm_directive_result&quot;,</span>
+<span class="s">    }:</span>
+<span class="s">        print(</span>
+<span class="s">            item.get(&quot;type&quot;),</span>
+<span class="s">            item.get(&quot;directive_id&quot;),</span>
+<span class="s">            item.get(&quot;action&quot;),</span>
+<span class="s">            item.get(&quot;status&quot;),</span>
+<span class="s">            item.get(&quot;source&quot;),</span>
+<span class="s">            item.get(&quot;swarm&quot;),</span>
+<span class="s">        )</span>
+<span class="s">PY</span>
+</code></pre></div>
+
+<p>Expected output:</p>
+<div class="codehilite"><pre><span></span><code>swarm_directive runtime-reduce-risk-1 REDUCE_RISK issued overseer-seed None
+swarm_directive_result runtime-reduce-risk-1 None applied trade-1 trade
+</code></pre></div>
+
+<hr />
+<h2 id="publish-evidence">Publish evidence<a class="headerlink" href="#publish-evidence" title="Permanent link">&para;</a></h2>
+<p>After the directive result exists:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.publish_directive_evidence<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>manual-runtime-check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected logs:</p>
+<div class="codehilite"><pre><span></span><code>Published directive evidence: subject=runtime_directive_seed_check status=passed confidence=1.0
+Evidence check: name=directive_seeded status=passed value=True
+Evidence check: name=directive_result_published status=passed value=True
+Evidence check: name=directive_applied status=passed value=applied
+</code></pre></div>
+
+<hr />
+<h2 id="bridge-evidence-into-memory">Bridge evidence into memory<a class="headerlink" href="#bridge-evidence-into-memory" title="Permanent link">&para;</a></h2>
+<p>After the evidence record exists:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.evidence_memory_bridge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>evidence-memory-bridge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected log:</p>
+<div class="codehilite"><pre><span></span><code>Published evidence memory record: subject=runtime_directive_seed_check status=passed directive_id=runtime-reduce-risk-1
+</code></pre></div>
+
+<hr />
+<h2 id="inspect-the-full-chain">Inspect the full chain<a class="headerlink" href="#inspect-the-full-chain" title="Permanent link">&para;</a></h2>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="s">from src.core.crdt_adapter import CRDTAdapter</span>
+
+<span class="s">path = &quot;data/cluster_runtime/latest/ledgers/swarm_crdt.local.db&quot;</span>
+<span class="s">crdt = CRDTAdapter(node_id=&quot;debug-reader&quot;, db_path=path)</span>
+<span class="s">state = getattr(crdt, &quot;state&quot;, {}) or {}</span>
+
+<span class="s">for item in state.values():</span>
+<span class="s">    if isinstance(item, dict) and item.get(&quot;type&quot;) in {</span>
+<span class="s">        &quot;swarm_directive&quot;,</span>
+<span class="s">        &quot;swarm_directive_result&quot;,</span>
+<span class="s">        &quot;evidence_record&quot;,</span>
+<span class="s">        &quot;memory_record&quot;,</span>
+<span class="s">    }:</span>
+<span class="s">        print(</span>
+<span class="s">            item.get(&quot;type&quot;),</span>
+<span class="s">            item.get(&quot;directive_id&quot;) or item.get(&quot;payload&quot;, {}).get(&quot;directive_id&quot;),</span>
+<span class="s">            item.get(&quot;kind&quot;),</span>
+<span class="s">            item.get(&quot;status&quot;),</span>
+<span class="s">            item.get(&quot;source&quot;),</span>
+<span class="s">            item.get(&quot;subject&quot;),</span>
+<span class="s">        )</span>
+<span class="s">PY</span>
+</code></pre></div>
+
+<p>Expected output:</p>
+<div class="codehilite"><pre><span></span><code>swarm_directive runtime-reduce-risk-1 None issued overseer-seed None
+swarm_directive_result runtime-reduce-risk-1 None applied trade-1 None
+evidence_record runtime-reduce-risk-1 None passed manual-runtime-check runtime_directive_seed_check
+memory_record runtime-reduce-risk-1 runtime_evidence passed evidence-memory-bridge runtime_directive_seed_check
+</code></pre></div>
+
+<hr />
+<h2 id="scenario-regression">Scenario regression<a class="headerlink" href="#scenario-regression" title="Permanent link">&para;</a></h2>
+<p>The end-to-end advisory loop is covered by:</p>
+<div class="codehilite"><pre><span></span><code>tests/unit/swarms/test_runtime_evidence_directive_scenario.py
+</code></pre></div>
+
+<p>This scenario validates:</p>
+<div class="codehilite"><pre><span></span><code>memory heartbeat runtime_evidence metrics
+  -&gt; Overseer memory intelligence
+  -&gt; global brief
+  -&gt; proposed directive
+</code></pre></div>
+
+<hr />
+<h2 id="replay-advisory-extension">Replay advisory extension<a class="headerlink" href="#replay-advisory-extension" title="Permanent link">&para;</a></h2>
+<p>Verified runtime evidence can be converted into simulation replay scenarios.</p>
+<div class="codehilite"><pre><span></span><code>memory_record kind=runtime_evidence status=passed
+  -&gt; simulation_replay_scenario status=pending
+  -&gt; simulation heartbeat replay metrics
+  -&gt; Overseer global brief opportunity
+  -&gt; OBSERVE simulation proposed directive
+</code></pre></div>
+
+<p>The current replay loop is advisory-only. It does not execute replay scenarios automatically.</p>
+<p>Replay scenarios are published with:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.publish_replay_scenarios<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>simulation-replay-builder<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Simulation heartbeat reports:</p>
+<ul>
+<li>simulation_replay_scenarios</li>
+<li>simulation_replay_pending</li>
+<li>simulation_replay_completed</li>
+<li>simulation_replay_failed</li>
+</ul>
+<p>Overseer global brief can then recommend:</p>
+<div class="codehilite"><pre><span></span><code>OBSERVE target=simulation
+</code></pre></div>
+
+<p>Actual replay execution remains a future gated step.</p>
+<hr />
+<h2 id="gated-replay-directive">Gated replay directive<a class="headerlink" href="#gated-replay-directive" title="Permanent link">&para;</a></h2>
+<p><code>RUN_REPLAY</code> is recognized as a gated directive action.</p>
+<p>Current behavior:</p>
+<div class="codehilite"><pre><span></span><code>swarm_directive action=RUN_REPLAY target=simulation
+  -&gt; security validation requires:
+     - target=simulation
+     - payload.scenario_id
+     - payload.dry_run=true
+  -&gt; simulation consumes directive
+  -&gt; simulation publishes swarm_directive_result status=rejected
+     reason=run_replay_execution_not_implemented
+</code></pre></div>
+
+<p>This intentionally does not execute replay scenarios yet.</p>
+<p>Manual runtime check:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.seed_directive<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>RUN_REPLAY<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target<span class="w"> </span>simulation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-type<span class="w"> </span>swarm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>overseer-seed<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-run-replay-json-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--payload-json<span class="w"> </span><span class="s1">&#39;{&quot;scenario_id&quot;:&quot;replay-runtime-reduce-risk-1&quot;,&quot;dry_run&quot;:true}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected result:</p>
+<div class="codehilite"><pre><span></span><code>swarm_directive RUN_REPLAY issued overseer-seed
+swarm_directive_result rejected simulation reason=run_replay_execution_not_implemented
+</code></pre></div>
+
+<p>RUN_REPLAY execution is reserved for a future dry-run replay executor.</p>
+<hr />
+<h2 id="replay-execution-evidence">Replay execution evidence<a class="headerlink" href="#replay-execution-evidence" title="Permanent link">&para;</a></h2>
+<p>Completed dry-run replay executions can be converted into evidence records:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.publish_replay_execution_evidence<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario-id<span class="w"> </span>replay-runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>This publishes:</p>
+<div class="codehilite"><pre><span></span><code>simulation_replay_execution status=completed
+  -&gt; evidence_record subject=simulation_replay_execution_check status=passed
+</code></pre></div>
+
+<hr />
+<p>Replay execution evidence can be bridged into memory:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.evidence_memory_bridge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--subject<span class="w"> </span>simulation_replay_execution_check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>This produces:</p>
+<div class="codehilite"><pre><span></span><code>evidence_record subject=simulation_replay_execution_check status=passed
+  -&gt; memory_record kind=runtime_evidence subject=simulation_replay_execution_check
+</code></pre></div>
+
+<hr />
+<h2 id="replay-evidence-memory-lifecycle">Replay evidence memory lifecycle<a class="headerlink" href="#replay-evidence-memory-lifecycle" title="Permanent link">&para;</a></h2>
+<p>The replay evidence lifecycle closes the dry-run replay loop:</p>
+<div class="codehilite"><pre><span></span><code>simulation_replay_scenario
+  -&gt; RUN_REPLAY directive
+  -&gt; simulation_replay_execution
+  -&gt; evidence_record subject=simulation_replay_execution_check
+  -&gt; memory_record kind=runtime_evidence
+  -&gt; MemorySummary replay_execution_evidence_* counters
+  -&gt; Memory swarm heartbeat memory_summary
+  -&gt; Overseer memory intelligence
+  -&gt; Global swarm brief
+</code></pre></div>
+
+<p>Manual runtime sequence:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.seed_replay_scenario<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario-id<span class="w"> </span>replay-runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>REDUCE_RISK<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--expected-result-status<span class="w"> </span>applied<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.seed_directive<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>RUN_REPLAY<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target<span class="w"> </span>simulation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-type<span class="w"> </span>swarm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>overseer-seed<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-run-replay-memory-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--payload-json<span class="w"> </span><span class="s1">&#39;{&quot;scenario_id&quot;:&quot;replay-runtime-reduce-risk-1&quot;,&quot;dry_run&quot;:true}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.publish_replay_execution_evidence<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario-id<span class="w"> </span>replay-runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.evidence_memory_bridge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--subject<span class="w"> </span>simulation_replay_execution_check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected CRDT trail:</p>
+<div class="codehilite"><pre><span></span><code>simulation_replay_execution completed
+evidence_record simulation_replay_execution_check passed
+memory_record runtime_evidence simulation_replay_execution_check passed
+</code></pre></div>
+
+<p>Expected summary/brief trail:</p>
+<div class="codehilite"><pre><span></span><code>MemorySummary.replay_execution_evidence_records &gt;= 1
+MemorySummary.replay_execution_evidence_passed &gt;= 1
+memory_intelligence.aggregate.replay_execution_evidence_records &gt;= 1
+global_brief.key_metrics.memory_replay_execution_evidence_records &gt;= 1
+</code></pre></div>
+
+<hr />
+<h2 id="one-command-replay-evidence-check">One-command replay evidence check<a class="headerlink" href="#one-command-replay-evidence-check" title="Permanent link">&para;</a></h2>
+<p>The full controlled replay evidence lifecycle can be exercised with:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_replay_evidence_check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario-id<span class="w"> </span>replay-runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>REDUCE_RISK<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-run-replay-e2e-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>The helper seeds the replay scenario, seeds the RUN_REPLAY directive, waits for
+simulation_replay_execution, publishes replay evidence, bridges evidence into
+memory, and reports explicit checks.</p>
+<hr />
+<p>The helper also publishes replay_evidence_lifecycle_result with explicit checks.</p>
+<p>Security validation now recognizes <code>replay_evidence_lifecycle_result</code> records.
+A passed lifecycle result is valid only when all checks are passed.</p>
+<p>The helper also verifies Overseer-ready visibility by checking MemorySummary replay evidence counters and Security validation record-type counts.</p>
+<p>It also records <code>trail_counts</code> for the expected CRDT trail:
+<code>simulation_replay_scenario</code>, <code>swarm_directive</code>, <code>simulation_replay_execution</code>,
+<code>evidence_record</code>, <code>memory_record</code>, and <code>replay_evidence_lifecycle_result</code>.</p>
+<p>The helper reports an explicit <code>visibility_crdt_trail_complete</code> check. It passes
+when the CRDT trail contains all expected record types for the target scenario
+and directive.</p>
+<p>The command exits with code <code>0</code> when the lifecycle check passes and <code>1</code> when any check fails.</p>
+<p>When execution is not observed before the configured wait timeout, the lifecycle
+result payload includes <code>failure_reason=execution_not_observed_before_timeout</code>
+plus <code>wait_seconds</code> and <code>poll_interval</code>.</p>
+<p>Structured lifecycle failures are valid warnings and are aggregated in
+<code>security_validation_warning_reasons</code>, for example
+<code>execution_not_observed_before_timeout</code>.</p>
+<p>Overseer global briefs surface structured Security warning reasons such as
+<code>execution_not_observed_before_timeout</code> as replay lifecycle timeout warnings.</p>
+<p>When replay lifecycle timeout warnings are observed, the global brief recommends
+<code>retry_replay_lifecycle_check</code> with a longer wait window before investigating
+simulation responsiveness.</p>
+<p>The helper supports timeout profiles with <code>--timeout-profile</code>:</p>
+<ul>
+<li><code>fast</code>: short smoke/failure timeout.</li>
+<li><code>standard</code>: recommended retry profile for <code>retry_replay_lifecycle_check</code>.</li>
+<li><code>patient</code>: longer wait for slow runtimes.</li>
+</ul>
+<p>A retry recommendation can be executed with:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_replay_evidence_check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario-id<span class="w"> </span>replay-runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>REDUCE_RISK<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-run-replay-retry-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--timeout-profile<span class="w"> </span>standard<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>The retry recommendation uses <code>timeout_profile=standard</code>, which maps to
+<code>wait_seconds=15.0</code> and <code>poll_interval=0.5</code>.</p>
+<p>The retry recommendation also includes a <code>command_template</code> with placeholders for
+<code>&lt;scenario_id&gt;</code> and <code>&lt;new_directive_id&gt;</code> so an operator or controlled agent can
+construct a retry command safely.</p>
+<hr />
+<h2 id="replay-lifecycle-retry-proposals">Replay lifecycle retry proposals<a class="headerlink" href="#replay-lifecycle-retry-proposals" title="Permanent link">&para;</a></h2>
+<p>Replay lifecycle timeout recommendations can be converted into pending
+<code>replay_lifecycle_retry_proposal</code> records. These proposals are safe by default:
+they contain a retry command template and timeout profile, but they do not execute
+the retry automatically.</p>
+<p>Overseer can publish pending <code>replay_lifecycle_retry_proposal</code> records from retry
+recommendations. These proposals remain non-executing until a future approval or
+runner consumes them.</p>
+<p>Security validation recognizes pending <code>replay_lifecycle_retry_proposal</code> records.
+Only non-executing <code>pending</code> retry proposals with safe timeout profiles such as
+<code>standard</code> or <code>patient</code> are valid.</p>
+<p>Overseer global briefs surface validated pending <code>replay_lifecycle_retry_proposal</code>
+records as retry proposal opportunities.</p>
+<hr />
+<h2 id="replay-lifecycle-retry-approvals">Replay lifecycle retry approvals<a class="headerlink" href="#replay-lifecycle-retry-approvals" title="Permanent link">&para;</a></h2>
+<p>Retry proposals are not executed directly. A separate
+<code>replay_lifecycle_retry_approval</code> record can approve or reject a pending proposal.
+Approvals are auditable and must keep <code>execution_enabled=false</code> until a future
+runner/approval policy explicitly supports execution.</p>
+<p>Overseer global briefs also surface validated <code>replay_lifecycle_retry_approval</code>
+records as retry approval opportunities.</p>
+<p>Retry approvals include <code>decision_mode=manual|policy</code>. Autonomous approval is not valid until a future policy/runner layer explicitly supports it.</p>
+<p>Security heartbeat metrics include
+<code>security_validation_retry_approval_decision_modes</code> so manual and policy retry
+approvals can be observed separately.</p>
+<p>Overseer global briefs surface retry approval decision modes through
+<code>security_retry_approval_decision_modes</code>, including separate manual and policy
+approval counts.</p>
+<hr />
+<h2 id="replay-lifecycle-retry-execution-plans">Replay lifecycle retry execution plans<a class="headerlink" href="#replay-lifecycle-retry-execution-plans" title="Permanent link">&para;</a></h2>
+<p>Approved retry proposals can be converted into non-executing <code>replay_lifecycle_retry_execution_plan</code> records with <code>status=planned</code> and <code>execution_enabled=false</code>, without executing the retry automatically.</p>
+<p>Security validation recognizes <code>replay_lifecycle_retry_execution_plan</code> records.
+Only non-executing plans with <code>status=planned</code>, <code>execution_enabled=false</code>, safe
+timeout profiles, and manual or policy decision modes are valid.</p>
+<p>Overseer global briefs surface validated <code>replay_lifecycle_retry_execution_plan</code>
+records as retry execution plan opportunities.</p>
+<hr />
+<h2 id="replay-retry-plan-runner">Replay retry plan runner<a class="headerlink" href="#replay-retry-plan-runner" title="Permanent link">&para;</a></h2>
+<p><code>src.testing.run_retry_execution_plans</code> is a dry-run runner for
+<code>replay_lifecycle_retry_execution_plan</code> records. It does not execute command
+templates. With <code>execution_enabled=false</code>, it publishes
+<code>replay_lifecycle_retry_execution_result</code> with <code>status=skipped</code> and
+<code>reason=execution_disabled</code>. If execution is enabled before runner support, it
+publishes <code>status=rejected</code> with <code>reason=execution_not_supported</code>.</p>
+<p>Security validation recognizes <code>replay_lifecycle_retry_execution_result</code> records.
+Dry-run runner results are valid only when they are non-executing, such as
+<code>status=skipped</code>, <code>reason=execution_disabled</code>, and <code>executed=false</code>.</p>
+<p>Overseer global briefs surface validated <code>replay_lifecycle_retry_execution_result</code>
+records as retry execution result opportunities.</p>
+<p>Security heartbeat metrics include
+<code>security_validation_retry_execution_result_statuses</code> and
+<code>security_validation_retry_execution_result_reasons</code> for dry-run retry runner
+results.</p>
+<p>Overseer global briefs surface retry execution result status and reason
+breakdowns through <code>security_retry_execution_result_statuses</code> and
+<code>security_retry_execution_result_reasons</code>.</p>
+<hr />
+<h2 id="retry-governance-trail-inspection">Retry governance trail inspection<a class="headerlink" href="#retry-governance-trail-inspection" title="Permanent link">&para;</a></h2>
+<p><code>src.testing.inspect_retry_governance_trail</code> is a read-only helper for inspecting
+the end-to-end retry governance trail. It reports proposal, approval, execution
+plan, and execution result counts, including skipped and rejected dry-run runner
+results. The helper does not publish records and does not execute retry commands.</p>
+<p>The retry governance trail summary includes <code>chain_complete</code> and <code>missing_stages</code>
+so CI and operators can detect incomplete proposal-to-result chains.</p>
+<p>The inspection helper supports <code>--require-complete</code>, which exits with code <code>1</code>
+when <code>chain_complete=false</code> and code <code>0</code> when the proposal-to-result trail is
+complete.</p>
+<hr />
+<h2 id="synthetic-retry-governance-trail-seeding">Synthetic retry governance trail seeding<a class="headerlink" href="#synthetic-retry-governance-trail-seeding" title="Permanent link">&para;</a></h2>
+<p><code>src.testing.seed_retry_governance_trail</code> seeds a complete synthetic governance
+trail for smoke tests: proposal, approval, execution plan, and skipped execution
+result. It uses safe timeout profiles and non-executing records, so
+<code>src.testing.inspect_retry_governance_trail --require-complete</code> can verify
+<code>chain_complete=true</code> without running replay commands.</p>
+<hr />
+<h2 id="safety-guarantees">Safety guarantees<a class="headerlink" href="#safety-guarantees" title="Permanent link">&para;</a></h2>
+<p>The current controlled loop is intentionally conservative:</p>
+<ul>
+<li>only safe seed actions are allowed,</li>
+<li><code>REDUCE_RISK</code> and <code>SET_DRY_RUN</code> cannot enable execution,</li>
+<li>trade directive consumer rejects unsafe actions such as enabling live execution,</li>
+<li>evidence is generated from CRDT-observed records,</li>
+<li>memory records are explicit <code>runtime_evidence</code> records,</li>
+<li>no autonomous escalation is performed by this helper chain.</li>
+</ul>
+<hr />
+<h2 id="retry-governance-observability-check">Retry governance observability check<a class="headerlink" href="#retry-governance-observability-check" title="Permanent link">&para;</a></h2>
+<p><code>src.testing.check_retry_governance_observability</code> is a read-only helper that
+checks Security validation metrics and Overseer global brief key metrics for
+retry governance visibility. It exits with code <code>0</code> when the proposal, approval,
+execution plan, execution result, skipped status, and execution-disabled reason
+are all visible; otherwise it exits with code <code>1</code>.</p>
+<hr />
+<h2 id="one-command-retry-governance-smoke">One-command retry governance smoke<a class="headerlink" href="#one-command-retry-governance-smoke" title="Permanent link">&para;</a></h2>
+<p><code>src.testing.retry_governance_smoke</code> seeds a synthetic non-executing retry
+governance trail, verifies <code>chain_complete=true</code>, and checks Security/Overseer
+observability in one command.
+The one-command retry governance smoke verifies Security/Overseer observability.</p>
+<p>Runtime smoke checklist command:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.retry_governance_smoke<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>This command seeds a synthetic non-executing retry governance trail, verifies
+chain_complete=true, and checks Security/Overseer observability.</p>
+<hr />
+<p><code>src.testing.swarm_runtime_smoke</code> includes the retry governance smoke on an
+isolated temporary CRDT database, so the main runtime smoke gate verifies the
+safe proposal-to-result governance path without polluting the live ledger.</p>
+<p>The smoke command also supports <code>--require-clean</code>; when enabled, it exits with
+code <code>1</code> before seeding if retry governance records already exist for the selected
+proposal id. existing_retry_governance_records</p>
+<hr />
+<h2 id="replay-retry-rendered-commands">Replay retry rendered commands<a class="headerlink" href="#replay-retry-rendered-commands" title="Permanent link">&para;</a></h2>
+<p><code>replay_lifecycle_retry_rendered_command</code> records are non-executing rendered
+commands derived from retry execution plans. Rendering only replaces
+<code>&lt;scenario_id&gt;</code> and <code>&lt;new_directive_id&gt;</code>, keeps <code>execution_enabled=false</code>, and
+does not run shell commands.</p>
+<p>Security validation recognizes <code>replay_lifecycle_retry_rendered_command</code> records.
+Rendered retry commands are valid only when they are non-executing, call
+<code>python -m src.testing.run_replay_evidence_check</code>, include scenario/directive ids,
+use safe timeout profiles, and avoid shell operators.</p>
+<p>Overseer global briefs surface validated <code>replay_lifecycle_retry_rendered_command</code>
+records as retry rendered command opportunities.</p>
+<p>Security heartbeat metrics include
+<code>security_validation_retry_rendered_command_profiles</code> and
+<code>security_validation_retry_rendered_command_decision_modes</code> for rendered retry
+commands.</p>
+<p>Overseer global briefs surface rendered retry command profile and decision-mode
+breakdowns through <code>security_retry_rendered_command_profiles</code> and
+<code>security_retry_rendered_command_decision_modes</code>.</p>
+<p>Retry governance smoke includes the rendered command stage:
+proposal, approval, execution plan, rendered command, and execution result.</p>
+<hr />
+<h2 id="rendered-retry-command-dry-run-runner">Rendered retry command dry-run runner<a class="headerlink" href="#rendered-retry-command-dry-run-runner" title="Permanent link">&para;</a></h2>
+<p><code>src.testing.run_rendered_retry_commands</code> reads
+<code>replay_lifecycle_retry_rendered_command</code> records and publishes
+<code>replay_lifecycle_retry_rendered_command_result</code> records without executing the
+command text. Disabled rendered commands are recorded as <code>status=skipped</code>,
+<code>reason=execution_disabled</code>, and <code>executed=false</code>; enabled rendered commands are
+recorded as <code>status=rejected</code>, <code>reason=execution_not_supported</code>, and
+<code>executed=false</code>, without executing the command text.</p>
+<p>Security validation recognizes <code>replay_lifecycle_retry_rendered_command_result</code>
+records. Rendered command dry-run results are valid only when they remain
+non-executing: skipped results use <code>reason=execution_disabled</code>, rejected enabled
+commands use <code>reason=execution_not_supported</code>, and all valid records keep
+<code>executed=false</code>.</p>
+<p>Overseer global briefs surface
+<code>replay_lifecycle_retry_rendered_command_result</code> records, including rendered
+command dry-run result statuses and reasons such as <code>skipped</code>,
+<code>execution_disabled</code>, <code>rejected</code>, and <code>execution_not_supported</code>. Rendered command dry-run results, replay_lifecycle_retry_rendered_command_result, rendered command dry-run result statuses.</p>
+<p><code>src.testing.retry_governance_smoke</code> also runs the rendered command dry-run
+runner and requires <code>replay_lifecycle_retry_rendered_command_result</code> visibility
+through Security metrics and Overseer brief key metrics. rendered command dry-run runner, replay_lifecycle_retry_rendered_command_result visibility.</p>
+<p>The retry governance smoke now reports the full six-stage governance trail:
+proposal, approval, execution plan, rendered command, rendered command result,
+and execution result. Its summary includes <code>chain_records=6</code>,
+<code>six_stage=true</code>, and <code>rendered_results=1</code> when the safe dry-run path is
+complete.</p>
+<hr />
+<h2 id="retry-execution-eligibility-gate">Retry execution eligibility gate<a class="headerlink" href="#retry-execution-eligibility-gate" title="Permanent link">&para;</a></h2>
+<p><code>src.testing.build_retry_execution_eligibility</code> publishes
+<code>replay_lifecycle_retry_execution_eligibility</code> records for rendered retry
+commands. The eligibility gate is non-executing: it keeps
+<code>execution_supported=false</code>, publishes <code>status=blocked</code>, and records block
+reasons such as <code>execution_disabled</code>, <code>execution_not_supported</code>,
+<code>missing_rendered_command_result</code>, or <code>missing_rendered_command</code>.</p>
+<p>Security validation recognizes <code>replay_lifecycle_retry_execution_eligibility</code>
+records. Eligibility records are valid only when execution remains blocked:
+<code>status=blocked</code>, <code>execution_supported=false</code>, <code>execution_enabled=false</code>, and
+<code>executed=false</code>, with block reasons such as <code>execution_disabled</code>,
+<code>execution_not_supported</code>, <code>missing_rendered_command_result</code>, or
+<code>missing_rendered_command</code>.</p>
+<p>Overseer global briefs surface <code>replay_lifecycle_retry_execution_eligibility</code>
+records as retry execution eligibility observations. Brief summaries report
+blocked eligibility status and block reasons such as <code>execution_disabled</code>,
+<code>execution_not_supported</code>, <code>missing_rendered_command_result</code>, and
+<code>missing_rendered_command</code>.</p>
+<p><code>src.testing.retry_governance_smoke</code> runs the retry execution eligibility gate
+after the rendered command dry-run runner. The smoke requires at least one
+<code>replay_lifecycle_retry_execution_eligibility</code> record with <code>status=blocked</code>,
+so the safe governance path remains non-executing before any future controlled
+runner.</p>
+<p>The retry governance smoke now reports the full seven-stage safe governance
+trail: proposal, approval, execution plan, rendered command, rendered command
+result, execution eligibility, and execution result. Its summary includes
+<code>chain_records=7</code>, <code>seven_stage=true</code>, <code>eligibilities=1</code>, and
+<code>execution_blocked=1</code> when the safe path is complete. full seven-stage safe governance trail.</p>
+<p>The retry execution eligibility builder is idempotent for a rendered command.
+If an eligibility record already exists for the rendered command or plan, the
+builder skips publishing a duplicate and leaves the existing blocked decision
+in place.</p>
+<p>The rendered retry command dry-run runner is idempotent for a rendered command.
+If a <code>replay_lifecycle_retry_rendered_command_result</code> already exists for the
+rendered command or plan, the runner skips publishing a duplicate and leaves the
+existing skipped dry-run result in place.</p>
+<p>The retry governance seed helper is idempotent for explicit governance ids.
+If a proposal, approval, execution plan, rendered command, or execution result
+already exists with the requested id, the seed helper skips publishing a
+duplicate and leaves the existing governance record in place.</p>
+<p><code>src.testing.retry_governance_smoke</code> is idempotent when rerun without
+<code>--require-clean</code>. If the safe seven-stage trail already exists and is complete,
+the smoke can pass with <code>records_seeded=0</code>, <code>rendered_command_results=0</code>, and
+<code>eligibility_results=0</code> while reporting <code>existing_complete=true</code>.</p>
+<p>When <code>src.testing.retry_governance_smoke --require-clean</code> finds existing retry
+governance records, it still fails the clean preflight, but it reports whether
+the existing seven-stage trail is already complete. A complete existing trail is
+reported with <code>existing_complete=true</code>, <code>existing_rendered_results=1</code>,
+<code>existing_eligibilities=1</code>, and <code>existing_execution_blocked=1</code>.</p>
+<hr />
+<h2 id="seven-stage-retry-governance-safe-path">Seven-stage retry governance safe path<a class="headerlink" href="#seven-stage-retry-governance-safe-path" title="Permanent link">&para;</a></h2>
+<p>The retry governance safe path is a non-executing seven-stage control trail:</p>
+<ol>
+<li><code>replay_lifecycle_retry_proposal</code></li>
+<li><code>replay_lifecycle_retry_approval</code></li>
+<li><code>replay_lifecycle_retry_execution_plan</code></li>
+<li><code>replay_lifecycle_retry_rendered_command</code></li>
+<li><code>replay_lifecycle_retry_rendered_command_result</code></li>
+<li><code>replay_lifecycle_retry_execution_eligibility</code></li>
+<li><code>replay_lifecycle_retry_execution_result</code></li>
+</ol>
+<p>This path is intentionally safe: rendered retry commands are only dry-run
+rendered, rendered command results are skipped when execution is disabled, and
+execution eligibility remains blocked until a future controlled runner is
+explicitly introduced.</p>
+<h3 id="canonical-smoke-command">Canonical smoke command<a class="headerlink" href="#canonical-smoke-command" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.retry_governance_smoke<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>replay-retry-seven-stage-smoke-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--approval-id<span class="w"> </span>replay-retry-seven-stage-approval-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--plan-id<span class="w"> </span>replay-retry-seven-stage-plan-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-seven-stage-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--result-id<span class="w"> </span>replay-retry-seven-stage-result-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--require-clean<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+<span class="sb">````</span>
+
+Expected<span class="w"> </span>output<span class="w"> </span>includes:
+
+<span class="sb">```</span>text
+<span class="nv">status</span><span class="o">=</span>passed
+<span class="nv">records_seeded</span><span class="o">=</span><span class="m">5</span>
+<span class="nv">chain_records</span><span class="o">=</span><span class="m">7</span>
+<span class="nv">seven_stage</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">rendered_command_results</span><span class="o">=</span><span class="m">1</span>
+<span class="nv">eligibility_results</span><span class="o">=</span><span class="m">1</span>
+<span class="nv">execution_blocked</span><span class="o">=</span><span class="m">1</span>
+<span class="nv">chain_complete</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">observability</span><span class="o">=</span>passed
+</code></pre></div>
+
+<h3 id="inspector-check">Inspector check<a class="headerlink" href="#inspector-check" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.inspect_retry_governance_trail<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--require-complete<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>replay-retry-seven-stage-smoke-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected output includes:</p>
+<div class="codehilite"><pre><span></span><code>chain_complete=true
+missing_stages=none
+</code></pre></div>
+
+<p>The JSON form should include:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;counts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;proposals&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;approvals&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;plans&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;rendered_commands&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;rendered_command_results&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;eligibilities&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;results&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;eligibility_statuses&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;blocked&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;eligibility_reasons&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;execution_disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="observability-check">Observability check<a class="headerlink" href="#observability-check" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.check_retry_governance_observability<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>replay-retry-seven-stage-smoke-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected output includes:</p>
+<div class="codehilite"><pre><span></span><code>status=passed
+</code></pre></div>
+
+<p>Security/Overseer brief metrics should include:</p>
+<div class="codehilite"><pre><span></span><code>security_retry_rendered_commands=1
+security_retry_rendered_command_results=1
+security_retry_execution_eligibilities=1
+security_retry_execution_blocked=1
+</code></pre></div>
+
+<h3 id="idempotent-rerun-behavior">Idempotent rerun behavior<a class="headerlink" href="#idempotent-rerun-behavior" title="Permanent link">&para;</a></h3>
+<p>Rerunning <code>src.testing.retry_governance_smoke</code> without <code>--require-clean</code> against
+the same ids is expected to pass without publishing duplicates:</p>
+<div class="codehilite"><pre><span></span><code>status=passed
+records_seeded=0
+rendered_command_results=0
+eligibility_results=0
+existing_complete=true
+chain_complete=true
+observability=passed
+</code></pre></div>
+
+<p>Rerunning with <code>--require-clean</code> against existing ids is expected to fail the
+clean preflight while still reporting the existing complete trail:</p>
+<div class="codehilite"><pre><span></span><code>status=failed
+reason=existing_retry_governance_records
+existing_complete=true
+existing_rendered_results=1
+existing_eligibilities=1
+existing_execution_blocked=1
+</code></pre></div>
+
+<p>This failure is intentional: <code>--require-clean</code> means the operator requested a
+fresh trail and existing records violate that precondition.</p>
+<h3 id="controlled-execution-boundary">Controlled execution boundary<a class="headerlink" href="#controlled-execution-boundary" title="Permanent link">&para;</a></h3>
+<p>The current seven-stage path does not execute rendered retry commands. It only
+renders commands, records a skipped dry-run result, records blocked execution
+eligibility, and records the safe skipped execution result. Any future controlled
+runner must preserve this default non-executing behavior unless explicit policy
+and operator controls enable a narrower execution mode.</p>
+<hr />
+<ul>
+<li>Retry governance seven-stage smoke:
+  <code>python -m src.testing.retry_governance_smoke --require-clean ...</code>
+  Expected: <code>chain_records=7</code>, <code>seven_stage=true</code>, <code>execution_blocked=1</code>.</li>
+</ul>
+<hr />
+<h3 id="pre-controlled-runner-readiness">Pre-controlled-runner readiness<a class="headerlink" href="#pre-controlled-runner-readiness" title="Permanent link">&para;</a></h3>
+<p>Before designing or enabling any controlled retry runner, operators can run a
+read-only readiness check:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.check_retry_controlled_runner_readiness<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>replay-retry-seven-stage-smoke-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>The readiness check does not execute rendered commands. It verifies that the
+seven-stage safe path is complete, observability passes, rendered command
+results are skipped, execution eligibility remains blocked, execution results
+are skipped, and Security reports no invalid or critical validation records.</p>
+<p>Expected output for a complete safe baseline includes:</p>
+<div class="codehilite"><pre><span></span><code>status=passed
+readiness_score=100
+controlled_execution_enabled=false
+recommendation=ready_for_controlled_runner_design
+</code></pre></div>
+
+<hr />
+<h3 id="controlled-retry-runner-contract">Controlled retry runner contract<a class="headerlink" href="#controlled-retry-runner-contract" title="Permanent link">&para;</a></h3>
+<p>The controlled retry runner is not implemented yet. Before implementation, the
+project defines the following contract for any future controlled execution path.</p>
+<h4 id="default-posture">Default posture<a class="headerlink" href="#default-posture" title="Permanent link">&para;</a></h4>
+<p>Controlled retry execution is disabled by default. The safe seven-stage retry
+governance path remains non-executing unless a future runner receives explicit
+operator authorization and passes all readiness and validation gates.</p>
+<p>A future controlled runner must never execute rendered retry commands merely
+because a command was rendered, approved, or marked eligible. Rendering,
+approval, and eligibility are necessary but not sufficient for execution.</p>
+<h4 id="required-gates">Required gates<a class="headerlink" href="#required-gates" title="Permanent link">&para;</a></h4>
+<p>A future controlled retry runner must require all of the following before it can
+attempt execution:</p>
+<ul>
+<li><code>src.testing.check_retry_controlled_runner_readiness</code> reports
+  <code>status=passed</code> and <code>readiness_score=100</code>.</li>
+<li>The seven-stage safe governance trail is complete.</li>
+<li>Security/Overseer observability reports the trail as passed.</li>
+<li>The rendered command has a prior
+  <code>replay_lifecycle_retry_rendered_command_result</code> with <code>status=skipped</code>.</li>
+<li>The execution eligibility record exists and remains <code>status=blocked</code>.</li>
+<li>The approval, execution plan, and rendered command explicitly opt in with
+  <code>execution_enabled=true</code>.</li>
+<li>The operator provides an explicit controlled-execution flag, such as
+  <code>--allow-controlled-execution</code>.</li>
+<li>The command matches an allowlisted module invocation.</li>
+</ul>
+<h4 id="initial-allowlist">Initial allowlist<a class="headerlink" href="#initial-allowlist" title="Permanent link">&para;</a></h4>
+<p>The initial controlled runner allowlist is limited to:</p>
+<div class="codehilite"><pre><span></span><code>python -m src.testing.run_replay_evidence_check
+</code></pre></div>
+
+<p>The runner must reject arbitrary shell commands, <code>shell=True</code>, chained commands,
+unrecognized Python modules, and commands that request network, trading, or other
+side effects outside the explicit allowlist.</p>
+<h4 id="required-rejection-behavior">Required rejection behavior<a class="headerlink" href="#required-rejection-behavior" title="Permanent link">&para;</a></h4>
+<p>A future controlled runner must reject or skip execution when any of the
+following is true:</p>
+<ul>
+<li>readiness is missing or not <code>readiness_score=100</code>;</li>
+<li>the safe seven-stage trail is incomplete;</li>
+<li>Security reports invalid or critical validation records;</li>
+<li>the rendered command result is missing;</li>
+<li>execution eligibility is missing;</li>
+<li>execution eligibility is not blocked before the controlled decision;</li>
+<li>approval, plan, or rendered command does not explicitly set
+  <code>execution_enabled=true</code>;</li>
+<li>the operator flag is missing;</li>
+<li>the command is not allowlisted;</li>
+<li>a controlled execution result already exists for the rendered command.</li>
+</ul>
+<h4 id="controlled-execution-result">Controlled execution result<a class="headerlink" href="#controlled-execution-result" title="Permanent link">&para;</a></h4>
+<p>A future controlled runner must publish a new record type rather than mutating
+the safe baseline trail:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_controlled_execution_result
+</code></pre></div>
+
+<p>The result must include:</p>
+<ul>
+<li><code>controlled_execution_result_id</code></li>
+<li><code>rendered_command_id</code></li>
+<li><code>plan_id</code></li>
+<li><code>proposal_id</code></li>
+<li><code>approval_id</code></li>
+<li><code>status</code>: <code>executed</code>, <code>skipped</code>, or <code>rejected</code></li>
+<li><code>reason</code></li>
+<li><code>execution_enabled</code></li>
+<li><code>operator_authorized</code></li>
+<li><code>allowlist_matched</code></li>
+<li><code>readiness_score</code></li>
+<li><code>payload.executed</code></li>
+</ul>
+<p>The controlled execution result must be idempotent for a rendered command. A
+second run for the same rendered command must not publish a duplicate controlled
+execution result.</p>
+<h4 id="non-goals-for-the-first-implementation">Non-goals for the first implementation<a class="headerlink" href="#non-goals-for-the-first-implementation" title="Permanent link">&para;</a></h4>
+<p>The first controlled runner implementation must not support arbitrary command
+execution, live trading, network side effects, shell pipelines, background
+processes, or unrestricted subprocess execution.</p>
+<p>The first implementation may start as a skeleton that always publishes
+<code>status=rejected</code> or <code>status=skipped</code> while proving that the contract, validation,
+idempotency, and observability surfaces are correct.</p>
+<h2 id="must-not-support-arbitrary-command-execution">must not support arbitrary command execution.<a class="headerlink" href="#must-not-support-arbitrary-command-execution" title="Permanent link">&para;</a></h2>
+<p>This readiness score is a prerequisite for controlled runner design, not a
+permission to execute commands. not a permission to execute commands.</p>
+<hr />
+<h3 id="reject-only-controlled-runner-skeleton">Reject-only controlled runner skeleton<a class="headerlink" href="#reject-only-controlled-runner-skeleton" title="Permanent link">&para;</a></h3>
+<p>The first implementation is a reject-only skeleton:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_controlled_retry_command<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>&lt;rendered-command-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>This command publishes replay_lifecycle_retry_controlled_execution_result with
+status=rejected, reason=controlled_execution_not_implemented,
+operator_authorized=false, allowlist_matched=false, and
+payload.executed=false. It is idempotent for a rendered command and does not
+execute the rendered command.</p>
+<hr />
+<p>Security validates <code>replay_lifecycle_retry_controlled_execution_result</code> records.
+In the reject-only skeleton phase, Security accepts only rejected results with
+<code>reason=controlled_execution_not_implemented</code>, <code>operator_authorized=false</code>,
+<code>allowlist_matched=false</code>, and <code>payload.executed=false</code>.</p>
+<p>The Overseer brief surfaces controlled execution result visibility from Security
+metrics. In the reject-only phase it reports the controlled execution result
+count, rejected/skipped/executed status counts, and
+<code>controlled_execution_not_implemented</code> reason count.</p>
+<p>The governance trail inspector treats
+<code>replay_lifecycle_retry_controlled_execution_result</code> as an optional controlled
+execution extension. It reports controlled execution result counts, statuses,
+reasons, ids, and <code>extended_controlled_execution_observed=true</code>, but the safe
+seven-stage <code>chain_complete=true</code> result does not require a controlled execution
+result. optional controlled execution extension, does not require a controlled execution result.</p>
+<p>The controlled runner now includes a read-only command allowlist parser. The
+parser recognizes only <code>python -m src.testing.run_replay_evidence_check</code>,
+extracts required arguments, rejects shell chaining/redirection and unknown
+modules, and reports <code>execution_performed=false</code>. Parser allowlist matches do not
+enable execution; the controlled runner remains reject-only with
+<code>reason=controlled_execution_not_implemented</code>. Parser allowlist matches do not enable execution.</p>
+<p>Controlled command parse observability is surfaced through Security metrics,
+the governance trail inspector, controlled execution observability, and Overseer
+briefs. A valid parser observation reports <code>command_parse_valid=1</code>,
+<code>command_parse_allowlisted=1</code>, and <code>command_parse_execution_performed=0</code>.</p>
+<p>The <code>--allow-controlled-execution</code> flag records explicit operator authorization
+intent as <code>operator_authorized=true</code>, but PR 29.3 still does not execute
+commands. Authorized intent remains valid only while
+<code>status=rejected</code>, <code>reason=controlled_execution_not_implemented</code>, and
+<code>payload.executed=false</code>.</p>
+<p>Controlled execution gate observability surfaces the nested <code>gate_evaluation</code>
+from controlled execution results. The gate reports <code>gate_status=blocked</code>,
+<code>would_execute=false</code>, <code>execution_performed=false</code>, and reason counts such as
+<code>controlled_execution_not_enabled</code> and
+<code>controlled_execution_implementation_not_enabled</code>.</p>
+<hr />
+<h3 id="controlled-mock-execution-adapter">Controlled mock execution adapter<a class="headerlink" href="#controlled-mock-execution-adapter" title="Permanent link">&para;</a></h3>
+<p>The controlled mock execution adapter produces an execution-shaped envelope
+without invoking subprocesses. It may report <code>mock_executed</code>, but real execution
+remains disabled: <code>payload.executed=false</code> and <code>subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="controlled-execution-readiness-report">Controlled execution readiness report<a class="headerlink" href="#controlled-execution-readiness-report" title="Permanent link">&para;</a></h3>
+<p>Before introducing any execution adapter, the controlled execution readiness
+helper aggregates the seven-stage retry governance trail, retry governance
+observability, controlled execution observability, command parse observability,
+operator authorization intent, and gate evaluation.</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.check_controlled_execution_readiness<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>&lt;proposal-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>&lt;rendered-command-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--require-operator-authorized<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected safe pre-execution output:</p>
+<div class="codehilite"><pre><span></span><code>status=passed
+ready_for_mock_execution=true
+ready_for_real_execution=false
+blocking_reasons=real_execution_not_supported_yet
+</code></pre></div>
+
+<p>The report is read-only and does not execute commands. Real execution remains
+unsupported until a separate execution adapter PR explicitly introduces it.</p>
+<hr />
+<h3 id="controlled-execution-observability-check">Controlled execution observability check<a class="headerlink" href="#controlled-execution-observability-check" title="Permanent link">&para;</a></h3>
+<p>The reject-only controlled execution extension has a dedicated read-only
+observability check:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.check_controlled_retry_execution_observability<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>&lt;rendered-command-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<p>Expected output for the skeleton phase includes:</p>
+<div class="codehilite"><pre><span></span><code>status=passed
+controlled_execution_observed=true
+controlled_execution_results=1
+rejected=1
+executed=0
+controlled_execution_not_implemented=1
+controlled_execution_enabled=false
+</code></pre></div>
+
+<p>The check fails if the controlled execution result is missing, if
+payload.executed=true, if operator_authorized=true, or if the Security
+validation metrics do not observe the controlled execution result.</p>
+<hr />
+<h3 id="mock-execution-visibility">Mock execution visibility<a class="headerlink" href="#mock-execution-visibility" title="Permanent link">&para;</a></h3>
+<p>Mock execution is surfaced in the governance trail inspector, Overseer brief,
+and final readiness report. A safe mock run reports <code>mock_executed=1</code>,
+<code>mock_performed=1</code>, and <code>mock_subprocess_invoked=0</code>. Real execution remains
+disabled. Real execution remains disabled.</p>
+<hr />
+<h3 id="mock-execution-summary-records">Mock execution summary records<a class="headerlink" href="#mock-execution-summary-records" title="Permanent link">&para;</a></h3>
+<p>Mock execution summary records are derived from controlled execution results and
+are idempotent by <code>controlled_execution_result_id</code>. A safe summary reports
+<code>mock_summary_executed=1</code>, <code>mock_summary_performed=1</code>, and
+<code>mock_summary_subprocess_invoked=0</code>.</p>
+<hr />
+<p>When <code>run_controlled_retry_command</code> is invoked with <code>--mock-execution</code>, it
+publishes the controlled execution result and automatically derives the
+<code>replay_lifecycle_retry_mock_execution_summary</code> record. Re-running the same
+mock path remains idempotent and does not duplicate either record.</p>
+<hr />
+<h3 id="controlled-retry-execution-adapter-contract">Controlled retry execution adapter contract<a class="headerlink" href="#controlled-retry-execution-adapter-contract" title="Permanent link">&para;</a></h3>
+<p>The controlled retry execution adapter contract is defined before real execution
+support. The only supported adapter is <code>mock</code>. Unsupported adapters such as
+<code>real</code> or subprocess-backed adapters are rejected.</p>
+<p>Required invariants:</p>
+<ul>
+<li><code>payload.executed=false</code></li>
+<li><code>subprocess_invoked=false</code></li>
+<li><code>real_execution_enabled=false</code></li>
+</ul>
+<p>The mock adapter returns an execution-shaped result with
+<code>adapter=mock</code>, <code>mode=mock</code>, <code>status=mock_executed</code>, and
+<code>reason=mock_execution_completed</code>, but it never invokes subprocesses.</p>
+<hr />
+<h3 id="adapter-contract-observability">Adapter contract observability<a class="headerlink" href="#adapter-contract-observability" title="Permanent link">&para;</a></h3>
+<p>Adapter contract observability surfaces the nested adapter result from mock
+execution envelopes. A safe adapter contract reports <code>adapter=mock</code>, <code>mode=mock</code>,
+<code>mock_executed=1</code>, <code>subprocess_invoked=0</code>, <code>real_execution_enabled=0</code>, and
+<code>payload_executed=0</code>.</p>
+<hr />
+<h3 id="adapter-contract-readiness-gates">Adapter contract readiness gates<a class="headerlink" href="#adapter-contract-readiness-gates" title="Permanent link">&para;</a></h3>
+<p>The final controlled execution readiness report requires the adapter contract to
+be observed before mock execution is considered ready. The required safe adapter
+gates are:</p>
+<ul>
+<li><code>adapter_contract_observed=true</code></li>
+<li><code>adapter_mock=1</code></li>
+<li><code>adapter_mode_mock=1</code></li>
+<li><code>adapter_result_mock_executed=1</code></li>
+<li><code>adapter_subprocess_invoked=0</code></li>
+<li><code>adapter_real_execution_enabled=0</code></li>
+<li><code>adapter_payload_executed=0</code></li>
+</ul>
+<p>These gates keep mock execution separate from real execution and prevent any
+subprocess-backed adapter from being treated as ready.</p>
+<hr />
+<h3 id="adapter-contract-violation-fixtures">Adapter contract violation fixtures<a class="headerlink" href="#adapter-contract-violation-fixtures" title="Permanent link">&para;</a></h3>
+<p>Adapter contract violation fixtures prove that the readiness report fails closed.
+The controlled execution readiness gate fails if any adapter contract violation is
+observed:</p>
+<ul>
+<li><code>adapter_subprocess_invoked=true</code></li>
+<li><code>adapter_real_execution_enabled=true</code></li>
+<li><code>adapter_payload_executed=true</code></li>
+<li><code>adapter != mock</code></li>
+<li><code>mode != mock</code></li>
+</ul>
+<p>These negative fixtures ensure that mock readiness cannot be confused with real
+execution readiness.</p>
+<hr />
+<h3 id="controlled-execution-readiness-json-schema">Controlled execution readiness JSON schema<a class="headerlink" href="#controlled-execution-readiness-json-schema" title="Permanent link">&para;</a></h3>
+<p>The controlled execution readiness report exposes a stable machine-readable
+contract with <code>schema_version=controlled-execution-readiness/v1</code> and
+<code>schema_kind=controlled_execution_readiness</code>.</p>
+<p>Required top-level fields include <code>ready_for_mock_execution</code>,
+<code>ready_for_real_execution</code>, <code>blocking_reasons</code>, <code>adapter_contract_observed</code>,
+<code>adapter_subprocess_invoked</code>, <code>adapter_real_execution_enabled</code>,
+<code>adapter_payload_executed</code>, <code>checks</code>, and <code>exit_codes</code>.</p>
+<p><code>ready_for_real_execution</code> must remain <code>false</code> until a separate real-adapter PR
+explicitly changes the contract.</p>
+<hr />
+<p>The JSON schema is covered by regression fixtures that snapshot the required
+public fields and verify that <code>checks</code>, <code>exit_codes</code>, adapter contract counters,
+and <code>ready_for_real_execution=false</code> remain present and machine-readable. required public fields.</p>
+<hr />
+<h3 id="real-adapter-placeholder">Real adapter placeholder<a class="headerlink" href="#real-adapter-placeholder" title="Permanent link">&para;</a></h3>
+<p>The real controlled retry execution adapter is explicitly represented as an
+unsupported placeholder. The adapter contract reports
+<code>real_execution_supported=false</code>, <code>subprocess_supported=false</code>,
+<code>real_adapter_supported=false</code>, and <code>real_adapter_runnable=false</code>.</p>
+<p>Requesting the <code>real</code> adapter fails closed and requires a separate explicit PR
+before any real execution support can exist.</p>
+<hr />
+<h3 id="unsupported-real-adapter-observability">Unsupported real adapter observability<a class="headerlink" href="#unsupported-real-adapter-observability" title="Permanent link">&para;</a></h3>
+<p>Unsupported real adapter observability is surfaced in readiness and Overseer
+briefs. A safe unsupported real adapter state reports
+<code>real_adapter_supported=false</code>, <code>real_adapter_runnable=false</code>,
+<code>subprocess_supported=false</code>, and <code>requires_explicit_pr=true</code>.</p>
+<p>This keeps the real adapter visible to operators while preserving fail-closed
+behavior until a separate explicit PR introduces real execution support.</p>
+<hr />
+<p>Unsupported real adapter metrics are emitted as fail-closed observability values:
+<code>security_real_adapter_supported=0</code>, <code>security_real_adapter_runnable=0</code>,
+<code>security_real_adapter_subprocess_supported=0</code>, and
+<code>security_real_adapter_requires_explicit_pr=1</code>.</p>
+<hr />
+<h3 id="real-adapter-threat-model">Real adapter threat model<a class="headerlink" href="#real-adapter-threat-model" title="Permanent link">&para;</a></h3>
+<p>Real controlled retry execution is explicitly out of scope until a separate
+implementation PR enables it. The current adapter contract keeps
+<code>real_execution_supported=false</code>, <code>subprocess_supported=false</code>,
+<code>real_adapter_supported=false</code>, <code>real_adapter_runnable=false</code>, and
+<code>real_adapter_requires_explicit_pr=true</code>.</p>
+<p>The threat model for any future real adapter includes:</p>
+<ul>
+<li>Shell injection through command strings or unsafe argument rendering.</li>
+<li>Path traversal or unexpected working-directory changes.</li>
+<li>Environment-variable leakage or unsafe inherited process state.</li>
+<li>Unbounded execution time or hanging subprocesses.</li>
+<li>Unbounded stdout/stderr capture or log amplification.</li>
+<li>Executing a command that was not produced by the retry governance trail.</li>
+<li>Reusing stale readiness/approval evidence after the runtime state changed.</li>
+<li>Confusing operator authorization intent with explicit real execution approval.</li>
+<li>Publishing an execution result without before/after audit evidence.</li>
+<li>Allowing mock-readiness to imply real-readiness.</li>
+</ul>
+<h3 id="real-adapter-preflight-contract">Real adapter preflight contract<a class="headerlink" href="#real-adapter-preflight-contract" title="Permanent link">&para;</a></h3>
+<p>Before any real controlled retry execution can be implemented, a dedicated
+preflight contract must be satisfied and surfaced in readiness, security
+validation, inspector summaries, and Overseer briefs.</p>
+<p>Required preflight gates:</p>
+<ul>
+<li><code>shell=false</code>; <code>shell=True</code> is never allowed.</li>
+<li>Commands must be module-only invocations with strict argv parsing.</li>
+<li>The parsed module and arguments must match the controlled command allowlist.</li>
+<li>The working directory must be fixed and validated.</li>
+<li>The environment must be sanitized through an explicit allowlist.</li>
+<li>Timeout must use a hard cap derived from the approved timeout profile.</li>
+<li>stdout and stderr capture must have byte caps.</li>
+<li>A fresh readiness report must pass schema validation.</li>
+<li>The adapter contract must be observed with subprocess and real execution still disabled before approval.</li>
+<li>A separate explicit <code>real_execution_approval_id</code> must be present.</li>
+<li>Operator authorization intent alone is not sufficient for real execution.</li>
+<li>Audit records must be published before and after any real execution attempt.</li>
+<li>The real adapter must remain unsupported until the explicit implementation PR changes the adapter contract.</li>
+</ul>
+<p>The current fail-closed expected state remains:</p>
+<ul>
+<li><code>ready_for_mock_execution=true</code></li>
+<li><code>ready_for_real_execution=false</code></li>
+<li><code>real_execution_supported=false</code></li>
+<li><code>subprocess_supported=false</code></li>
+<li><code>real_adapter_supported=false</code></li>
+<li><code>real_adapter_runnable=false</code></li>
+<li><code>real_adapter_requires_explicit_pr=true</code></li>
+</ul>
+<hr />
+<h3 id="real-execution-cli-scaffold">Real execution CLI scaffold<a class="headerlink" href="#real-execution-cli-scaffold" title="Permanent link">&para;</a></h3>
+<p><code>run_controlled_retry_command --real-execution</code> is a scaffolded operator intent
+flag. It does not enable real execution. Real execution requests are rejected
+with <code>reason=real_execution_not_supported</code>, <code>real_execution_requested=true</code>,
+<code>real_execution_performed=false</code>, <code>real_execution_supported=false</code>,
+<code>subprocess_invoked=false</code>, and <code>payload.executed=false</code>.</p>
+<p>The flag is intentionally audit-only until a separate explicit PR implements and
+validates the real adapter preflight contract.</p>
+<hr />
+<h3 id="real-execution-request-observability">Real execution request observability<a class="headerlink" href="#real-execution-request-observability" title="Permanent link">&para;</a></h3>
+<p>Real execution request observability surfaces audit-only real execution intent.
+A safe rejected real execution request reports
+<code>real_execution_request_observed=true</code>, <code>real_execution_request_rejected=1</code>,
+<code>real_execution_requested=1</code>, <code>real_execution_performed=0</code>,
+<code>real_execution_supported_count=0</code>, and <code>subprocess_invoked_count=0</code>.</p>
+<p>Inspector, Security, Overseer, and readiness reports must agree that the request
+was observed, rejected as unsupported, and did not execute.</p>
+<hr />
+<h3 id="real-execution-preflight-records">Real execution preflight records<a class="headerlink" href="#real-execution-preflight-records" title="Permanent link">&para;</a></h3>
+<p>Real execution preflight records are read-only audit records for future real
+execution requests. They are published as
+<code>replay_lifecycle_retry_real_execution_preflight</code> with <code>status=blocked</code>,
+<code>would_execute=false</code>, <code>execution_performed=false</code>, <code>subprocess_invoked=false</code>,
+and <code>real_adapter_requires_explicit_pr=true</code>.</p>
+<p>The preflight evaluator does not invoke subprocesses and does not make real
+execution runnable. It only records why a future real execution attempt remains
+blocked.</p>
+<hr />
+<h3 id="real-preflight-observability">Real preflight observability<a class="headerlink" href="#real-preflight-observability" title="Permanent link">&para;</a></h3>
+<p>Real preflight observability surfaces fail-closed preflight records in readiness
+and Overseer summaries. A safe preflight reports <code>real_preflight_observed=true</code>,
+<code>real_preflight_blocked=1</code>, <code>real_preflight_would_execute=0</code>,
+<code>real_preflight_execution_performed=0</code>,
+<code>real_preflight_subprocess_invoked=0</code>, and
+<code>real_preflight_requires_explicit_pr=1</code>.</p>
+<p>Overseer briefs report the same state as:
+<code>Real execution preflight remains blocked</code>.</p>
+<hr />
+<h3 id="explicit-real-execution-approval-records">Explicit real execution approval records<a class="headerlink" href="#explicit-real-execution-approval-records" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_approval</code> separates operator authorization
+intent from future real execution approval. The record may be pending, approved,
+or rejected, but in this phase it always reports <code>real_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>execution_performed=false</code>, and
+<code>subprocess_invoked=false</code>.</p>
+<p>Operator authorization alone is insufficient for real execution.</p>
+<hr />
+<h3 id="final-real-execution-gate">Final real execution gate<a class="headerlink" href="#final-real-execution-gate" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_final_gate</code> is the last fail-closed
+gate before any future dry-run execution envelope. It requires an approved
+real execution approval transition, but still reports
+<code>ready_for_real_execution=false</code>, <code>would_execute=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>execution_performed=false</code>, and <code>subprocess_invoked=false</code>.</p>
+<p>The gate remains blocked until a separate explicit execution PR enables a
+supported real adapter and subprocess boundary.</p>
+<hr />
+<h3 id="real-execution-dry-run-envelope">Real execution dry-run envelope<a class="headerlink" href="#real-execution-dry-run-envelope" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_dry_run_envelope</code> captures the future
+execution envelope without invoking subprocesses. It records argv, cwd, and a
+sanitized env key list while keeping <code>dry_run_only=true</code>,
+<code>would_execute=false</code>, <code>ready_for_real_execution=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>execution_performed=false</code>, and <code>subprocess_invoked=false</code>.</p>
+<p>The envelope is an audit artifact only. It does not execute commands.</p>
+<hr />
+<h3 id="guarded-noop-execution-harness">Guarded noop execution harness<a class="headerlink" href="#guarded-noop-execution-harness" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_noop_result</code> is the first subprocess
+boundary. It runs only a fixed noop command and never executes the rendered
+command or the dry-run envelope command. The record must keep
+<code>noop_only=true</code>, <code>rendered_command_executed=false</code>,
+<code>dry_run_envelope_command_executed=false</code>, <code>real_execution_enabled=false</code>,
+<code>subprocess_invoked=true</code>, <code>execution_performed=true</code>, and <code>exit_code=0</code>.</p>
+<p>This validates subprocess plumbing without enabling real execution.</p>
+<hr />
+<h3 id="read-only-evidence-command-promotion">Read-only evidence command promotion<a class="headerlink" href="#read-only-evidence-command-promotion" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_promotion</code> promotes a
+dry-run envelope command to a read-only candidate only after a successful
+guarded noop harness result. It validates the allowlisted
+<code>src.testing.run_replay_evidence_check</code> command shape while keeping
+<code>subprocess_invoked=false</code>, <code>execution_performed=false</code>,
+<code>rendered_command_executed=false</code>, <code>dry_run_envelope_command_executed=false</code>,
+and <code>real_execution_enabled=false</code>.</p>
+<p>Promotion is an audit/readiness artifact only. It does not execute the
+read-only command. does not execute the read-only command.</p>
+<hr />
+<h3 id="read-only-execution-final-gate">Read-only execution final gate<a class="headerlink" href="#read-only-execution-final-gate" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_final_gate</code> is a fail-closed
+gate after read-only promotion. It records that promotion preconditions were
+satisfied, but keeps <code>gate_status=blocked</code>,
+<code>ready_for_read_only_execution=false</code>, <code>read_only_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, <code>rendered_command_executed=false</code>, and
+<code>dry_run_envelope_command_executed=false</code>.</p>
+<p>The gate requires a separate PR before any read-only command execution can be
+enabled.</p>
+<hr />
+<h3 id="read-only-execution-approval-scaffold">Read-only execution approval scaffold<a class="headerlink" href="#read-only-execution-approval-scaffold" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_approval</code> records explicit
+approval intent for future read-only execution. The record may be pending,
+approved, or rejected, but it must keep <code>read_only_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>subprocess_invoked=false</code>, <code>execution_performed=false</code>,
+<code>rendered_command_executed=false</code>, and
+<code>dry_run_envelope_command_executed=false</code>.</p>
+<p>This approval scaffold is an audit artifact only and does not execute the
+read-only command.</p>
+<hr />
+<h3 id="read-only-execution-approval-transition">Read-only execution approval transition<a class="headerlink" href="#read-only-execution-approval-transition" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_approval_transition</code> records an
+immutable read-only execution approval status transition, such as
+<code>from_status=pending</code> to <code>to_status=approved</code> or <code>to_status=rejected</code>.</p>
+<p>The transition is an audit artifact only. Even when approved it must keep
+<code>read_only_execution_enabled=false</code>, <code>real_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, <code>rendered_command_executed=false</code>, and
+<code>dry_run_envelope_command_executed=false</code>.</p>
+<hr />
+<h3 id="read-only-execution-readiness-gate">Read-only execution readiness gate<a class="headerlink" href="#read-only-execution-readiness-gate" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_readiness_gate</code> is the final
+pre-execution readiness artifact for guarded read-only execution. It may record
+<code>read_only_readiness_satisfied=true</code> and
+<code>ready_for_guarded_read_only_execution=true</code>, but it must keep
+<code>read_only_execution_enabled=false</code>, <code>real_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, <code>rendered_command_executed=false</code>, and
+<code>dry_run_envelope_command_executed=false</code>.</p>
+<p>The gate remains blocked by
+<code>guarded_read_only_execution_requires_separate_pr</code>.</p>
+<hr />
+<h3 id="guarded-read-only-execution-result">Guarded read-only execution result<a class="headerlink" href="#guarded-read-only-execution-result" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_execution_result</code> records the
+first guarded read-only execution outcome. It is only valid for the allowlisted
+<code>src.testing.run_replay_evidence_check</code> module with explicit operator
+authorization and an explicit guarded read-only execution flag.</p>
+<p>The result may be <code>status=executed</code>, <code>status=failed</code>, or <code>status=rejected</code>.
+A failed exit code is still valid execution evidence when
+<code>validation_reasons=[]</code>, <code>operator_authorized=true</code>,
+<code>allow_guarded_read_only_execution=true</code>, <code>read_only_execution_enabled=true</code>,
+<code>subprocess_invoked=true</code>, and <code>execution_performed=true</code>.</p>
+<p>The record must keep <code>real_execution_enabled=false</code>; guarded read-only execution
+does not enable arbitrary real execution.</p>
+<hr />
+<h3 id="read-only-execution-feedback">Read-only execution feedback<a class="headerlink" href="#read-only-execution-feedback" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_feedback</code> records post-execution
+feedback derived from a guarded read-only execution result. A failed read-only
+execution can become <code>feedback_status=actionable</code> with
+<code>recommended_next_action=investigate_failed_read_only_evidence_check</code>.</p>
+<p>The feedback record is evidence only. It must keep
+<code>feedback_execution_performed=false</code>, <code>feedback_subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, <code>subprocess_invoked=false</code>, and
+<code>real_execution_enabled=false</code>.</p>
+<hr />
+<h3 id="overseer-read-only-feedback-recommendation">Overseer read-only feedback recommendation<a class="headerlink" href="#overseer-read-only-feedback-recommendation" title="Permanent link">&para;</a></h3>
+<p>The Overseer brief surfaces
+<code>replay_lifecycle_retry_real_execution_read_only_feedback</code> as an actionable
+post-execution signal. When a guarded read-only execution fails, the brief should
+report <code>feedback_status=actionable</code> and recommend
+<code>investigate_failed_read_only_evidence_check</code>.</p>
+<p>The recommendation is observational only. It must not perform feedback execution,
+invoke subprocesses, or enable arbitrary real execution.</p>
+<hr />
+<h3 id="read-only-execution-repair-plan">Read-only execution repair plan<a class="headerlink" href="#read-only-execution-repair-plan" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_repair_plan</code> converts
+actionable read-only execution feedback into a reviewable repair plan. For a
+failed read-only evidence check, the plan may include targets such as
+<code>execution_published</code>, <code>execution_completed</code>, <code>evidence_published</code>,
+<code>memory_record_published</code>, and replay evidence visibility checks.</p>
+<p>The repair plan is observational and review-only. It must keep
+<code>repair_execution_enabled=false</code>, <code>real_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>repair_execution_performed=false</code>,
+<code>repair_subprocess_invoked=false</code>, <code>execution_performed=false</code>, and
+<code>subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="overseer-repair-plan-recommendation">Overseer repair-plan recommendation<a class="headerlink" href="#overseer-repair-plan-recommendation" title="Permanent link">&para;</a></h3>
+<p>The Overseer brief surfaces
+<code>replay_lifecycle_retry_real_execution_read_only_repair_plan</code> as a safe next
+action after actionable read-only feedback. The brief should recommend
+<code>review_replay_evidence_repair_plan</code> and summarize repair targets before any
+future execution expansion.</p>
+<p>This recommendation is review-only. It must keep
+<code>repair_execution_enabled=false</code>, <code>real_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>repair_execution_performed=false</code>, and
+<code>repair_subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="read-only-repair-action-bundle">Read-only repair action bundle<a class="headerlink" href="#read-only-repair-action-bundle" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_repair_action_bundle</code> converts
+a reviewable repair plan into a structured action bundle. The bundle lists
+candidate repair actions and targets, but it remains review-only until a later
+explicit approval and execution PR.</p>
+<p>The bundle must keep <code>bundle_reviewed=false</code>,
+<code>bundle_execution_enabled=false</code>, <code>repair_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>bundle_execution_performed=false</code>, <code>bundle_subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, and <code>subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="overseer-repair-action-bundle-recommendation">Overseer repair action bundle recommendation<a class="headerlink" href="#overseer-repair-action-bundle-recommendation" title="Permanent link">&para;</a></h3>
+<p>The Overseer brief surfaces
+<code>replay_lifecycle_retry_real_execution_read_only_repair_action_bundle</code> as the
+next review gate after a repair plan is assembled. The brief should recommend
+<code>review_repair_action_bundle</code> before any repair execution approval or execution
+expansion.</p>
+<p>This recommendation is review-only. It must keep <code>bundle_reviewed=false</code>,
+<code>bundle_execution_enabled=false</code>, <code>repair_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>bundle_execution_performed=false</code>, and <code>bundle_subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="repair-action-bundle-operator-review">Repair action bundle operator review<a class="headerlink" href="#repair-action-bundle-operator-review" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review</code>
+records explicit operator review of a repair action bundle. An approved review
+may recommend <code>prepare_repair_execution_approval_scaffold</code>, but it must not
+enable or perform execution.</p>
+<p>The review artifact must keep <code>bundle_execution_enabled=false</code>,
+<code>repair_execution_enabled=false</code>, <code>real_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>bundle_execution_performed=false</code>,
+<code>bundle_subprocess_invoked=false</code>, <code>execution_performed=false</code>, and
+<code>subprocess_invoked=false</code>. must not enable or perform execution.</p>
+<hr />
+<h3 id="overseer-repair-review-recommendation">Overseer repair review recommendation<a class="headerlink" href="#overseer-repair-review-recommendation" title="Permanent link">&para;</a></h3>
+<p>The Overseer brief surfaces approved
+<code>replay_lifecycle_retry_real_execution_read_only_repair_action_bundle_review</code>
+records and recommends <code>prepare_repair_execution_approval_scaffold</code>.</p>
+<p>This recommendation prepares the next approval artifact only. It must keep
+<code>repair_execution_enabled=false</code>, <code>real_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>execution_performed=false</code>, and
+<code>subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="repair-execution-approval-scaffold">Repair execution approval scaffold<a class="headerlink" href="#repair-execution-approval-scaffold" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_repair_approval</code> records an explicit
+repair execution approval scaffold after an approved repair action bundle review.
+The scaffold may be <code>pending</code>, <code>approved</code>, or <code>rejected</code>, but it must not enable
+or perform repair execution.</p>
+<p>The approval scaffold must keep <code>repair_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>repair_execution_performed=false</code>, <code>repair_subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, and <code>subprocess_invoked=false</code>. must not enable or perform repair execution.</p>
+<hr />
+<h3 id="repair-execution-approval-transition">Repair execution approval transition<a class="headerlink" href="#repair-execution-approval-transition" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_repair_approval_transition</code> records an
+immutable transition from a pending repair execution approval to <code>approved</code> or
+<code>rejected</code>. An approved transition may recommend
+<code>prepare_repair_execution_final_gate</code>, but it must not enable or perform repair
+execution.</p>
+<p>The transition artifact must keep <code>repair_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>repair_execution_performed=false</code>, <code>repair_subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, and <code>subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="repair-execution-final-gate">Repair execution final gate<a class="headerlink" href="#repair-execution-final-gate" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_repair_final_gate</code> records the final
+pre-dry-run gate after an approved repair execution approval transition. A
+<code>ready_blocked</code> gate may recommend <code>prepare_repair_execution_dry_run_envelope</code>,
+but it must not enable or perform repair execution.</p>
+<p>The final gate artifact must keep <code>ready_for_repair_execution=false</code>,
+<code>would_execute=false</code>, <code>repair_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>repair_execution_performed=false</code>, <code>repair_subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, and <code>subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="repair-execution-dry-run-envelope">Repair execution dry-run envelope<a class="headerlink" href="#repair-execution-dry-run-envelope" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_repair_dry_run_envelope</code> records the
+dry-run envelope after a ready-blocked repair execution final gate. The envelope
+captures the repair action bundle targets and validation mode, but it must not
+apply changes, execute the bundle, invoke subprocesses, or enable repair
+execution.</p>
+<p>The dry-run envelope artifact must keep <code>dry_run_only=true</code>,
+<code>ready_for_repair_execution=false</code>, <code>would_execute=false</code>,
+<code>repair_execution_enabled=false</code>, <code>real_execution_enabled=false</code>,
+<code>subprocess_enabled=false</code>, <code>repair_execution_performed=false</code>,
+<code>repair_subprocess_invoked=false</code>, <code>execution_performed=false</code>, and
+<code>subprocess_invoked=false</code>. must not apply changes.</p>
+<hr />
+<h3 id="repair-execution-noop-harness">Repair execution noop harness<a class="headerlink" href="#repair-execution-noop-harness" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_repair_noop_result</code> records a controlled
+noop subprocess after a prepared repair execution dry-run envelope. The noop
+harness may set <code>execution_performed=true</code> and <code>subprocess_invoked=true</code> only
+for the controlled noop marker, but it must not execute repair actions, execute
+the repair bundle, execute the repair command, or enable repair execution.</p>
+<p>The noop result artifact must keep <code>noop_only=true</code>,
+<code>repair_actions_executed=false</code>, <code>repair_bundle_executed=false</code>,
+<code>repair_command_executed=false</code>, <code>repair_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>repair_execution_performed=false</code>, and <code>repair_subprocess_invoked=false</code>. controlled noop subprocess.</p>
+<hr />
+<h3 id="repair-noop-feedback">Repair noop feedback<a class="headerlink" href="#repair-noop-feedback" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_repair_noop_feedback</code> records the
+decision after a completed repair noop result. An actionable feedback record may
+allow the next readiness gate with
+<code>recommended_next_action=prepare_repair_execution_readiness_gate</code>, but it must
+not execute feedback logic via subprocess and must not enable repair execution.</p>
+<p>The feedback artifact must keep <code>feedback_execution_performed=false</code>,
+<code>feedback_subprocess_invoked=false</code>, <code>repair_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>repair_execution_performed=false</code>, <code>repair_subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, and <code>subprocess_invoked=false</code>. must not execute feedback logic via subprocess.</p>
+<hr />
+<h3 id="repair-execution-readiness-gate">Repair execution readiness gate<a class="headerlink" href="#repair-execution-readiness-gate" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_real_execution_repair_readiness_gate</code> records that the
+repair path is ready for a later guarded repair execution harness after
+actionable repair noop feedback. The gate may set
+<code>ready_for_guarded_repair_execution=true</code>, but it remains <code>ready_blocked</code> and
+must keep <code>ready_for_repair_execution=false</code> until a separate guarded execution
+PR is implemented.</p>
+<p>The readiness gate must keep <code>repair_execution_enabled=false</code>,
+<code>real_execution_enabled=false</code>, <code>subprocess_enabled=false</code>,
+<code>repair_execution_performed=false</code>, <code>repair_subprocess_invoked=false</code>,
+<code>execution_performed=false</code>, and <code>subprocess_invoked=false</code>.</p>
+<hr />
+<h3 id="guarded-repair-execution-result">Guarded repair execution result<a class="headerlink" href="#guarded-repair-execution-result" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_guarded_repair_execution_result</code> records the first
+guarded repair execution outcome after a satisfied repair readiness gate. It is
+valid only after the repair path has passed explicit approval, dry-run envelope,
+noop harness, noop feedback, and readiness lineage.</p>
+<p>A successful guarded repair execution result reports:</p>
+<div class="codehilite"><pre><span></span><code>repair_execution_status=succeeded
+repair_execution_allowed=true
+guarded_repair_marker_observed=true
+exit_code=0
+repair_action_target_count=9
+repair_actions_executed=true
+repair_bundle_executed=true
+repair_command_executed=true
+recommended_next_action=run_post_repair_evidence_check
+</code></pre></div>
+
+<p>The guarded repair harness is still a controlled harness, not arbitrary real
+execution. It must keep:</p>
+<div class="codehilite"><pre><span></span><code>real_execution_enabled=false
+rendered_command_executed=false
+dry_run_command_executed=false
+</code></pre></div>
+
+<p>The result may enable and perform only the guarded repair harness subprocess:</p>
+<div class="codehilite"><pre><span></span><code>repair_execution_enabled=true
+subprocess_enabled=true
+repair_execution_performed=true
+repair_subprocess_invoked=true
+execution_performed=true
+subprocess_invoked=true
+</code></pre></div>
+
+<p>Security, inspector, readiness, and Overseer metrics must surface the guarded
+repair execution result before the loop can be considered ready for post-repair
+verification.</p>
+<hr />
+<h3 id="verified-guarded-repair-loop">Verified guarded repair loop<a class="headerlink" href="#verified-guarded-repair-loop" title="Permanent link">&para;</a></h3>
+<p>The full verified repair loop is closed only when the post-repair evidence check
+passes after a succeeded guarded repair execution result.</p>
+<p>Expected final verification signals:</p>
+<div class="codehilite"><pre><span></span><code>post_repair_status=passed
+post_repair_evidence_check_allowed=true
+post_repair_evidence_check_enabled=true
+post_repair_evidence_marker_observed=true
+post_repair_evidence_exit_code=0
+repair_outcome_verified=true
+repair_targets_expected_count=9
+repair_targets_verified_count=9
+repair_targets_missing=[]
+repair_targets_unexpected=[]
+source_guarded_repair_execution_status=succeeded
+source_guarded_repair_execution_allowed=true
+source_guarded_repair_marker_observed=true
+source_guarded_repair_exit_code=0
+source_guarded_repair_next_action=run_post_repair_evidence_check
+recommended_next_action=close_repair_loop
+</code></pre></div>
+
+<p>The post-repair evidence check may execute only the verification subprocess. It
+must not perform another repair execution:</p>
+<div class="codehilite"><pre><span></span><code>repair_execution_enabled=false
+real_execution_enabled=false
+repair_execution_performed=false
+repair_subprocess_invoked=false
+</code></pre></div>
+
+<p>This gives the runtime an auditable path from failed read-only evidence to
+reviewed repair, guarded repair execution, verified outcome, and
+<code>close_repair_loop</code>.</p>
+<hr />
+<h3 id="post-repair-evidence-check">Post-repair evidence check<a class="headerlink" href="#post-repair-evidence-check" title="Permanent link">&para;</a></h3>
+<p><code>replay_lifecycle_retry_post_repair_evidence_check</code> records the final
+verification after a succeeded guarded repair execution result. A passed check
+requires the post-repair marker, zero evidence-check exit code, all expected
+repair targets verified, and no missing or unexpected targets.</p>
+<p>This artifact may execute only the evidence-check subprocess. It must keep
+<code>repair_execution_enabled=false</code>, <code>real_execution_enabled=false</code>,
+<code>repair_execution_performed=false</code>, and <code>repair_subprocess_invoked=false</code>.
+A passed check recommends <code>close_repair_loop</code>.</p>
+<p>Security validation, the governance trail inspector, the controlled execution
+readiness report, and Overseer summaries must agree on the final verified state:
+<code>post_repair_status=passed</code>, <code>repair_outcome_verified=true</code>,
+<code>repair_targets_verified_count=9</code>, no missing or unexpected targets, and
+<code>recommended_next_action=close_repair_loop</code>.</p>
+<hr />
+<h2 id="related-modules">Related modules<a class="headerlink" href="#related-modules" title="Permanent link">&para;</a></h2>
+<div class="codehilite"><pre><span></span><code>src/swarms/common/protocols/briefs.py
+src/swarms/common/protocols/directives.py
+src/swarms/common/protocols/evidence.py
+
+src/testing/seed_directive.py
+src/testing/directive_evidence.py
+src/testing/publish_directive_evidence.py
+src/testing/evidence_memory_bridge.py
+
+src/swarms/trade/node_core/directive_consumer.py
+src/swarms/trade/node_core/crdt_refresh.py
+
+src/testing/run_guarded_repair_execution.py
+src/testing/run_post_repair_evidence_check.py
+src/testing/check_controlled_execution_readiness.py
+src/testing/inspect_retry_governance_trail.py
+src/swarms/security/runtime_validation.py
+</code></pre></div>
+
+<hr />
+<p>RUN_REPLAY currently executes a dry-run replay skeleton:
+- loads simulation_replay_scenario by scenario_id
+- validates dry_run=True
+- returns simulation_replay_execution receipt
+- no live/external side effects</p>
+<hr />
+<div class="codehilite"><pre><span></span><code>rm<span class="w"> </span>-f<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db*
+rm<span class="w"> </span>-f<span class="w"> </span>data/cluster_runtime/latest/ledgers/events.local.db*
+
+python<span class="w"> </span>-m<span class="w"> </span>src.swarms.runtime.cluster_cli<span class="w"> </span>up<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--duration<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-strict<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--simulation-nodes<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--simulation-heartbeat-interval<span class="w"> </span><span class="m">5</span>
+</code></pre></div>
+
+<hr />
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.retry_governance_smoke<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>replay-retry-real-observe-smoke-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--approval-id<span class="w"> </span>replay-retry-real-observe-approval-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--plan-id<span class="w"> </span>replay-retry-real-observe-plan-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--result-id<span class="w"> </span>replay-retry-real-observe-result-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--timeout-profile<span class="w"> </span>standard<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--decision-mode<span class="w"> </span>manual<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<hr />
+<p>controlled real-request result:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_controlled_retry_command<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--allow-controlled-execution<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--real-execution<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<hr />
+<p>real gate chain:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.build_real_execution_preflight<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.build_real_execution_approval<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--approval-status<span class="w"> </span>pending<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.build_real_execution_approval_transition<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--to-status<span class="w"> </span>approved<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.build_real_execution_final_gate<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.build_real_execution_dry_run_envelope<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<hr />
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_real_execution_noop_harness<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.build_real_execution_read_only_promotion<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.build_real_execution_read_only_final_gate<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rendered-command-id<span class="w"> </span>replay-retry-real-observe-command-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<hr />
+<p>Runtime quick check:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.retry_governance_smoke<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--proposal-id<span class="w"> </span>replay-retry-smoke-e2e-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--approval-id<span class="w"> </span>replay-retry-smoke-e2e-approval-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--plan-id<span class="w"> </span>replay-retry-smoke-e2e-plan-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--result-id<span class="w"> </span>replay-retry-smoke-e2e-result-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+<span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span>
+</code></pre></div>
+
+<p>CLI:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.seed_replay_scenario<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario-id<span class="w"> </span>replay-runtime-reduce-risk-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>REDUCE_RISK<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--expected-result-status<span class="w"> </span>applied<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+python<span class="w"> </span>-m<span class="w"> </span>src.testing.seed_directive<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>RUN_REPLAY<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target<span class="w"> </span>simulation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-type<span class="w"> </span>swarm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>overseer-seed<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-run-replay-cli-live-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--payload-json<span class="w"> </span><span class="s1">&#39;{&quot;scenario_id&quot;:&quot;replay-runtime-reduce-risk-1&quot;,&quot;dry_run&quot;:true}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>grep<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;runtime-run-replay-cli-live-1\|run_replay_dry_run_completed&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>data/cluster_runtime/latest/logs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-120
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>tail<span class="w"> </span>-200<span class="w"> </span>data/cluster_runtime/latest/logs/simulation-1.log
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.testing.run_replay_evidence_check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario-id<span class="w"> </span>replay-runtime-reduce-risk-timeout-2<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--action<span class="w"> </span>REDUCE_RISK<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--directive-id<span class="w"> </span>runtime-run-replay-timeout-2<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--wait-seconds<span class="w"> </span><span class="m">0</span>.01<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--poll-interval<span class="w"> </span><span class="m">0</span>.01<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db-path<span class="w"> </span>data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+<span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span>
+</code></pre></div>
+
+<hr />
+<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<p>Planned follow-up work:</p>
+<ol>
+<li>Memory swarm consumes <code>runtime_evidence</code> memory records.</li>
+<li>Overseer links evidence records back into briefs.</li>
+<li>Security validates directives and directive results.</li>
+<li>Dashboard shows briefs, directives, results, evidence, and memory records.</li>
+<li>Simulation can replay verified runtime evidence as scenarios.</li>
+</ol>
+
+
+
+
+
+
+
+  
+    
+  
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="June 14, 2026 18:50:10 UTC">June 14, 2026</span>
+  </span>
+
+    
+    
+    
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

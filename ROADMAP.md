@@ -32,7 +32,7 @@ The current milestone is no longer only "directive lifecycle through CRDT". The 
 
 ### Validated
 
-* ✅ 930+ unit/runtime tests passing.
+* ✅ 940+ tests passing.
 * ✅ Retry governance smoke test passing.
 * ✅ Swarm runtime smoke test passing.
 * ✅ Trade runtime command loop passing.

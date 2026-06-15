@@ -24,6 +24,8 @@ nav:
   - System Definition: system_definition.en.md
   - Terminal Goals & L3 Invariants: terminal_goals_and_l3_invariants.en.md
   - Roadmap: ROADMAP.md
+  - Runtime directive experience loop: runtime_directive_experience_loop.md
+  - Controlled retry and guarded repair runbook: controlled_retry_guarded_repair_runbook.md
 
   - Implemented Protocols:
       - Overview: implemented/overview.md
@@ -135,6 +137,7 @@ nav:
       - 005 - Neuro-Symbolic Governance: adr/adr_005_neuro_symbolic_governance.md
       - 006 - Decentralized Bootstrap: adr/adr_006_decentralized_bootstrap.md
       - 007 - JEPA Integration: adr/adr_007_jepa_integration.md
+      - 008 - Policy-Gated Real Execution Adapter: adr/adr_008_policy_gated_real_execution_adapter.md
 
   - Reports:
       - TRL3_baseline_results.md: reports/TRL3_baseline_results.md

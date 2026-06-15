@@ -52,6 +52,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_repair_readiness_gate",
     "replay_lifecycle_retry_guarded_repair_execution_result",
     "replay_lifecycle_retry_post_repair_evidence_check",
+    "replay_lifecycle_retry_real_execution_adapter_contract",
 }
 
 
@@ -300,6 +301,12 @@ def inspect_retry_governance_trail_from_records(
         item
         for item in trail_records
         if item.get("type") == "replay_lifecycle_retry_post_repair_evidence_check"
+    ]
+    real_execution_adapter_contracts = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_adapter_contract"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -1872,6 +1879,126 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("repair_subprocess_invoked"))).lower()
         for item in post_repair_evidence_checks
     )
+    real_execution_adapter_contract_statuses = Counter(
+        str(item.get("contract_status") or "unknown").strip() or "unknown"
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_schema_versions = Counter(
+        str(item.get("schema_version") or "unknown").strip() or "unknown"
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_request_schema_versions = Counter(
+        str(item.get("adapter_request_schema_version") or "unknown").strip()
+        or "unknown"
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_result_schema_versions = Counter(
+        str(item.get("adapter_result_schema_version") or "unknown").strip()
+        or "unknown"
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_source_post_repair_statuses = Counter(
+        str(item.get("source_post_repair_status") or "unknown").strip()
+        or "unknown"
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_source_expected_counts = Counter(
+        str(item.get("source_repair_targets_expected_count") or 0)
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_source_verified_counts = Counter(
+        str(item.get("source_repair_targets_verified_count") or 0)
+        for item in real_execution_adapter_contracts
+    )
+
+    real_execution_adapter_contract_exists = Counter(
+        str(bool(item.get("adapter_contract_exists"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_request_schema_exists = Counter(
+        str(bool(item.get("adapter_request_schema_exists"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_result_schema_exists = Counter(
+        str(bool(item.get("adapter_result_schema_exists"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_fail_closed_default = Counter(
+        str(bool(item.get("fail_closed_default"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_sandbox_first = Counter(
+        str(bool(item.get("sandbox_first"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_capability_scoped = Counter(
+        str(bool(item.get("capability_scoped"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_policy_gated = Counter(
+        str(bool(item.get("policy_gated"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_unknown_capability_rejected = Counter(
+        str(bool(item.get("unknown_capability_rejected"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_unknown_policy_rejected = Counter(
+        str(bool(item.get("unknown_policy_rejected"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_adapter_enabled = Counter(
+        str(bool(item.get("adapter_implementation_enabled"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_request_generation_enabled = Counter(
+        str(bool(item.get("adapter_request_generation_enabled"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_result_generation_enabled = Counter(
+        str(bool(item.get("adapter_result_generation_enabled"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_sandbox_execution_enabled = Counter(
+        str(bool(item.get("sandbox_execution_enabled"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_policy_gated_real_enabled = Counter(
+        str(bool(item.get("policy_gated_real_execution_enabled"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_external_side_effects = Counter(
+        str(bool(item.get("external_side_effects_performed"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_production_paths_mutated = Counter(
+        str(bool(item.get("production_paths_mutated"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_production_secrets_accessed = Counter(
+        str(bool(item.get("production_secrets_accessed"))).lower()
+        for item in real_execution_adapter_contracts
+    )
+    real_execution_adapter_contract_source_verified = Counter(
+        str(bool(item.get("source_repair_outcome_verified"))).lower()
+        for item in real_execution_adapter_contracts
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -1909,6 +2036,7 @@ def inspect_retry_governance_trail_from_records(
         real_repair_readiness_gates=real_repair_readiness_gates,
         guarded_repair_execution_results=guarded_repair_execution_results,
         post_repair_evidence_checks=post_repair_evidence_checks,
+        real_execution_adapter_contracts=real_execution_adapter_contracts,
         results=results,
     )
 
@@ -2065,6 +2193,13 @@ def inspect_retry_governance_trail_from_records(
         post_repair_evidence_checks=post_repair_evidence_checks,
     )
 
+    real_execution_adapter_contract_linkage = (
+        _real_execution_adapter_contract_linkage_summary(
+            post_repair_evidence_checks=post_repair_evidence_checks,
+            real_execution_adapter_contracts=real_execution_adapter_contracts,
+        )
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -2116,6 +2251,7 @@ def inspect_retry_governance_trail_from_records(
             "real_execution_repair_readiness_gates": len(real_repair_readiness_gates),
             "guarded_repair_execution_results": len(guarded_repair_execution_results),
             "post_repair_evidence_checks": len(post_repair_evidence_checks),
+            "real_execution_adapter_contracts": len(real_execution_adapter_contracts),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -3535,6 +3671,111 @@ def inspect_retry_governance_trail_from_records(
         "post_repair_evidence_orphans": post_repair_evidence_linkage.get(
             "post_repair_evidence_orphans", 0
         ),
+        "real_execution_adapter_contract_statuses": dict(
+            real_execution_adapter_contract_statuses
+        ),
+        "real_execution_adapter_contract_schema_versions": dict(
+            real_execution_adapter_contract_schema_versions
+        ),
+        "real_execution_adapter_contract_request_schema_versions": dict(
+            real_execution_adapter_contract_request_schema_versions
+        ),
+        "real_execution_adapter_contract_result_schema_versions": dict(
+            real_execution_adapter_contract_result_schema_versions
+        ),
+        "real_execution_adapter_contract_next_actions": dict(
+            real_execution_adapter_contract_next_actions
+        ),
+        "real_execution_adapter_contract_exists": dict(
+            real_execution_adapter_contract_exists
+        ),
+        "real_execution_adapter_contract_request_schema_exists": dict(
+            real_execution_adapter_contract_request_schema_exists
+        ),
+        "real_execution_adapter_contract_result_schema_exists": dict(
+            real_execution_adapter_contract_result_schema_exists
+        ),
+        "real_execution_adapter_contract_fail_closed_default": dict(
+            real_execution_adapter_contract_fail_closed_default
+        ),
+        "real_execution_adapter_contract_sandbox_first": dict(
+            real_execution_adapter_contract_sandbox_first
+        ),
+        "real_execution_adapter_contract_capability_scoped": dict(
+            real_execution_adapter_contract_capability_scoped
+        ),
+        "real_execution_adapter_contract_policy_gated": dict(
+            real_execution_adapter_contract_policy_gated
+        ),
+        "real_execution_adapter_contract_unknown_capability_rejected": dict(
+            real_execution_adapter_contract_unknown_capability_rejected
+        ),
+        "real_execution_adapter_contract_unknown_policy_rejected": dict(
+            real_execution_adapter_contract_unknown_policy_rejected
+        ),
+        "real_execution_adapter_contract_adapter_enabled": dict(
+            real_execution_adapter_contract_adapter_enabled
+        ),
+        "real_execution_adapter_contract_request_generation_enabled": dict(
+            real_execution_adapter_contract_request_generation_enabled
+        ),
+        "real_execution_adapter_contract_result_generation_enabled": dict(
+            real_execution_adapter_contract_result_generation_enabled
+        ),
+        "real_execution_adapter_contract_sandbox_execution_enabled": dict(
+            real_execution_adapter_contract_sandbox_execution_enabled
+        ),
+        "real_execution_adapter_contract_policy_gated_real_enabled": dict(
+            real_execution_adapter_contract_policy_gated_real_enabled
+        ),
+        "real_execution_adapter_contract_execution_performed": dict(
+            real_execution_adapter_contract_execution_performed
+        ),
+        "real_execution_adapter_contract_subprocess_invoked": dict(
+            real_execution_adapter_contract_subprocess_invoked
+        ),
+        "real_execution_adapter_contract_real_execution_enabled": dict(
+            real_execution_adapter_contract_real_execution_enabled
+        ),
+        "real_execution_adapter_contract_external_side_effects": dict(
+            real_execution_adapter_contract_external_side_effects
+        ),
+        "real_execution_adapter_contract_production_paths_mutated": dict(
+            real_execution_adapter_contract_production_paths_mutated
+        ),
+        "real_execution_adapter_contract_production_secrets_accessed": dict(
+            real_execution_adapter_contract_production_secrets_accessed
+        ),
+        "real_execution_adapter_contract_source_post_repair_statuses": dict(
+            real_execution_adapter_contract_source_post_repair_statuses
+        ),
+        "real_execution_adapter_contract_source_verified": dict(
+            real_execution_adapter_contract_source_verified
+        ),
+        "real_execution_adapter_contract_source_expected_counts": dict(
+            real_execution_adapter_contract_source_expected_counts
+        ),
+        "real_execution_adapter_contract_source_verified_counts": dict(
+            real_execution_adapter_contract_source_verified_counts
+        ),
+        "real_execution_adapter_contract_linkage": (
+            real_execution_adapter_contract_linkage
+        ),
+        "real_execution_adapter_contract_linkage_complete": bool(
+            real_execution_adapter_contract_linkage.get(
+                "real_execution_adapter_contract_linkage_complete"
+            )
+        ),
+        "real_execution_adapter_contract_post_repair_matches": (
+            real_execution_adapter_contract_linkage.get(
+                "real_execution_adapter_contract_post_repair_matches", 0
+            )
+        ),
+        "real_execution_adapter_contract_orphans": (
+            real_execution_adapter_contract_linkage.get(
+                "real_execution_adapter_contract_orphans", 0
+            )
+        ),
     }
 
 def _missing_stages(
@@ -3714,6 +3955,7 @@ def _build_chain_ids(
     real_repair_readiness_gates: list[Mapping[str, Any]],
     guarded_repair_execution_results: list[Mapping[str, Any]],
     post_repair_evidence_checks: list[Mapping[str, Any]],
+    real_execution_adapter_contracts: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -3750,6 +3992,7 @@ def _build_chain_ids(
         + real_repair_readiness_gates
         + guarded_repair_execution_results
         + post_repair_evidence_checks
+        + real_execution_adapter_contracts
         + results
     )
 
@@ -3796,6 +4039,7 @@ def _build_chain_ids(
                 + real_repair_readiness_gates
                 + guarded_repair_execution_results
                 + post_repair_evidence_checks
+                + real_execution_adapter_contracts
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -3834,6 +4078,7 @@ def _build_chain_ids(
                 + real_repair_readiness_gates
                 + guarded_repair_execution_results
                 + post_repair_evidence_checks
+                + real_execution_adapter_contracts
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -3872,6 +4117,7 @@ def _build_chain_ids(
                     + real_repair_readiness_gates
                     + guarded_repair_execution_results
                     + post_repair_evidence_checks
+                    + real_execution_adapter_contracts
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -4119,6 +4365,13 @@ def _build_chain_ids(
                 str(item.get("post_repair_evidence_check_id") or "").strip()
                 for item in post_repair_evidence_checks
                 if str(item.get("post_repair_evidence_check_id") or "").strip()
+            }
+        ),
+        "real_execution_adapter_contract_ids": sorted(
+            {
+                str(item.get("real_execution_adapter_contract_id") or "").strip()
+                for item in real_execution_adapter_contracts
+                if str(item.get("real_execution_adapter_contract_id") or "").strip()
             }
         ),
     }
@@ -5256,6 +5509,42 @@ def _post_repair_evidence_linkage_summary(
         "post_repair_evidence_orphans": check_orphans,
         "post_repair_evidence_linkage_complete": bool(post_repair_evidence_checks)
         and check_orphans == 0,
+    }
+
+
+def _real_execution_adapter_contract_linkage_summary(
+    *,
+    post_repair_evidence_checks: list[Mapping[str, Any]],
+    real_execution_adapter_contracts: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    post_repair_ids = {
+        clean(item.get("post_repair_evidence_check_id"))
+        for item in post_repair_evidence_checks
+        if clean(item.get("post_repair_evidence_check_id"))
+    }
+
+    contract_post_repair_matches = 0
+    contract_orphans = 0
+
+    for contract in real_execution_adapter_contracts:
+        check_id = clean(contract.get("post_repair_evidence_check_id"))
+        if check_id and check_id in post_repair_ids:
+            contract_post_repair_matches += 1
+        else:
+            contract_orphans += 1
+
+    return {
+        "real_execution_adapter_contract_post_repair_matches": (
+            contract_post_repair_matches
+        ),
+        "real_execution_adapter_contract_orphans": contract_orphans,
+        "real_execution_adapter_contract_linkage_complete": bool(
+            real_execution_adapter_contracts
+        )
+        and contract_orphans == 0,
     }
 
 

@@ -116,6 +116,10 @@ def _report(**overrides):
         "post_repair_evidence_records": 1,
         "post_repair_evidence_linkage_complete": True,
         "post_repair_evidence_orphans": 0,
+        "real_execution_adapter_contract_observed": True,
+        "real_execution_adapter_contract_records": 1,
+        "real_execution_adapter_contract_linkage_complete": True,
+        "real_execution_adapter_contract_orphans": 0,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -268,6 +272,10 @@ def _report(**overrides):
             "post_repair_evidence_records",
             "post_repair_evidence_linkage_complete",
             "post_repair_evidence_orphans",
+            "real_execution_adapter_contract_observed",
+            "real_execution_adapter_contract_records",
+            "real_execution_adapter_contract_linkage_complete",
+            "real_execution_adapter_contract_orphans",
         ],
     }
     item.update(overrides)
@@ -434,6 +442,10 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "post_repair_evidence_records",
             "post_repair_evidence_linkage_complete",
             "post_repair_evidence_orphans",
+            "real_execution_adapter_contract_observed",
+            "real_execution_adapter_contract_records",
+            "real_execution_adapter_contract_linkage_complete",
+            "real_execution_adapter_contract_orphans",
             "checks",
             "exit_codes",
         ]
