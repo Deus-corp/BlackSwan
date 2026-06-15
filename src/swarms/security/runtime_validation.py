@@ -58,6 +58,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_guarded_repair_execution_result",
     "replay_lifecycle_retry_post_repair_evidence_check",
     "replay_lifecycle_retry_real_execution_adapter_contract",
+    "replay_lifecycle_retry_real_execution_adapter_request_schema",
 }
 
 
@@ -588,6 +589,22 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
         if record_type == "replay_lifecycle_retry_real_execution_adapter_contract":
             result = validate_replay_lifecycle_retry_real_execution_adapter_contract(
                 record
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+        
+        if record_type == "replay_lifecycle_retry_real_execution_adapter_request_schema":
+            result = (
+                validate_replay_lifecycle_retry_real_execution_adapter_request_schema(
+                    record
+                )
             )
             results.append(
                 {
@@ -4260,6 +4277,13 @@ def _record_id(record: Mapping[str, Any]) -> str:
             or record.get("post_repair_evidence_check_id")
             or ""
         ).strip()
+    
+    if record_type == "replay_lifecycle_retry_real_execution_adapter_request_schema":
+        return str(
+            record.get("real_execution_adapter_request_schema_id")
+            or record.get("real_execution_adapter_contract_id")
+            or ""
+        ).strip()
 
     if record_type == "replay_lifecycle_retry_execution_plan":
         return str(record.get("plan_id") or "").strip()
@@ -4312,6 +4336,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
         "guarded_repair_execution_result_id",
         "post_repair_evidence_check_id",
         "real_execution_adapter_contract_id",
+        "real_execution_adapter_request_schema_id",
     ):
         value = str(record.get(key) or "").strip()
         if value:
@@ -4361,6 +4386,7 @@ def _record_id(record: Mapping[str, Any]) -> str:
             "guarded_repair_execution_result_id",
             "post_repair_evidence_check_id",
             "real_execution_adapter_contract_id",
+            "real_execution_adapter_request_schema_id",
         ):
             value = str(payload.get(key) or "").strip()
             if value:
@@ -9800,6 +9826,316 @@ def validate_replay_lifecycle_retry_real_execution_adapter_contract(
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_adapter_request_schema(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate fail-closed real execution adapter request schema records."""
+    reasons: list[str] = []
+
+    schema_id = str(
+        record.get("real_execution_adapter_request_schema_id") or ""
+    ).strip()
+    contract_id = str(
+        record.get("real_execution_adapter_contract_id") or ""
+    ).strip()
+    post_repair_check_id = str(
+        record.get("post_repair_evidence_check_id") or ""
+    ).strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+    proposal_id = str(record.get("proposal_id") or "").strip()
+
+    schema_version = str(record.get("schema_version") or "").strip()
+    request_schema_version = str(
+        record.get("adapter_request_schema_version") or ""
+    ).strip()
+    contract_schema_version = str(
+        record.get("adapter_contract_schema_version") or ""
+    ).strip()
+    result_schema_version = str(
+        record.get("adapter_result_schema_version") or ""
+    ).strip()
+    schema_status = str(record.get("adapter_request_schema_status") or "").strip()
+    schema_kind = str(record.get("adapter_request_schema_kind") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    request_required_fields = record.get("request_required_fields")
+    required_gate_fields = record.get("required_gate_fields")
+    request_statuses = record.get("request_statuses")
+    request_execution_levels = record.get("request_execution_levels")
+    request_generation_rules = record.get("request_generation_rules")
+    default_rejection_reasons = record.get("default_rejection_reasons")
+
+    source_contract_status = str(record.get("source_contract_status") or "").strip()
+    source_expected_count = record.get("source_repair_targets_expected_count")
+    source_verified_count = record.get("source_repair_targets_verified_count")
+
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    if not schema_id:
+        reasons.append("missing_real_execution_adapter_request_schema_id")
+    if not contract_id:
+        reasons.append("missing_real_execution_adapter_contract_id")
+    if not post_repair_check_id:
+        reasons.append("missing_post_repair_evidence_check_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+    if not proposal_id:
+        reasons.append("missing_proposal_id")
+
+    if schema_version != "real-execution-adapter-request-schema-scaffold/v1":
+        reasons.append("invalid_real_execution_adapter_request_schema_scaffold_version")
+    if request_schema_version != "real-execution-adapter-request/v1":
+        reasons.append("invalid_real_execution_adapter_request_schema_version")
+    if contract_schema_version != "real-execution-adapter-contract/v1":
+        reasons.append("invalid_real_execution_adapter_contract_schema_version")
+    if result_schema_version != "real-execution-adapter-result/v1":
+        reasons.append("invalid_real_execution_adapter_result_schema_version")
+    if schema_status != "defined":
+        reasons.append("real_execution_adapter_request_schema_status_must_be_defined")
+    if schema_kind != "policy_gated_real_execution_adapter_request":
+        reasons.append("invalid_real_execution_adapter_request_schema_kind")
+    if next_action != "prepare_capability_registry_and_policy_matrix":
+        reasons.append("invalid_real_execution_adapter_request_schema_next_action")
+    if reason != "real_execution_adapter_request_schema_defined_not_runnable":
+        reasons.append("invalid_real_execution_adapter_request_schema_reason")
+
+    for flag_name in (
+        "adapter_request_schema_exists",
+        "adapter_contract_exists",
+        "adapter_result_schema_exists",
+        "fail_closed_default",
+        "deny_by_default",
+        "unknown_capability_rejected",
+        "unknown_policy_rejected",
+        "unsupported_execution_level_rejected",
+        "missing_operator_authorization_rejected",
+        "missing_approval_lineage_rejected",
+        "missing_final_gate_rejected",
+        "missing_dry_run_envelope_rejected",
+        "missing_rollback_plan_rejected",
+        "missing_post_execution_evidence_rejected",
+        "orphaned_contract_rejected",
+        "stale_contract_rejected",
+        "sandbox_required_default",
+        "rollback_required_default",
+        "post_execution_evidence_required_default",
+        "operator_authorized_required",
+        "policy_authorized_required",
+        "capability_allowed_required",
+        "security_validation_required",
+        "readiness_validation_required",
+        "source_adapter_contract_exists",
+        "source_adapter_request_schema_exists",
+        "source_adapter_result_schema_exists",
+        "source_fail_closed_default",
+        "source_sandbox_first",
+        "source_policy_gated",
+        "source_capability_scoped",
+        "source_unknown_capability_rejected",
+        "source_unknown_policy_rejected",
+        "source_repair_outcome_verified",
+    ):
+        if not bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_true")
+
+    for flag_name in (
+        "direct_rendered_command_execution_allowed",
+        "arbitrary_shell_execution_allowed",
+        "request_generation_enabled",
+        "request_execution_enabled",
+        "adapter_implementation_enabled",
+        "adapter_result_generation_enabled",
+        "sandbox_execution_enabled",
+        "policy_gated_real_execution_enabled",
+        "execution_performed",
+        "subprocess_invoked",
+        "real_execution_enabled",
+        "external_side_effects_performed",
+        "production_paths_mutated",
+        "production_secrets_accessed",
+        "source_adapter_implementation_enabled",
+        "source_sandbox_execution_enabled",
+        "source_policy_gated_real_execution_enabled",
+        "source_execution_performed",
+        "source_subprocess_invoked",
+        "source_real_execution_enabled",
+        "source_external_side_effects_performed",
+    ):
+        if bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_false")
+
+    for flag_name in (
+        "request_generation_enabled",
+        "request_execution_enabled",
+        "adapter_implementation_enabled",
+        "adapter_result_generation_enabled",
+        "sandbox_execution_enabled",
+        "policy_gated_real_execution_enabled",
+        "execution_performed",
+        "subprocess_invoked",
+        "real_execution_enabled",
+        "external_side_effects_performed",
+        "production_paths_mutated",
+        "production_secrets_accessed",
+    ):
+        if bool(payload_mapping.get(flag_name)):
+            reasons.append(f"payload_{flag_name}_must_be_false")
+
+    if source_contract_status != "defined":
+        reasons.append("source_contract_status_must_be_defined")
+    if str(record.get("source_post_repair_status") or "").strip() != "passed":
+        reasons.append("source_post_repair_status_must_be_passed")
+    if source_expected_count != source_verified_count:
+        reasons.append("source_repair_target_counts_must_match")
+    if not isinstance(source_expected_count, int) or source_expected_count <= 0:
+        reasons.append("source_repair_targets_expected_count_required")
+    if not isinstance(source_verified_count, int) or source_verified_count <= 0:
+        reasons.append("source_repair_targets_verified_count_required")
+
+    if not isinstance(request_required_fields, list):
+        reasons.append("request_required_fields_must_be_list")
+        request_required_fields = []
+    if not isinstance(required_gate_fields, list):
+        reasons.append("required_gate_fields_must_be_list")
+        required_gate_fields = []
+    if not isinstance(request_statuses, list):
+        reasons.append("request_statuses_must_be_list")
+        request_statuses = []
+    if not isinstance(request_execution_levels, list):
+        reasons.append("request_execution_levels_must_be_list")
+        request_execution_levels = []
+    if not isinstance(request_generation_rules, list):
+        reasons.append("request_generation_rules_must_be_list")
+        request_generation_rules = []
+    if not isinstance(default_rejection_reasons, list):
+        reasons.append("default_rejection_reasons_must_be_list")
+        default_rejection_reasons = []
+
+    for field in (
+        "adapter_request_id",
+        "proposal_id",
+        "rendered_command_id",
+        "capability_id",
+        "execution_level",
+        "policy_id",
+        "approval_id",
+        "approval_transition_id",
+        "final_gate_id",
+        "dry_run_envelope_id",
+        "operator_authorized",
+        "sandbox_required",
+        "rollback_required",
+        "post_execution_evidence_required",
+    ):
+        if field not in request_required_fields:
+            reasons.append(f"missing_request_required_field:{field}")
+
+    for field in (
+        "operator_authorized",
+        "policy_authorized",
+        "capability_allowed",
+        "approval_transition_status",
+        "final_gate_status",
+        "dry_run_envelope_ready",
+        "rollback_plan_present",
+        "post_execution_evidence_required",
+        "security_validation_passed",
+        "readiness_validation_passed",
+    ):
+        if field not in required_gate_fields:
+            reasons.append(f"missing_required_gate_field:{field}")
+
+    for status in ("defined", "rejected", "blocked", "expired", "superseded"):
+        if status not in request_statuses:
+            reasons.append(f"missing_request_status:{status}")
+
+    for level in (
+        "advisory",
+        "dry-run",
+        "noop",
+        "guarded-read-only",
+        "guarded-repair",
+        "sandbox-real",
+        "policy-gated-real",
+    ):
+        if level not in request_execution_levels:
+            reasons.append(f"missing_request_execution_level:{level}")
+
+    for rule in (
+        "contract_must_be_defined",
+        "policy_must_be_known",
+        "capability_must_be_known",
+        "execution_level_must_be_supported",
+        "sandbox_real_must_remain_disabled_until_policy_matrix",
+        "policy_gated_real_must_remain_disabled_until_future_milestone",
+        "rollback_must_be_required",
+        "post_execution_evidence_must_be_required",
+        "operator_authorization_must_be_required",
+        "approval_lineage_must_be_required",
+        "dry_run_envelope_must_be_required",
+        "final_gate_must_be_required",
+    ):
+        if rule not in request_generation_rules:
+            reasons.append(f"missing_request_generation_rule:{rule}")
+
+    for rejection_reason in (
+        "unknown_policy",
+        "unknown_capability",
+        "unsupported_execution_level",
+        "missing_operator_authorization",
+        "missing_approval_lineage",
+        "missing_final_gate",
+        "missing_dry_run_envelope",
+        "missing_rollback_plan",
+        "missing_post_execution_evidence_requirement",
+        "stale_contract",
+        "orphaned_contract",
+    ):
+        if rejection_reason not in default_rejection_reasons:
+            reasons.append(f"missing_default_rejection_reason:{rejection_reason}")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": "replay_lifecycle_retry_real_execution_adapter_request_schema",
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": schema_id or contract_id,
+        "adapter_request_schema_status": schema_status or "unknown",
+        "schema_version": schema_version or "unknown",
+        "adapter_request_schema_version": request_schema_version or "unknown",
+        "adapter_contract_schema_version": contract_schema_version or "unknown",
+        "adapter_result_schema_version": result_schema_version or "unknown",
+        "adapter_request_schema_exists": bool(record.get("adapter_request_schema_exists")),
+        "adapter_contract_exists": bool(record.get("adapter_contract_exists")),
+        "adapter_result_schema_exists": bool(record.get("adapter_result_schema_exists")),
+        "fail_closed_default": bool(record.get("fail_closed_default")),
+        "deny_by_default": bool(record.get("deny_by_default")),
+        "unknown_capability_rejected": bool(record.get("unknown_capability_rejected")),
+        "unknown_policy_rejected": bool(record.get("unknown_policy_rejected")),
+        "request_generation_enabled": bool(record.get("request_generation_enabled")),
+        "request_execution_enabled": bool(record.get("request_execution_enabled")),
+        "adapter_implementation_enabled": bool(record.get("adapter_implementation_enabled")),
+        "adapter_result_generation_enabled": bool(record.get("adapter_result_generation_enabled")),
+        "sandbox_execution_enabled": bool(record.get("sandbox_execution_enabled")),
+        "policy_gated_real_execution_enabled": bool(record.get("policy_gated_real_execution_enabled")),
+        "execution_performed": bool(record.get("execution_performed")),
+        "subprocess_invoked": bool(record.get("subprocess_invoked")),
+        "real_execution_enabled": bool(record.get("real_execution_enabled")),
+        "external_side_effects_performed": bool(record.get("external_side_effects_performed")),
+        "production_paths_mutated": bool(record.get("production_paths_mutated")),
+        "production_secrets_accessed": bool(record.get("production_secrets_accessed")),
+        "source_contract_status": source_contract_status or "unknown",
+        "source_repair_outcome_verified": bool(record.get("source_repair_outcome_verified")),
+        "source_repair_targets_expected_count": source_expected_count,
+        "source_repair_targets_verified_count": source_verified_count,
+        "recommended_next_action": next_action or "unknown",
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -9841,4 +10177,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_guarded_repair_execution_result",
     "validate_replay_lifecycle_retry_post_repair_evidence_check",
     "validate_replay_lifecycle_retry_real_execution_adapter_contract",
+    "validate_replay_lifecycle_retry_real_execution_adapter_request_schema",
 ]

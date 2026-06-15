@@ -53,6 +53,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_guarded_repair_execution_result",
     "replay_lifecycle_retry_post_repair_evidence_check",
     "replay_lifecycle_retry_real_execution_adapter_contract",
+    "replay_lifecycle_retry_real_execution_adapter_request_schema",
 }
 
 
@@ -307,6 +308,12 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_adapter_contract"
+    ]
+    real_execution_adapter_request_schemas = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_adapter_request_schema"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -1999,6 +2006,112 @@ def inspect_retry_governance_trail_from_records(
         str(bool(item.get("source_repair_outcome_verified"))).lower()
         for item in real_execution_adapter_contracts
     )
+    real_execution_adapter_request_schema_statuses = Counter(
+        str(item.get("adapter_request_schema_status") or "unknown").strip()
+        or "unknown"
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_versions = Counter(
+        str(item.get("schema_version") or "unknown").strip() or "unknown"
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip() or "unknown"
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_source_contract_statuses = Counter(
+        str(item.get("source_contract_status") or "unknown").strip() or "unknown"
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_source_expected_counts = Counter(
+        str(item.get("source_repair_targets_expected_count") or 0)
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_source_verified_counts = Counter(
+        str(item.get("source_repair_targets_verified_count") or 0)
+        for item in real_execution_adapter_request_schemas
+    )
+
+    real_execution_adapter_request_schema_exists = Counter(
+        str(bool(item.get("adapter_request_schema_exists"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_contract_exists = Counter(
+        str(bool(item.get("adapter_contract_exists"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_result_schema_exists = Counter(
+        str(bool(item.get("adapter_result_schema_exists"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_fail_closed_default = Counter(
+        str(bool(item.get("fail_closed_default"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_deny_by_default = Counter(
+        str(bool(item.get("deny_by_default"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_unknown_capability_rejected = Counter(
+        str(bool(item.get("unknown_capability_rejected"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_unknown_policy_rejected = Counter(
+        str(bool(item.get("unknown_policy_rejected"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_request_generation_enabled = Counter(
+        str(bool(item.get("request_generation_enabled"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_request_execution_enabled = Counter(
+        str(bool(item.get("request_execution_enabled"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_adapter_enabled = Counter(
+        str(bool(item.get("adapter_implementation_enabled"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_result_generation_enabled = Counter(
+        str(bool(item.get("adapter_result_generation_enabled"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_sandbox_execution_enabled = Counter(
+        str(bool(item.get("sandbox_execution_enabled"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_policy_gated_real_enabled = Counter(
+        str(bool(item.get("policy_gated_real_execution_enabled"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_execution_performed = Counter(
+        str(bool(item.get("execution_performed"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_subprocess_invoked = Counter(
+        str(bool(item.get("subprocess_invoked"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_real_execution_enabled = Counter(
+        str(bool(item.get("real_execution_enabled"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_external_side_effects = Counter(
+        str(bool(item.get("external_side_effects_performed"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_production_paths_mutated = Counter(
+        str(bool(item.get("production_paths_mutated"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_production_secrets_accessed = Counter(
+        str(bool(item.get("production_secrets_accessed"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
+    real_execution_adapter_request_schema_source_verified = Counter(
+        str(bool(item.get("source_repair_outcome_verified"))).lower()
+        for item in real_execution_adapter_request_schemas
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -2037,6 +2150,7 @@ def inspect_retry_governance_trail_from_records(
         guarded_repair_execution_results=guarded_repair_execution_results,
         post_repair_evidence_checks=post_repair_evidence_checks,
         real_execution_adapter_contracts=real_execution_adapter_contracts,
+        real_execution_adapter_request_schemas=real_execution_adapter_request_schemas,
         results=results,
     )
 
@@ -2200,6 +2314,13 @@ def inspect_retry_governance_trail_from_records(
         )
     )
 
+    real_execution_adapter_request_schema_linkage = (
+        _real_execution_adapter_request_schema_linkage_summary(
+            real_execution_adapter_contracts=real_execution_adapter_contracts,
+            real_execution_adapter_request_schemas=real_execution_adapter_request_schemas,
+        )
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -2252,6 +2373,7 @@ def inspect_retry_governance_trail_from_records(
             "guarded_repair_execution_results": len(guarded_repair_execution_results),
             "post_repair_evidence_checks": len(post_repair_evidence_checks),
             "real_execution_adapter_contracts": len(real_execution_adapter_contracts),
+            "real_execution_adapter_request_schemas": len(real_execution_adapter_request_schemas),
             "results": len(results),
         },
         "approval_statuses": dict(approval_statuses),
@@ -3776,6 +3898,102 @@ def inspect_retry_governance_trail_from_records(
                 "real_execution_adapter_contract_orphans", 0
             )
         ),
+        "real_execution_adapter_request_schema_statuses": dict(
+            real_execution_adapter_request_schema_statuses
+        ),
+        "real_execution_adapter_request_schema_versions": dict(
+            real_execution_adapter_request_schema_versions
+        ),
+        "real_execution_adapter_request_schema_next_actions": dict(
+            real_execution_adapter_request_schema_next_actions
+        ),
+        "real_execution_adapter_request_schema_exists": dict(
+            real_execution_adapter_request_schema_exists
+        ),
+        "real_execution_adapter_request_schema_contract_exists": dict(
+            real_execution_adapter_request_schema_contract_exists
+        ),
+        "real_execution_adapter_request_schema_result_schema_exists": dict(
+            real_execution_adapter_request_schema_result_schema_exists
+        ),
+        "real_execution_adapter_request_schema_fail_closed_default": dict(
+            real_execution_adapter_request_schema_fail_closed_default
+        ),
+        "real_execution_adapter_request_schema_deny_by_default": dict(
+            real_execution_adapter_request_schema_deny_by_default
+        ),
+        "real_execution_adapter_request_schema_unknown_capability_rejected": dict(
+            real_execution_adapter_request_schema_unknown_capability_rejected
+        ),
+        "real_execution_adapter_request_schema_unknown_policy_rejected": dict(
+            real_execution_adapter_request_schema_unknown_policy_rejected
+        ),
+        "real_execution_adapter_request_schema_request_generation_enabled": dict(
+            real_execution_adapter_request_schema_request_generation_enabled
+        ),
+        "real_execution_adapter_request_schema_request_execution_enabled": dict(
+            real_execution_adapter_request_schema_request_execution_enabled
+        ),
+        "real_execution_adapter_request_schema_adapter_enabled": dict(
+            real_execution_adapter_request_schema_adapter_enabled
+        ),
+        "real_execution_adapter_request_schema_result_generation_enabled": dict(
+            real_execution_adapter_request_schema_result_generation_enabled
+        ),
+        "real_execution_adapter_request_schema_sandbox_execution_enabled": dict(
+            real_execution_adapter_request_schema_sandbox_execution_enabled
+        ),
+        "real_execution_adapter_request_schema_policy_gated_real_enabled": dict(
+            real_execution_adapter_request_schema_policy_gated_real_enabled
+        ),
+        "real_execution_adapter_request_schema_execution_performed": dict(
+            real_execution_adapter_request_schema_execution_performed
+        ),
+        "real_execution_adapter_request_schema_subprocess_invoked": dict(
+            real_execution_adapter_request_schema_subprocess_invoked
+        ),
+        "real_execution_adapter_request_schema_real_execution_enabled": dict(
+            real_execution_adapter_request_schema_real_execution_enabled
+        ),
+        "real_execution_adapter_request_schema_external_side_effects": dict(
+            real_execution_adapter_request_schema_external_side_effects
+        ),
+        "real_execution_adapter_request_schema_production_paths_mutated": dict(
+            real_execution_adapter_request_schema_production_paths_mutated
+        ),
+        "real_execution_adapter_request_schema_production_secrets_accessed": dict(
+            real_execution_adapter_request_schema_production_secrets_accessed
+        ),
+        "real_execution_adapter_request_schema_source_contract_statuses": dict(
+            real_execution_adapter_request_schema_source_contract_statuses
+        ),
+        "real_execution_adapter_request_schema_source_verified": dict(
+            real_execution_adapter_request_schema_source_verified
+        ),
+        "real_execution_adapter_request_schema_source_expected_counts": dict(
+            real_execution_adapter_request_schema_source_expected_counts
+        ),
+        "real_execution_adapter_request_schema_source_verified_counts": dict(
+            real_execution_adapter_request_schema_source_verified_counts
+        ),
+        "real_execution_adapter_request_schema_linkage": (
+            real_execution_adapter_request_schema_linkage
+        ),
+        "real_execution_adapter_request_schema_linkage_complete": bool(
+            real_execution_adapter_request_schema_linkage.get(
+                "real_execution_adapter_request_schema_linkage_complete"
+            )
+        ),
+        "real_execution_adapter_request_schema_contract_matches": (
+            real_execution_adapter_request_schema_linkage.get(
+                "real_execution_adapter_request_schema_contract_matches", 0
+            )
+        ),
+        "real_execution_adapter_request_schema_orphans": (
+            real_execution_adapter_request_schema_linkage.get(
+                "real_execution_adapter_request_schema_orphans", 0
+            )
+        ),
     }
 
 def _missing_stages(
@@ -3956,6 +4174,7 @@ def _build_chain_ids(
     guarded_repair_execution_results: list[Mapping[str, Any]],
     post_repair_evidence_checks: list[Mapping[str, Any]],
     real_execution_adapter_contracts: list[Mapping[str, Any]],
+    real_execution_adapter_request_schemas: list[Mapping[str, Any]],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -3993,6 +4212,7 @@ def _build_chain_ids(
         + guarded_repair_execution_results
         + post_repair_evidence_checks
         + real_execution_adapter_contracts
+        + real_execution_adapter_request_schemas
         + results
     )
 
@@ -4040,6 +4260,7 @@ def _build_chain_ids(
                 + guarded_repair_execution_results
                 + post_repair_evidence_checks
                 + real_execution_adapter_contracts
+                + real_execution_adapter_request_schemas
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -4079,6 +4300,7 @@ def _build_chain_ids(
                 + guarded_repair_execution_results
                 + post_repair_evidence_checks
                 + real_execution_adapter_contracts
+                + real_execution_adapter_request_schemas
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -4118,6 +4340,7 @@ def _build_chain_ids(
                     + guarded_repair_execution_results
                     + post_repair_evidence_checks
                     + real_execution_adapter_contracts
+                    + real_execution_adapter_request_schemas
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -4372,6 +4595,17 @@ def _build_chain_ids(
                 str(item.get("real_execution_adapter_contract_id") or "").strip()
                 for item in real_execution_adapter_contracts
                 if str(item.get("real_execution_adapter_contract_id") or "").strip()
+            }
+        ),
+        "real_execution_adapter_request_schema_ids": sorted(
+            {
+                str(
+                    item.get("real_execution_adapter_request_schema_id") or ""
+                ).strip()
+                for item in real_execution_adapter_request_schemas
+                if str(
+                    item.get("real_execution_adapter_request_schema_id") or ""
+                ).strip()
             }
         ),
     }
@@ -5545,6 +5779,42 @@ def _real_execution_adapter_contract_linkage_summary(
             real_execution_adapter_contracts
         )
         and contract_orphans == 0,
+    }
+
+
+def _real_execution_adapter_request_schema_linkage_summary(
+    *,
+    real_execution_adapter_contracts: list[Mapping[str, Any]],
+    real_execution_adapter_request_schemas: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    contract_ids = {
+        clean(item.get("real_execution_adapter_contract_id"))
+        for item in real_execution_adapter_contracts
+        if clean(item.get("real_execution_adapter_contract_id"))
+    }
+
+    request_schema_contract_matches = 0
+    request_schema_orphans = 0
+
+    for schema in real_execution_adapter_request_schemas:
+        contract_id = clean(schema.get("real_execution_adapter_contract_id"))
+        if contract_id and contract_id in contract_ids:
+            request_schema_contract_matches += 1
+        else:
+            request_schema_orphans += 1
+
+    return {
+        "real_execution_adapter_request_schema_contract_matches": (
+            request_schema_contract_matches
+        ),
+        "real_execution_adapter_request_schema_orphans": request_schema_orphans,
+        "real_execution_adapter_request_schema_linkage_complete": bool(
+            real_execution_adapter_request_schemas
+        )
+        and request_schema_orphans == 0,
     }
 
 
