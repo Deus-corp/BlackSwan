@@ -167,6 +167,35 @@ post_repair_evidence_repair_execution_performed.false=1
 post_repair_evidence_repair_subprocess_invoked.false=1
 ```
 
+## One-command golden-path smoke
+
+After the full runtime chain exists, the final verification entrypoint is:
+
+```bash
+python -m src.testing.run_controlled_retry_guarded_repair_golden_path \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+
+Expected result:
+
+```text
+type=controlled_retry_guarded_repair_golden_path_report
+golden_path_status=passed
+chain_complete=true
+post_repair_status=passed
+repair_outcome_verified=true
+recommended_next_action=close_repair_loop
+ready_for_real_execution=false
+real_execution_enabled=false
+failed_check_count=0
+```
+
+This command is verification-only. It reads the CRDT trail and does not publish
+new records, run repair subprocesses, run evidence subprocesses, or enable real
+execution.
+
 ## Check controlled execution readiness
 
 The readiness report aggregates the chain, security validation, linkage, and

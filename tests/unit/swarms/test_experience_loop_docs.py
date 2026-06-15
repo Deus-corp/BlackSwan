@@ -57,6 +57,14 @@ def test_controlled_retry_guarded_repair_runbook_documents_verified_golden_path(
     assert "close_repair_loop" in text
     assert "PR 37.1 — final golden-path smoke script" in text
 
+    assert "One-command golden-path smoke" in text
+    assert "src.testing.run_controlled_retry_guarded_repair_golden_path" in text
+    assert "controlled_retry_guarded_repair_golden_path_report" in text
+    assert "golden_path_status=passed" in text
+    assert "failed_check_count=0" in text
+    assert "verification-only" in text
+    assert "does not publish" in text
+
 
 def test_runtime_directive_experience_loop_docs_include_seven_stage_retry_governance_checklist() -> None:
     text = DOC_PATH.read_text(encoding="utf-8")
