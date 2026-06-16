@@ -1266,6 +1266,50 @@ This PR remains read-only and does not generate command render plans, materializ
 plans, render sandbox commands, validate rendered commands, sandbox execution,
 subprocesses, or real execution.
 
+## Acceptance criteria for PR 38.13a
+
+PR 38.13a introduces a blocked sandbox rendered command scaffold.
+
+The concrete builder is:
+
+```text
+src.testing.build_real_execution_sandbox_rendered_command_scaffold
+```
+It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_command_render_plan_scaffold
+source.
+
+The produced record type is:
+```text
+replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold
+```
+Required invariants:
+```text
+sandbox_rendered_command_scaffold_status=blocked
+sandbox_rendered_command_scaffold_fail_closed=true
+sandbox_rendered_command_scaffold_deny_by_default=true
+sandbox_rendered_command_generation_enabled=false
+sandbox_rendered_command_materialized=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_command_render_plan_generation_enabled=false
+sandbox_command_render_plan_materialized=false
+sandbox_command_render_plan_executable=false
+sandbox_command_rendering_enabled=false
+sandbox_command_rendered=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+This PR does not generate rendered commands, materialize rendered commands,
+validate rendered commands, render sandbox commands, sandbox execution,
+subprocesses, or real execution.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.
