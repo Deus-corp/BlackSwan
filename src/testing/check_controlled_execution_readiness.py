@@ -1761,6 +1761,137 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             )
         )
     )
+    real_execution_sandbox_materialization_preflight_scaffold_statuses = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_materialization_preflight_scaffold_statuses"
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_fail_closed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_fail_closed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_deny_by_default = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_deny_by_default"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_preflight_passed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_preflight_passed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_envelope_executable = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_envelope_executable"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_execution_performed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_execution_performed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed"
+            )
+        )
+    )
 
     adapter_contract = describe_controlled_retry_execution_adapter_contract()
 
@@ -3631,6 +3762,144 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_execution_sandbox_request_envelope_scaffold_production_secrets_accessed": _safe_int(
             real_execution_sandbox_request_envelope_scaffold_production_secrets_accessed.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_observed": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_statuses.get(
+                "blocked"
+            ),
+            0,
+        )
+        > 0,
+        "real_execution_sandbox_materialization_preflight_scaffold_records": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_statuses.get(
+                "blocked"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete": bool(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete"
+            )
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_orphans": _safe_int(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_orphans"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_blocked": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_statuses.get(
+                "blocked"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_fail_closed": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_fail_closed.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_deny_by_default": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_deny_by_default.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_preflight_passed": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_preflight_passed.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_executable": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_envelope_executable.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_execution_performed": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_execution_performed.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed": _safe_int(
+            real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed.get(
                 "true"
             ),
             0,
@@ -5555,6 +5824,144 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
                ),
                 0,
             ),
+            "real_execution_sandbox_materialization_preflight_scaffold_observed": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_statuses.get(
+                    "blocked"
+                ),
+                0,
+            )
+            > 0,
+            "real_execution_sandbox_materialization_preflight_scaffold_records": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_statuses.get(
+                    "blocked"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete": bool(
+                trail_summary.get(
+                    "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete"
+                )
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_orphans": _safe_int(
+                trail_summary.get(
+                    "real_execution_sandbox_materialization_preflight_scaffold_orphans"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_blocked": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_statuses.get(
+                    "blocked"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_fail_closed": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_fail_closed.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_deny_by_default": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_deny_by_default.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_preflight_passed": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_preflight_passed.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_envelope_executable": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_envelope_executable.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_execution_performed": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_execution_performed.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed": _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed.get(
+                    "true"
+                ),
+                0,
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -5741,6 +6148,29 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_execution_sandbox_request_envelope_scaffold_external_side_effects_performed",
             "real_execution_sandbox_request_envelope_scaffold_production_paths_mutated",
             "real_execution_sandbox_request_envelope_scaffold_production_secrets_accessed",
+            "real_execution_sandbox_materialization_preflight_scaffold_observed",
+            "real_execution_sandbox_materialization_preflight_scaffold_records",
+            "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete",
+            "real_execution_sandbox_materialization_preflight_scaffold_orphans",
+            "real_execution_sandbox_materialization_preflight_scaffold_blocked",
+            "real_execution_sandbox_materialization_preflight_scaffold_fail_closed",
+            "real_execution_sandbox_materialization_preflight_scaffold_deny_by_default",
+            "real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled",
+            "real_execution_sandbox_materialization_preflight_scaffold_preflight_passed",
+            "real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled",
+            "real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized",
+            "real_execution_sandbox_materialization_preflight_scaffold_envelope_executable",
+            "real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled",
+            "real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled",
+            "real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled",
+            "real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled",
+            "real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled",
+            "real_execution_sandbox_materialization_preflight_scaffold_execution_performed",
+            "real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked",
+            "real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled",
+            "real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed",
+            "real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated",
+            "real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -7503,6 +7933,137 @@ def _build_checks(
         _safe_mapping(
             trail_summary.get(
                 "real_execution_sandbox_request_envelope_scaffold_production_secrets_accessed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_statuses = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_materialization_preflight_scaffold_statuses"
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_fail_closed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_fail_closed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_deny_by_default = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_deny_by_default"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_preflight_passed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_preflight_passed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_envelope_executable = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_envelope_executable"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_execution_performed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_execution_performed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated"
+            )
+        )
+    )
+    real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed"
             )
         )
     )
@@ -12354,6 +12915,198 @@ def _build_checks(
             == 0,
             real_execution_sandbox_request_envelope_scaffold_real_execution_enabled,
         ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_blocked",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_statuses.get(
+                    "blocked"
+                ),
+                0,
+            )
+            > 0,
+            real_execution_sandbox_materialization_preflight_scaffold_statuses,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_links_to_envelope",
+            _safe_int(
+                trail_summary.get(
+                    "real_execution_sandbox_materialization_preflight_scaffold_orphans"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                trail_summary.get(
+                    "real_execution_sandbox_materialization_preflight_scaffold_orphans"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_fail_closed",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_fail_closed.get(
+                    "true"
+                ),
+                0,
+            )
+            > 0,
+            real_execution_sandbox_materialization_preflight_scaffold_fail_closed,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_deny_by_default",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_deny_by_default.get(
+                    "true"
+                ),
+                0,
+            )
+            > 0,
+            real_execution_sandbox_materialization_preflight_scaffold_deny_by_default,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_enable_preflight",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_pass_preflight",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_preflight_passed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_preflight_passed,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_generate_envelope",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_materialize_envelope",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_envelope_not_executable",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_envelope_executable.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_envelope_executable,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_create_workspace",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_materialize_inputs",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_render_commands",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_enable_sandbox_execution",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_generate_results",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_execute",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_execution_performed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_execution_performed,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_invoke_subprocess",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked,
+        ),
+        _check(
+            "real_execution_sandbox_materialization_preflight_scaffold_does_not_enable_real_execution",
+            _safe_int(
+                real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled,
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -12582,6 +13335,29 @@ def validate_controlled_execution_readiness_report_schema(
         "real_execution_sandbox_request_envelope_scaffold_external_side_effects_performed",
         "real_execution_sandbox_request_envelope_scaffold_production_paths_mutated",
         "real_execution_sandbox_request_envelope_scaffold_production_secrets_accessed",
+        "real_execution_sandbox_materialization_preflight_scaffold_observed",
+        "real_execution_sandbox_materialization_preflight_scaffold_records",
+        "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete",
+        "real_execution_sandbox_materialization_preflight_scaffold_orphans",
+        "real_execution_sandbox_materialization_preflight_scaffold_blocked",
+        "real_execution_sandbox_materialization_preflight_scaffold_fail_closed",
+        "real_execution_sandbox_materialization_preflight_scaffold_deny_by_default",
+        "real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_preflight_passed",
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized",
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_executable",
+        "real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_execution_performed",
+        "real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked",
+        "real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed",
+        "real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated",
+        "real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed",
     ]
 
     reasons: list[str] = []
@@ -13071,6 +13847,67 @@ def validate_controlled_execution_readiness_report_schema(
         "real_execution_sandbox_request_envelope_scaffold_external_side_effects_performed",
         "real_execution_sandbox_request_envelope_scaffold_production_paths_mutated",
         "real_execution_sandbox_request_envelope_scaffold_production_secrets_accessed",
+    ):
+        if not isinstance(report.get(int_field), int):
+            reasons.append(f"{int_field}_must_be_int")
+    
+    if not isinstance(
+        report.get(
+            "real_execution_sandbox_materialization_preflight_scaffold_observed"
+        ),
+        bool,
+    ):
+        reasons.append(
+            "real_execution_sandbox_materialization_preflight_scaffold_observed_must_be_bool"
+        )
+    if not isinstance(
+        report.get(
+            "real_execution_sandbox_materialization_preflight_scaffold_records"
+        ),
+        int,
+    ):
+        reasons.append(
+            "real_execution_sandbox_materialization_preflight_scaffold_records_must_be_int"
+        )
+    if not isinstance(
+        report.get(
+            "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete"
+        ),
+        bool,
+    ):
+        reasons.append(
+            "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete_must_be_bool"
+        )
+    if not isinstance(
+        report.get(
+            "real_execution_sandbox_materialization_preflight_scaffold_orphans"
+        ),
+        int,
+    ):
+        reasons.append(
+            "real_execution_sandbox_materialization_preflight_scaffold_orphans_must_be_int"
+        )
+
+    for int_field in (
+        "real_execution_sandbox_materialization_preflight_scaffold_blocked",
+        "real_execution_sandbox_materialization_preflight_scaffold_fail_closed",
+        "real_execution_sandbox_materialization_preflight_scaffold_deny_by_default",
+        "real_execution_sandbox_materialization_preflight_scaffold_preflight_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_preflight_passed",
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_generation_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_materialized",
+        "real_execution_sandbox_materialization_preflight_scaffold_envelope_executable",
+        "real_execution_sandbox_materialization_preflight_scaffold_workspace_creation_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_input_materialization_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_command_rendering_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_sandbox_execution_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_result_generation_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_execution_performed",
+        "real_execution_sandbox_materialization_preflight_scaffold_subprocess_invoked",
+        "real_execution_sandbox_materialization_preflight_scaffold_real_execution_enabled",
+        "real_execution_sandbox_materialization_preflight_scaffold_external_side_effects_performed",
+        "real_execution_sandbox_materialization_preflight_scaffold_production_paths_mutated",
+        "real_execution_sandbox_materialization_preflight_scaffold_production_secrets_accessed",
     ):
         if not isinstance(report.get(int_field), int):
             reasons.append(f"{int_field}_must_be_int")
