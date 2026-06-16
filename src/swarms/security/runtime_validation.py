@@ -62,6 +62,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_capability_policy_matrix",
     "replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold",
     "replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight",
+    "replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold",
 }
 
 
@@ -10895,6 +10896,216 @@ def validate_replay_lifecycle_retry_real_execution_sandbox_adapter_request_prefl
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate fail-closed sandbox request envelope scaffold records."""
+    reasons: list[str] = []
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    envelope_id = str(
+        record.get("real_execution_sandbox_request_envelope_scaffold_id") or ""
+    ).strip()
+    preflight_id = str(
+        record.get("real_execution_sandbox_adapter_request_preflight_id") or ""
+    ).strip()
+    scaffold_id = str(
+        record.get("real_execution_sandbox_adapter_scaffold_id") or ""
+    ).strip()
+    matrix_id = str(
+        record.get("real_execution_capability_policy_matrix_id") or ""
+    ).strip()
+    request_schema_id = str(
+        record.get("real_execution_adapter_request_schema_id") or ""
+    ).strip()
+    contract_id = str(record.get("real_execution_adapter_contract_id") or "").strip()
+    proposal_id = str(record.get("proposal_id") or "").strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    schema_version = str(record.get("schema_version") or "").strip()
+    status = str(record.get("sandbox_request_envelope_scaffold_status") or "").strip()
+    kind = str(record.get("sandbox_request_envelope_scaffold_kind") or "").strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    if not envelope_id:
+        reasons.append("missing_real_execution_sandbox_request_envelope_scaffold_id")
+    if not preflight_id:
+        reasons.append("missing_real_execution_sandbox_adapter_request_preflight_id")
+    if not scaffold_id:
+        reasons.append("missing_real_execution_sandbox_adapter_scaffold_id")
+    if not matrix_id:
+        reasons.append("missing_real_execution_capability_policy_matrix_id")
+    if not request_schema_id:
+        reasons.append("missing_real_execution_adapter_request_schema_id")
+    if not contract_id:
+        reasons.append("missing_real_execution_adapter_contract_id")
+    if not proposal_id:
+        reasons.append("missing_proposal_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if schema_version != "real-execution-sandbox-request-envelope-scaffold/v1":
+        reasons.append("invalid_sandbox_request_envelope_scaffold_schema_version")
+    if status != "blocked":
+        reasons.append("sandbox_request_envelope_scaffold_status_must_be_blocked")
+    if kind != "fail_closed_sandbox_request_envelope_scaffold":
+        reasons.append("invalid_sandbox_request_envelope_scaffold_kind")
+    if next_action != "surface_sandbox_request_envelope_scaffold_observability":
+        reasons.append("invalid_sandbox_request_envelope_scaffold_next_action")
+    if reason != "sandbox_request_envelope_scaffold_defined_blocked_not_runnable":
+        reasons.append("invalid_sandbox_request_envelope_scaffold_reason")
+
+    expected_strings = {
+        "source_request_preflight_schema_version": (
+            "real-execution-sandbox-adapter-request-preflight/v1"
+        ),
+        "source_preflight_status": "blocked",
+        "sandbox_workspace_strategy": "ephemeral_temp_workspace",
+        "sandbox_input_strategy": "explicit_allowlist_only",
+        "sandbox_output_strategy": "explicit_allowlist_only",
+        "sandbox_rollback_strategy": "workspace_destruction",
+        "sandbox_evidence_strategy": "post_execution_evidence_required",
+        "sandbox_network_policy": "deny",
+        "sandbox_secret_policy": "deny",
+        "sandbox_filesystem_policy": "no_production_writes",
+        "sandbox_production_write_policy": "deny",
+        "sandbox_external_side_effect_policy": "deny",
+    }
+    for key, expected in expected_strings.items():
+        if str(record.get(key) or "").strip() != expected:
+            reasons.append(f"{key}_must_be_{expected}")
+
+    required_true_flags = (
+        "sandbox_request_envelope_scaffold_exists",
+        "sandbox_request_envelope_scaffold_fail_closed",
+        "sandbox_request_envelope_scaffold_deny_by_default",
+        "sandbox_request_envelope_requires_preflight",
+        "sandbox_request_envelope_requires_policy_matrix",
+        "sandbox_request_envelope_requires_known_capability",
+        "sandbox_request_envelope_requires_known_policy",
+        "sandbox_request_envelope_requires_operator_authorization",
+        "sandbox_request_envelope_requires_approval_lineage",
+        "sandbox_request_envelope_requires_final_gate",
+        "sandbox_request_envelope_requires_dry_run_envelope",
+        "sandbox_request_envelope_requires_rollback_plan",
+        "sandbox_request_envelope_requires_post_execution_evidence",
+        "sandbox_request_envelope_rejects_unknown_capability",
+        "sandbox_request_envelope_rejects_unknown_policy",
+        "sandbox_request_envelope_rejects_orphans",
+        "sandbox_request_envelope_rejects_stale_records",
+        "source_preflight_exists",
+        "source_preflight_fail_closed",
+        "source_preflight_deny_by_default",
+    )
+    for flag_name in required_true_flags:
+        if not bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_true")
+
+    required_false_flags = (
+        "sandbox_request_envelope_generation_allowed",
+        "sandbox_request_envelope_generation_enabled",
+        "sandbox_request_envelope_materialized",
+        "sandbox_request_envelope_executable",
+        "sandbox_adapter_request_generation_allowed",
+        "sandbox_adapter_request_generation_enabled",
+        "sandbox_workspace_creation_allowed",
+        "sandbox_workspace_creation_enabled",
+        "sandbox_input_materialization_allowed",
+        "sandbox_input_materialization_enabled",
+        "sandbox_command_rendering_allowed",
+        "sandbox_command_rendering_enabled",
+        "sandbox_execution_allowed",
+        "sandbox_execution_enabled",
+        "sandbox_result_generation_allowed",
+        "sandbox_result_generation_enabled",
+        "adapter_request_generation_enabled",
+        "adapter_request_execution_enabled",
+        "adapter_result_generation_enabled",
+        "capability_execution_enabled",
+        "policy_execution_enabled",
+        "policy_gated_real_execution_enabled",
+        "execution_performed",
+        "subprocess_invoked",
+        "real_execution_enabled",
+        "external_side_effects_performed",
+        "production_paths_mutated",
+        "production_secrets_accessed",
+        "source_preflight_request_generation_enabled",
+        "source_preflight_workspace_creation_enabled",
+        "source_preflight_input_materialization_enabled",
+        "source_preflight_command_rendering_enabled",
+        "source_preflight_sandbox_execution_enabled",
+        "source_preflight_result_generation_enabled",
+        "source_preflight_execution_performed",
+        "source_preflight_subprocess_invoked",
+        "source_preflight_real_execution_enabled",
+        "source_preflight_external_side_effects_performed",
+        "source_preflight_production_paths_mutated",
+        "source_preflight_production_secrets_accessed",
+    )
+    for flag_name in required_false_flags:
+        if bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_false")
+        if bool(payload_mapping.get(flag_name)):
+            reasons.append(f"payload_{flag_name}_must_be_false")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": (
+            "replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold"
+        ),
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": envelope_id or preflight_id,
+        "schema_version": schema_version or "unknown",
+        "sandbox_request_envelope_scaffold_status": status or "unknown",
+        "sandbox_request_envelope_scaffold_fail_closed": bool(
+            record.get("sandbox_request_envelope_scaffold_fail_closed")
+        ),
+        "sandbox_request_envelope_scaffold_deny_by_default": bool(
+            record.get("sandbox_request_envelope_scaffold_deny_by_default")
+        ),
+        "sandbox_request_envelope_generation_enabled": bool(
+            record.get("sandbox_request_envelope_generation_enabled")
+        ),
+        "sandbox_request_envelope_materialized": bool(
+            record.get("sandbox_request_envelope_materialized")
+        ),
+        "sandbox_request_envelope_executable": bool(
+            record.get("sandbox_request_envelope_executable")
+        ),
+        "sandbox_adapter_request_generation_enabled": bool(
+            record.get("sandbox_adapter_request_generation_enabled")
+        ),
+        "sandbox_workspace_creation_enabled": bool(
+            record.get("sandbox_workspace_creation_enabled")
+        ),
+        "sandbox_input_materialization_enabled": bool(
+            record.get("sandbox_input_materialization_enabled")
+        ),
+        "sandbox_command_rendering_enabled": bool(
+            record.get("sandbox_command_rendering_enabled")
+        ),
+        "sandbox_execution_enabled": bool(record.get("sandbox_execution_enabled")),
+        "sandbox_result_generation_enabled": bool(
+            record.get("sandbox_result_generation_enabled")
+        ),
+        "execution_performed": bool(record.get("execution_performed")),
+        "subprocess_invoked": bool(record.get("subprocess_invoked")),
+        "real_execution_enabled": bool(record.get("real_execution_enabled")),
+        "external_side_effects_performed": bool(
+            record.get("external_side_effects_performed")
+        ),
+        "production_paths_mutated": bool(record.get("production_paths_mutated")),
+        "production_secrets_accessed": bool(record.get("production_secrets_accessed")),
+        "recommended_next_action": next_action or "unknown",
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -10940,4 +11151,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_capability_policy_matrix",
     "validate_replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold",
     "validate_replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight",
+    "validate_replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold",
 ]
