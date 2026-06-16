@@ -307,6 +307,70 @@ def check_retry_governance_observability_from_records(
         "real_execution_sandbox_adapter_scaffold_linkage_complete": trail_summary.get(
             "real_execution_sandbox_adapter_scaffold_linkage_complete", False
         ),
+        "real_execution_sandbox_adapter_request_preflight_statuses": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_statuses", {}
+        ),
+        "real_execution_sandbox_adapter_request_preflight_fail_closed": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_fail_closed", {}
+        ),
+        "real_execution_sandbox_adapter_request_preflight_deny_by_default": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default", {}
+        ),
+        "real_execution_sandbox_adapter_request_preflight_request_generation_enabled": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_request_generation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_result_generation_enabled": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_result_generation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_execution_performed": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_execution_performed",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_subprocess_invoked": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_subprocess_invoked",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_real_execution_enabled": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_real_execution_enabled",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_production_paths_mutated": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_production_paths_mutated",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed",
+            {},
+        ),
+        "real_execution_sandbox_adapter_request_preflight_orphans": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_orphans", 0
+        ),
+        "real_execution_sandbox_adapter_request_preflight_linkage_complete": trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_linkage_complete",
+            False,
+        ),
     }
 
     brief = build_global_swarm_brief(

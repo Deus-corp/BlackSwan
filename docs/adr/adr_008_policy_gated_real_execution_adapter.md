@@ -684,6 +684,45 @@ production_secrets_accessed=false
 This PR does not enable sandbox execution. It only prepares the next blocked
 preflight artifact.
 
+## Acceptance criteria for PR 38.6c
+
+PR 38.6c surfaces sandbox adapter request preflight observability through a
+dedicated read-only check and Overseer brief metrics.
+
+The concrete helper is:
+
+```text
+src.testing.check_sandbox_adapter_request_preflight_observability
+```
+It must verify:
+```text
+sandbox_adapter_request_preflight_observed=true
+sandbox_adapter_request_preflight_linkage_complete=true
+sandbox_adapter_request_preflight_orphans=0
+sandbox_adapter_request_preflight_blocked=1
+sandbox_adapter_request_preflight_fail_closed=1
+sandbox_adapter_request_preflight_deny_by_default=1
+sandbox_adapter_request_preflight_request_generation_enabled=0
+sandbox_adapter_request_preflight_workspace_creation_enabled=0
+sandbox_adapter_request_preflight_input_materialization_enabled=0
+sandbox_adapter_request_preflight_command_rendering_enabled=0
+sandbox_adapter_request_preflight_sandbox_execution_enabled=0
+sandbox_adapter_request_preflight_result_generation_enabled=0
+sandbox_adapter_request_preflight_execution_performed=0
+sandbox_adapter_request_preflight_subprocess_invoked=0
+sandbox_adapter_request_preflight_real_execution_enabled=0
+sandbox_adapter_request_preflight_external_side_effects_performed=0
+sandbox_adapter_request_preflight_production_paths_mutated=0
+sandbox_adapter_request_preflight_production_secrets_accessed=0
+```
+The Overseer brief must surface the same fail-closed request preflight state
+through security_real_execution_sandbox_adapter_request_preflight_* key
+metrics.
+
+This PR remains read-only and does not enable sandbox request generation,
+workspace creation, input materialization, command rendering, sandbox execution,
+subprocesses, or real execution.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.

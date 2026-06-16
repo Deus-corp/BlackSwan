@@ -2008,6 +2008,53 @@ production_secrets_accessed=false
 
 ---
 
+### Sandbox adapter request preflight observability check
+
+`src.testing.check_sandbox_adapter_request_preflight_observability` is a
+read-only helper that verifies fail-closed sandbox adapter request preflight
+visibility through Security, Inspector, Readiness-style gates, and Overseer
+brief metrics.
+
+The check requires:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight observed
+Security record type count > 0
+Inspector request preflight linkage complete
+sandbox request preflight orphans = 0
+sandbox_adapter_request_preflight_status=blocked
+sandbox_adapter_request_preflight_fail_closed=true
+sandbox_adapter_request_preflight_deny_by_default=true
+sandbox_adapter_request_generation_enabled=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+Runtime command:
+
+```bash
+python -m src.testing.check_sandbox_adapter_request_preflight_observability \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+
+This check does not generate sandbox requests, create workspaces, materialize
+inputs, render commands, execute sandbox commands, invoke subprocesses, or enable
+real execution.
+```
+
+---
+
 ## Related modules
 
 ```text

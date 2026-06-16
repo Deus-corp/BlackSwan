@@ -1211,6 +1211,221 @@ def build_global_swarm_brief(
             )
         )
     )
+    security_sandbox_adapter_request_preflight_statuses = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_statuses"
+        )
+    )
+    security_sandbox_adapter_request_preflight_fail_closed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_fail_closed"
+        )
+    )
+    security_sandbox_adapter_request_preflight_deny_by_default = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default"
+        )
+    )
+    security_sandbox_adapter_request_preflight_request_generation_enabled = (
+        _safe_dict(
+            security_validation.get(
+                "real_execution_sandbox_adapter_request_preflight_request_generation_enabled"
+            )
+        )
+    )
+    security_sandbox_adapter_request_preflight_workspace_creation_enabled = (
+        _safe_dict(
+            security_validation.get(
+                "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled"
+            )
+        )
+    )
+    security_sandbox_adapter_request_preflight_input_materialization_enabled = (
+        _safe_dict(
+            security_validation.get(
+                "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled"
+            )
+        )
+    )
+    security_sandbox_adapter_request_preflight_command_rendering_enabled = (
+        _safe_dict(
+            security_validation.get(
+                "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled"
+            )
+        )
+    )
+    security_sandbox_adapter_request_preflight_sandbox_execution_enabled = (
+        _safe_dict(
+            security_validation.get(
+                "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled"
+            )
+        )
+    )
+    security_sandbox_adapter_request_preflight_result_generation_enabled = (
+        _safe_dict(
+            security_validation.get(
+                "real_execution_sandbox_adapter_request_preflight_result_generation_enabled"
+            )
+        )
+    )
+    security_sandbox_adapter_request_preflight_execution_performed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_execution_performed"
+        )
+    )
+    security_sandbox_adapter_request_preflight_subprocess_invoked = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_subprocess_invoked"
+        )
+    )
+    security_sandbox_adapter_request_preflight_real_execution_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_real_execution_enabled"
+        )
+    )
+    security_sandbox_adapter_request_preflight_external_side_effects_performed = (
+        _safe_dict(
+            security_validation.get(
+                "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed"
+            )
+        )
+    )
+    security_sandbox_adapter_request_preflight_production_paths_mutated = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_production_paths_mutated"
+        )
+    )
+    security_sandbox_adapter_request_preflight_production_secrets_accessed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed"
+        )
+    )
+
+    security_real_execution_sandbox_adapter_request_preflights = _safe_int(
+        security_sandbox_adapter_request_preflight_statuses.get("blocked"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_request_preflight_fail_closed = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_fail_closed.get("true"),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_deny_by_default = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_deny_by_default.get("true"),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_request_generation_enabled.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_workspace_creation_enabled.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_input_materialization_enabled.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_command_rendering_enabled.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_sandbox_execution_enabled.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_result_generation_enabled.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_execution_performed = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_execution_performed.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_subprocess_invoked.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_real_execution_enabled.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_external_side_effects_performed.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_production_paths_mutated.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed = (
+        _safe_int(
+            security_sandbox_adapter_request_preflight_production_secrets_accessed.get(
+                "true"
+            ),
+            0,
+        )
+    )
+    security_real_execution_sandbox_adapter_request_preflight_orphans = _safe_int(
+        security_validation.get(
+            "real_execution_sandbox_adapter_request_preflight_orphans"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_adapter_request_preflight_linkage_complete = int(
+        bool(
+            security_validation.get(
+                "real_execution_sandbox_adapter_request_preflight_linkage_complete"
+            )
+        )
+    )
     security_real_adapter_supported = bool(
         security_validation.get("security_real_adapter_supported", False)
     )
@@ -2346,6 +2561,129 @@ def build_global_swarm_brief(
                 },
             )
         )
+    
+    if security_real_execution_sandbox_adapter_request_preflights > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Sandbox adapter request preflight observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Sandbox adapter request preflight observed: "
+                    f"blocked={security_real_execution_sandbox_adapter_request_preflights}, "
+                    f"fail_closed="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_fail_closed}, "
+                    f"deny_by_default="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_deny_by_default}, "
+                    f"linkage_complete="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_linkage_complete}, "
+                    f"orphans="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_orphans}, "
+                    f"request_generation_enabled="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled}, "
+                    f"workspace_creation_enabled="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled}, "
+                    f"input_materialization_enabled="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled}, "
+                    f"command_rendering_enabled="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled}, "
+                    f"sandbox_execution_enabled="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled}, "
+                    f"result_generation_enabled="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled}, "
+                    f"execution_performed="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_execution_performed}, "
+                    f"subprocess_invoked="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked}, "
+                    f"real_execution_enabled="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled}, "
+                    f"external_side_effects_performed="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed}, "
+                    f"production_paths_mutated="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated}, "
+                    f"production_secrets_accessed="
+                    f"{security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed}."
+                ),
+                payload={
+                    "security_real_execution_sandbox_adapter_request_preflights": (
+                        security_real_execution_sandbox_adapter_request_preflights
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_fail_closed": (
+                        security_real_execution_sandbox_adapter_request_preflight_fail_closed
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_deny_by_default": (
+                        security_real_execution_sandbox_adapter_request_preflight_deny_by_default
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_linkage_complete": (
+                        security_real_execution_sandbox_adapter_request_preflight_linkage_complete
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_orphans": (
+                        security_real_execution_sandbox_adapter_request_preflight_orphans
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled": (
+                        security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": (
+                        security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled": (
+                        security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled": (
+                        security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": (
+                        security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled": (
+                        security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_execution_performed": (
+                        security_real_execution_sandbox_adapter_request_preflight_execution_performed
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked": (
+                        security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled": (
+                        security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed": (
+                        security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated": (
+                        security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated
+                    ),
+                    "security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed": (
+                        security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed
+                    ),
+                    "recommendation": "keep_sandbox_adapter_request_preflight_fail_closed_until_request_envelope_pr",
+                },
+            )
+        )
+        recommended_actions.append(
+            build_brief_item(
+                title="Keep sandbox adapter request preflight fail-closed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Use the sandbox adapter request preflight observability check "
+                    "before introducing any sandbox request envelope. Do not enable "
+                    "request generation, workspace creation, input materialization, "
+                    "command rendering, sandbox execution, subprocesses, or real execution."
+                ),
+                payload={
+                    "recommendation": (
+                        "run_sandbox_adapter_request_preflight_observability_check"
+                    ),
+                    "target_swarm": "security",
+                    "request_generation_enabled": False,
+                    "workspace_creation_enabled": False,
+                    "input_materialization_enabled": False,
+                    "command_rendering_enabled": False,
+                    "sandbox_execution_enabled": False,
+                    "subprocess_enabled": False,
+                    "real_execution_enabled": False,
+                },
+            )
+        )
 
     if simulation_replay_failed > 0:
         risks.append(
@@ -2810,6 +3148,57 @@ def build_global_swarm_brief(
         "security_real_execution_sandbox_adapter_scaffold_linkage_complete": (
             security_real_execution_sandbox_adapter_scaffold_linkage_complete
         ),
+        "security_real_execution_sandbox_adapter_request_preflights": (
+            security_real_execution_sandbox_adapter_request_preflights
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_fail_closed": (
+            security_real_execution_sandbox_adapter_request_preflight_fail_closed
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_deny_by_default": (
+            security_real_execution_sandbox_adapter_request_preflight_deny_by_default
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled": (
+            security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": (
+            security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled": (
+            security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled": (
+            security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": (
+            security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled": (
+            security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_execution_performed": (
+            security_real_execution_sandbox_adapter_request_preflight_execution_performed
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked": (
+            security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled": (
+            security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed": (
+            security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated": (
+            security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed": (
+            security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_orphans": (
+            security_real_execution_sandbox_adapter_request_preflight_orphans
+        ),
+        "security_real_execution_sandbox_adapter_request_preflight_linkage_complete": (
+            security_real_execution_sandbox_adapter_request_preflight_linkage_complete
+        ),
     }
 
     summary = _build_summary(
@@ -3148,6 +3537,57 @@ def build_global_swarm_brief(
         security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed=(
             security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed
         ),
+        security_real_execution_sandbox_adapter_request_preflights=(
+            security_real_execution_sandbox_adapter_request_preflights
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_fail_closed=(
+            security_real_execution_sandbox_adapter_request_preflight_fail_closed
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_deny_by_default=(
+            security_real_execution_sandbox_adapter_request_preflight_deny_by_default
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_linkage_complete=(
+            security_real_execution_sandbox_adapter_request_preflight_linkage_complete
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_orphans=(
+            security_real_execution_sandbox_adapter_request_preflight_orphans
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled=(
+            security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled=(
+            security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled=(
+            security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled=(
+            security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled=(
+            security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled=(
+            security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_execution_performed=(
+            security_real_execution_sandbox_adapter_request_preflight_execution_performed
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked=(
+            security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled=(
+            security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed=(
+            security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated=(
+            security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated
+        ),
+        security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed=(
+            security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed
+        ),
     )
 
     return build_swarm_brief(
@@ -3329,6 +3769,23 @@ def _build_summary(
     security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed: int,
     security_real_execution_sandbox_adapter_scaffold_production_paths_mutated: int,
     security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed: int,
+    security_real_execution_sandbox_adapter_request_preflights: int,
+    security_real_execution_sandbox_adapter_request_preflight_fail_closed: int,
+    security_real_execution_sandbox_adapter_request_preflight_deny_by_default: int,
+    security_real_execution_sandbox_adapter_request_preflight_linkage_complete: int,
+    security_real_execution_sandbox_adapter_request_preflight_orphans: int,
+    security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled: int,
+    security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled: int,
+    security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled: int,
+    security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled: int,
+    security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled: int,
+    security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled: int,
+    security_real_execution_sandbox_adapter_request_preflight_execution_performed: int,
+    security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked: int,
+    security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled: int,
+    security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed: int,
+    security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated: int,
+    security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -3658,6 +4115,44 @@ def _build_summary(
             f"{security_real_execution_sandbox_adapter_scaffold_production_paths_mutated}, "
             f"production_secrets_accessed="
             f"{security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed}."
+        )
+    
+    if security_real_execution_sandbox_adapter_request_preflights > 0:
+        parts.append(
+            "Sandbox adapter request preflight observed: "
+            f"blocked={security_real_execution_sandbox_adapter_request_preflights}, "
+            f"fail_closed="
+            f"{security_real_execution_sandbox_adapter_request_preflight_fail_closed}, "
+            f"deny_by_default="
+            f"{security_real_execution_sandbox_adapter_request_preflight_deny_by_default}, "
+            f"linkage_complete="
+            f"{security_real_execution_sandbox_adapter_request_preflight_linkage_complete}, "
+            f"orphans="
+            f"{security_real_execution_sandbox_adapter_request_preflight_orphans}, "
+            f"request_generation_enabled="
+            f"{security_real_execution_sandbox_adapter_request_preflight_request_generation_enabled}, "
+            f"workspace_creation_enabled="
+            f"{security_real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled}, "
+            f"input_materialization_enabled="
+            f"{security_real_execution_sandbox_adapter_request_preflight_input_materialization_enabled}, "
+            f"command_rendering_enabled="
+            f"{security_real_execution_sandbox_adapter_request_preflight_command_rendering_enabled}, "
+            f"sandbox_execution_enabled="
+            f"{security_real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled}, "
+            f"result_generation_enabled="
+            f"{security_real_execution_sandbox_adapter_request_preflight_result_generation_enabled}, "
+            f"execution_performed="
+            f"{security_real_execution_sandbox_adapter_request_preflight_execution_performed}, "
+            f"subprocess_invoked="
+            f"{security_real_execution_sandbox_adapter_request_preflight_subprocess_invoked}, "
+            f"real_execution_enabled="
+            f"{security_real_execution_sandbox_adapter_request_preflight_real_execution_enabled}, "
+            f"external_side_effects_performed="
+            f"{security_real_execution_sandbox_adapter_request_preflight_external_side_effects_performed}, "
+            f"production_paths_mutated="
+            f"{security_real_execution_sandbox_adapter_request_preflight_production_paths_mutated}, "
+            f"production_secrets_accessed="
+            f"{security_real_execution_sandbox_adapter_request_preflight_production_secrets_accessed}."
         )
 
     blocked_execution_disabled = _safe_int(
