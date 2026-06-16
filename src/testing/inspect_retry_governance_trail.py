@@ -60,6 +60,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold",
     "replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold",
     "replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold",
+    "replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold",
 }
 
 
@@ -356,6 +357,12 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold"
+    ]
+    real_execution_sandbox_workspace_preparation_preflight_scaffolds = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -2766,6 +2773,137 @@ def inspect_retry_governance_trail_from_records(
             "production_secrets_accessed"
         )
     )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_statuses = Counter(
+        str(
+            item.get("sandbox_workspace_preparation_preflight_scaffold_status")
+            or "unknown"
+        ).strip()
+        or "unknown"
+        for item in real_execution_sandbox_workspace_preparation_preflight_scaffolds
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_schema_versions = Counter(
+        str(item.get("schema_version") or "unknown").strip() or "unknown"
+        for item in real_execution_sandbox_workspace_preparation_preflight_scaffolds
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip()
+        or "unknown"
+        for item in real_execution_sandbox_workspace_preparation_preflight_scaffolds
+    )
+
+    def _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+        key: str,
+    ) -> Counter[str]:
+        return Counter(
+            str(bool(item.get(key))).lower()
+            for item in real_execution_sandbox_workspace_preparation_preflight_scaffolds
+        )
+
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_fail_closed = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_preparation_preflight_scaffold_fail_closed"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_deny_by_default = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_preparation_preflight_scaffold_deny_by_default"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_preflight_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_preparation_preflight_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_preflight_passed = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_preparation_preflight_passed"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_generation_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_plan_generation_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_materialized = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_plan_materialized"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_executable = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_plan_executable"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_directory_creation_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_directory_creation_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_created = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_created"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_cleanup_registered = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_cleanup_registered"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_creation_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_workspace_creation_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_input_materialization_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_input_materialization_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_command_rendering_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_command_rendering_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_sandbox_execution_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_execution_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_result_generation_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "sandbox_result_generation_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_execution_performed = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "execution_performed"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_subprocess_invoked = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "subprocess_invoked"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_real_execution_enabled = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "real_execution_enabled"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_external_side_effects_performed = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "external_side_effects_performed"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_production_paths_mutated = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "production_paths_mutated"
+        )
+    )
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_production_secrets_accessed = (
+        _sandbox_workspace_preparation_preflight_scaffold_bool_counter(
+            "production_secrets_accessed"
+        )
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -2820,6 +2958,9 @@ def inspect_retry_governance_trail_from_records(
         ),
         real_execution_sandbox_workspace_plan_scaffolds=(
             real_execution_sandbox_workspace_plan_scaffolds
+        ),
+        real_execution_sandbox_workspace_preparation_preflight_scaffolds=(
+            real_execution_sandbox_workspace_preparation_preflight_scaffolds
         ),
         results=results,
     )
@@ -3053,6 +3194,17 @@ def inspect_retry_governance_trail_from_records(
         )
     )
 
+    real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage = (
+        _real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage_summary(
+            real_execution_sandbox_workspace_plan_scaffolds=(
+                real_execution_sandbox_workspace_plan_scaffolds
+            ),
+            real_execution_sandbox_workspace_preparation_preflight_scaffolds=(
+                real_execution_sandbox_workspace_preparation_preflight_scaffolds
+            ),
+        )
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -3121,6 +3273,9 @@ def inspect_retry_governance_trail_from_records(
             ),
             "real_execution_sandbox_workspace_plan_scaffolds": len(
                 real_execution_sandbox_workspace_plan_scaffolds
+            ),
+            "real_execution_sandbox_workspace_preparation_preflight_scaffolds": len(
+                real_execution_sandbox_workspace_preparation_preflight_scaffolds
             ),
             "results": len(results),
         },
@@ -5272,6 +5427,98 @@ def inspect_retry_governance_trail_from_records(
                 0,
             )
         ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_statuses": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_statuses
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_schema_versions": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_schema_versions
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_next_actions": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_next_actions
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_fail_closed": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_fail_closed
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_deny_by_default": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_deny_by_default
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_preflight_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_preflight_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_preflight_passed": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_preflight_passed
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_generation_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_generation_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_materialized": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_materialized
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_executable": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_plan_executable
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_directory_creation_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_directory_creation_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_created": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_created
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_cleanup_registered": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_cleanup_registered
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_creation_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_creation_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_input_materialization_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_input_materialization_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_command_rendering_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_command_rendering_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_sandbox_execution_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_sandbox_execution_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_result_generation_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_result_generation_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_execution_performed": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_execution_performed
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_subprocess_invoked": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_subprocess_invoked
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_real_execution_enabled": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_real_execution_enabled
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_external_side_effects_performed": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_external_side_effects_performed
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_production_paths_mutated": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_production_paths_mutated
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_production_secrets_accessed": dict(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_production_secrets_accessed
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage": (
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage_complete": bool(
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage.get(
+                "real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage_complete"
+            )
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_plan_matches": (
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage.get(
+                "real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_plan_matches",
+                0,
+            )
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_orphans": (
+            real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage.get(
+                "real_execution_sandbox_workspace_preparation_preflight_scaffold_orphans",
+                0,
+            )
+        ),
     }
 
 def _missing_stages(
@@ -5459,6 +5706,9 @@ def _build_chain_ids(
     real_execution_sandbox_request_envelope_scaffolds: list[Mapping[str, Any]],
     real_execution_sandbox_materialization_preflight_scaffolds: list[Mapping[str, Any]],
     real_execution_sandbox_workspace_plan_scaffolds: list[Mapping[str, Any]],
+    real_execution_sandbox_workspace_preparation_preflight_scaffolds: list[
+        Mapping[str, Any]
+    ],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -5503,6 +5753,7 @@ def _build_chain_ids(
         + real_execution_sandbox_request_envelope_scaffolds
         + real_execution_sandbox_materialization_preflight_scaffolds
         + real_execution_sandbox_workspace_plan_scaffolds
+        + real_execution_sandbox_workspace_preparation_preflight_scaffolds
         + results
     )
 
@@ -5557,6 +5808,7 @@ def _build_chain_ids(
                 + real_execution_sandbox_request_envelope_scaffolds
                 + real_execution_sandbox_materialization_preflight_scaffolds
                 + real_execution_sandbox_workspace_plan_scaffolds
+                + real_execution_sandbox_workspace_preparation_preflight_scaffolds
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -5603,6 +5855,7 @@ def _build_chain_ids(
                 + real_execution_sandbox_request_envelope_scaffolds
                 + real_execution_sandbox_materialization_preflight_scaffolds
                 + real_execution_sandbox_workspace_plan_scaffolds
+                + real_execution_sandbox_workspace_preparation_preflight_scaffolds
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -5649,6 +5902,7 @@ def _build_chain_ids(
                     + real_execution_sandbox_request_envelope_scaffolds
                     + real_execution_sandbox_materialization_preflight_scaffolds
                     + real_execution_sandbox_workspace_plan_scaffolds
+                    + real_execution_sandbox_workspace_preparation_preflight_scaffolds
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -5994,6 +6248,23 @@ def _build_chain_ids(
                 for item in real_execution_sandbox_workspace_plan_scaffolds
                 if str(
                     item.get("real_execution_sandbox_workspace_plan_scaffold_id")
+                    or ""
+                ).strip()
+            }
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_ids": sorted(
+            {
+                str(
+                    item.get(
+                        "real_execution_sandbox_workspace_preparation_preflight_scaffold_id"
+                    )
+                    or ""
+                ).strip()
+                for item in real_execution_sandbox_workspace_preparation_preflight_scaffolds
+                if str(
+                    item.get(
+                        "real_execution_sandbox_workspace_preparation_preflight_scaffold_id"
+                    )
                     or ""
                 ).strip()
             }
@@ -7447,6 +7718,48 @@ def _real_execution_sandbox_workspace_plan_scaffold_linkage_summary(
             real_execution_sandbox_workspace_plan_scaffolds
         )
         and workspace_plan_orphans == 0,
+    }
+
+
+def _real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage_summary(
+    *,
+    real_execution_sandbox_workspace_plan_scaffolds: list[Mapping[str, Any]],
+    real_execution_sandbox_workspace_preparation_preflight_scaffolds: list[
+        Mapping[str, Any]
+    ],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    workspace_plan_ids = {
+        clean(item.get("real_execution_sandbox_workspace_plan_scaffold_id"))
+        for item in real_execution_sandbox_workspace_plan_scaffolds
+        if clean(item.get("real_execution_sandbox_workspace_plan_scaffold_id"))
+    }
+
+    preparation_workspace_plan_matches = 0
+    preparation_orphans = 0
+
+    for preparation in real_execution_sandbox_workspace_preparation_preflight_scaffolds:
+        workspace_plan_id = clean(
+            preparation.get("real_execution_sandbox_workspace_plan_scaffold_id")
+        )
+        if workspace_plan_id and workspace_plan_id in workspace_plan_ids:
+            preparation_workspace_plan_matches += 1
+        else:
+            preparation_orphans += 1
+
+    return {
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_workspace_plan_matches": (
+            preparation_workspace_plan_matches
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_orphans": (
+            preparation_orphans
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_linkage_complete": bool(
+            real_execution_sandbox_workspace_preparation_preflight_scaffolds
+        )
+        and preparation_orphans == 0,
     }
 
 

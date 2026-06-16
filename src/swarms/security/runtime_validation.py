@@ -65,6 +65,7 @@ VALIDATED_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold",
     "replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold",
     "replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold",
+    "replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold",
 }
 
 
@@ -698,6 +699,25 @@ def validate_runtime_records(records: Iterable[Any]) -> list[dict[str, Any]]:
         ):
             result = (
                 validate_replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold(
+                    record
+                )
+            )
+            results.append(
+                {
+                    **result,
+                    "record_id": _record_id(record),
+                    "directive_id": _directive_id(record),
+                    "source": record.get("source") or record.get("node_id"),
+                }
+            )
+            continue
+
+        if (
+            record_type
+            == "replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold"
+        ):
+            result = (
+                validate_replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold(
                     record
                 )
             )
@@ -11650,6 +11670,309 @@ def validate_replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffo
     }
 
 
+def validate_replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold(
+    record: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate fail-closed sandbox workspace preparation preflight scaffold records."""
+    reasons: list[str] = []
+    payload = record.get("payload")
+    payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+    preparation_preflight_id = str(
+        record.get(
+            "real_execution_sandbox_workspace_preparation_preflight_scaffold_id"
+        )
+        or ""
+    ).strip()
+    workspace_plan_id = str(
+        record.get("real_execution_sandbox_workspace_plan_scaffold_id") or ""
+    ).strip()
+    materialization_id = str(
+        record.get("real_execution_sandbox_materialization_preflight_scaffold_id")
+        or ""
+    ).strip()
+    envelope_id = str(
+        record.get("real_execution_sandbox_request_envelope_scaffold_id") or ""
+    ).strip()
+    preflight_id = str(
+        record.get("real_execution_sandbox_adapter_request_preflight_id") or ""
+    ).strip()
+    scaffold_id = str(
+        record.get("real_execution_sandbox_adapter_scaffold_id") or ""
+    ).strip()
+    matrix_id = str(
+        record.get("real_execution_capability_policy_matrix_id") or ""
+    ).strip()
+    request_schema_id = str(
+        record.get("real_execution_adapter_request_schema_id") or ""
+    ).strip()
+    contract_id = str(record.get("real_execution_adapter_contract_id") or "").strip()
+    proposal_id = str(record.get("proposal_id") or "").strip()
+    rendered_command_id = str(record.get("rendered_command_id") or "").strip()
+
+    schema_version = str(record.get("schema_version") or "").strip()
+    status = str(
+        record.get("sandbox_workspace_preparation_preflight_scaffold_status") or ""
+    ).strip()
+    kind = str(
+        record.get("sandbox_workspace_preparation_preflight_scaffold_kind") or ""
+    ).strip()
+    next_action = str(record.get("recommended_next_action") or "").strip()
+    reason = str(record.get("reason") or "").strip()
+
+    if not preparation_preflight_id:
+        reasons.append(
+            "missing_real_execution_sandbox_workspace_preparation_preflight_scaffold_id"
+        )
+    if not workspace_plan_id:
+        reasons.append("missing_real_execution_sandbox_workspace_plan_scaffold_id")
+    if not materialization_id:
+        reasons.append(
+            "missing_real_execution_sandbox_materialization_preflight_scaffold_id"
+        )
+    if not envelope_id:
+        reasons.append("missing_real_execution_sandbox_request_envelope_scaffold_id")
+    if not preflight_id:
+        reasons.append("missing_real_execution_sandbox_adapter_request_preflight_id")
+    if not scaffold_id:
+        reasons.append("missing_real_execution_sandbox_adapter_scaffold_id")
+    if not matrix_id:
+        reasons.append("missing_real_execution_capability_policy_matrix_id")
+    if not request_schema_id:
+        reasons.append("missing_real_execution_adapter_request_schema_id")
+    if not contract_id:
+        reasons.append("missing_real_execution_adapter_contract_id")
+    if not proposal_id:
+        reasons.append("missing_proposal_id")
+    if not rendered_command_id:
+        reasons.append("missing_rendered_command_id")
+
+    if (
+        schema_version
+        != "real-execution-sandbox-workspace-preparation-preflight-scaffold/v1"
+    ):
+        reasons.append(
+            "invalid_sandbox_workspace_preparation_preflight_scaffold_schema_version"
+        )
+    if status != "blocked":
+        reasons.append(
+            "sandbox_workspace_preparation_preflight_scaffold_status_must_be_blocked"
+        )
+    if kind != "fail_closed_sandbox_workspace_preparation_preflight_scaffold":
+        reasons.append(
+            "invalid_sandbox_workspace_preparation_preflight_scaffold_kind"
+        )
+    if (
+        next_action
+        != "surface_sandbox_workspace_preparation_preflight_scaffold_observability"
+    ):
+        reasons.append(
+            "invalid_sandbox_workspace_preparation_preflight_scaffold_next_action"
+        )
+    if (
+        reason
+        != "sandbox_workspace_preparation_preflight_scaffold_defined_blocked_not_runnable"
+    ):
+        reasons.append("invalid_sandbox_workspace_preparation_preflight_scaffold_reason")
+
+    expected_strings = {
+        "source_workspace_plan_scaffold_schema_version": (
+            "real-execution-sandbox-workspace-plan-scaffold/v1"
+        ),
+        "source_materialization_preflight_scaffold_schema_version": (
+            "real-execution-sandbox-materialization-preflight-scaffold/v1"
+        ),
+        "source_envelope_scaffold_schema_version": (
+            "real-execution-sandbox-request-envelope-scaffold/v1"
+        ),
+        "source_request_preflight_schema_version": (
+            "real-execution-sandbox-adapter-request-preflight/v1"
+        ),
+        "source_workspace_plan_scaffold_status": "blocked",
+        "sandbox_workspace_strategy": "ephemeral_temp_workspace",
+        "sandbox_workspace_plan_strategy": "explicit_plan_only",
+        "sandbox_workspace_preparation_strategy": (
+            "preflight_only_no_directory_creation"
+        ),
+        "sandbox_input_strategy": "explicit_allowlist_only",
+        "sandbox_output_strategy": "explicit_allowlist_only",
+        "sandbox_rollback_strategy": "workspace_destruction",
+        "sandbox_evidence_strategy": "post_execution_evidence_required",
+        "sandbox_network_policy": "deny",
+        "sandbox_secret_policy": "deny",
+        "sandbox_filesystem_policy": "no_production_writes",
+        "sandbox_production_write_policy": "deny",
+        "sandbox_external_side_effect_policy": "deny",
+    }
+    for key, expected in expected_strings.items():
+        if str(record.get(key) or "").strip() != expected:
+            reasons.append(f"{key}_must_be_{expected}")
+
+    required_true_flags = (
+        "sandbox_workspace_preparation_preflight_scaffold_exists",
+        "sandbox_workspace_preparation_preflight_scaffold_fail_closed",
+        "sandbox_workspace_preparation_preflight_scaffold_deny_by_default",
+        "sandbox_workspace_preparation_preflight_requires_workspace_plan",
+        "sandbox_workspace_preparation_preflight_requires_materialization_preflight",
+        "sandbox_workspace_preparation_preflight_requires_envelope_scaffold",
+        "sandbox_workspace_preparation_preflight_requires_request_preflight",
+        "sandbox_workspace_preparation_preflight_requires_policy_matrix",
+        "sandbox_workspace_preparation_preflight_requires_known_capability",
+        "sandbox_workspace_preparation_preflight_requires_known_policy",
+        "sandbox_workspace_preparation_preflight_requires_operator_authorization",
+        "sandbox_workspace_preparation_preflight_requires_approval_lineage",
+        "sandbox_workspace_preparation_preflight_requires_final_gate",
+        "sandbox_workspace_preparation_preflight_requires_dry_run_envelope",
+        "sandbox_workspace_preparation_preflight_requires_rollback_plan",
+        "sandbox_workspace_preparation_preflight_requires_post_execution_evidence",
+        "sandbox_workspace_preparation_preflight_rejects_unknown_capability",
+        "sandbox_workspace_preparation_preflight_rejects_unknown_policy",
+        "sandbox_workspace_preparation_preflight_rejects_orphans",
+        "sandbox_workspace_preparation_preflight_rejects_stale_records",
+        "source_workspace_plan_scaffold_exists",
+        "source_workspace_plan_scaffold_fail_closed",
+        "source_workspace_plan_scaffold_deny_by_default",
+    )
+    for flag_name in required_true_flags:
+        if not bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_true")
+
+    required_false_flags = (
+        "sandbox_workspace_preparation_preflight_allowed",
+        "sandbox_workspace_preparation_preflight_enabled",
+        "sandbox_workspace_preparation_preflight_passed",
+        "sandbox_workspace_plan_generation_allowed",
+        "sandbox_workspace_plan_generation_enabled",
+        "sandbox_workspace_plan_materialized",
+        "sandbox_workspace_plan_executable",
+        "sandbox_workspace_directory_creation_allowed",
+        "sandbox_workspace_directory_creation_enabled",
+        "sandbox_workspace_created",
+        "sandbox_workspace_cleanup_registered",
+        "sandbox_materialization_preflight_allowed",
+        "sandbox_materialization_preflight_enabled",
+        "sandbox_materialization_preflight_passed",
+        "sandbox_request_envelope_generation_allowed",
+        "sandbox_request_envelope_generation_enabled",
+        "sandbox_request_envelope_materialized",
+        "sandbox_request_envelope_executable",
+        "sandbox_adapter_request_generation_allowed",
+        "sandbox_adapter_request_generation_enabled",
+        "sandbox_workspace_creation_allowed",
+        "sandbox_workspace_creation_enabled",
+        "sandbox_input_materialization_allowed",
+        "sandbox_input_materialization_enabled",
+        "sandbox_command_rendering_allowed",
+        "sandbox_command_rendering_enabled",
+        "sandbox_execution_allowed",
+        "sandbox_execution_enabled",
+        "sandbox_result_generation_allowed",
+        "sandbox_result_generation_enabled",
+        "adapter_request_generation_enabled",
+        "adapter_request_execution_enabled",
+        "adapter_result_generation_enabled",
+        "capability_execution_enabled",
+        "policy_execution_enabled",
+        "policy_gated_real_execution_enabled",
+        "execution_performed",
+        "subprocess_invoked",
+        "real_execution_enabled",
+        "external_side_effects_performed",
+        "production_paths_mutated",
+        "production_secrets_accessed",
+        "source_workspace_plan_generation_enabled",
+        "source_workspace_plan_materialized",
+        "source_workspace_plan_executable",
+        "source_directory_creation_enabled",
+        "source_workspace_created",
+        "source_cleanup_registered",
+        "source_materialization_preflight_enabled",
+        "source_materialization_preflight_passed",
+        "source_workspace_creation_enabled",
+        "source_input_materialization_enabled",
+        "source_command_rendering_enabled",
+        "source_sandbox_execution_enabled",
+        "source_result_generation_enabled",
+        "source_execution_performed",
+        "source_subprocess_invoked",
+        "source_real_execution_enabled",
+        "source_external_side_effects_performed",
+        "source_production_paths_mutated",
+        "source_production_secrets_accessed",
+    )
+    for flag_name in required_false_flags:
+        if bool(record.get(flag_name)):
+            reasons.append(f"{flag_name}_must_be_false")
+        if bool(payload_mapping.get(flag_name)):
+            reasons.append(f"payload_{flag_name}_must_be_false")
+
+    return {
+        "type": "security_validation_result",
+        "record_type": (
+            "replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold"
+        ),
+        "valid": not reasons,
+        "severity": "critical" if reasons else "info",
+        "reasons": reasons,
+        "subject": preparation_preflight_id or workspace_plan_id,
+        "schema_version": schema_version or "unknown",
+        "sandbox_workspace_preparation_preflight_scaffold_status": status or "unknown",
+        "sandbox_workspace_preparation_preflight_scaffold_fail_closed": bool(
+            record.get("sandbox_workspace_preparation_preflight_scaffold_fail_closed")
+        ),
+        "sandbox_workspace_preparation_preflight_scaffold_deny_by_default": bool(
+            record.get(
+                "sandbox_workspace_preparation_preflight_scaffold_deny_by_default"
+            )
+        ),
+        "sandbox_workspace_preparation_preflight_enabled": bool(
+            record.get("sandbox_workspace_preparation_preflight_enabled")
+        ),
+        "sandbox_workspace_preparation_preflight_passed": bool(
+            record.get("sandbox_workspace_preparation_preflight_passed")
+        ),
+        "sandbox_workspace_plan_generation_enabled": bool(
+            record.get("sandbox_workspace_plan_generation_enabled")
+        ),
+        "sandbox_workspace_plan_materialized": bool(
+            record.get("sandbox_workspace_plan_materialized")
+        ),
+        "sandbox_workspace_plan_executable": bool(
+            record.get("sandbox_workspace_plan_executable")
+        ),
+        "sandbox_workspace_directory_creation_enabled": bool(
+            record.get("sandbox_workspace_directory_creation_enabled")
+        ),
+        "sandbox_workspace_created": bool(record.get("sandbox_workspace_created")),
+        "sandbox_workspace_cleanup_registered": bool(
+            record.get("sandbox_workspace_cleanup_registered")
+        ),
+        "sandbox_workspace_creation_enabled": bool(
+            record.get("sandbox_workspace_creation_enabled")
+        ),
+        "sandbox_input_materialization_enabled": bool(
+            record.get("sandbox_input_materialization_enabled")
+        ),
+        "sandbox_command_rendering_enabled": bool(
+            record.get("sandbox_command_rendering_enabled")
+        ),
+        "sandbox_execution_enabled": bool(record.get("sandbox_execution_enabled")),
+        "sandbox_result_generation_enabled": bool(
+            record.get("sandbox_result_generation_enabled")
+        ),
+        "execution_performed": bool(record.get("execution_performed")),
+        "subprocess_invoked": bool(record.get("subprocess_invoked")),
+        "real_execution_enabled": bool(record.get("real_execution_enabled")),
+        "external_side_effects_performed": bool(
+            record.get("external_side_effects_performed")
+        ),
+        "production_paths_mutated": bool(record.get("production_paths_mutated")),
+        "production_secrets_accessed": bool(record.get("production_secrets_accessed")),
+        "recommended_next_action": next_action or "unknown",
+        "reason": reason or "unknown",
+    }
+
+
 __all__ = [
     "VALIDATED_RECORD_TYPES",
     "build_security_validation_heartbeat_metrics",
@@ -11698,4 +12021,5 @@ __all__ = [
     "validate_replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold",
     "validate_replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold",
     "validate_replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold",
+    "validate_replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold",
 ]
