@@ -142,6 +142,25 @@ def _report(**overrides):
         "real_execution_sandbox_adapter_scaffold_external_side_effects_performed": 0,
         "real_execution_sandbox_adapter_scaffold_production_paths_mutated": 0,
         "real_execution_sandbox_adapter_scaffold_production_secrets_accessed": 0,
+        "real_execution_sandbox_adapter_request_preflight_observed": True,
+        "real_execution_sandbox_adapter_request_preflight_records": 1,
+        "real_execution_sandbox_adapter_request_preflight_linkage_complete": True,
+        "real_execution_sandbox_adapter_request_preflight_orphans": 0,
+        "real_execution_sandbox_adapter_request_preflight_blocked": 1,
+        "real_execution_sandbox_adapter_request_preflight_fail_closed": 1,
+        "real_execution_sandbox_adapter_request_preflight_deny_by_default": 1,
+        "real_execution_sandbox_adapter_request_preflight_request_generation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_result_generation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_execution_performed": 0,
+        "real_execution_sandbox_adapter_request_preflight_subprocess_invoked": 0,
+        "real_execution_sandbox_adapter_request_preflight_real_execution_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed": 0,
+        "real_execution_sandbox_adapter_request_preflight_production_paths_mutated": 0,
+        "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed": 0,
         "adapter_contract": {
             "type": "controlled_retry_execution_adapter_contract",
             "schema_version": "controlled-retry-execution-adapter/v1",
@@ -320,6 +339,25 @@ def _report(**overrides):
             "real_execution_sandbox_adapter_scaffold_external_side_effects_performed",
             "real_execution_sandbox_adapter_scaffold_production_paths_mutated",
             "real_execution_sandbox_adapter_scaffold_production_secrets_accessed",
+            "real_execution_sandbox_adapter_request_preflight_observed",
+            "real_execution_sandbox_adapter_request_preflight_records",
+            "real_execution_sandbox_adapter_request_preflight_linkage_complete",
+            "real_execution_sandbox_adapter_request_preflight_orphans",
+            "real_execution_sandbox_adapter_request_preflight_blocked",
+            "real_execution_sandbox_adapter_request_preflight_fail_closed",
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default",
+            "real_execution_sandbox_adapter_request_preflight_request_generation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled",
+            "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled",
+            "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled",
+            "real_execution_sandbox_adapter_request_preflight_result_generation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_execution_performed",
+            "real_execution_sandbox_adapter_request_preflight_subprocess_invoked",
+            "real_execution_sandbox_adapter_request_preflight_real_execution_enabled",
+            "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed",
+            "real_execution_sandbox_adapter_request_preflight_production_paths_mutated",
+            "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed",
         ],
     }
     item.update(overrides)
@@ -512,6 +550,25 @@ def test_controlled_execution_readiness_schema_required_fields_snapshot() -> Non
             "real_execution_sandbox_adapter_scaffold_external_side_effects_performed",
             "real_execution_sandbox_adapter_scaffold_production_paths_mutated",
             "real_execution_sandbox_adapter_scaffold_production_secrets_accessed",
+            "real_execution_sandbox_adapter_request_preflight_observed",
+            "real_execution_sandbox_adapter_request_preflight_records",
+            "real_execution_sandbox_adapter_request_preflight_linkage_complete",
+            "real_execution_sandbox_adapter_request_preflight_orphans",
+            "real_execution_sandbox_adapter_request_preflight_blocked",
+            "real_execution_sandbox_adapter_request_preflight_fail_closed",
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default",
+            "real_execution_sandbox_adapter_request_preflight_request_generation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled",
+            "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled",
+            "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled",
+            "real_execution_sandbox_adapter_request_preflight_result_generation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_execution_performed",
+            "real_execution_sandbox_adapter_request_preflight_subprocess_invoked",
+            "real_execution_sandbox_adapter_request_preflight_real_execution_enabled",
+            "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed",
+            "real_execution_sandbox_adapter_request_preflight_production_paths_mutated",
+            "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed",
             "checks",
             "exit_codes",
         ]
@@ -734,3 +791,27 @@ def test_validate_controlled_execution_readiness_report_schema_rejects_bad_real_
 
     assert result["valid"] is False
     assert "real_noop_result_stdout_marker_observed_must_be_int" in result["reasons"]
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_sandbox_request_preflight_observed_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_execution_sandbox_adapter_request_preflight_observed="true")
+    )
+
+    assert result["valid"] is False
+    assert (
+        "real_execution_sandbox_adapter_request_preflight_observed_must_be_bool"
+        in result["reasons"]
+    )
+
+
+def test_validate_controlled_execution_readiness_report_schema_rejects_bad_sandbox_request_preflight_records_type() -> None:
+    result = validate_controlled_execution_readiness_report_schema(
+        _report(real_execution_sandbox_adapter_request_preflight_records="1")
+    )
+
+    assert result["valid"] is False
+    assert (
+        "real_execution_sandbox_adapter_request_preflight_records_must_be_int"
+        in result["reasons"]
+    )

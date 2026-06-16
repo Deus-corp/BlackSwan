@@ -249,8 +249,35 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_noop_result_exit_codes = _safe_mapping(
         trail_summary.get("real_noop_result_exit_codes")
     )
-    real_noop_result_stdout_marker_observed = _safe_mapping(
-        trail_summary.get("real_noop_result_stdout_marker_observed")
+    real_read_only_promotion_statuses = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_statuses")
+    )
+    real_read_only_promotion_candidates = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_candidates")
+    )
+    real_read_only_promotion_command_parse_valid = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_command_parse_valid")
+    )
+    real_read_only_promotion_stdout_marker_observed = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_stdout_marker_observed")
+    )
+    real_read_only_promotion_noop_exit_codes = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_noop_exit_codes")
+    )
+    real_read_only_promotion_rendered_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_rendered_command_executed")
+    )
+    real_read_only_promotion_dry_run_command_executed = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_dry_run_command_executed")
+    )
+    real_read_only_promotion_real_execution_enabled = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_real_execution_enabled")
+    )
+    real_read_only_promotion_subprocess_invoked = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_subprocess_invoked")
+    )
+    real_read_only_promotion_execution_performed = _safe_mapping(
+        trail_summary.get("real_read_only_promotion_execution_performed")
     )
     real_read_only_final_gate_statuses = _safe_mapping(
         trail_summary.get("real_read_only_final_gate_statuses")
@@ -1513,6 +1540,105 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
     real_execution_sandbox_adapter_scaffold_production_secrets_accessed = _safe_mapping(
         trail_summary.get(
             "real_execution_sandbox_adapter_scaffold_production_secrets_accessed"
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_statuses = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_statuses"
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_fail_closed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_fail_closed"
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_deny_by_default = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default"
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_request_generation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_request_generation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_input_materialization_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_command_rendering_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_result_generation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_result_generation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_execution_performed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_execution_performed"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_subprocess_invoked = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_subprocess_invoked"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_real_execution_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_real_execution_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_external_side_effects_performed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_production_paths_mutated = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_production_paths_mutated"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_production_secrets_accessed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed"
+            )
         )
     )
 
@@ -3158,6 +3284,112 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
         ),
         "real_execution_sandbox_adapter_scaffold_production_secrets_accessed": _safe_int(
             real_execution_sandbox_adapter_scaffold_production_secrets_accessed.get("true"), 0
+        ),
+        "real_execution_sandbox_adapter_request_preflight_observed": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_statuses.get("blocked"),
+            0,
+        )
+        > 0,
+        "real_execution_sandbox_adapter_request_preflight_records": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_statuses.get("blocked"),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_linkage_complete": bool(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_linkage_complete"
+            )
+        ),
+        "real_execution_sandbox_adapter_request_preflight_orphans": _safe_int(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_orphans"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_blocked": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_statuses.get("blocked"),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_fail_closed": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_fail_closed.get("true"),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_deny_by_default": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_deny_by_default.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_request_generation_enabled": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_request_generation_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_execution_performed": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_execution_performed.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_subprocess_invoked": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_subprocess_invoked.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_real_execution_enabled": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_real_execution_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_input_materialization_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_command_rendering_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_result_generation_enabled": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_result_generation_enabled.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_external_side_effects_performed.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_production_paths_mutated": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_production_paths_mutated.get(
+                "true"
+            ),
+            0,
+        ),
+        "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed": _safe_int(
+            real_execution_sandbox_adapter_request_preflight_production_secrets_accessed.get(
+                "true"
+            ),
+            0,
         ),
         "status": "passed" if ready_for_mock_execution else "failed",
         "ready_for_mock_execution": ready_for_mock_execution,
@@ -4849,6 +5081,112 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_execution_sandbox_adapter_scaffold_production_secrets_accessed": _safe_int(
                 real_execution_sandbox_adapter_scaffold_production_secrets_accessed.get("true"), 0
             ),
+            "real_execution_sandbox_adapter_request_preflight_observed": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_statuses.get("blocked"),
+                0,
+            )
+            > 0,
+            "real_execution_sandbox_adapter_request_preflight_records": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_statuses.get("blocked"),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_linkage_complete": bool(
+                trail_summary.get(
+                    "real_execution_sandbox_adapter_request_preflight_linkage_complete"
+                )
+            ),
+            "real_execution_sandbox_adapter_request_preflight_orphans": _safe_int(
+                trail_summary.get(
+                    "real_execution_sandbox_adapter_request_preflight_orphans"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_blocked": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_statuses.get("blocked"),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_fail_closed": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_fail_closed.get("true"),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_deny_by_default.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_request_generation_enabled": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_request_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_execution_performed": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_execution_performed.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_subprocess_invoked": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_subprocess_invoked.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_real_execution_enabled": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_real_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_input_materialization_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_command_rendering_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_result_generation_enabled": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_result_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_external_side_effects_performed.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_production_paths_mutated": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_production_paths_mutated.get(
+                    "true"
+                ),
+                0,
+            ),
+            "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed": _safe_int(
+                real_execution_sandbox_adapter_request_preflight_production_secrets_accessed.get(
+                    "true"
+                ),
+                0,
+            ),
         },
         "required_fields": [
             "schema_version",
@@ -4994,6 +5332,25 @@ def check_controlled_execution_readiness(args: argparse.Namespace) -> dict[str, 
             "real_execution_sandbox_adapter_scaffold_external_side_effects_performed",
             "real_execution_sandbox_adapter_scaffold_production_paths_mutated",
             "real_execution_sandbox_adapter_scaffold_production_secrets_accessed",
+            "real_execution_sandbox_adapter_request_preflight_observed",
+            "real_execution_sandbox_adapter_request_preflight_records",
+            "real_execution_sandbox_adapter_request_preflight_linkage_complete",
+            "real_execution_sandbox_adapter_request_preflight_orphans",
+            "real_execution_sandbox_adapter_request_preflight_blocked",
+            "real_execution_sandbox_adapter_request_preflight_fail_closed",
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default",
+            "real_execution_sandbox_adapter_request_preflight_request_generation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled",
+            "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled",
+            "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled",
+            "real_execution_sandbox_adapter_request_preflight_result_generation_enabled",
+            "real_execution_sandbox_adapter_request_preflight_execution_performed",
+            "real_execution_sandbox_adapter_request_preflight_subprocess_invoked",
+            "real_execution_sandbox_adapter_request_preflight_real_execution_enabled",
+            "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed",
+            "real_execution_sandbox_adapter_request_preflight_production_paths_mutated",
+            "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed",
         ],
         "trail_summary": trail_summary,
         "retry_observability": retry_observability,
@@ -6538,6 +6895,105 @@ def _build_checks(
     real_execution_sandbox_adapter_scaffold_production_secrets_accessed = _safe_mapping(
         trail_summary.get(
             "real_execution_sandbox_adapter_scaffold_production_secrets_accessed"
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_statuses = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_statuses"
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_fail_closed = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_fail_closed"
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_deny_by_default = _safe_mapping(
+        trail_summary.get(
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default"
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_request_generation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_request_generation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_input_materialization_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_command_rendering_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_result_generation_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_result_generation_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_execution_performed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_execution_performed"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_subprocess_invoked = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_subprocess_invoked"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_real_execution_enabled = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_real_execution_enabled"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_external_side_effects_performed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_production_paths_mutated = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_production_paths_mutated"
+            )
+        )
+    )
+    real_execution_sandbox_adapter_request_preflight_production_secrets_accessed = (
+        _safe_mapping(
+            trail_summary.get(
+                "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed"
+            )
         )
     )
 
@@ -11026,6 +11482,187 @@ def _build_checks(
             _safe_int(real_execution_sandbox_adapter_scaffold_real_execution_enabled.get("true"), 0) == 0,
             real_execution_sandbox_adapter_scaffold_real_execution_enabled,
         ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_blocked",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_statuses.get(
+                    "blocked"
+                ),
+                0,
+            )
+            > 0,
+            real_execution_sandbox_adapter_request_preflight_statuses,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_links_to_scaffold",
+            _safe_int(
+                trail_summary.get(
+                    "real_execution_sandbox_adapter_request_preflight_orphans"
+                ),
+                0,
+            )
+            == 0,
+            _safe_int(
+                trail_summary.get(
+                    "real_execution_sandbox_adapter_request_preflight_orphans"
+                ),
+                0,
+            ),
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_fail_closed",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_fail_closed.get(
+                    "true"
+                ),
+                0,
+            )
+            > 0,
+            real_execution_sandbox_adapter_request_preflight_fail_closed,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_generate_requests",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_request_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_request_generation_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_create_workspace",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_enable_sandbox_execution",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_execute",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_execution_performed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_execution_performed,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_invoke_subprocess",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_subprocess_invoked.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_subprocess_invoked,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_enable_real_execution",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_real_execution_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_real_execution_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_deny_by_default",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_deny_by_default.get(
+                    "true"
+                ),
+                0,
+            )
+            > 0,
+            real_execution_sandbox_adapter_request_preflight_deny_by_default,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_materialize_inputs",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_input_materialization_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_input_materialization_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_render_commands",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_command_rendering_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_command_rendering_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_does_not_generate_results",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_result_generation_enabled.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_result_generation_enabled,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_no_external_side_effects",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_external_side_effects_performed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_external_side_effects_performed,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_no_production_paths_mutated",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_production_paths_mutated.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_production_paths_mutated,
+        ),
+        _check(
+            "real_execution_sandbox_adapter_request_preflight_no_production_secrets_accessed",
+            _safe_int(
+                real_execution_sandbox_adapter_request_preflight_production_secrets_accessed.get(
+                    "true"
+                ),
+                0,
+            )
+            == 0,
+            real_execution_sandbox_adapter_request_preflight_production_secrets_accessed,
+        ),
     ]
 
     operator_authorized_count = _safe_int(operator_authorized.get("true"))
@@ -11213,6 +11850,25 @@ def validate_controlled_execution_readiness_report_schema(
         "real_execution_sandbox_adapter_scaffold_external_side_effects_performed",
         "real_execution_sandbox_adapter_scaffold_production_paths_mutated",
         "real_execution_sandbox_adapter_scaffold_production_secrets_accessed",
+        "real_execution_sandbox_adapter_request_preflight_observed",
+        "real_execution_sandbox_adapter_request_preflight_records",
+        "real_execution_sandbox_adapter_request_preflight_linkage_complete",
+        "real_execution_sandbox_adapter_request_preflight_orphans",
+        "real_execution_sandbox_adapter_request_preflight_blocked",
+        "real_execution_sandbox_adapter_request_preflight_fail_closed",
+        "real_execution_sandbox_adapter_request_preflight_deny_by_default",
+        "real_execution_sandbox_adapter_request_preflight_request_generation_enabled",
+        "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled",
+        "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled",
+        "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled",
+        "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled",
+        "real_execution_sandbox_adapter_request_preflight_result_generation_enabled",
+        "real_execution_sandbox_adapter_request_preflight_execution_performed",
+        "real_execution_sandbox_adapter_request_preflight_subprocess_invoked",
+        "real_execution_sandbox_adapter_request_preflight_real_execution_enabled",
+        "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed",
+        "real_execution_sandbox_adapter_request_preflight_production_paths_mutated",
+        "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed",
     ]
 
     reasons: list[str] = []
@@ -11597,6 +12253,57 @@ def validate_controlled_execution_readiness_report_schema(
         "real_execution_sandbox_adapter_scaffold_external_side_effects_performed",
         "real_execution_sandbox_adapter_scaffold_production_paths_mutated",
         "real_execution_sandbox_adapter_scaffold_production_secrets_accessed",
+    ):
+        if not isinstance(report.get(int_field), int):
+            reasons.append(f"{int_field}_must_be_int")
+    
+    if not isinstance(
+        report.get("real_execution_sandbox_adapter_request_preflight_observed"),
+        bool,
+    ):
+        reasons.append(
+            "real_execution_sandbox_adapter_request_preflight_observed_must_be_bool"
+        )
+    if not isinstance(
+        report.get("real_execution_sandbox_adapter_request_preflight_records"),
+        int,
+    ):
+        reasons.append(
+            "real_execution_sandbox_adapter_request_preflight_records_must_be_int"
+        )
+    if not isinstance(
+        report.get(
+            "real_execution_sandbox_adapter_request_preflight_linkage_complete"
+        ),
+        bool,
+    ):
+        reasons.append(
+            "real_execution_sandbox_adapter_request_preflight_linkage_complete_must_be_bool"
+        )
+    if not isinstance(
+        report.get("real_execution_sandbox_adapter_request_preflight_orphans"),
+        int,
+    ):
+        reasons.append(
+            "real_execution_sandbox_adapter_request_preflight_orphans_must_be_int"
+        )
+
+    for int_field in (
+        "real_execution_sandbox_adapter_request_preflight_blocked",
+        "real_execution_sandbox_adapter_request_preflight_fail_closed",
+        "real_execution_sandbox_adapter_request_preflight_deny_by_default",
+        "real_execution_sandbox_adapter_request_preflight_request_generation_enabled",
+        "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled",
+        "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled",
+        "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled",
+        "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled",
+        "real_execution_sandbox_adapter_request_preflight_result_generation_enabled",
+        "real_execution_sandbox_adapter_request_preflight_execution_performed",
+        "real_execution_sandbox_adapter_request_preflight_subprocess_invoked",
+        "real_execution_sandbox_adapter_request_preflight_real_execution_enabled",
+        "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed",
+        "real_execution_sandbox_adapter_request_preflight_production_paths_mutated",
+        "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed",
     ):
         if not isinstance(report.get(int_field), int):
             reasons.append(f"{int_field}_must_be_int")
@@ -12166,6 +12873,44 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"real_execution_capability_policy_matrix_source_verified={result.get('real_execution_capability_policy_matrix_source_verified', 0)} "
         f"real_execution_capability_policy_matrix_source_expected_count_9={result.get('real_execution_capability_policy_matrix_source_expected_count_9', 0)} "
         f"real_execution_capability_policy_matrix_source_verified_count_9={result.get('real_execution_capability_policy_matrix_source_verified_count_9', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_observed="
+        f"{str(bool(result.get('real_execution_sandbox_adapter_request_preflight_observed'))).lower()} "
+        f"real_execution_sandbox_adapter_request_preflight_records="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_records', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_linkage_complete="
+        f"{str(bool(result.get('real_execution_sandbox_adapter_request_preflight_linkage_complete'))).lower()} "
+        f"real_execution_sandbox_adapter_request_preflight_orphans="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_orphans', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_blocked="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_blocked', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_fail_closed="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_fail_closed', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_deny_by_default="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_deny_by_default', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_request_generation_enabled="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_request_generation_enabled', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_input_materialization_enabled="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_input_materialization_enabled', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_command_rendering_enabled="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_command_rendering_enabled', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_result_generation_enabled="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_result_generation_enabled', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_execution_performed="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_execution_performed', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_subprocess_invoked="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_subprocess_invoked', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_real_execution_enabled="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_real_execution_enabled', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_external_side_effects_performed="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_external_side_effects_performed', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_production_paths_mutated="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_production_paths_mutated', 0)} "
+        f"real_execution_sandbox_adapter_request_preflight_production_secrets_accessed="
+        f"{result.get('real_execution_sandbox_adapter_request_preflight_production_secrets_accessed', 0)} "
     )
 
 

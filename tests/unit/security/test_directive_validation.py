@@ -41,6 +41,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_repair_noop_feedback,
     validate_replay_lifecycle_retry_real_execution_repair_readiness_gate,
     validate_replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold,
+    validate_replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight,
 )
 
 
@@ -4294,3 +4295,191 @@ def test_validate_real_execution_sandbox_adapter_scaffold_rejects_execution_enab
     assert result["valid"] is False
     assert result["severity"] == "critical"
     assert "sandbox_execution_enabled_must_be_false" in result["reasons"]
+
+
+def _real_execution_sandbox_adapter_request_preflight(**overrides):
+    item = {
+        "type": "replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight",
+        "real_execution_sandbox_adapter_request_preflight_id": "sandbox-preflight-1",
+        "real_execution_sandbox_adapter_scaffold_id": "sandbox-scaffold-1",
+        "real_execution_capability_policy_matrix_id": "matrix-1",
+        "real_execution_adapter_request_schema_id": "request-schema-1",
+        "real_execution_adapter_contract_id": "contract-1",
+        "proposal_id": "proposal-1",
+        "rendered_command_id": "rendered-1",
+        "schema_version": "real-execution-sandbox-adapter-request-preflight/v1",
+        "source_scaffold_schema_version": "real-execution-sandbox-adapter-scaffold/v1",
+        "source_sandbox_adapter_contract_version": "real-execution-sandbox-adapter/v1",
+        "source_scaffold_status": "defined",
+        "sandbox_adapter_request_preflight_status": "blocked",
+        "sandbox_adapter_request_preflight_kind": (
+            "fail_closed_sandbox_adapter_request_preflight"
+        ),
+        "sandbox_adapter_request_preflight_exists": True,
+        "sandbox_adapter_request_preflight_fail_closed": True,
+        "sandbox_adapter_request_preflight_deny_by_default": True,
+        "sandbox_adapter_request_preflight_requires_policy_matrix": True,
+        "sandbox_adapter_request_preflight_requires_known_capability": True,
+        "sandbox_adapter_request_preflight_requires_known_policy": True,
+        "sandbox_adapter_request_preflight_requires_operator_authorization": True,
+        "sandbox_adapter_request_preflight_requires_approval_lineage": True,
+        "sandbox_adapter_request_preflight_requires_final_gate": True,
+        "sandbox_adapter_request_preflight_requires_dry_run_envelope": True,
+        "sandbox_adapter_request_preflight_requires_rollback_plan": True,
+        "sandbox_adapter_request_preflight_requires_post_execution_evidence": True,
+        "sandbox_adapter_request_preflight_rejects_unknown_capability": True,
+        "sandbox_adapter_request_preflight_rejects_unknown_policy": True,
+        "sandbox_adapter_request_preflight_rejects_orphans": True,
+        "sandbox_adapter_request_preflight_rejects_stale_records": True,
+        "source_scaffold_exists": True,
+        "source_scaffold_fail_closed": True,
+        "source_scaffold_deny_by_default": True,
+        "sandbox_workspace_strategy": "ephemeral_temp_workspace",
+        "sandbox_input_strategy": "explicit_allowlist_only",
+        "sandbox_output_strategy": "explicit_allowlist_only",
+        "sandbox_rollback_strategy": "workspace_destruction",
+        "sandbox_evidence_strategy": "post_execution_evidence_required",
+        "sandbox_network_policy": "deny",
+        "sandbox_secret_policy": "deny",
+        "sandbox_filesystem_policy": "no_production_writes",
+        "sandbox_production_write_policy": "deny",
+        "sandbox_external_side_effect_policy": "deny",
+        "sandbox_adapter_request_generation_allowed": False,
+        "sandbox_adapter_request_generation_enabled": False,
+        "sandbox_workspace_creation_allowed": False,
+        "sandbox_workspace_creation_enabled": False,
+        "sandbox_input_materialization_allowed": False,
+        "sandbox_input_materialization_enabled": False,
+        "sandbox_command_rendering_allowed": False,
+        "sandbox_command_rendering_enabled": False,
+        "sandbox_execution_allowed": False,
+        "sandbox_execution_enabled": False,
+        "sandbox_result_generation_allowed": False,
+        "sandbox_result_generation_enabled": False,
+        "adapter_request_generation_enabled": False,
+        "adapter_request_execution_enabled": False,
+        "adapter_result_generation_enabled": False,
+        "capability_execution_enabled": False,
+        "policy_execution_enabled": False,
+        "policy_gated_real_execution_enabled": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "real_execution_enabled": False,
+        "external_side_effects_performed": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
+        "source_scaffold_sandbox_execution_enabled": False,
+        "source_scaffold_execution_performed": False,
+        "source_scaffold_subprocess_invoked": False,
+        "source_scaffold_real_execution_enabled": False,
+        "source_scaffold_external_side_effects_performed": False,
+        "source_scaffold_production_paths_mutated": False,
+        "source_scaffold_production_secrets_accessed": False,
+        "recommended_next_action": (
+            "surface_sandbox_adapter_request_preflight_observability"
+        ),
+        "reason": "sandbox_adapter_request_preflight_defined_blocked_not_runnable",
+    }
+    item["payload"] = dict(item)
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_sandbox_adapter_request_preflight_accepts_blocked_fail_closed() -> None:
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight(
+            _real_execution_sandbox_adapter_request_preflight()
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["reasons"] == []
+    assert result["sandbox_adapter_request_preflight_status"] == "blocked"
+    assert result["sandbox_adapter_request_preflight_fail_closed"] is True
+    assert result["sandbox_adapter_request_preflight_deny_by_default"] is True
+    assert result["sandbox_execution_enabled"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+    assert result["real_execution_enabled"] is False
+
+
+def test_validate_retry_real_execution_sandbox_adapter_request_preflight_rejects_request_generation_enabled() -> None:
+    record = _real_execution_sandbox_adapter_request_preflight(
+        sandbox_adapter_request_generation_enabled=True
+    )
+    record["payload"]["sandbox_adapter_request_generation_enabled"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert (
+        "sandbox_adapter_request_generation_enabled_must_be_false"
+        in result["reasons"]
+    )
+    assert (
+        "payload_sandbox_adapter_request_generation_enabled_must_be_false"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_sandbox_adapter_request_preflight_rejects_workspace_creation_enabled() -> None:
+    record = _real_execution_sandbox_adapter_request_preflight(
+        sandbox_workspace_creation_enabled=True
+    )
+    record["payload"]["sandbox_workspace_creation_enabled"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "sandbox_workspace_creation_enabled_must_be_false" in result["reasons"]
+    assert (
+        "payload_sandbox_workspace_creation_enabled_must_be_false"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_sandbox_adapter_request_preflight_rejects_sandbox_execution_enabled() -> None:
+    record = _real_execution_sandbox_adapter_request_preflight(
+        sandbox_execution_enabled=True
+    )
+    record["payload"]["sandbox_execution_enabled"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "sandbox_execution_enabled_must_be_false" in result["reasons"]
+    assert "payload_sandbox_execution_enabled_must_be_false" in result["reasons"]
+
+
+def test_validate_retry_real_execution_sandbox_adapter_request_preflight_rejects_real_execution_enabled() -> None:
+    record = _real_execution_sandbox_adapter_request_preflight(
+        real_execution_enabled=True
+    )
+    record["payload"]["real_execution_enabled"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "real_execution_enabled_must_be_false" in result["reasons"]
+    assert "payload_real_execution_enabled_must_be_false" in result["reasons"]

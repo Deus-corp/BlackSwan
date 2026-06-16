@@ -657,6 +657,35 @@ def _trail_summary(**overrides):
         },
         "real_execution_sandbox_adapter_scaffold_linkage_complete": True,
         "real_execution_sandbox_adapter_scaffold_orphans": 0,
+        "real_execution_sandbox_adapter_request_preflight_statuses": {
+            "blocked": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_fail_closed": {
+            "true": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_deny_by_default": {
+            "true": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_request_generation_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_execution_performed": {
+            "false": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_subprocess_invoked": {
+            "false": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_real_execution_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_adapter_request_preflight_linkage_complete": True,
+        "real_execution_sandbox_adapter_request_preflight_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -1617,6 +1646,25 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_execution_sandbox_adapter_scaffold_external_side_effects_performed": 0,
         "real_execution_sandbox_adapter_scaffold_production_paths_mutated": 0,
         "real_execution_sandbox_adapter_scaffold_production_secrets_accessed": 0,
+        "real_execution_sandbox_adapter_request_preflight_observed": True,
+        "real_execution_sandbox_adapter_request_preflight_records": 1,
+        "real_execution_sandbox_adapter_request_preflight_linkage_complete": True,
+        "real_execution_sandbox_adapter_request_preflight_orphans": 0,
+        "real_execution_sandbox_adapter_request_preflight_blocked": 1,
+        "real_execution_sandbox_adapter_request_preflight_fail_closed": 1,
+        "real_execution_sandbox_adapter_request_preflight_deny_by_default": 1,
+        "real_execution_sandbox_adapter_request_preflight_request_generation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_result_generation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_execution_performed": 0,
+        "real_execution_sandbox_adapter_request_preflight_subprocess_invoked": 0,
+        "real_execution_sandbox_adapter_request_preflight_real_execution_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed": 0,
+        "real_execution_sandbox_adapter_request_preflight_production_paths_mutated": 0,
+        "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -2192,6 +2240,25 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_execution_sandbox_adapter_scaffold_external_side_effects_performed": 0,
         "real_execution_sandbox_adapter_scaffold_production_paths_mutated": 0,
         "real_execution_sandbox_adapter_scaffold_production_secrets_accessed": 0,
+        "real_execution_sandbox_adapter_request_preflight_observed": True,
+        "real_execution_sandbox_adapter_request_preflight_records": 1,
+        "real_execution_sandbox_adapter_request_preflight_linkage_complete": True,
+        "real_execution_sandbox_adapter_request_preflight_orphans": 0,
+        "real_execution_sandbox_adapter_request_preflight_blocked": 1,
+        "real_execution_sandbox_adapter_request_preflight_fail_closed": 1,
+        "real_execution_sandbox_adapter_request_preflight_deny_by_default": 1,
+        "real_execution_sandbox_adapter_request_preflight_request_generation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_workspace_creation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_input_materialization_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_command_rendering_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_sandbox_execution_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_result_generation_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_execution_performed": 0,
+        "real_execution_sandbox_adapter_request_preflight_subprocess_invoked": 0,
+        "real_execution_sandbox_adapter_request_preflight_real_execution_enabled": 0,
+        "real_execution_sandbox_adapter_request_preflight_external_side_effects_performed": 0,
+        "real_execution_sandbox_adapter_request_preflight_production_paths_mutated": 0,
+        "real_execution_sandbox_adapter_request_preflight_production_secrets_accessed": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,
