@@ -1138,3 +1138,97 @@ def test_global_brief_surfaces_blocked_real_execution_preflight() -> None:
     assert brief.key_metrics["security_real_preflight_execution_performed"] == 0
     assert brief.key_metrics["security_real_preflight_subprocess_invoked"] == 0
     assert brief.key_metrics["security_real_preflight_requires_explicit_pr"] == 1
+
+
+def test_global_brief_surfaces_sandbox_adapter_scaffold_observability() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"overseer": 1, "security": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "real_execution_sandbox_adapter_scaffold_statuses": {
+                "defined": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_fail_closed": {
+                "true": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_deny_by_default": {
+                "true": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled": {
+                "false": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_execution_performed": {
+                "false": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_subprocess_invoked": {
+                "false": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_real_execution_enabled": {
+                "false": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_external_side_effects_performed": {
+                "false": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_production_paths_mutated": {
+                "false": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_production_secrets_accessed": {
+                "false": 1,
+            },
+            "real_execution_sandbox_adapter_scaffold_orphans": 0,
+            "real_execution_sandbox_adapter_scaffold_linkage_complete": True,
+        },
+    )
+    text = brief.summary
+
+    assert "Sandbox adapter scaffold observed" in text
+    assert "defined=1" in text
+    assert "fail_closed=1" in text
+    assert "deny_by_default=1" in text
+    assert "linkage_complete=1" in text
+    assert "orphans=0" in text
+    assert "sandbox_execution_enabled=0" in text
+    assert "execution_performed=0" in text
+    assert "subprocess_invoked=0" in text
+    assert "real_execution_enabled=0" in text
+    assert "external_side_effects_performed=0" in text
+    assert "production_paths_mutated=0" in text
+    assert "production_secrets_accessed=0" in text
+
+    assert brief.key_metrics["security_real_execution_sandbox_adapter_scaffolds"] == 1
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_adapter_scaffold_fail_closed"
+        ]
+        == 1
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_adapter_scaffold_deny_by_default"
+        ]
+        == 1
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled"
+        ]
+        == 0
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_adapter_scaffold_execution_performed"
+        ]
+        == 0
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_adapter_scaffold_subprocess_invoked"
+        ]
+        == 0
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_adapter_scaffold_real_execution_enabled"
+        ]
+        == 0
+    )

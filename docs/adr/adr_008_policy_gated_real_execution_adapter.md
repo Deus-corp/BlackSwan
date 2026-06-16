@@ -612,6 +612,39 @@ production_secrets_accessed=false
 recommended_next_action=surface_sandbox_adapter_scaffold_observability
 ```
 
+## Acceptance criteria for PR 38.5c
+
+PR 38.5c surfaces sandbox adapter scaffold observability through a dedicated
+read-only check and Overseer brief metrics.
+
+The concrete helper is:
+
+```text
+src.testing.check_sandbox_adapter_scaffold_observability
+```
+It must verify:
+```text
+sandbox_adapter_scaffold_observed=true
+sandbox_adapter_scaffold_linkage_complete=true
+sandbox_adapter_scaffold_orphans=0
+sandbox_adapter_scaffold_defined=1
+sandbox_adapter_scaffold_fail_closed=1
+sandbox_adapter_scaffold_deny_by_default=1
+sandbox_adapter_scaffold_sandbox_execution_enabled=0
+sandbox_adapter_scaffold_execution_performed=0
+sandbox_adapter_scaffold_subprocess_invoked=0
+sandbox_adapter_scaffold_real_execution_enabled=0
+sandbox_adapter_scaffold_external_side_effects_performed=0
+sandbox_adapter_scaffold_production_paths_mutated=0
+sandbox_adapter_scaffold_production_secrets_accessed=0
+```
+
+The Overseer brief must surface the same fail-closed scaffold state through
+security_real_execution_sandbox_adapter_scaffold_* key metrics.
+
+This PR remains read-only and does not enable sandbox execution.
+
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.

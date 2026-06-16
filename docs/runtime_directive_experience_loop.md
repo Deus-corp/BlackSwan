@@ -1943,6 +1943,33 @@ readiness report, and Overseer summaries must agree on the final verified state:
 
 ---
 
+### Sandbox adapter scaffold observability check
+
+`src.testing.check_sandbox_adapter_scaffold_observability` is a read-only helper
+that verifies fail-closed sandbox adapter scaffold visibility through Security,
+Inspector, Readiness-style gates, and Overseer brief metrics.
+
+The check requires:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold observed
+Security record type count > 0
+Inspector scaffold linkage complete
+sandbox scaffold orphans = 0
+sandbox_adapter_scaffold_status=defined
+sandbox_adapter_fail_closed=true
+sandbox_adapter_deny_by_default=true
+sandbox_execution_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+---
+
 ## Related modules
 
 ```text

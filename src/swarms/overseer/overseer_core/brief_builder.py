@@ -1121,6 +1121,96 @@ def build_global_swarm_brief(
         ).get("true"),
         0,
     )
+    security_sandbox_adapter_scaffold_statuses = _safe_dict(
+        security_validation.get("real_execution_sandbox_adapter_scaffold_statuses")
+    )
+    security_sandbox_adapter_scaffold_fail_closed = _safe_dict(
+        security_validation.get("real_execution_sandbox_adapter_scaffold_fail_closed")
+    )
+    security_sandbox_adapter_scaffold_deny_by_default = _safe_dict(
+        security_validation.get("real_execution_sandbox_adapter_scaffold_deny_by_default")
+    )
+    security_sandbox_adapter_scaffold_sandbox_execution_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled"
+        )
+    )
+    security_sandbox_adapter_scaffold_execution_performed = _safe_dict(
+        security_validation.get("real_execution_sandbox_adapter_scaffold_execution_performed")
+    )
+    security_sandbox_adapter_scaffold_subprocess_invoked = _safe_dict(
+        security_validation.get("real_execution_sandbox_adapter_scaffold_subprocess_invoked")
+    )
+    security_sandbox_adapter_scaffold_real_execution_enabled = _safe_dict(
+        security_validation.get("real_execution_sandbox_adapter_scaffold_real_execution_enabled")
+    )
+    security_sandbox_adapter_scaffold_external_side_effects_performed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_scaffold_external_side_effects_performed"
+        )
+    )
+    security_sandbox_adapter_scaffold_production_paths_mutated = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_scaffold_production_paths_mutated"
+        )
+    )
+    security_sandbox_adapter_scaffold_production_secrets_accessed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_adapter_scaffold_production_secrets_accessed"
+        )
+    )
+
+    security_real_execution_sandbox_adapter_scaffolds = _safe_int(
+        security_sandbox_adapter_scaffold_statuses.get("defined"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_fail_closed = _safe_int(
+        security_sandbox_adapter_scaffold_fail_closed.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_deny_by_default = _safe_int(
+        security_sandbox_adapter_scaffold_deny_by_default.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled = _safe_int(
+        security_sandbox_adapter_scaffold_sandbox_execution_enabled.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_execution_performed = _safe_int(
+        security_sandbox_adapter_scaffold_execution_performed.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_subprocess_invoked = _safe_int(
+        security_sandbox_adapter_scaffold_subprocess_invoked.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_real_execution_enabled = _safe_int(
+        security_sandbox_adapter_scaffold_real_execution_enabled.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed = _safe_int(
+        security_sandbox_adapter_scaffold_external_side_effects_performed.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_production_paths_mutated = _safe_int(
+        security_sandbox_adapter_scaffold_production_paths_mutated.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed = _safe_int(
+        security_sandbox_adapter_scaffold_production_secrets_accessed.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_orphans = _safe_int(
+        security_validation.get("real_execution_sandbox_adapter_scaffold_orphans"),
+        0,
+    )
+    security_real_execution_sandbox_adapter_scaffold_linkage_complete = int(
+        bool(
+            security_validation.get(
+                "real_execution_sandbox_adapter_scaffold_linkage_complete"
+            )
+        )
+    )
     security_real_adapter_supported = bool(
         security_validation.get("security_real_adapter_supported", False)
     )
@@ -2135,6 +2225,98 @@ def build_global_swarm_brief(
                 },
             )
         )
+    
+    if security_real_execution_sandbox_adapter_scaffolds > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Sandbox adapter scaffold observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Sandbox adapter scaffold observed: "
+                    f"defined={security_real_execution_sandbox_adapter_scaffolds}, "
+                    f"fail_closed="
+                    f"{security_real_execution_sandbox_adapter_scaffold_fail_closed}, "
+                    f"deny_by_default="
+                    f"{security_real_execution_sandbox_adapter_scaffold_deny_by_default}, "
+                    f"linkage_complete="
+                    f"{security_real_execution_sandbox_adapter_scaffold_linkage_complete}, "
+                    f"orphans="
+                    f"{security_real_execution_sandbox_adapter_scaffold_orphans}, "
+                    f"sandbox_execution_enabled="
+                    f"{security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled}, "
+                    f"execution_performed="
+                    f"{security_real_execution_sandbox_adapter_scaffold_execution_performed}, "
+                    f"subprocess_invoked="
+                    f"{security_real_execution_sandbox_adapter_scaffold_subprocess_invoked}, "
+                    f"real_execution_enabled="
+                    f"{security_real_execution_sandbox_adapter_scaffold_real_execution_enabled}, "
+                    f"external_side_effects_performed="
+                    f"{security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed}, "
+                    f"production_paths_mutated="
+                    f"{security_real_execution_sandbox_adapter_scaffold_production_paths_mutated}, "
+                    f"production_secrets_accessed="
+                    f"{security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed}."
+                ),
+                payload={
+                    "security_real_execution_sandbox_adapter_scaffolds": (
+                        security_real_execution_sandbox_adapter_scaffolds
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_fail_closed": (
+                        security_real_execution_sandbox_adapter_scaffold_fail_closed
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_deny_by_default": (
+                        security_real_execution_sandbox_adapter_scaffold_deny_by_default
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_linkage_complete": (
+                        security_real_execution_sandbox_adapter_scaffold_linkage_complete
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_orphans": (
+                        security_real_execution_sandbox_adapter_scaffold_orphans
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled": (
+                        security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_execution_performed": (
+                        security_real_execution_sandbox_adapter_scaffold_execution_performed
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_subprocess_invoked": (
+                        security_real_execution_sandbox_adapter_scaffold_subprocess_invoked
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_real_execution_enabled": (
+                        security_real_execution_sandbox_adapter_scaffold_real_execution_enabled
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed": (
+                        security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_production_paths_mutated": (
+                        security_real_execution_sandbox_adapter_scaffold_production_paths_mutated
+                    ),
+                    "security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed": (
+                        security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed
+                    ),
+                    "recommendation": "keep_sandbox_adapter_scaffold_fail_closed_until_sandbox_request_preflight_pr",
+                },
+            )
+        )
+        recommended_actions.append(
+            build_brief_item(
+                title="Keep sandbox adapter scaffold fail-closed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Use the sandbox adapter scaffold observability check before "
+                    "introducing sandbox request/preflight scaffolds. Do not enable "
+                    "workspace creation, subprocesses, sandbox execution, or real execution."
+                ),
+                payload={
+                    "recommendation": "run_sandbox_adapter_scaffold_observability_check",
+                    "target_swarm": "security",
+                    "execution_enabled": False,
+                    "subprocess_enabled": False,
+                    "sandbox_execution_enabled": False,
+                    "real_execution_enabled": False,
+                },
+            )
+        )
 
     if simulation_replay_pending > 0:
         opportunities.append(
@@ -2592,6 +2774,42 @@ def build_global_swarm_brief(
         "security_read_only_repair_action_bundle_review_subprocess_invoked": (
             security_read_only_repair_action_bundle_review_subprocess_invoked
         ),
+        "security_real_execution_sandbox_adapter_scaffolds": (
+            security_real_execution_sandbox_adapter_scaffolds
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_fail_closed": (
+            security_real_execution_sandbox_adapter_scaffold_fail_closed
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_deny_by_default": (
+            security_real_execution_sandbox_adapter_scaffold_deny_by_default
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled": (
+            security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_execution_performed": (
+            security_real_execution_sandbox_adapter_scaffold_execution_performed
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_subprocess_invoked": (
+            security_real_execution_sandbox_adapter_scaffold_subprocess_invoked
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_real_execution_enabled": (
+            security_real_execution_sandbox_adapter_scaffold_real_execution_enabled
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed": (
+            security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_production_paths_mutated": (
+            security_real_execution_sandbox_adapter_scaffold_production_paths_mutated
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed": (
+            security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_orphans": (
+            security_real_execution_sandbox_adapter_scaffold_orphans
+        ),
+        "security_real_execution_sandbox_adapter_scaffold_linkage_complete": (
+            security_real_execution_sandbox_adapter_scaffold_linkage_complete
+        ),
     }
 
     summary = _build_summary(
@@ -2894,6 +3112,42 @@ def build_global_swarm_brief(
         security_read_only_repair_action_bundle_review_subprocess_invoked=(
             security_read_only_repair_action_bundle_review_subprocess_invoked
         ),
+        security_real_execution_sandbox_adapter_scaffolds=(
+            security_real_execution_sandbox_adapter_scaffolds
+        ),
+        security_real_execution_sandbox_adapter_scaffold_fail_closed=(
+            security_real_execution_sandbox_adapter_scaffold_fail_closed
+        ),
+        security_real_execution_sandbox_adapter_scaffold_deny_by_default=(
+            security_real_execution_sandbox_adapter_scaffold_deny_by_default
+        ),
+        security_real_execution_sandbox_adapter_scaffold_linkage_complete=(
+            security_real_execution_sandbox_adapter_scaffold_linkage_complete
+        ),
+        security_real_execution_sandbox_adapter_scaffold_orphans=(
+            security_real_execution_sandbox_adapter_scaffold_orphans
+        ),
+        security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled=(
+            security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled
+        ),
+        security_real_execution_sandbox_adapter_scaffold_execution_performed=(
+            security_real_execution_sandbox_adapter_scaffold_execution_performed
+        ),
+        security_real_execution_sandbox_adapter_scaffold_subprocess_invoked=(
+            security_real_execution_sandbox_adapter_scaffold_subprocess_invoked
+        ),
+        security_real_execution_sandbox_adapter_scaffold_real_execution_enabled=(
+            security_real_execution_sandbox_adapter_scaffold_real_execution_enabled
+        ),
+        security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed=(
+            security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed
+        ),
+        security_real_execution_sandbox_adapter_scaffold_production_paths_mutated=(
+            security_real_execution_sandbox_adapter_scaffold_production_paths_mutated
+        ),
+        security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed=(
+            security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed
+        ),
     )
 
     return build_swarm_brief(
@@ -3063,6 +3317,18 @@ def _build_summary(
     security_read_only_repair_action_bundle_review_subprocess_enabled: int,
     security_read_only_repair_action_bundle_review_execution_performed: int,
     security_read_only_repair_action_bundle_review_subprocess_invoked: int,
+    security_real_execution_sandbox_adapter_scaffolds: int,
+    security_real_execution_sandbox_adapter_scaffold_fail_closed: int,
+    security_real_execution_sandbox_adapter_scaffold_deny_by_default: int,
+    security_real_execution_sandbox_adapter_scaffold_linkage_complete: int,
+    security_real_execution_sandbox_adapter_scaffold_orphans: int,
+    security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled: int,
+    security_real_execution_sandbox_adapter_scaffold_execution_performed: int,
+    security_real_execution_sandbox_adapter_scaffold_subprocess_invoked: int,
+    security_real_execution_sandbox_adapter_scaffold_real_execution_enabled: int,
+    security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed: int,
+    security_real_execution_sandbox_adapter_scaffold_production_paths_mutated: int,
+    security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -3369,6 +3635,30 @@ def _build_summary(
             f"execution_performed={security_read_only_repair_action_bundle_review_execution_performed}, "
             f"subprocess_invoked={security_read_only_repair_action_bundle_review_subprocess_invoked}."
     )
+    
+    if security_real_execution_sandbox_adapter_scaffolds > 0:
+        parts.append(
+            "Sandbox adapter scaffold observed: "
+            f"defined={security_real_execution_sandbox_adapter_scaffolds}, "
+            f"fail_closed={security_real_execution_sandbox_adapter_scaffold_fail_closed}, "
+            f"deny_by_default={security_real_execution_sandbox_adapter_scaffold_deny_by_default}, "
+            f"linkage_complete={security_real_execution_sandbox_adapter_scaffold_linkage_complete}, "
+            f"orphans={security_real_execution_sandbox_adapter_scaffold_orphans}, "
+            f"sandbox_execution_enabled="
+            f"{security_real_execution_sandbox_adapter_scaffold_sandbox_execution_enabled}, "
+            f"execution_performed="
+            f"{security_real_execution_sandbox_adapter_scaffold_execution_performed}, "
+            f"subprocess_invoked="
+            f"{security_real_execution_sandbox_adapter_scaffold_subprocess_invoked}, "
+            f"real_execution_enabled="
+            f"{security_real_execution_sandbox_adapter_scaffold_real_execution_enabled}, "
+            f"external_side_effects_performed="
+            f"{security_real_execution_sandbox_adapter_scaffold_external_side_effects_performed}, "
+            f"production_paths_mutated="
+            f"{security_real_execution_sandbox_adapter_scaffold_production_paths_mutated}, "
+            f"production_secrets_accessed="
+            f"{security_real_execution_sandbox_adapter_scaffold_production_secrets_accessed}."
+        )
 
     blocked_execution_disabled = _safe_int(
         security_retry_execution_eligibility_reasons.get("execution_disabled"),
