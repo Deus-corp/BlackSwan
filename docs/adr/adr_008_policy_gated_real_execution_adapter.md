@@ -807,6 +807,49 @@ generation, envelope materialization, executable envelopes, workspace creation,
 input materialization, command rendering, sandbox execution, subprocesses, or
 real execution.
 
+## Acceptance criteria for PR 38.8a
+
+PR 38.8a introduces a blocked sandbox materialization preflight scaffold.
+
+The concrete builder is:
+
+```text
+src.testing.build_real_execution_sandbox_materialization_preflight_scaffold
+```
+It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold source.
+
+The produced record type is:
+```text
+replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold
+```
+Required invariants:
+```text
+sandbox_materialization_preflight_scaffold_status=blocked
+sandbox_materialization_preflight_scaffold_fail_closed=true
+sandbox_materialization_preflight_scaffold_deny_by_default=true
+sandbox_materialization_preflight_allowed=false
+sandbox_materialization_preflight_enabled=false
+sandbox_materialization_preflight_passed=false
+sandbox_request_envelope_generation_enabled=false
+sandbox_request_envelope_materialized=false
+sandbox_request_envelope_executable=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+This PR does not enable envelope generation, envelope materialization, workspace
+creation, input materialization, command rendering, sandbox execution,
+subprocesses, or real execution.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.
