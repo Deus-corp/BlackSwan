@@ -1082,6 +1082,55 @@ pass workspace preparation preflight, create directories, create workspaces,
 register cleanup, materialize inputs, render commands, sandbox execution,
 subprocesses, or real execution.
 
+## Acceptance criteria for PR 38.11a
+
+PR 38.11a introduces a blocked sandbox input materialization plan scaffold.
+
+The concrete builder is:
+
+```text
+src.testing.build_real_execution_sandbox_input_materialization_plan_scaffold
+```
+It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold
+source.
+
+The produced record type is:
+```text
+replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold
+```
+Required invariants:
+```text
+sandbox_input_materialization_plan_scaffold_status=blocked
+sandbox_input_materialization_plan_scaffold_fail_closed=true
+sandbox_input_materialization_plan_scaffold_deny_by_default=true
+sandbox_input_materialization_plan_generation_enabled=false
+sandbox_input_materialization_plan_materialized=false
+sandbox_input_materialization_plan_executable=false
+sandbox_input_materialization_enabled=false
+sandbox_inputs_materialized=false
+sandbox_workspace_preparation_preflight_enabled=false
+sandbox_workspace_preparation_preflight_passed=false
+sandbox_workspace_directory_creation_enabled=false
+sandbox_workspace_created=false
+sandbox_workspace_cleanup_registered=false
+sandbox_workspace_creation_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+This PR does not enable workspace preparation preflight, pass workspace
+preparation preflight, create directories, create workspaces, register cleanup,
+generate input materialization plans, materialize input materialization plans,
+materialize inputs, render commands, sandbox execution, subprocesses, or real
+execution.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.
