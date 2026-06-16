@@ -2098,6 +2098,54 @@ python -m src.testing.build_real_execution_sandbox_request_envelope_scaffold \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
+
+---
+
+### Sandbox request envelope scaffold observability check
+
+`src.testing.check_sandbox_request_envelope_scaffold_observability` is a
+read-only helper that verifies fail-closed sandbox request envelope scaffold
+visibility through Security, Inspector, Readiness-style gates, and Overseer
+brief metrics.
+
+The check requires:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold observed
+Security record type count > 0
+Inspector envelope scaffold linkage complete
+sandbox request envelope scaffold orphans = 0
+sandbox_request_envelope_scaffold_status=blocked
+sandbox_request_envelope_scaffold_fail_closed=true
+sandbox_request_envelope_scaffold_deny_by_default=true
+sandbox_request_envelope_generation_enabled=false
+sandbox_request_envelope_materialized=false
+sandbox_request_envelope_executable=false
+sandbox_adapter_request_generation_enabled=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+Runtime command:
+```bash
+python -m src.testing.check_sandbox_request_envelope_scaffold_observability \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+This check does not generate sandbox request envelopes, materialize envelopes,
+create workspaces, materialize inputs, render commands, execute sandbox
+commands, invoke subprocesses, or enable real execution.
+
 ---
 
 ## Related modules
