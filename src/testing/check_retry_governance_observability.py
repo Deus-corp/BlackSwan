@@ -528,6 +528,110 @@ def check_retry_governance_observability_from_records(
             "real_execution_sandbox_materialization_preflight_scaffold_linkage_complete",
             False,
         ),
+        "real_execution_sandbox_workspace_plan_scaffold_statuses": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_statuses", {}
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_fail_closed": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_fail_closed", {}
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_deny_by_default": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_deny_by_default", {}
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_plan_generation_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_plan_generation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_plan_materialized": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_plan_materialized",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_plan_executable": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_plan_executable",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_directory_creation_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_directory_creation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_workspace_created": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_workspace_created",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_cleanup_registered": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_cleanup_registered",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_materialization_preflight_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_materialization_preflight_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_materialization_preflight_passed": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_materialization_preflight_passed",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_envelope_generation_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_envelope_generation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_envelope_materialized": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_envelope_materialized",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_envelope_executable": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_envelope_executable",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_workspace_creation_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_workspace_creation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_input_materialization_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_input_materialization_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_command_rendering_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_command_rendering_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_sandbox_execution_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_sandbox_execution_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_result_generation_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_result_generation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_execution_performed": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_execution_performed",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_subprocess_invoked": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_subprocess_invoked",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_real_execution_enabled": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_real_execution_enabled",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_external_side_effects_performed": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_external_side_effects_performed",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_production_paths_mutated": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_production_paths_mutated",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_production_secrets_accessed": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_production_secrets_accessed",
+            {},
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_orphans": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_orphans", 0
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_linkage_complete": trail_summary.get(
+            "real_execution_sandbox_workspace_plan_scaffold_linkage_complete",
+            False,
+        ),
     }
 
     brief = build_global_swarm_brief(

@@ -943,6 +943,51 @@ This PR does not enable materialization preflight, pass materialization
 preflight, generate or materialize envelopes, create workspaces, materialize
 inputs, render commands, sandbox execution, subprocesses, or real execution.
 
+## Acceptance criteria for PR 38.9c
+
+PR 38.9c surfaces sandbox workspace plan scaffold observability through a
+dedicated read-only check and Overseer brief metrics.
+
+The concrete helper is:
+
+```text
+src.testing.check_sandbox_workspace_plan_scaffold_observability
+```
+It must verify:
+```text
+sandbox_workspace_plan_scaffold_observed=true
+sandbox_workspace_plan_scaffold_linkage_complete=true
+sandbox_workspace_plan_scaffold_orphans=0
+sandbox_workspace_plan_scaffold_blocked=1
+sandbox_workspace_plan_scaffold_fail_closed=1
+sandbox_workspace_plan_scaffold_deny_by_default=1
+sandbox_workspace_plan_scaffold_plan_generation_enabled=0
+sandbox_workspace_plan_scaffold_plan_materialized=0
+sandbox_workspace_plan_scaffold_plan_executable=0
+sandbox_workspace_plan_scaffold_directory_creation_enabled=0
+sandbox_workspace_plan_scaffold_workspace_created=0
+sandbox_workspace_plan_scaffold_cleanup_registered=0
+sandbox_workspace_plan_scaffold_materialization_preflight_enabled=0
+sandbox_workspace_plan_scaffold_materialization_preflight_passed=0
+sandbox_workspace_plan_scaffold_workspace_creation_enabled=0
+sandbox_workspace_plan_scaffold_input_materialization_enabled=0
+sandbox_workspace_plan_scaffold_command_rendering_enabled=0
+sandbox_workspace_plan_scaffold_sandbox_execution_enabled=0
+sandbox_workspace_plan_scaffold_execution_performed=0
+sandbox_workspace_plan_scaffold_subprocess_invoked=0
+sandbox_workspace_plan_scaffold_real_execution_enabled=0
+sandbox_workspace_plan_scaffold_external_side_effects_performed=0
+sandbox_workspace_plan_scaffold_production_paths_mutated=0
+sandbox_workspace_plan_scaffold_production_secrets_accessed=0
+```
+
+The Overseer brief must surface the same fail-closed workspace plan state through
+security_real_execution_sandbox_workspace_plan_scaffold_* key metrics.
+
+This PR remains read-only and does not generate workspace plans, materialize
+plans, create directories, create workspaces, register cleanup, materialize
+inputs, render commands, sandbox execution, subprocesses, or real execution.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.
