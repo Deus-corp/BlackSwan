@@ -644,6 +644,45 @@ security_real_execution_sandbox_adapter_scaffold_* key metrics.
 
 This PR remains read-only and does not enable sandbox execution.
 
+## Acceptance criteria for PR 38.6a
+
+PR 38.6a introduces a fail-closed sandbox adapter request preflight scaffold.
+
+The concrete builder is:
+
+```text
+src.testing.build_real_execution_sandbox_adapter_request_preflight
+```
+It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold source.
+
+The produced record type is:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight
+```
+
+Required invariants:
+```text
+sandbox_adapter_request_preflight_status=blocked
+sandbox_adapter_request_preflight_fail_closed=true
+sandbox_adapter_request_preflight_deny_by_default=true
+sandbox_adapter_request_generation_enabled=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+This PR does not enable sandbox execution. It only prepares the next blocked
+preflight artifact.
 
 ## Consequences
 

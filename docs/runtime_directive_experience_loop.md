@@ -1970,6 +1970,44 @@ production_secrets_accessed=false
 
 ---
 
+### Sandbox adapter request preflight scaffold
+
+`src.testing.build_real_execution_sandbox_adapter_request_preflight` builds the
+next fail-closed scaffold after the sandbox adapter scaffold has been observed by
+Security, Inspector, Readiness, and Overseer.
+
+The record type is:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight
+```
+This artifact is still read-only and blocked. It does not generate executable
+sandbox adapter requests, create workspaces, materialize inputs, render commands,
+run sandbox execution, generate results, invoke subprocesses, or enable real
+execution.
+
+Expected safe fields include:
+
+```text
+sandbox_adapter_request_preflight_status=blocked
+sandbox_adapter_request_preflight_fail_closed=true
+sandbox_adapter_request_preflight_deny_by_default=true
+sandbox_adapter_request_generation_enabled=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+---
+
 ## Related modules
 
 ```text
