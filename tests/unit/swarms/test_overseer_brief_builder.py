@@ -1982,3 +1982,114 @@ def test_global_brief_surfaces_sandbox_input_materialization_plan_scaffold_obser
         ]
         == 0
     )
+
+
+def test_global_brief_surfaces_sandbox_command_render_plan_scaffold_observability() -> None:
+    brief = build_global_swarm_brief(
+        snapshot={"active_swarm_counts": {"overseer": 1, "security": 1}},
+        security_validation={
+            "security_validation_records": 1,
+            "real_execution_sandbox_command_render_plan_scaffold_statuses": {
+                "blocked": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_fail_closed": {
+                "true": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_deny_by_default": {
+                "true": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_plan_materialized": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_plan_executable": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_command_rendered": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_execution_performed": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled": {
+                "false": 1,
+            },
+            "real_execution_sandbox_command_render_plan_scaffold_orphans": 0,
+            "real_execution_sandbox_command_render_plan_scaffold_linkage_complete": True,
+        },
+    )
+    text = brief.summary
+
+    assert "Sandbox command render plan scaffold observed" in text
+    assert "blocked=1" in text
+    assert "fail_closed=1" in text
+    assert "deny_by_default=1" in text
+    assert "linkage_complete=1" in text
+    assert "orphans=0" in text
+    assert "plan_generation_enabled=0" in text
+    assert "plan_materialized=0" in text
+    assert "plan_executable=0" in text
+    assert "command_rendering_enabled=0" in text
+    assert "command_rendered=0" in text
+    assert "rendered_command_validated=0" in text
+    assert "sandbox_execution_enabled=0" in text
+    assert "execution_performed=0" in text
+    assert "subprocess_invoked=0" in text
+    assert "real_execution_enabled=0" in text
+
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_command_render_plan_scaffolds"
+        ]
+        == 1
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled"
+        ]
+        == 0
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled"
+        ]
+        == 0
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_command_render_plan_scaffold_command_rendered"
+        ]
+        == 0
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated"
+        ]
+        == 0
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled"
+        ]
+        == 0
+    )
+    assert (
+        brief.key_metrics[
+            "security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled"
+        ]
+        == 0
+    )

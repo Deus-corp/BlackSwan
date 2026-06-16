@@ -1230,6 +1230,42 @@ This PR does not generate command render plans, materialize command render plans
 render sandbox commands, validate rendered sandbox commands, materialize inputs,
 sandbox execution, subprocesses, or real execution.
 
+## Acceptance criteria for PR 38.12c
+
+PR 38.12c surfaces sandbox command render plan scaffold observability through a
+dedicated read-only check and Overseer brief metrics.
+
+The concrete helper is:
+
+```text
+src.testing.check_sandbox_command_render_plan_scaffold_observability
+```
+It must verify:
+```text
+sandbox_command_render_plan_scaffold_observed=true
+sandbox_command_render_plan_scaffold_linkage_complete=true
+sandbox_command_render_plan_scaffold_orphans=0
+sandbox_command_render_plan_scaffold_blocked=1
+sandbox_command_render_plan_scaffold_fail_closed=1
+sandbox_command_render_plan_scaffold_deny_by_default=1
+sandbox_command_render_plan_scaffold_plan_generation_enabled=0
+sandbox_command_render_plan_scaffold_plan_materialized=0
+sandbox_command_render_plan_scaffold_plan_executable=0
+sandbox_command_render_plan_scaffold_command_rendering_enabled=0
+sandbox_command_render_plan_scaffold_command_rendered=0
+sandbox_command_render_plan_scaffold_rendered_command_validated=0
+sandbox_command_render_plan_scaffold_sandbox_execution_enabled=0
+sandbox_command_render_plan_scaffold_execution_performed=0
+sandbox_command_render_plan_scaffold_subprocess_invoked=0
+sandbox_command_render_plan_scaffold_real_execution_enabled=0
+```
+The Overseer brief must surface the same fail-closed command render plan state
+through security_real_execution_sandbox_command_render_plan_* key metrics.
+
+This PR remains read-only and does not generate command render plans, materialize
+plans, render sandbox commands, validate rendered commands, sandbox execution,
+subprocesses, or real execution.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.

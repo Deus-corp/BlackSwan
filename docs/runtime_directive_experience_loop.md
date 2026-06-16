@@ -2621,6 +2621,49 @@ python -m src.testing.build_real_execution_sandbox_command_render_plan_scaffold 
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
+
+---
+
+### Sandbox command render plan scaffold observability check
+
+`src.testing.check_sandbox_command_render_plan_scaffold_observability`
+is a read-only helper that verifies fail-closed sandbox command render plan
+scaffold visibility through Security, Inspector, Readiness-style gates, and
+Overseer brief metrics.
+
+The check requires:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_command_render_plan_scaffold observed
+Security record type count > 0
+Inspector command render plan scaffold linkage complete
+sandbox command render plan scaffold orphans = 0
+sandbox_command_render_plan_scaffold_status=blocked
+sandbox_command_render_plan_scaffold_fail_closed=true
+sandbox_command_render_plan_scaffold_deny_by_default=true
+sandbox_command_render_plan_generation_enabled=false
+sandbox_command_render_plan_materialized=false
+sandbox_command_render_plan_executable=false
+sandbox_command_rendering_enabled=false
+sandbox_command_rendered=false
+sandbox_rendered_command_validated=false
+sandbox_execution_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+```
+Runtime command:
+```bash
+python -m src.testing.check_sandbox_command_render_plan_scaffold_observability \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+This check does not generate command render plans, materialize command render
+plans, render sandbox commands, validate rendered commands, execute sandbox
+commands, invoke subprocesses, or enable real execution.
+
 ---
 
 ## Related modules

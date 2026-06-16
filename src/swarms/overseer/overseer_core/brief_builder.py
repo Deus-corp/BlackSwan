@@ -2931,6 +2931,147 @@ def build_global_swarm_brief(
             )
         )
     )
+    security_sandbox_command_render_plan_scaffold_statuses = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_statuses"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_fail_closed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_fail_closed"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_deny_by_default = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_deny_by_default"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_plan_generation_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_plan_materialized = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_plan_materialized"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_plan_executable = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_plan_executable"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_command_rendering_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_command_rendered = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_command_rendered"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_rendered_command_validated = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_sandbox_execution_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_execution_performed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_execution_performed"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_subprocess_invoked = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked"
+        )
+    )
+    security_sandbox_command_render_plan_scaffold_real_execution_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled"
+        )
+    )
+
+    security_real_execution_sandbox_command_render_plan_scaffolds = _safe_int(
+        security_sandbox_command_render_plan_scaffold_statuses.get("blocked"),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_fail_closed = _safe_int(
+        security_sandbox_command_render_plan_scaffold_fail_closed.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_deny_by_default = _safe_int(
+        security_sandbox_command_render_plan_scaffold_deny_by_default.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled = _safe_int(
+        security_sandbox_command_render_plan_scaffold_plan_generation_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_plan_materialized = _safe_int(
+        security_sandbox_command_render_plan_scaffold_plan_materialized.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_plan_executable = _safe_int(
+        security_sandbox_command_render_plan_scaffold_plan_executable.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled = _safe_int(
+        security_sandbox_command_render_plan_scaffold_command_rendering_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_command_rendered = _safe_int(
+        security_sandbox_command_render_plan_scaffold_command_rendered.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated = _safe_int(
+        security_sandbox_command_render_plan_scaffold_rendered_command_validated.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled = _safe_int(
+        security_sandbox_command_render_plan_scaffold_sandbox_execution_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_execution_performed = _safe_int(
+        security_sandbox_command_render_plan_scaffold_execution_performed.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked = _safe_int(
+        security_sandbox_command_render_plan_scaffold_subprocess_invoked.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled = _safe_int(
+        security_sandbox_command_render_plan_scaffold_real_execution_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_orphans = _safe_int(
+        security_validation.get(
+            "real_execution_sandbox_command_render_plan_scaffold_orphans"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_command_render_plan_scaffold_linkage_complete = int(
+        bool(
+            security_validation.get(
+                "real_execution_sandbox_command_render_plan_scaffold_linkage_complete"
+            )
+        )
+    )
     security_real_adapter_supported = bool(
         security_validation.get("security_real_adapter_supported", False)
     )
@@ -4701,6 +4842,68 @@ def build_global_swarm_brief(
                 },
             )
         )
+    
+    if security_real_execution_sandbox_command_render_plan_scaffolds > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Sandbox command render plan scaffold observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Sandbox command render plan scaffold observed: "
+                    f"blocked={security_real_execution_sandbox_command_render_plan_scaffolds}, "
+                    f"fail_closed={security_real_execution_sandbox_command_render_plan_scaffold_fail_closed}, "
+                    f"deny_by_default={security_real_execution_sandbox_command_render_plan_scaffold_deny_by_default}, "
+                    f"linkage_complete={security_real_execution_sandbox_command_render_plan_scaffold_linkage_complete}, "
+                    f"orphans={security_real_execution_sandbox_command_render_plan_scaffold_orphans}, "
+                    f"plan_generation_enabled={security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled}, "
+                    f"plan_materialized={security_real_execution_sandbox_command_render_plan_scaffold_plan_materialized}, "
+                    f"plan_executable={security_real_execution_sandbox_command_render_plan_scaffold_plan_executable}, "
+                    f"command_rendering_enabled={security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled}, "
+                    f"command_rendered={security_real_execution_sandbox_command_render_plan_scaffold_command_rendered}, "
+                    f"rendered_command_validated={security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated}, "
+                    f"sandbox_execution_enabled={security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled}, "
+                    f"execution_performed={security_real_execution_sandbox_command_render_plan_scaffold_execution_performed}, "
+                    f"subprocess_invoked={security_real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked}, "
+                    f"real_execution_enabled={security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled}."
+                ),
+                payload={
+                    "security_real_execution_sandbox_command_render_plan_scaffolds": (
+                        security_real_execution_sandbox_command_render_plan_scaffolds
+                    ),
+                    "recommendation": (
+                        "keep_sandbox_command_render_plan_fail_closed_until_rendered_command_scaffold_pr"
+                    ),
+                },
+            )
+        )
+        recommended_actions.append(
+            build_brief_item(
+                title="Keep sandbox command render plan scaffold fail-closed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Use the sandbox command render plan scaffold observability "
+                    "check before introducing rendered sandbox command scaffolding. "
+                    "Do not generate command render plans, materialize plans, render "
+                    "commands, validate rendered commands, execute sandbox commands, "
+                    "invoke subprocesses, or enable real execution."
+                ),
+                payload={
+                    "recommendation": (
+                        "run_sandbox_command_render_plan_scaffold_observability_check"
+                    ),
+                    "target_swarm": "security",
+                    "plan_generation_enabled": False,
+                    "plan_materialized": False,
+                    "plan_executable": False,
+                    "command_rendering_enabled": False,
+                    "command_rendered": False,
+                    "rendered_command_validated": False,
+                    "sandbox_execution_enabled": False,
+                    "subprocess_enabled": False,
+                    "real_execution_enabled": False,
+                },
+            )
+        )
 
     if simulation_replay_failed > 0:
         risks.append(
@@ -5555,6 +5758,51 @@ def build_global_swarm_brief(
         "security_real_execution_sandbox_input_materialization_plan_scaffold_linkage_complete": (
             security_real_execution_sandbox_input_materialization_plan_scaffold_linkage_complete
         ),
+        "security_real_execution_sandbox_command_render_plan_scaffolds": (
+            security_real_execution_sandbox_command_render_plan_scaffolds
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_fail_closed": (
+            security_real_execution_sandbox_command_render_plan_scaffold_fail_closed
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_deny_by_default": (
+            security_real_execution_sandbox_command_render_plan_scaffold_deny_by_default
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled": (
+            security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_plan_materialized": (
+            security_real_execution_sandbox_command_render_plan_scaffold_plan_materialized
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_plan_executable": (
+            security_real_execution_sandbox_command_render_plan_scaffold_plan_executable
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled": (
+            security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_command_rendered": (
+            security_real_execution_sandbox_command_render_plan_scaffold_command_rendered
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated": (
+            security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled": (
+            security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_execution_performed": (
+            security_real_execution_sandbox_command_render_plan_scaffold_execution_performed
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked": (
+            security_real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled": (
+            security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_orphans": (
+            security_real_execution_sandbox_command_render_plan_scaffold_orphans
+        ),
+        "security_real_execution_sandbox_command_render_plan_scaffold_linkage_complete": (
+            security_real_execution_sandbox_command_render_plan_scaffold_linkage_complete
+        ),
     }
 
     summary = _build_summary(
@@ -6283,6 +6531,51 @@ def build_global_swarm_brief(
         security_real_execution_sandbox_input_materialization_plan_scaffold_production_secrets_accessed=(
             security_real_execution_sandbox_input_materialization_plan_scaffold_production_secrets_accessed
         ),
+        security_real_execution_sandbox_command_render_plan_scaffolds=(
+            security_real_execution_sandbox_command_render_plan_scaffolds
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_fail_closed=(
+            security_real_execution_sandbox_command_render_plan_scaffold_fail_closed
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_deny_by_default=(
+            security_real_execution_sandbox_command_render_plan_scaffold_deny_by_default
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_linkage_complete=(
+            security_real_execution_sandbox_command_render_plan_scaffold_linkage_complete
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_orphans=(
+            security_real_execution_sandbox_command_render_plan_scaffold_orphans
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled=(
+            security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_plan_materialized=(
+            security_real_execution_sandbox_command_render_plan_scaffold_plan_materialized
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_plan_executable=(
+            security_real_execution_sandbox_command_render_plan_scaffold_plan_executable
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled=(
+            security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_command_rendered=(
+            security_real_execution_sandbox_command_render_plan_scaffold_command_rendered
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated=(
+            security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled=(
+            security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_execution_performed=(
+            security_real_execution_sandbox_command_render_plan_scaffold_execution_performed
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked=(
+            security_real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked
+        ),
+        security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled=(
+            security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled
+        ),
     )
 
     return build_swarm_brief(
@@ -6594,6 +6887,21 @@ def _build_summary(
     security_real_execution_sandbox_input_materialization_plan_scaffold_external_side_effects_performed: int,
     security_real_execution_sandbox_input_materialization_plan_scaffold_production_paths_mutated: int,
     security_real_execution_sandbox_input_materialization_plan_scaffold_production_secrets_accessed: int,
+    security_real_execution_sandbox_command_render_plan_scaffolds: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_fail_closed: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_deny_by_default: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_linkage_complete: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_orphans: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_plan_materialized: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_plan_executable: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_command_rendered: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_execution_performed: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked: int,
+    security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -7138,6 +7446,26 @@ def _build_summary(
             f"external_side_effects_performed={security_real_execution_sandbox_input_materialization_plan_scaffold_external_side_effects_performed}, "
             f"production_paths_mutated={security_real_execution_sandbox_input_materialization_plan_scaffold_production_paths_mutated}, "
             f"production_secrets_accessed={security_real_execution_sandbox_input_materialization_plan_scaffold_production_secrets_accessed}."
+        )
+    
+    if security_real_execution_sandbox_command_render_plan_scaffolds > 0:
+        parts.append(
+            "Sandbox command render plan scaffold observed: "
+            f"blocked={security_real_execution_sandbox_command_render_plan_scaffolds}, "
+            f"fail_closed={security_real_execution_sandbox_command_render_plan_scaffold_fail_closed}, "
+            f"deny_by_default={security_real_execution_sandbox_command_render_plan_scaffold_deny_by_default}, "
+            f"linkage_complete={security_real_execution_sandbox_command_render_plan_scaffold_linkage_complete}, "
+            f"orphans={security_real_execution_sandbox_command_render_plan_scaffold_orphans}, "
+            f"plan_generation_enabled={security_real_execution_sandbox_command_render_plan_scaffold_plan_generation_enabled}, "
+            f"plan_materialized={security_real_execution_sandbox_command_render_plan_scaffold_plan_materialized}, "
+            f"plan_executable={security_real_execution_sandbox_command_render_plan_scaffold_plan_executable}, "
+            f"command_rendering_enabled={security_real_execution_sandbox_command_render_plan_scaffold_command_rendering_enabled}, "
+            f"command_rendered={security_real_execution_sandbox_command_render_plan_scaffold_command_rendered}, "
+            f"rendered_command_validated={security_real_execution_sandbox_command_render_plan_scaffold_rendered_command_validated}, "
+            f"sandbox_execution_enabled={security_real_execution_sandbox_command_render_plan_scaffold_sandbox_execution_enabled}, "
+            f"execution_performed={security_real_execution_sandbox_command_render_plan_scaffold_execution_performed}, "
+            f"subprocess_invoked={security_real_execution_sandbox_command_render_plan_scaffold_subprocess_invoked}, "
+            f"real_execution_enabled={security_real_execution_sandbox_command_render_plan_scaffold_real_execution_enabled}."
         )
 
     blocked_execution_disabled = _safe_int(
