@@ -46,6 +46,7 @@ from src.swarms.security.runtime_validation import (
     validate_replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold,
     validate_replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold,
     validate_replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold,
+    validate_replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold,
 )
 
 
@@ -5409,6 +5410,292 @@ def test_validate_retry_real_execution_sandbox_workspace_preparation_preflight_s
 
     result = (
         validate_replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "sandbox_execution_enabled_must_be_false" in result["reasons"]
+    assert "payload_sandbox_execution_enabled_must_be_false" in result["reasons"]
+
+
+def _real_execution_sandbox_input_materialization_plan_scaffold(**overrides):
+    item = {
+        "type": (
+            "replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold"
+        ),
+        "real_execution_sandbox_input_materialization_plan_scaffold_id": (
+            "sandbox-input-materialization-plan-1"
+        ),
+        "real_execution_sandbox_workspace_preparation_preflight_scaffold_id": (
+            "sandbox-workspace-preparation-preflight-1"
+        ),
+        "real_execution_sandbox_workspace_plan_scaffold_id": (
+            "sandbox-workspace-plan-1"
+        ),
+        "real_execution_sandbox_materialization_preflight_scaffold_id": (
+            "sandbox-materialization-preflight-1"
+        ),
+        "real_execution_sandbox_request_envelope_scaffold_id": "sandbox-envelope-1",
+        "real_execution_sandbox_adapter_request_preflight_id": "sandbox-preflight-1",
+        "real_execution_sandbox_adapter_scaffold_id": "sandbox-scaffold-1",
+        "real_execution_capability_policy_matrix_id": "matrix-1",
+        "real_execution_adapter_request_schema_id": "request-schema-1",
+        "real_execution_adapter_contract_id": "contract-1",
+        "proposal_id": "proposal-1",
+        "rendered_command_id": "rendered-1",
+        "schema_version": (
+            "real-execution-sandbox-input-materialization-plan-scaffold/v1"
+        ),
+        "source_workspace_preparation_preflight_scaffold_schema_version": (
+            "real-execution-sandbox-workspace-preparation-preflight-scaffold/v1"
+        ),
+        "source_workspace_plan_scaffold_schema_version": (
+            "real-execution-sandbox-workspace-plan-scaffold/v1"
+        ),
+        "source_materialization_preflight_scaffold_schema_version": (
+            "real-execution-sandbox-materialization-preflight-scaffold/v1"
+        ),
+        "source_envelope_scaffold_schema_version": (
+            "real-execution-sandbox-request-envelope-scaffold/v1"
+        ),
+        "source_request_preflight_schema_version": (
+            "real-execution-sandbox-adapter-request-preflight/v1"
+        ),
+        "source_workspace_preparation_preflight_scaffold_status": "blocked",
+        "sandbox_input_materialization_plan_scaffold_status": "blocked",
+        "sandbox_input_materialization_plan_scaffold_kind": (
+            "fail_closed_sandbox_input_materialization_plan_scaffold"
+        ),
+        "sandbox_input_materialization_plan_scaffold_exists": True,
+        "sandbox_input_materialization_plan_scaffold_fail_closed": True,
+        "sandbox_input_materialization_plan_scaffold_deny_by_default": True,
+        "sandbox_input_materialization_plan_requires_workspace_preparation_preflight": True,
+        "sandbox_input_materialization_plan_requires_workspace_plan": True,
+        "sandbox_input_materialization_plan_requires_materialization_preflight": True,
+        "sandbox_input_materialization_plan_requires_envelope_scaffold": True,
+        "sandbox_input_materialization_plan_requires_request_preflight": True,
+        "sandbox_input_materialization_plan_requires_policy_matrix": True,
+        "sandbox_input_materialization_plan_requires_known_capability": True,
+        "sandbox_input_materialization_plan_requires_known_policy": True,
+        "sandbox_input_materialization_plan_requires_operator_authorization": True,
+        "sandbox_input_materialization_plan_requires_approval_lineage": True,
+        "sandbox_input_materialization_plan_requires_final_gate": True,
+        "sandbox_input_materialization_plan_requires_dry_run_envelope": True,
+        "sandbox_input_materialization_plan_requires_rollback_plan": True,
+        "sandbox_input_materialization_plan_requires_post_execution_evidence": True,
+        "sandbox_input_materialization_plan_rejects_unknown_capability": True,
+        "sandbox_input_materialization_plan_rejects_unknown_policy": True,
+        "sandbox_input_materialization_plan_rejects_orphans": True,
+        "sandbox_input_materialization_plan_rejects_stale_records": True,
+        "source_workspace_preparation_preflight_scaffold_exists": True,
+        "source_workspace_preparation_preflight_scaffold_fail_closed": True,
+        "source_workspace_preparation_preflight_scaffold_deny_by_default": True,
+        "sandbox_workspace_strategy": "ephemeral_temp_workspace",
+        "sandbox_workspace_plan_strategy": "explicit_plan_only",
+        "sandbox_workspace_preparation_strategy": (
+            "preflight_only_no_directory_creation"
+        ),
+        "sandbox_input_materialization_strategy": "plan_only_no_file_copy",
+        "sandbox_input_strategy": "explicit_allowlist_only",
+        "sandbox_output_strategy": "explicit_allowlist_only",
+        "sandbox_rollback_strategy": "workspace_destruction",
+        "sandbox_evidence_strategy": "post_execution_evidence_required",
+        "sandbox_network_policy": "deny",
+        "sandbox_secret_policy": "deny",
+        "sandbox_filesystem_policy": "no_production_writes",
+        "sandbox_production_write_policy": "deny",
+        "sandbox_external_side_effect_policy": "deny",
+        "sandbox_input_materialization_plan_generation_allowed": False,
+        "sandbox_input_materialization_plan_generation_enabled": False,
+        "sandbox_input_materialization_plan_materialized": False,
+        "sandbox_input_materialization_plan_executable": False,
+        "sandbox_input_materialization_allowed": False,
+        "sandbox_input_materialization_enabled": False,
+        "sandbox_inputs_materialized": False,
+        "sandbox_workspace_preparation_preflight_allowed": False,
+        "sandbox_workspace_preparation_preflight_enabled": False,
+        "sandbox_workspace_preparation_preflight_passed": False,
+        "sandbox_workspace_plan_generation_allowed": False,
+        "sandbox_workspace_plan_generation_enabled": False,
+        "sandbox_workspace_plan_materialized": False,
+        "sandbox_workspace_plan_executable": False,
+        "sandbox_workspace_directory_creation_allowed": False,
+        "sandbox_workspace_directory_creation_enabled": False,
+        "sandbox_workspace_created": False,
+        "sandbox_workspace_cleanup_registered": False,
+        "sandbox_workspace_creation_allowed": False,
+        "sandbox_workspace_creation_enabled": False,
+        "sandbox_command_rendering_allowed": False,
+        "sandbox_command_rendering_enabled": False,
+        "sandbox_execution_allowed": False,
+        "sandbox_execution_enabled": False,
+        "sandbox_result_generation_allowed": False,
+        "sandbox_result_generation_enabled": False,
+        "adapter_request_generation_enabled": False,
+        "adapter_request_execution_enabled": False,
+        "adapter_result_generation_enabled": False,
+        "capability_execution_enabled": False,
+        "policy_execution_enabled": False,
+        "policy_gated_real_execution_enabled": False,
+        "execution_performed": False,
+        "subprocess_invoked": False,
+        "real_execution_enabled": False,
+        "external_side_effects_performed": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
+        "source_workspace_preparation_preflight_enabled": False,
+        "source_workspace_preparation_preflight_passed": False,
+        "source_directory_creation_enabled": False,
+        "source_workspace_created": False,
+        "source_cleanup_registered": False,
+        "source_workspace_creation_enabled": False,
+        "source_input_materialization_enabled": False,
+        "source_command_rendering_enabled": False,
+        "source_sandbox_execution_enabled": False,
+        "source_result_generation_enabled": False,
+        "source_execution_performed": False,
+        "source_subprocess_invoked": False,
+        "source_real_execution_enabled": False,
+        "source_external_side_effects_performed": False,
+        "source_production_paths_mutated": False,
+        "source_production_secrets_accessed": False,
+        "recommended_next_action": (
+            "surface_sandbox_input_materialization_plan_scaffold_observability"
+        ),
+        "reason": (
+            "sandbox_input_materialization_plan_scaffold_defined_blocked_not_runnable"
+        ),
+    }
+    item["payload"] = dict(item)
+    item.update(overrides)
+    return item
+
+
+def test_validate_retry_real_execution_sandbox_input_materialization_plan_scaffold_accepts_blocked_fail_closed() -> None:
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold(
+            _real_execution_sandbox_input_materialization_plan_scaffold()
+        )
+    )
+
+    assert result["valid"] is True
+    assert result["severity"] == "info"
+    assert result["reasons"] == []
+    assert result["sandbox_input_materialization_plan_scaffold_status"] == "blocked"
+    assert result["sandbox_input_materialization_plan_scaffold_fail_closed"] is True
+    assert result["sandbox_input_materialization_plan_scaffold_deny_by_default"] is True
+    assert result["sandbox_input_materialization_plan_generation_enabled"] is False
+    assert result["sandbox_input_materialization_plan_materialized"] is False
+    assert result["sandbox_input_materialization_plan_executable"] is False
+    assert result["sandbox_input_materialization_enabled"] is False
+    assert result["sandbox_inputs_materialized"] is False
+    assert result["sandbox_workspace_preparation_preflight_enabled"] is False
+    assert result["sandbox_workspace_preparation_preflight_passed"] is False
+    assert result["sandbox_workspace_directory_creation_enabled"] is False
+    assert result["sandbox_workspace_created"] is False
+    assert result["sandbox_command_rendering_enabled"] is False
+    assert result["sandbox_execution_enabled"] is False
+    assert result["execution_performed"] is False
+    assert result["subprocess_invoked"] is False
+    assert result["real_execution_enabled"] is False
+
+
+def test_validate_retry_real_execution_sandbox_input_materialization_plan_scaffold_rejects_plan_generation_enabled() -> None:
+    record = _real_execution_sandbox_input_materialization_plan_scaffold(
+        sandbox_input_materialization_plan_generation_enabled=True
+    )
+    record["payload"]["sandbox_input_materialization_plan_generation_enabled"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert (
+        "sandbox_input_materialization_plan_generation_enabled_must_be_false"
+        in result["reasons"]
+    )
+    assert (
+        "payload_sandbox_input_materialization_plan_generation_enabled_must_be_false"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_sandbox_input_materialization_plan_scaffold_rejects_plan_executable() -> None:
+    record = _real_execution_sandbox_input_materialization_plan_scaffold(
+        sandbox_input_materialization_plan_executable=True
+    )
+    record["payload"]["sandbox_input_materialization_plan_executable"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert (
+        "sandbox_input_materialization_plan_executable_must_be_false"
+        in result["reasons"]
+    )
+    assert (
+        "payload_sandbox_input_materialization_plan_executable_must_be_false"
+        in result["reasons"]
+    )
+
+
+def test_validate_retry_real_execution_sandbox_input_materialization_plan_scaffold_rejects_input_materialization_enabled() -> None:
+    record = _real_execution_sandbox_input_materialization_plan_scaffold(
+        sandbox_input_materialization_enabled=True
+    )
+    record["payload"]["sandbox_input_materialization_enabled"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "sandbox_input_materialization_enabled_must_be_false" in result["reasons"]
+    assert "payload_sandbox_input_materialization_enabled_must_be_false" in result[
+        "reasons"
+    ]
+
+
+def test_validate_retry_real_execution_sandbox_input_materialization_plan_scaffold_rejects_inputs_materialized() -> None:
+    record = _real_execution_sandbox_input_materialization_plan_scaffold(
+        sandbox_inputs_materialized=True
+    )
+    record["payload"]["sandbox_inputs_materialized"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold(
+            record
+        )
+    )
+
+    assert result["valid"] is False
+    assert result["severity"] == "critical"
+    assert "sandbox_inputs_materialized_must_be_false" in result["reasons"]
+    assert "payload_sandbox_inputs_materialized_must_be_false" in result["reasons"]
+
+
+def test_validate_retry_real_execution_sandbox_input_materialization_plan_scaffold_rejects_sandbox_execution_enabled() -> None:
+    record = _real_execution_sandbox_input_materialization_plan_scaffold(
+        sandbox_execution_enabled=True
+    )
+    record["payload"]["sandbox_execution_enabled"] = True
+
+    result = (
+        validate_replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold(
             record
         )
     )
