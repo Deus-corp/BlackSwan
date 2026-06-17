@@ -115,6 +115,7 @@ class MetaAgentHealth:
     """Mutable health state for a running meta-agent."""
 
     status: str = "initializing"
+    paused: bool = False
     started_at: float = field(default_factory=utc_ts)
 
     last_reflect_at: float = 0.0
@@ -300,6 +301,8 @@ class BaseSwarmMetaAgent:
     def _set_runtime_paused(self, paused: bool) -> None:
         """Set paused flag across known meta-agent runtime shapes."""
         value = bool(paused)
+        if hasattr(self.health, "paused"):
+            self.health.paused = value
 
         for attr in ("paused", "_paused"):
             try:
@@ -544,9 +547,18 @@ class BaseSwarmMetaAgent:
         await self.poll_lifecycle_commands()
 
         if self.is_paused():
-            self.logger.info("%s %s is paused; skipping reflect cycle.", type(self).__name__, self.agent_id)
+            self.logger.info(
+                "%s %s is paused; skipping reflect cycle.",
+                type(self).__name__,
+                self.agent_id,
+            )
             self.health.status = "paused"
+            self.health.paused = True
             return None
+
+        if self.health.status == "paused":
+            self.health.status = "running"
+        self.health.paused = False
 
         snapshot = await self._safe_collect()
         decision = await self._safe_decide(snapshot)
@@ -955,6 +967,7 @@ class BaseSwarmMetaAgent:
     def health_snapshot(self) -> Dict[str, Any]:
         return {
             "uptime_seconds": self.health.uptime_seconds,
+            "paused": self.health.paused,
             "last_reflect_at": self.health.last_reflect_at,
             "last_collect_at": self.health.last_collect_at,
             "last_decide_at": self.health.last_decide_at,

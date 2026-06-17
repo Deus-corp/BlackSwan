@@ -25,6 +25,28 @@ SwarmStatus = Literal[
     "failed",
 ]
 
+ExecutionRiskTier = Literal[
+    "safe_local_execution",
+    "network_read",
+    "testnet_external_write",
+    "external_write_stub",
+    "production_financial_write",
+    "system_dangerous_stub",
+]
+
+SAFE_EXECUTION_RISK_TIERS: tuple[str, ...] = (
+    "safe_local_execution",
+    "network_read",
+    "testnet_external_write",
+)
+
+DANGEROUS_EXECUTION_RISK_TIERS: frozenset[str] = frozenset(
+    {
+        "external_write_stub",
+        "production_financial_write",
+        "system_dangerous_stub",
+    }
+)
 
 @dataclass(frozen=True, slots=True)
 class SwarmHeartbeat:
@@ -93,6 +115,7 @@ class SwarmCapability:
     name: str
     description: str = ""
     risk_level: int = 0
+    risk_tier: ExecutionRiskTier | str = "safe_local_execution"
     enabled: bool = True
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -107,20 +130,50 @@ class SwarmPolicy:
     dry_run: bool = True
     execution_enabled: bool = False
     allow_network: bool = False
+    allow_network_read: bool = False
+    allow_testnet_external_write: bool = False
+    allow_external_write: bool = False
+    allow_production_financial_write: bool = False
+    allow_system_dangerous: bool = False
     allow_filesystem_write: bool = False
     allow_code_changes: bool = False
     max_risk_level: int = 1
+    allowed_risk_tiers: tuple[str, ...] = ("safe_local_execution",)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def allows(self, capability: SwarmCapability | dict[str, Any]) -> bool:
         if isinstance(capability, SwarmCapability):
             risk_level = capability.risk_level
+            risk_tier = str(capability.risk_tier)
             enabled = capability.enabled
         else:
             risk_level = int(capability.get("risk_level", 0))
+            risk_tier = str(
+                capability.get("risk_tier")
+                or capability.get("execution_risk_tier")
+                or "safe_local_execution"
+            )
             enabled = bool(capability.get("enabled", True))
 
-        return enabled and risk_level <= self.max_risk_level
+        if not enabled:
+            return False
+        if risk_level > self.max_risk_level:
+            return False
+        if risk_tier not in set(self.allowed_risk_tiers):
+            return False
+
+        if risk_tier == "network_read":
+            return bool(self.allow_network or self.allow_network_read)
+        if risk_tier == "testnet_external_write":
+            return bool(self.allow_testnet_external_write)
+        if risk_tier == "external_write_stub":
+            return bool(self.allow_external_write)
+        if risk_tier == "production_financial_write":
+            return bool(self.allow_production_financial_write)
+        if risk_tier == "system_dangerous_stub":
+            return bool(self.allow_system_dangerous)
+
+        return risk_tier == "safe_local_execution"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

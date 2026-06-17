@@ -40,6 +40,82 @@ class SwarmSpec:
     canonical_command_types: FrozenSet[str] = field(default_factory=frozenset)
 
 
+
+SAFE_LOCAL_EXECUTION = "safe_local_execution"
+NETWORK_READ = "network_read"
+TESTNET_EXTERNAL_WRITE = "testnet_external_write"
+EXTERNAL_WRITE_STUB = "external_write_stub"
+PRODUCTION_FINANCIAL_WRITE = "production_financial_write"
+SYSTEM_DANGEROUS_STUB = "system_dangerous_stub"
+
+DANGEROUS_EXECUTION_RISK_TIERS: FrozenSet[str] = frozenset(
+    {
+        EXTERNAL_WRITE_STUB,
+        PRODUCTION_FINANCIAL_WRITE,
+        SYSTEM_DANGEROUS_STUB,
+    }
+)
+
+DEFAULT_SWARM_RISK_TIERS: Mapping[str, str] = {
+    "security": SYSTEM_DANGEROUS_STUB,
+    "explorer": NETWORK_READ,
+    "improver": SAFE_LOCAL_EXECUTION,
+    "trade": TESTNET_EXTERNAL_WRITE,
+    "overseer": SAFE_LOCAL_EXECUTION,
+    "memory": SAFE_LOCAL_EXECUTION,
+    "simulation": SAFE_LOCAL_EXECUTION,
+}
+
+COMMAND_RISK_TIERS: Mapping[tuple[str, str], str] = {
+    ("security", "PAUSE"): SAFE_LOCAL_EXECUTION,
+    ("security", "RESUME"): SAFE_LOCAL_EXECUTION,
+    ("security", "RESTART_NODE"): SYSTEM_DANGEROUS_STUB,
+    ("security", "UNBLOCK_ALL"): SYSTEM_DANGEROUS_STUB,
+    ("security", "PARTIAL_UNBLOCK"): SYSTEM_DANGEROUS_STUB,
+    ("security", "EMERGENCY_FLUSH_INPUT"): SYSTEM_DANGEROUS_STUB,
+
+    ("explorer", "PAUSE"): SAFE_LOCAL_EXECUTION,
+    ("explorer", "RESUME"): SAFE_LOCAL_EXECUTION,
+    ("explorer", "RESTART_NODE"): SYSTEM_DANGEROUS_STUB,
+    ("explorer", "ADD_TARGETS"): NETWORK_READ,
+    ("explorer", "EXPLORE_URLS"): NETWORK_READ,
+
+    ("trade", "PAUSE"): SAFE_LOCAL_EXECUTION,
+    ("trade", "RESUME"): SAFE_LOCAL_EXECUTION,
+    ("trade", "RESTART_NODE"): SYSTEM_DANGEROUS_STUB,
+    ("trade", "ADJUST_SWARM"): TESTNET_EXTERNAL_WRITE,
+    ("trade", "REDUCE_RISK"): TESTNET_EXTERNAL_WRITE,
+    ("trade", "INCREASE_EXPLORATION"): TESTNET_EXTERNAL_WRITE,
+
+    ("improver", "PAUSE"): SAFE_LOCAL_EXECUTION,
+    ("improver", "RESUME"): SAFE_LOCAL_EXECUTION,
+    ("improver", "RESTART_NODE"): SYSTEM_DANGEROUS_STUB,
+    ("improver", "RUN_ONCE"): SAFE_LOCAL_EXECUTION,
+    ("improver", "GENERATE_PROPOSALS"): SAFE_LOCAL_EXECUTION,
+    ("improver", "SET_PROPOSALS"): SAFE_LOCAL_EXECUTION,
+    ("improver", "SET_SINGLE_PASS"): SAFE_LOCAL_EXECUTION,
+
+    ("memory", "PAUSE"): SAFE_LOCAL_EXECUTION,
+    ("memory", "RESUME"): SAFE_LOCAL_EXECUTION,
+    ("memory", "RESTART_NODE"): SYSTEM_DANGEROUS_STUB,
+    ("memory", "CONSOLIDATE"): SAFE_LOCAL_EXECUTION,
+    ("memory", "EXPORT_GOLD_SAMPLES"): SAFE_LOCAL_EXECUTION,
+    ("memory", "REINDEX"): SAFE_LOCAL_EXECUTION,
+
+    ("simulation", "PAUSE"): SAFE_LOCAL_EXECUTION,
+    ("simulation", "RESUME"): SAFE_LOCAL_EXECUTION,
+    ("simulation", "RESTART_NODE"): SYSTEM_DANGEROUS_STUB,
+    ("simulation", "RUN_SCENARIO"): SAFE_LOCAL_EXECUTION,
+    ("simulation", "RUN_STRESS_TEST"): SAFE_LOCAL_EXECUTION,
+    ("simulation", "EVALUATE_POLICY"): SAFE_LOCAL_EXECUTION,
+
+    ("overseer", "PAUSE"): SAFE_LOCAL_EXECUTION,
+    ("overseer", "RESUME"): SAFE_LOCAL_EXECUTION,
+    ("overseer", "RESTART_NODE"): SYSTEM_DANGEROUS_STUB,
+    ("overseer", "RELOAD_POLICY"): SAFE_LOCAL_EXECUTION,
+}
+
+
 SECURITY_COMMANDS: FrozenSet[str] = frozenset(
     {
         "UNBLOCK_ALL",
@@ -325,11 +401,41 @@ def command_allowed_for_swarm(swarm_type: str, command_type: str) -> bool:
     return str(command_type).upper() in spec.canonical_command_types
 
 
-def command_requires_explicit_gate(swarm_type: str, role: str, command_type: str) -> bool:
-    """Whether a command should require explicit safety gate before execution.
+def command_risk_tier(swarm_type: str, command_type: str) -> str:
+    """Return static execution risk tier for a swarm command.
 
-    v1 rule:
-        Any command targeting advisory-only swarm/role requires explicit gate.
+    Unknown commands are treated as system-dangerous by default.
+    """
+    clean_swarm = str(swarm_type or "").strip()
+    clean_command = str(command_type or "").strip().upper()
+
+    if not clean_swarm or not clean_command:
+        return SYSTEM_DANGEROUS_STUB
+
+    if not command_allowed_for_swarm(clean_swarm, clean_command):
+        return SYSTEM_DANGEROUS_STUB
+
+    return COMMAND_RISK_TIERS.get(
+        (clean_swarm, clean_command),
+        DEFAULT_SWARM_RISK_TIERS.get(clean_swarm, SYSTEM_DANGEROUS_STUB),
+    )
+
+
+def command_is_dangerous(swarm_type: str, command_type: str) -> bool:
+    """Whether a command belongs to a dangerous/stubbed execution tier."""
+    return command_risk_tier(swarm_type, command_type) in DANGEROUS_EXECUTION_RISK_TIERS
+
+
+def command_requires_explicit_gate(swarm_type: str, role: str, command_type: str) -> bool:
+    """Whether a command should require explicit advisory safety gate.
+
+    This helper preserves the historical advisory-gate semantics used by
+    runtime smoke checks.
+
+    Execution danger is tracked separately through command_risk_tier() and
+    command_is_dangerous(). A dangerous command is not automatically an
+    advisory-gated command here, because older runtime contracts use this helper
+    for advisory swarm/role routing only.
     """
     if is_advisory_swarm(swarm_type):
         return True

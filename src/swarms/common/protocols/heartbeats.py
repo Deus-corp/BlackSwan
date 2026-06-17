@@ -7,6 +7,9 @@ Provides canonical heartbeat builders and backward-compatible normalization for:
     security_heartbeat
     trade_heartbeat
     explorer_heartbeat
+    memory_heartbeat
+    simulation_heartbeat
+    improver_heartbeat
 """
 
 from __future__ import annotations
@@ -23,6 +26,9 @@ LEGACY_HEARTBEAT_TYPES = {
     "security_heartbeat",
     "trade_heartbeat",
     "explorer_heartbeat",
+    "memory_heartbeat",
+    "simulation_heartbeat",
+    "improver_heartbeat",
     "overseer_heartbeat",
     "meta_heartbeat",
 }
@@ -140,6 +146,12 @@ def _infer_swarm_from_heartbeat_type(record_type: str) -> str:
         return "trade"
     if record_type == "explorer_heartbeat":
         return "explorer"
+    if record_type == "memory_heartbeat":
+        return "memory"
+    if record_type == "simulation_heartbeat":
+        return "simulation"
+    if record_type == "improver_heartbeat":
+        return "improver"
     if record_type == "overseer_heartbeat":
         return "overseer"
     if record_type == "meta_heartbeat":

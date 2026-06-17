@@ -118,6 +118,7 @@ class NodeHealth:
     """Mutable health state for a running node."""
 
     status: str = "initializing"
+    paused: bool = False
     started_at: float = field(default_factory=utc_ts)
     last_tick_at: float = 0.0
     last_heartbeat_at: float = 0.0
@@ -371,14 +372,30 @@ class BaseSwarmNode:
         """Main domain tick loop.
 
         Subclasses should implement process_tick(); this loop provides the
-        runtime shell, interval scheduling, and failure accounting.
+        runtime shell, interval scheduling, pause handling, and failure
+        accounting.
+
+        Command/background loops remain active while paused so RESUME can be
+        received and applied.
         """
         while not self.shutdown_event.is_set():
             started_at = utc_ts()
             try:
-                await self.process_tick()
-                self.health.last_tick_at = utc_ts()
-                self.health.consecutive_tick_failures = 0
+                if self.is_paused():
+                    self.health.status = "paused"
+                    self.health.paused = True
+                    self.logger.debug(
+                        "%s %s is paused; skipping process_tick.",
+                        type(self).__name__,
+                        self.node_id,
+                    )
+                else:
+                    if self.health.status == "paused":
+                        self.health.status = "running"
+                    self.health.paused = False
+                    await self.process_tick()
+                    self.health.last_tick_at = utc_ts()
+                    self.health.consecutive_tick_failures = 0
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -723,6 +740,7 @@ class BaseSwarmNode:
         """Return serializable health state."""
         return {
             "uptime_seconds": self.health.uptime_seconds,
+            "paused": self.health.paused,
             "last_tick_at": self.health.last_tick_at,
             "last_heartbeat_at": self.health.last_heartbeat_at,
             "last_command_poll_at": self.health.last_command_poll_at,
@@ -815,6 +833,9 @@ class BaseSwarmNode:
         Keep all common shapes synchronized.
         """
         value = bool(paused)
+
+        if hasattr(self.health, "paused"):
+            self.health.paused = value
 
         for attr in ("paused", "_paused"):
             try:
