@@ -21,6 +21,7 @@ import os
 import sys
 import time
 import uuid
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 from html.parser import HTMLParser
@@ -101,6 +102,19 @@ SKIPPED_URL_EXTENSIONS = (
     ".xls",
     ".xlsx",
     ".zip",
+)
+
+XML_LINK_TAG_PATTERN = re.compile(
+    r"<(?:loc|link|id)>\s*(https?://[^<\s]+)\s*</(?:loc|link|id)>",
+    re.IGNORECASE,
+)
+XML_HREF_PATTERN = re.compile(
+    r"""href=["'](https?://[^"']+)["']""",
+    re.IGNORECASE,
+)
+PLAIN_URL_PATTERN = re.compile(
+    r"https?://[^\s<>'\"\\)]+",
+    re.IGNORECASE,
 )
 
 
@@ -923,6 +937,35 @@ class ExplorerNode(BaseSwarmNode):
             return "fetch_failed"
     
 
+    def _extract_source_links(self, content: str) -> list[str]:
+        """Extract URLs from HTML, RSS/Atom, sitemap XML, arXiv Atom, and text."""
+        text = content or ""
+        links: list[str] = []
+
+        parser = _HTMLLinkExtractor()
+        try:
+            parser.feed(text)
+            links.extend(parser.hrefs)
+        except Exception as exc:
+            self.logger.debug("HTML link extraction failed: %s", exc)
+
+        links.extend(match.group(1).strip() for match in XML_LINK_TAG_PATTERN.finditer(text))
+        links.extend(match.group(1).strip() for match in XML_HREF_PATTERN.finditer(text))
+        links.extend(match.group(0).strip() for match in PLAIN_URL_PATTERN.finditer(text))
+
+        deduped: list[str] = []
+        seen: set[str] = set()
+
+        for link in links:
+            clean = str(link or "").strip()
+            if not clean or clean in seen:
+                continue
+            seen.add(clean)
+            deduped.append(clean)
+
+        return deduped
+    
+
     def _extract_discovered_targets(
         self,
         html: str,
@@ -937,18 +980,13 @@ class ExplorerNode(BaseSwarmNode):
         if not html:
             return []
 
-        parser = _HTMLLinkExtractor()
-        try:
-            parser.feed(html)
-        except Exception as exc:
-            self.logger.debug("HTML link extraction failed for %s: %s", base_url, exc)
-            return []
+        raw_links = self._extract_source_links(html)
 
         base_domain = extract_domain(base_url) or ""
         discovered: list[dict[str, Any]] = []
         seen: set[str] = set()
 
-        for href in parser.hrefs:
+        for href in raw_links:
             absolute = self._normalize_discovered_url(href, base_url=base_url)
             if not absolute:
                 continue

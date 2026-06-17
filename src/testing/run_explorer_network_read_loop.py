@@ -30,6 +30,10 @@ from src.swarms.explorer.node_core.utils import normalize_url
 from src.swarms.common import utc_ts
 from swarm_config import config
 
+from src.swarms.explorer.meta_agent_core.source_adapters import (
+    build_source_adapter_targets,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,6 +56,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--meta-memory-db",
         default="data/explorer_meta_network_read_loop.sqlite3",
     )
+    parser.add_argument(
+        "--goal",
+        default="",
+        help="Research goal used by explorer source adapters.",
+    )
+    parser.add_argument(
+        "--source-adapter",
+        action="append",
+        default=[],
+        choices=["rss", "sitemap", "github", "arxiv", "search"],
+        help="Source adapter to seed. Can be repeated.",
+    )
+    parser.add_argument(
+        "--source-limit",
+        type=int,
+        default=20,
+        help="Maximum source-adapter targets to seed.",
+    )
     parser.add_argument("--node-id", default="exp-node-network-read-loop")
     parser.add_argument("--meta-agent-id", default="exp-meta-network-read-loop")
     parser.add_argument("--skip-meta", action="store_true")
@@ -62,6 +84,21 @@ def build_parser() -> argparse.ArgumentParser:
 async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, Any]:
     urls = [normalize_url(url) for url in list(args.url or [])]
     urls = [url for url in urls if url]
+
+    source_targets = build_source_adapter_targets(
+        goal=str(getattr(args, "goal", "") or ""),
+        adapters=list(getattr(args, "source_adapter", []) or []),
+        seed_urls=urls,
+        limit=int(getattr(args, "source_limit", 20) or 20),
+    )
+
+    adapter_urls = [
+        str(item.get("url") or "").strip()
+        for item in source_targets
+        if str(item.get("url") or "").strip()
+    ]
+
+    urls = _dedupe_urls([*urls, *adapter_urls])
 
     if not urls:
         urls = ["https://example.com/"]
@@ -90,7 +127,12 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         if callable(refresh):
             refresh()
 
-        seed_record = _build_seed_targets(urls)
+        seed_record = _build_seed_targets(
+            urls,
+            goal=str(getattr(args, "goal", "") or ""),
+            source_adapters=list(getattr(args, "source_adapter", []) or []),
+            source_targets=source_targets,
+        )
         await crdt.add_genome(seed_record)
 
         async with httpx.AsyncClient(
@@ -136,6 +178,9 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "type": "explorer_network_read_loop_result",
             "status": "completed",
             "seed_urls": urls,
+            "research_goal": str(getattr(args, "goal", "") or ""),
+            "source_adapters": list(getattr(args, "source_adapter", []) or []),
+            "source_adapter_targets": source_targets,
             "seed_record_gid": seed_record["gid"],
             "node": {
                 "node_id": node.node_id,
@@ -168,14 +213,39 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         _safe_close(crdt)
 
 
-def _build_seed_targets(urls: list[str]) -> dict[str, Any]:
+def _dedupe_urls(urls: list[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+
+    for raw in urls:
+        url = normalize_url(str(raw or ""))
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        out.append(url)
+
+    return out
+
+
+def _build_seed_targets(
+    urls: list[str],
+    *,
+    goal: str = "",
+    source_adapters: list[str] | None = None,
+    source_targets: list[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
     return {
         "type": "explorer_targets",
         "event_type": "targets_suggested",
         "gid": f"exp_seed_{int(utc_ts())}",
         "timestamp": utc_ts(),
         "source_gids": [],
-        "data": {"urls": urls},
+        "data": {
+            "urls": urls,
+            "targets": list(source_targets or []),
+            "goal": goal,
+            "source_adapters": list(source_adapters or []),
+        },
         "provenance": {
             "agent": "explorer-network-read-loop-runner",
             "source": "manual_seed",
@@ -184,6 +254,9 @@ def _build_seed_targets(urls: list[str]) -> dict[str, Any]:
             "network_read_candidate": True,
             "external_write_performed": False,
             "real_execution_enabled": False,
+            "goal": goal,
+            "source_adapters": list(source_adapters or []),
+            "source_adapter_target_count": len(source_targets or []),
         },
     }
 
@@ -241,6 +314,8 @@ def _format_result(result: Mapping[str, Any]) -> str:
         "Explorer network-read loop: "
         f"status={result.get('status')} "
         f"seed_urls={len(result.get('seed_urls') or [])} "
+        f"source_adapters={len(result.get('source_adapters') or [])} "
+        f"source_adapter_targets={len(result.get('source_adapter_targets') or [])} "
         f"node_did_work={str(bool(node.get('did_work'))).lower()} "
         f"fetches_attempted={node.get('fetches_attempted', 0)} "
         f"findings_emitted={node.get('findings_emitted', 0)} "

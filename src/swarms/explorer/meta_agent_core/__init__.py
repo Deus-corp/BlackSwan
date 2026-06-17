@@ -29,6 +29,10 @@ from .utils import (
     normalize_url,
     prompt_hash,
 )
+from .source_adapters import (
+    DEFAULT_SOURCE_ADAPTERS,
+    build_source_adapter_targets,
+)
 
 __all__ = [
     "ClassificationItem",
@@ -47,4 +51,6 @@ __all__ = [
     "prompt_hash",
     "rank_and_deduplicate_targets",
     "score_targets",
+    "DEFAULT_SOURCE_ADAPTERS",
+    "build_source_adapter_targets",
 ]
