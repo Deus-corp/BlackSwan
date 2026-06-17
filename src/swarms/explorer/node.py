@@ -65,6 +65,15 @@ COMMAND_DEDUP_WINDOW_SECONDS: float = 5.0
 DEFAULT_DISCOVERED_TARGET_LIMIT: int = 12
 DEFAULT_MAX_TARGET_DEPTH: int = 2
 
+SOURCE_ADAPTER_PRIORITY = {
+    "arxiv": 0,
+    "sitemap": 1,
+    "github": 2,
+    "rss": 3,
+    "search": 4,
+    "": 9,
+}
+
 EXPLORER_EXECUTION_RISK_TIER = "network_read"
 EXPLORER_COORDINATION_CHANNEL = "crdt_genomes"
 EXPLORER_EVIDENCE_KIND = "web_fetch"
@@ -199,6 +208,8 @@ class ExplorerNode(BaseSwarmNode):
         self._content_extracted = 0
         self._targets_discovered = 0
         self._targets_published = 0
+        self._source_adapter_targets_seen: Dict[str, int] = {}
+        self._source_adapter_targets_selected: Dict[str, int] = {}
         self._target_context_by_url: Dict[str, Dict[str, Any]] = {}
 
         self.logger.info("🧭 ExplorerNode initialized: %s", self.node_id)
@@ -360,6 +371,12 @@ class ExplorerNode(BaseSwarmNode):
                 "user_agent": self.policy.user_agent,
                 "active_exploration_run_id": self.active_exploration_run_id,
                 "max_targets_per_domain_per_tick": self.max_targets_per_domain_per_tick,
+                "source_adapter_targets_seen": dict(
+                    self._source_adapter_targets_seen
+                ),
+                "source_adapter_targets_selected": dict(
+                    self._source_adapter_targets_selected
+                ),
             }
         )
 
@@ -516,6 +533,9 @@ class ExplorerNode(BaseSwarmNode):
                 order.append(domain)
             buckets[domain].append(url)
 
+        for domain, bucket in buckets.items():
+            bucket.sort(key=self._target_priority_key)
+
         selected: list[str] = []
         per_domain_counts: dict[str, int] = {}
 
@@ -533,7 +553,21 @@ class ExplorerNode(BaseSwarmNode):
                 if not bucket:
                     continue
 
-                selected.append(bucket.pop(0))
+                selected_url = bucket.pop(0)
+                selected.append(selected_url)
+
+                selected_context = self._target_context_by_url.get(selected_url, {})
+                selected_source_adapter = str(
+                    selected_context.get("source_adapter") or ""
+                ).strip()
+                if selected_source_adapter:
+                    self._source_adapter_targets_selected[selected_source_adapter] = (
+                        self._source_adapter_targets_selected.get(
+                            selected_source_adapter,
+                            0,
+                        )
+                        + 1
+                    )
                 per_domain_counts[domain] = per_domain_counts.get(domain, 0) + 1
                 progressed = True
 
@@ -541,10 +575,36 @@ class ExplorerNode(BaseSwarmNode):
                 break
 
         return selected
+    
+    def _target_priority_key(self, url: str) -> tuple[int, float, str]:
+        context = self._target_context_by_url.get(url, {})
+        source_adapter = str(context.get("source_adapter") or "").strip()
+        source_priority = SOURCE_ADAPTER_PRIORITY.get(
+            source_adapter,
+            SOURCE_ADAPTER_PRIORITY[""],
+        )
+        score = self._safe_float(context.get("score"), default=0.0)
+
+        return (source_priority, -score, url)
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
     def _collect_targets(self) -> List[str]:
+        """Collect explorer targets from CRDT and select a domain-aware batch.
+
+        Supports both legacy string URLs in data["urls"] and richer source-adapter
+        target dictionaries in data["targets"]. When active_exploration_run_id is
+        set, records from other runs are ignored so old CRDT findings/targets do
+        not leak into the current research run.
+        """
         urls: List[str] = []
         seen_local: set[str] = set()
+        active_run_id = str(self.active_exploration_run_id or "").strip()
 
         for value in self.crdt.state.values():
             if not isinstance(value, dict):
@@ -553,15 +613,41 @@ class ExplorerNode(BaseSwarmNode):
             if value.get("type") != "explorer_targets":
                 continue
 
+            record_run_id = self._extract_exploration_run_id(value)
+            if active_run_id and record_run_id != active_run_id:
+                continue
+
             data = value.get("data") if isinstance(value.get("data"), dict) else {}
-            raw_urls = data.get("urls", []) if isinstance(data, dict) else []
+            raw_urls = data.get("urls") if isinstance(data.get("urls"), list) else []
+            raw_targets = (
+                data.get("targets") if isinstance(data.get("targets"), list) else []
+            )
+
+            raw_entries: list[Any] = []
+            raw_entries.extend(raw_targets)
+            raw_entries.extend(raw_urls)
 
             event_gid = str(value.get("gid") or "").strip()
-            source_gids = value.get("source_gids") if isinstance(value.get("source_gids"), list) else []
-            provenance = value.get("provenance") if isinstance(value.get("provenance"), dict) else {}
+            source_gids = (
+                value.get("source_gids")
+                if isinstance(value.get("source_gids"), list)
+                else []
+            )
+            provenance = (
+                value.get("provenance")
+                if isinstance(value.get("provenance"), dict)
+                else {}
+            )
+
+            if record_run_id and "exploration_run_id" not in provenance:
+                provenance = {
+                    **provenance,
+                    "exploration_run_id": record_run_id,
+                    "research_goal_id": record_run_id,
+                }
 
             accepted = self._ingest_direct_targets(
-                raw_urls,
+                raw_entries,
                 event_gid=event_gid,
                 source_gids=source_gids,
                 provenance=provenance,
@@ -600,10 +686,33 @@ class ExplorerNode(BaseSwarmNode):
         )
 
         for raw in raw_urls:
-            if not isinstance(raw, str):
+            target_metadata: Dict[str, Any] = {}
+
+            if isinstance(raw, Mapping):
+                target_metadata = dict(raw)
+                raw_url = target_metadata.get("url")
+            elif isinstance(raw, str):
+                raw_url = raw
+            else:
                 continue
 
-            url = normalize_url(raw)
+            url = normalize_url(str(raw_url or ""))
+
+            merged_provenance = {
+                **dict(provenance),
+                **target_metadata,
+            }
+
+            exploration_run_id = self._extract_exploration_run_id(
+                {
+                    "provenance": merged_provenance,
+                    "data": {
+                        "exploration_run_id": merged_provenance.get(
+                            "exploration_run_id"
+                        )
+                    },
+                }
+            )
 
             if not self._passes_policy(url):
                 continue
@@ -618,7 +727,14 @@ class ExplorerNode(BaseSwarmNode):
                 event_gid=event_gid,
                 metadata={
                     "source_gids": source_gids,
-                    "provenance": provenance,
+                    "provenance": merged_provenance,
+                    "target_metadata": target_metadata,
+                    "source_adapter": merged_provenance.get("source_adapter"),
+                    "source_kind": merged_provenance.get("source_kind"),
+                    "discovery_method": merged_provenance.get("discovery_method"),
+                    "score": merged_provenance.get("score"),
+                    "exploration_run_id": exploration_run_id,
+                    "research_goal_id": exploration_run_id,
                 },
             )
 
@@ -632,7 +748,7 @@ class ExplorerNode(BaseSwarmNode):
             self._target_context_by_url[url] = {
                 "event_gid": event_gid,
                 "source_gids": list(source_gids),
-                "provenance": dict(provenance),
+                "provenance": dict(merged_provenance),
                 "target_depth": target_depth,
                 "exploration_run_id": exploration_run_id,
                 "research_goal_id": exploration_run_id,
@@ -641,6 +757,14 @@ class ExplorerNode(BaseSwarmNode):
                     or provenance.get("source_finding_gid")
                     or event_gid
                     or None
+                ),
+                "target_metadata": target_metadata,
+                "source_adapter": merged_provenance.get("source_adapter", ""),
+                "source_kind": merged_provenance.get("source_kind", ""),
+                "discovery_method": merged_provenance.get("discovery_method", ""),
+                "score": self._safe_float(
+                    merged_provenance.get("score"),
+                    default=0.0,
                 ),
             }
 
@@ -653,7 +777,12 @@ class ExplorerNode(BaseSwarmNode):
                 status="received",
                 provenance={
                     "source_gids": source_gids,
-                    "provenance": provenance,
+                    "provenance": merged_provenance,
+                    "target_metadata": target_metadata,
+                    "source_adapter": merged_provenance.get("source_adapter"),
+                    "source_kind": merged_provenance.get("source_kind"),
+                    "discovery_method": merged_provenance.get("discovery_method"),
+                    "score": merged_provenance.get("score"),
                     "agent": self.node_id,
                     "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
                     "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
@@ -667,6 +796,14 @@ class ExplorerNode(BaseSwarmNode):
             )
 
             accepted.append(url)
+
+            source_adapter = str(
+                merged_provenance.get("source_adapter") or ""
+            ).strip()
+            if source_adapter:
+                self._source_adapter_targets_seen[source_adapter] = (
+                    self._source_adapter_targets_seen.get(source_adapter, 0) + 1
+                )
 
         return accepted
 
@@ -752,6 +889,17 @@ class ExplorerNode(BaseSwarmNode):
             else []
         )
         source_event_gid = str(target_context.get("event_gid") or "").strip()
+
+        target_metadata = (
+            target_context.get("target_metadata")
+            if isinstance(target_context.get("target_metadata"), Mapping)
+            else {}
+        )
+        source_adapter = str(target_context.get("source_adapter") or "").strip()
+        source_kind = str(target_context.get("source_kind") or "").strip()
+        discovery_method = str(target_context.get("discovery_method") or "").strip()
+        target_score = self._safe_float(target_context.get("score"), default=0.0)
+
         exploration_run_id = str(
             target_context.get("exploration_run_id")
             or self.active_exploration_run_id
@@ -906,6 +1054,11 @@ class ExplorerNode(BaseSwarmNode):
                     "discovered_target_count": len(discovered_targets),
                     "exploration_run_id": exploration_run_id,
                     "research_goal_id": exploration_run_id,
+                    "target_metadata": dict(target_metadata),
+                    "source_adapter": source_adapter,
+                    "source_kind": source_kind,
+                    "discovery_method": discovery_method,
+                    "target_score": target_score,
                 },
             }
 
@@ -1000,6 +1153,11 @@ class ExplorerNode(BaseSwarmNode):
                     "parent_gid": fetch_gid,
                     "exploration_run_id": exploration_run_id,
                     "research_goal_id": exploration_run_id,
+                    "target_metadata": dict(target_metadata),
+                    "source_adapter": source_adapter,
+                    "source_kind": source_kind,
+                    "discovery_method": discovery_method,
+                    "target_score": target_score,
                 },
             }
 
