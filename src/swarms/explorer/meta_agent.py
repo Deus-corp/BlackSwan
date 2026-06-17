@@ -60,6 +60,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CLASSIFICATION_BATCH_SIZE = 8
 DEFAULT_TARGET_BATCH_SIZE = 5
+EXPLORER_EXECUTION_RISK_TIER = "network_read"
+EXPLORER_COORDINATION_CHANNEL = "crdt_genomes"
+EXPLORER_EVIDENCE_KIND = "web_fetch"
 
 
 @dataclass(frozen=True, slots=True)
@@ -405,15 +408,31 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         )
 
         if not response:
-            self.logger.warning("LLM failed to classify batch; returning originals.")
-            return findings, batch_gid
+            self.logger.warning(
+                "LLM failed to classify batch; using deterministic explorer fallback."
+            )
+            return await self._fallback_classify_findings(
+                findings,
+                batch_gid=batch_gid,
+                prompt_h=prompt_h,
+                model_name=model_name,
+                fallback_reason="llm_unavailable",
+            )
 
         data = extract_json_object(response)
         items = data.get("items") if isinstance(data, dict) else None
 
         if not isinstance(items, list):
-            self.logger.warning("Classification response missing items array.")
-            return findings, batch_gid
+            self.logger.warning(
+                "Classification response missing items array; using deterministic explorer fallback."
+            )
+            return await self._fallback_classify_findings(
+                findings,
+                batch_gid=batch_gid,
+                prompt_h=prompt_h,
+                model_name=model_name,
+                fallback_reason="llm_response_missing_items",
+            )
 
         by_gid = {finding["source_gid"]: finding for finding in findings}
         out: List[ExplorerFinding] = []
@@ -490,7 +509,136 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 item["confidence"],
             )
 
-        return (out or findings), batch_gid
+        if not out:
+            return await self._fallback_classify_findings(
+                findings,
+                batch_gid=batch_gid,
+                prompt_h=prompt_h,
+                model_name=model_name,
+                fallback_reason="llm_no_valid_classification_items",
+            )
+
+        return out, batch_gid
+    
+    async def _fallback_classify_findings(
+        self,
+        findings: List[ExplorerFinding],
+        *,
+        batch_gid: str,
+        prompt_h: str,
+        model_name: str,
+        fallback_reason: str,
+    ) -> Tuple[List[ExplorerFinding], str]:
+        """Deterministically classify fetched explorer findings when LLM is unavailable.
+
+        This keeps the explorer dataflow executable:
+        node -> finding -> meta-agent -> classified finding -> next targets.
+
+        It does not perform external writes. It only publishes CRDT genomes.
+        """
+        out: List[ExplorerFinding] = []
+
+        for base in findings:
+            source_gid = str(base.get("source_gid") or base.get("gid") or "").strip()
+            if not source_gid:
+                continue
+
+            url = base.get("url")
+            fetch_status = str(base.get("fetch_status") or "").strip()
+            content_hash = str(base.get("content_hash") or "").strip()
+
+            is_successful_fetch = fetch_status in {"ok", "http_200", "200"}
+            has_network_evidence = bool(url) and bool(content_hash)
+
+            classification = "USEFUL" if is_successful_fetch and has_network_evidence else "NEUTRAL"
+            confidence = 0.55 if classification == "USEFUL" else 0.35
+            reason = (
+                "deterministic fallback: successful network_read evidence"
+                if classification == "USEFUL"
+                else "deterministic fallback: insufficient useful network_read evidence"
+            )
+
+            event_gid = self._make_gid("exp_cls")
+
+            updated: ExplorerFinding = dict(base)
+            updated["classification"] = classification
+            updated["confidence"] = confidence
+            updated["reason"] = reason
+            updated["timestamp"] = utc_ts()
+            updated["gid"] = event_gid
+            updated["event_type"] = "finding_classified"
+            updated["provenance"] = {
+                **(
+                    base.get("provenance")
+                    if isinstance(base.get("provenance"), dict)
+                    else {}
+                ),
+                "agent": self.agent_id,
+                "parent_gid": batch_gid,
+                "source_gid": source_gid,
+                "model_name": f"{model_name}:deterministic_fallback",
+                "prompt_hash": prompt_h,
+                "classification": classification,
+                "confidence": confidence,
+                "reason": reason,
+                "fallback_reason": fallback_reason,
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
+                "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
+            }
+
+            item: ClassificationItem = {
+                "source_gid": source_gid,
+                "url": url,
+                "classification": classification,
+                "confidence": confidence,
+                "reason": reason,
+            }
+
+            await self._publish_event(updated)
+            await self._publish_canonical_finding_classified(updated)
+
+            self.memory.record_classification(
+                item,
+                event_gid=event_gid,
+                parent_gid=batch_gid,
+                prompt_hash=prompt_h,
+                model_name=f"{model_name}:deterministic_fallback",
+                provenance=updated["provenance"],
+            )
+
+            if url:
+                normalized = normalize_url(url)
+                if normalized:
+                    self.memory.remember_target(
+                        normalized,
+                        score=confidence,
+                        classification=classification,
+                    )
+
+            self._record_event_chain(
+                event_type="finding_classified",
+                event_gid=event_gid,
+                source_gid=source_gid,
+                parent_gid=batch_gid,
+                url=url,
+                status=classification,
+                content_hash=content_hash or None,
+                provenance=updated["provenance"],
+            )
+
+            out.append(updated)
+
+            self.logger.info(
+                "Fallback-classified %s as %s (%.2f)",
+                url,
+                classification,
+                confidence,
+            )
+
+        return out, batch_gid
 
     async def _publish_new_targets(
         self,
@@ -540,16 +688,24 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             temperature=0.25,
         )
 
-        if not response:
-            self.logger.warning("LLM failed to generate target URLs.")
-            return 0
+        target_generation_mode = "llm"
 
-        data = extract_json_object(response)
-        raw_urls = data.get("urls") if isinstance(data, dict) else None
+        if not response:
+            self.logger.warning(
+                "LLM failed to generate target URLs; using deterministic explorer target fallback."
+            )
+            raw_urls = self._fallback_target_urls(context_urls, useful_sorted[:4])
+            target_generation_mode = "deterministic_fallback"
+        else:
+            data = extract_json_object(response)
+            raw_urls = data.get("urls") if isinstance(data, dict) else None
 
         if not isinstance(raw_urls, list):
-            self.logger.warning("Target response missing urls array.")
-            return 0
+            self.logger.warning(
+                "Target response missing urls array; using deterministic explorer target fallback."
+            )
+            raw_urls = self._fallback_target_urls(context_urls, useful_sorted[:4])
+            target_generation_mode = "deterministic_fallback"
 
         source_gids = [
             str(finding.get("source_gid"))
@@ -598,6 +754,13 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "parent_gid": parent_gid,
                 "model_name": getattr(self.llm, "model_name", "llm"),
                 "prompt_hash": prompt_hash(prompt),
+                "target_generation_mode": target_generation_mode,
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
+                "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                "network_read_candidate": True,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
                 "scores": [
                     {"url": url, "score": score}
                     for url, score in scored
@@ -631,6 +794,58 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         self.logger.info("🔎 Suggested %d new targets", len(scored))
 
         return len(scored)
+    
+    def _fallback_target_urls(
+        self,
+        context_urls: Sequence[str],
+        useful_findings: Sequence[ExplorerFinding],
+    ) -> List[str]:
+        """Generate conservative same-domain targets without LLM.
+
+        This keeps explorer travel alive when the local LLM is unavailable.
+        It only proposes network_read targets and never performs external writes.
+        """
+        candidates: list[str] = []
+
+        for raw_url in context_urls:
+            normalized = normalize_url(str(raw_url or ""))
+            if not normalized:
+                continue
+
+            parsed = urlparse(normalized)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                continue
+
+            root = f"{parsed.scheme}://{parsed.netloc}/"
+            candidates.append(root)
+
+            path = parsed.path or ""
+            parts = [part for part in path.split("/") if part]
+            if len(parts) > 1:
+                parent_path = "/" + "/".join(parts[:-1]) + "/"
+                candidates.append(f"{parsed.scheme}://{parsed.netloc}{parent_path}")
+
+        for finding in useful_findings:
+            url = normalize_url(str(finding.get("url") or ""))
+            if url:
+                candidates.append(url)
+
+        deduped: list[str] = []
+        seen: set[str] = set()
+
+        for candidate in candidates:
+            normalized = normalize_url(candidate)
+            if not normalized or normalized in seen:
+                continue
+            if not is_probably_valid_url(normalized):
+                continue
+            if self._is_target_blacklisted(normalized):
+                continue
+
+            seen.add(normalized)
+            deduped.append(normalized)
+
+        return deduped
 
     # ------------------------------------------------------------------
     # Finding normalization
@@ -761,10 +976,24 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "reason": finding.get("reason"),
                 "content_hash": finding.get("content_hash"),
                 "fetch_status": finding.get("fetch_status"),
+                "execution_risk_tier": (
+                    finding.get("provenance", {}).get("execution_risk_tier")
+                    if isinstance(finding.get("provenance"), dict)
+                    else EXPLORER_EXECUTION_RISK_TIER
+                ),
+                "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
+                "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
             },
             provenance={
                 "agent": self.agent_id,
                 "legacy_gid": finding.get("gid"),
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
+                "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
             },
         )
 
@@ -789,6 +1018,11 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             payload={
                 "urls": payload.get("urls", []),
                 "source_gids": target_event.get("source_gids", []),
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
+                "network_read_candidate": True,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
             },
             provenance={
                 "agent": self.agent_id,
