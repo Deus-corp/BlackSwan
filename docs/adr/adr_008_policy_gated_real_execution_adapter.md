@@ -1437,6 +1437,63 @@ metrics.
 This PR remains read-only and does not validate rendered commands, mark rendered
 commands executable, sandbox execution, subprocesses, or real execution.
 
+## Closure note after PR 38.14c
+
+The policy-gated real execution adapter scaffold contour is considered complete
+as a reusable pre-execution substrate after PR 38.14c.
+
+The completed substrate provides a fail-closed chain from adapter contract and
+request schema through sandbox request, workspace, input materialization,
+command render plan, rendered command scaffold, and rendered command validation
+scaffold.
+
+The final contour is intentionally blocked before execution:
+
+```text
+sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+Future PRs should not continue expanding this contour by default. Instead, they
+should use it as the reference safety substrate for controlled execution.
+
+Additional guard contours are required only when introducing dangerous execution
+classes, including:
+
+```text
+production financial writes
+mainnet swaps/transfers/approvals
+wallet signing or private key access
+production database writes
+host-destructive system commands
+external non-testnet writes
+credential or secret access
+```
+
+Testnet trading with explicit test wallets, such as Ethereum Sepolia trading, is
+classified as `testnet_external_write`: real execution, but not production
+financial danger. It still requires explicit testnet configuration, budget/cap
+limits, capability policy, and operator-visible records, but it does not need to
+be reduced to pure simulation by default.
+
+The next architectural phase should move from substrate construction to useful
+swarm execution, beginning with explorer and memory swarm development.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.

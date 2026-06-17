@@ -2867,6 +2867,120 @@ execute sandbox commands, invoke subprocesses, or enable real execution.
 
 ---
 
+## Sandbox execution substrate closure
+
+The sandbox execution substrate is now considered complete enough to serve as a
+reusable reference contour for other swarms.
+
+The completed contour includes fail-closed records and observability for:
+
+```text
+real execution adapter contract
+real execution adapter request schema
+capability policy matrix
+sandbox adapter scaffold
+sandbox adapter request preflight
+sandbox request envelope scaffold
+sandbox materialization preflight scaffold
+sandbox workspace plan scaffold
+sandbox workspace preparation preflight scaffold
+sandbox input materialization plan scaffold
+sandbox command render plan scaffold
+sandbox rendered command scaffold
+sandbox rendered command validation scaffold
+```
+
+This contour intentionally stops before actual sandbox execution. The final
+completed state verifies:
+
+```text
+sandbox_rendered_command_validation_scaffold_observed=true
+sandbox_rendered_command_validation_scaffold_linkage_complete=true
+sandbox_rendered_command_validation_scaffold_orphans=0
+sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+Future work should avoid expanding this contour unless a new dangerous execution
+class requires extra preflight evidence. Normal swarm development should now use
+this substrate as a reference and move toward controlled execution.
+
+### Execution risk tiers
+
+Execution capabilities should be grouped by risk tier:
+
+```text
+safe_local_execution
+  Local sandbox-only commands.
+  May run allowlisted subprocesses.
+  May write only inside an ephemeral sandbox workspace.
+  Must not access secrets, production paths, network writes, wallets, or external APIs.
+
+testnet_external_write
+  Real external execution on testnets only.
+  Includes Sepolia trading/swaps with test wallets and explicit testnet configuration.
+  Does not require simulation by default, but still requires capability policy,
+  explicit network identity, budget/cap limits, and operator visibility.
+
+network_read
+  Internet or API reads.
+  Used by explorer/data-gathering swarms.
+  Requires rate limits, source attribution, and storage boundaries.
+
+external_write_stub
+  Non-testnet external writes such as posting messages, modifying GitHub,
+  sending email, or writing to third-party APIs.
+  Stubbed until explicitly approved per capability.
+
+production_financial_write
+  Mainnet swaps, transfers, approvals, CEX orders, withdrawals, leverage, or
+  irreversible financial actions.
+  Must remain blocked until separate explicit approval and production policy.
+
+system_dangerous_stub
+  Host-destructive or production-destructive operations such as rm outside
+  sandbox, chmod/chown, service restart, docker control, package installation,
+  credential access, or production database mutation.
+  Stubbed unless explicitly approved in a dedicated safety PR.
+```
+
+### Transition rule
+
+The next development phase should prefer useful execution and swarm behavior over
+more scaffold expansion. Additional readiness/observability contours should only
+be added for dangerous capabilities, production writes, secrets, financial
+mainnet actions, or host-destructive operations.
+
+Recommended next swarm targets:
+
+```text
+explorer
+  Internet/data collection, source discovery, evidence extraction, crawling
+  policy, freshness ranking, and handoff to memory.
+
+memory
+  Ingestion, normalization, deduplication, classification, storage, retrieval,
+  retention, and evidence routing for all swarms.
+```
+
+
+---
+
 ## Related modules
 
 ```text
@@ -2888,165 +3002,3 @@ src/testing/check_controlled_execution_readiness.py
 src/testing/inspect_retry_governance_trail.py
 src/swarms/security/runtime_validation.py
 ```
-
----
-
-RUN_REPLAY currently executes a dry-run replay skeleton:
-- loads simulation_replay_scenario by scenario_id
-- validates dry_run=True
-- returns simulation_replay_execution receipt
-- no live/external side effects
-
----
-
-```bash
-rm -f data/cluster_runtime/latest/ledgers/swarm_crdt.local.db*
-rm -f data/cluster_runtime/latest/ledgers/events.local.db*
-
-python -m src.swarms.runtime.cluster_cli up \
-  --duration 0 \
-  --no-strict \
-  --simulation-nodes 1 \
-  --simulation-heartbeat-interval 5
-```
----
-
-```bash
-python -m src.testing.retry_governance_smoke \
-  --proposal-id replay-retry-real-observe-smoke-1 \
-  --approval-id replay-retry-real-observe-approval-1 \
-  --plan-id replay-retry-real-observe-plan-1 \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --result-id replay-retry-real-observe-result-1 \
-  --timeout-profile standard \
-  --decision-mode manual \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-```
-
----
-
-controlled real-request result:
-
-```bash
-python -m src.testing.run_controlled_retry_command \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --allow-controlled-execution \
-  --real-execution \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-```
-
----
-
-real gate chain:
-
-```bash
-python -m src.testing.build_real_execution_preflight \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.build_real_execution_approval \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --approval-status pending \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.build_real_execution_approval_transition \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --to-status approved \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.build_real_execution_final_gate \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.build_real_execution_dry_run_envelope \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-```
-
----
-
-```bash
-python -m src.testing.run_real_execution_noop_harness \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.build_real_execution_read_only_promotion \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.build_real_execution_read_only_final_gate \
-  --rendered-command-id replay-retry-real-observe-command-1 \
-  --json \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-```
-
----
-
-Runtime quick check:
-```bash
-python -m src.testing.retry_governance_smoke \
-  --proposal-id replay-retry-smoke-e2e-1 \
-  --approval-id replay-retry-smoke-e2e-approval-1 \
-  --plan-id replay-retry-smoke-e2e-plan-1 \
-  --result-id replay-retry-smoke-e2e-result-1 \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-echo $?
-```
-
-CLI:
-
-```bash
-python -m src.testing.seed_replay_scenario \
-  --scenario-id replay-runtime-reduce-risk-1 \
-  --action REDUCE_RISK \
-  --expected-result-status applied \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-python -m src.testing.seed_directive \
-  --action RUN_REPLAY \
-  --target simulation \
-  --target-type swarm \
-  --source overseer-seed \
-  --directive-id runtime-run-replay-cli-live-1 \
-  --payload-json '{"scenario_id":"replay-runtime-reduce-risk-1","dry_run":true}' \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-```
-```bash
-grep -R "runtime-run-replay-cli-live-1\|run_replay_dry_run_completed" \
-  data/cluster_runtime/latest/logs \
-  | tail -120
-```
-```bash
-tail -200 data/cluster_runtime/latest/logs/simulation-1.log
-```
-```bash
-python -m src.testing.run_replay_evidence_check \
-  --scenario-id replay-runtime-reduce-risk-timeout-2 \
-  --action REDUCE_RISK \
-  --directive-id runtime-run-replay-timeout-2 \
-  --wait-seconds 0.01 \
-  --poll-interval 0.01 \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-
-echo $?
-```
----
-
-## Next steps
-
-Planned follow-up work:
-
-1. Memory swarm consumes `runtime_evidence` memory records.
-2. Overseer links evidence records back into briefs.
-3. Security validates directives and directive results.
-4. Dashboard shows briefs, directives, results, evidence, and memory records.
-5. Simulation can replay verified runtime evidence as scenarios.

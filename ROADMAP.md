@@ -32,7 +32,7 @@ The current milestone is no longer only "directive lifecycle through CRDT". The 
 
 ### Validated
 
-* ✅ 940+ tests passing.
+* ✅ 1157+ tests passing.
 * ✅ Retry governance smoke test passing.
 * ✅ Swarm runtime smoke test passing.
 * ✅ Trade runtime command loop passing.
@@ -166,6 +166,197 @@ Current safety boundary:
 * post-repair evidence check may execute only the verification subprocess;
 * every stage emits immutable CRDT audit records;
 * readiness fails closed on missing linkage, orphan records, unsafe flags, or unverified repair outcomes.
+
+---
+
+## Current Phase — Swarm Execution Transition
+
+The sandbox execution substrate is now closed as a reusable fail-closed
+pre-execution contour.
+
+Completed substrate:
+
+```text
+real execution adapter contract
+real execution adapter request schema
+capability policy matrix
+sandbox adapter scaffold
+sandbox adapter request preflight
+sandbox request envelope scaffold
+sandbox materialization preflight scaffold
+sandbox workspace plan scaffold
+sandbox workspace preparation preflight scaffold
+sandbox input materialization plan scaffold
+sandbox command render plan scaffold
+sandbox rendered command scaffold
+sandbox rendered command validation scaffold
+```
+
+The final substrate state is intentionally blocked before execution:
+
+```text
+sandbox_rendered_command_validation_scaffold_observed=true
+sandbox_rendered_command_validation_scaffold_linkage_complete=true
+sandbox_rendered_command_validation_scaffold_orphans=0
+sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+### Transition decision
+
+The scaffold contour is closed for normal development. Future scaffold or
+readiness expansion should be reserved for dangerous execution classes only.
+
+The default development direction is now useful swarm behavior and controlled
+execution.
+
+### Execution risk tiers
+
+```text
+safe_local_execution
+  Local sandbox-only commands.
+  May run allowlisted subprocesses.
+  May write only inside an ephemeral sandbox workspace.
+  Must not access secrets, production paths, network writes, wallets, or external APIs.
+
+network_read
+  Internet or API reads.
+  Used by explorer/data-gathering swarms.
+  Requires rate limits, source attribution, freshness tracking, and storage boundaries.
+
+testnet_external_write
+  Real external execution on testnets only.
+  Includes Sepolia trading/swaps with test wallets and explicit testnet configuration.
+  Does not require simulation by default, but still requires capability policy,
+  explicit network identity, budget/cap limits, and operator-visible records.
+
+external_write_stub
+  Non-testnet external writes such as posting messages, modifying GitHub,
+  sending email, or writing to third-party APIs.
+  Stubbed until explicitly approved per capability.
+
+production_financial_write
+  Mainnet swaps, transfers, approvals, CEX orders, withdrawals, leverage, or
+  irreversible financial actions.
+  Blocked until a separate explicit production policy milestone.
+
+system_dangerous_stub
+  Host-destructive or production-destructive operations such as rm outside
+  sandbox, chmod/chown, service restart, docker control, package installation,
+  credential access, or production database mutation.
+  Stubbed unless explicitly approved in a dedicated safety PR.
+```
+
+### Next priorities
+
+```text
+P0 — Explorer swarm execution
+  - network_read execution policy
+  - internet research goals
+  - source discovery
+  - source-specific collection nodes
+  - freshness/ranking
+  - evidence extraction
+  - conflict/quality checks
+  - handoff to memory
+
+P0 — Memory swarm execution
+  - ingestion
+  - normalization
+  - deduplication
+  - classification
+  - summarization
+  - retrieval/indexing
+  - retention/archive policy
+  - evidence routing
+
+P1 — Safe local execution
+  - allowlisted local sandbox subprocess
+  - sandbox-only file writes
+  - stdout/stderr/exit code evidence
+  - no secrets
+  - no production paths
+
+P1 — Testnet external write execution
+  - Sepolia/testnet wallets
+  - explicit testnet config
+  - small caps/budgets
+  - no mainnet
+  - no production funds
+
+P2 — Production/mainnet execution
+  - separate approval contour
+  - capability-specific policies
+  - operator authorization
+  - explicit caps
+  - rollback/evidence requirements
+```
+
+### Explorer architecture direction
+
+Explorer should keep the meta-agent pattern because internet research parallelizes
+naturally by source, topic, freshness, and quality checks.
+
+```text
+overseer
+  coordinates swarm meta-agents
+
+explorer meta-agent
+  decomposes research goals
+  assigns source/node tasks
+  merges findings
+  decides when evidence is sufficient
+  hands structured evidence to memory
+
+explorer nodes
+  web search/read nodes
+  source-specific collectors
+  freshness/ranking nodes
+  evidence extraction nodes
+  quality/conflict check nodes
+```
+
+Explorer should start with `network_read` execution only. It should not perform
+external writes.
+
+### Memory architecture direction
+
+Memory does not need many autonomous agents at first. Start with one memory
+meta-agent plus deterministic worker components.
+
+```text
+memory meta-agent
+  decides what should be remembered, indexed, archived, or discarded
+
+workers/components
+  ingest
+  normalize
+  dedupe
+  classify
+  summarize
+  index
+  retrieve
+  retain/archive
+  route evidence to swarms
+```
+
+Split memory into multiple autonomous nodes only after volume, latency,
+specialization, or fault-isolation pressure requires it.
 
 ---
 
@@ -561,10 +752,10 @@ BlackSwan = trading bot
 * [x] Repair readiness gate and guarded repair execution harness.
 * [x] Post-repair evidence check verifies repair outcome and emits `close_repair_loop`.
 * [x] Security/Inspector/Readiness surface the verified guarded repair lifecycle.
+* [x] Closed fail-closed policy-gated sandbox execution substrate through rendered command validation scaffold.
 * [ ] Golden-path smoke script for the full controlled retry / guarded repair lifecycle.
 * [ ] Dashboard views for retry governance, guarded execution, repair status, and post-repair evidence.
 * [ ] Better local cluster profiles.
-* [ ] Policy-gated real execution adapter scaffold.
 
 ### Phase B — Advisory Intelligence
 

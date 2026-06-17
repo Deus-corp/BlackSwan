@@ -20,7 +20,7 @@ BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime wit
 
 Validated in the current architecture:
 
-* ✅ 940+ tests passing.
+* ✅ 1157+ tests passing.
 * ✅ Retry governance smoke test passing.
 * ✅ Swarm runtime smoke test passing.
 * ✅ Trade runtime command loop passing.
@@ -115,6 +115,74 @@ repair_targets_unexpected=[]
 recommended_next_action=close_repair_loop
 real_execution_enabled=false
 ```
+
+### Latest Milestone — Closed Sandbox Execution Substrate
+
+The policy-gated sandbox execution substrate is now closed as a reusable
+pre-execution safety contour for all swarms.
+
+The completed substrate covers:
+
+```text
+real execution adapter contract
+real execution adapter request schema
+capability policy matrix
+sandbox adapter scaffold
+sandbox adapter request preflight
+sandbox request envelope scaffold
+sandbox materialization preflight scaffold
+sandbox workspace plan scaffold
+sandbox workspace preparation preflight scaffold
+sandbox input materialization plan scaffold
+sandbox command render plan scaffold
+sandbox rendered command scaffold
+sandbox rendered command validation scaffold
+```
+
+The contour is intentionally fail-closed before actual sandbox execution:
+
+```text
+sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+This substrate should now be treated as a reusable reference layer rather than a
+contour to expand by default. Additional readiness and observability contours
+should be added only for dangerous capability classes such as production
+financial writes, host-destructive commands, credential access, production
+database mutation, or non-testnet external writes.
+
+Execution risk tiers:
+
+```text
+safe_local_execution       local sandbox-only allowlisted commands
+network_read               internet/API reads with rate/source policy
+testnet_external_write     testnet operations such as Sepolia trading
+external_write_stub        non-testnet external writes, stubbed by default
+production_financial_write mainnet/real funds, blocked by default
+system_dangerous_stub      host/system-destructive actions, stubbed by default
+```
+
+Testnet trading with explicit test wallets, such as Ethereum Sepolia trading, is
+classified as `testnet_external_write`: real execution, but not production
+financial danger. It still requires explicit testnet configuration, budget/cap
+limits, capability policy, and operator-visible records, but it does not need to
+be reduced to pure simulation by default.
 
 ### Latest Milestone — Memory Intelligence & Resilience
 
@@ -507,37 +575,85 @@ swarm_directive_result runtime-reduce-risk-1 None applied trade-1 trade
 
 ## Current Development Focus
 
-The current focus is milestone stabilization and documentation after the first verified guarded repair loop.
+The current focus is shifting from scaffold expansion to useful swarm execution.
 
-1. Document the controlled retry and guarded repair execution lifecycle.
-2. Add an operational runbook for the full golden path:
-   `proposal -> guarded repair execution -> post-repair evidence -> close_repair_loop`.
-3. Keep all changes controlled, incremental, and test-backed.
-4. Preserve `src/` as the shared platform layer.
-5. Keep each swarm self-contained under `src/swarms/<swarm>/`.
-6. Continue hardening the LLM-friendly synchronization loop:
-   `SwarmBrief -> Directive -> DirectiveResult -> Evidence -> Memory`.
-7. Keep arbitrary real execution disabled until a separate policy-gated real execution adapter is designed, reviewed, and documented.
-8. Keep trade as the proving ground for safe directives, risk controls, runtime evidence, repair loops, and outcome memory.
-9. Build dashboard/readiness views that show topology, swarm health, memory/simulation status, CRDT state, runtime events, Overseer briefs, directives, retry governance, guarded execution, repair status, and post-repair verification.
-10. Preserve trade as one swarm among equals, not the center of the architecture.
+The controlled retry, guarded repair, and sandbox execution substrate contours
+are now preserved as reusable safety layers. Future scaffold expansion should be
+reserved for dangerous execution classes only.
+
+Near-term focus:
+
+1. Improve and activate the Explorer swarm as a real `network_read` research
+   swarm.
+2. Build Explorer source discovery, internet research, freshness ranking,
+   evidence extraction, and handoff to Memory.
+3. Improve the Memory swarm as the durable ingestion, classification,
+   deduplication, retrieval, and evidence-routing layer.
+4. Keep Memory simple at first: one memory meta-agent plus deterministic pipeline
+   components instead of many autonomous nodes.
+5. Preserve Overseer as the coordinator of swarm meta-agents and global policy.
+6. Use the completed sandbox execution substrate when introducing controlled
+   execution paths.
+7. Add extra readiness/observability contours only for dangerous capabilities:
+   production financial writes, mainnet transactions, host-destructive commands,
+   credentials, production database writes, or non-testnet external writes.
 
 Near-term milestone plan:
 
 ```text
-PR 37.0 — milestone documentation and operational runbook
-PR 37.1 — final golden-path smoke script
-PR 37.2 — docs/schema/test fixture cleanup
-PR 38.x — policy-gated real execution adapter scaffold
+PR 38.14d — document execution substrate closure and swarm execution transition
+PR 39.1a — explorer network-read execution plan
+PR 39.1b — explorer source collection nodes
+PR 39.1c — explorer evidence handoff to memory
+PR 39.2a — memory ingestion and classification pipeline
 ```
 
-Out of scope until a separate reviewed milestone:
+Explorer direction:
 
-* arbitrary real execution
-* external side effects outside guarded harnesses
-* production policy scheduler
-* multi-proposal batch repair execution
-* autonomous code-changing execution without explicit review gates
+```text
+overseer
+  coordinates swarm meta-agents
+
+explorer meta-agent
+  decomposes research goals
+  assigns source/node tasks
+  merges findings
+  sends evidence to memory
+
+explorer nodes
+  web search/read nodes
+  source-specific collectors
+  freshness/ranking nodes
+  evidence extraction nodes
+  quality/conflict check nodes
+```
+
+Memory direction:
+
+```text
+memory meta-agent
+  decides what should be remembered, indexed, archived, or discarded
+
+deterministic pipeline components
+  ingest
+  normalize
+  dedupe
+  classify
+  summarize
+  index
+  retrieve
+  retain/archive
+  route evidence to swarms
+```
+
+Out of scope until separate reviewed milestones:
+
+* production/mainnet financial execution
+* external writes outside explicit capability policy
+* host-destructive system operations
+* credential or private key access
+* production database mutation
+* autonomous code-changing execution without review gates
 
 ---
 
