@@ -62,11 +62,17 @@ def test_explorer_node_ingests_source_adapter_target_metadata(
     assert arxiv_context["source_adapter"] == "arxiv"
     assert arxiv_context["source_kind"] == "arxiv_api_query"
     assert arxiv_context["discovery_method"] == "arxiv_api_search"
-    assert arxiv_context["score"] == 0.9
+    assert arxiv_context["seed_score"] == 0.9
+    assert arxiv_context["source_score"] > 0.0
+    assert arxiv_context["quality_score"] > 0.0
+    assert arxiv_context["score"] == arxiv_context["source_score"]
     assert arxiv_context["exploration_run_id"] == "run-1"
 
     assert github_context["source_adapter"] == "github"
-    assert github_context["score"] == 0.8
+    assert github_context["seed_score"] == 0.8
+    assert github_context["source_score"] > 0.0
+    assert github_context["quality_score"] > 0.0
+    assert github_context["score"] == github_context["source_score"]
 
 
 def test_explorer_node_source_aware_scheduler_prioritizes_adapters(

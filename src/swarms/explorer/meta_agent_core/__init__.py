@@ -33,6 +33,7 @@ from .source_adapters import (
     DEFAULT_SOURCE_ADAPTERS,
     build_source_adapter_targets,
 )
+from .source_scoring import score_source_target
 
 __all__ = [
     "ClassificationItem",
@@ -53,4 +54,5 @@ __all__ = [
     "score_targets",
     "DEFAULT_SOURCE_ADAPTERS",
     "build_source_adapter_targets",
+    "score_source_target",
 ]

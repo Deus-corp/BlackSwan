@@ -221,6 +221,12 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
                 "external_write_performed": False,
                 "real_execution_enabled": False,
                 "exploration_run_id": exploration_run_id,
+                "source_adapter_targets_seen": dict(
+                    getattr(node, "_source_adapter_targets_seen", {}) or {}
+                ),
+                "source_adapter_targets_selected": dict(
+                    getattr(node, "_source_adapter_targets_selected", {}) or {}
+                ),
             },
             "meta_agent": meta_result,
             "record_counts": _record_counts(records),

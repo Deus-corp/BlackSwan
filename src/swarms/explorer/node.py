@@ -50,6 +50,7 @@ from .node_core.utils import (
     make_content_preview,
     normalize_url,
 )
+from src.swarms.explorer.meta_agent_core.source_scoring import score_source_target
 
 logging.basicConfig(
     level=logging.INFO,
@@ -583,7 +584,10 @@ class ExplorerNode(BaseSwarmNode):
             source_adapter,
             SOURCE_ADAPTER_PRIORITY[""],
         )
-        score = self._safe_float(context.get("score"), default=0.0)
+        score = self._safe_float(
+            context.get("source_score") or context.get("quality_score") or context.get("score"),
+            default=0.0,
+        )
 
         return (source_priority, -score, url)
 
@@ -703,6 +707,22 @@ class ExplorerNode(BaseSwarmNode):
                 **target_metadata,
             }
 
+            source_scores = score_source_target(
+                url,
+                source_adapter=str(merged_provenance.get("source_adapter") or ""),
+                source_kind=str(merged_provenance.get("source_kind") or ""),
+                discovery_method=str(merged_provenance.get("discovery_method") or ""),
+                goal=str(merged_provenance.get("goal") or ""),
+                existing_score=merged_provenance.get("score"),
+                metadata=merged_provenance,
+            )
+
+            merged_provenance = {
+                **merged_provenance,
+                **source_scores,
+                "score": source_scores["source_score"],
+            }
+
             exploration_run_id = self._extract_exploration_run_id(
                 {
                     "provenance": merged_provenance,
@@ -738,6 +758,15 @@ class ExplorerNode(BaseSwarmNode):
                     "score": merged_provenance.get("score"),
                     "exploration_run_id": exploration_run_id,
                     "research_goal_id": exploration_run_id,
+                    "seed_score": merged_provenance.get("seed_score"),
+                    "source_type_score": merged_provenance.get("source_type_score"),
+                    "authority_score": merged_provenance.get("authority_score"),
+                    "freshness_score": merged_provenance.get("freshness_score"),
+                    "system_relevance_score": merged_provenance.get(
+                        "system_relevance_score"
+                    ),
+                    "quality_score": merged_provenance.get("quality_score"),
+                    "source_score": merged_provenance.get("source_score"),
                 },
             )
 
@@ -769,6 +798,34 @@ class ExplorerNode(BaseSwarmNode):
                     merged_provenance.get("score"),
                     default=0.0,
                 ),
+                "seed_score": self._safe_float(
+                    merged_provenance.get("seed_score"),
+                    default=0.0,
+                ),
+                "source_type_score": self._safe_float(
+                    merged_provenance.get("source_type_score"),
+                    default=0.0,
+                ),
+                "authority_score": self._safe_float(
+                    merged_provenance.get("authority_score"),
+                    default=0.0,
+                ),
+                "freshness_score": self._safe_float(
+                    merged_provenance.get("freshness_score"),
+                    default=0.0,
+                ),
+                "system_relevance_score": self._safe_float(
+                    merged_provenance.get("system_relevance_score"),
+                    default=0.0,
+                ),
+                "quality_score": self._safe_float(
+                    merged_provenance.get("quality_score"),
+                    default=0.0,
+                ),
+                "source_score": self._safe_float(
+                    merged_provenance.get("source_score"),
+                    default=0.0,
+                ),
             }
 
             self._record_event_chain(
@@ -795,6 +852,15 @@ class ExplorerNode(BaseSwarmNode):
                     "target_depth": target_depth,
                     "exploration_run_id": exploration_run_id,
                     "research_goal_id": exploration_run_id,
+                    "seed_score": merged_provenance.get("seed_score"),
+                    "source_type_score": merged_provenance.get("source_type_score"),
+                    "authority_score": merged_provenance.get("authority_score"),
+                    "freshness_score": merged_provenance.get("freshness_score"),
+                    "system_relevance_score": merged_provenance.get(
+                        "system_relevance_score"
+                    ),
+                    "quality_score": merged_provenance.get("quality_score"),
+                    "source_score": merged_provenance.get("source_score"),
                 },
             )
 
@@ -902,6 +968,34 @@ class ExplorerNode(BaseSwarmNode):
         source_kind = str(target_context.get("source_kind") or "").strip()
         discovery_method = str(target_context.get("discovery_method") or "").strip()
         target_score = self._safe_float(target_context.get("score"), default=0.0)
+
+        source_scores = {
+            "seed_score": self._safe_float(target_context.get("seed_score"), default=0.0),
+            "source_type_score": self._safe_float(
+                target_context.get("source_type_score"),
+                default=0.0,
+            ),
+            "authority_score": self._safe_float(
+                target_context.get("authority_score"),
+                default=0.0,
+            ),
+            "freshness_score": self._safe_float(
+                target_context.get("freshness_score"),
+                default=0.0,
+            ),
+            "system_relevance_score": self._safe_float(
+                target_context.get("system_relevance_score"),
+                default=0.0,
+            ),
+            "quality_score": self._safe_float(
+                target_context.get("quality_score"),
+                default=0.0,
+            ),
+            "source_score": self._safe_float(
+                target_context.get("source_score"),
+                default=target_score,
+            ),
+        }
 
         exploration_run_id = str(
             target_context.get("exploration_run_id")
@@ -1062,6 +1156,7 @@ class ExplorerNode(BaseSwarmNode):
                     "source_kind": source_kind,
                     "discovery_method": discovery_method,
                     "target_score": target_score,
+                    **source_scores,
                 },
             }
 
@@ -1161,6 +1256,7 @@ class ExplorerNode(BaseSwarmNode):
                     "source_kind": source_kind,
                     "discovery_method": discovery_method,
                     "target_score": target_score,
+                    **source_scores,
                 },
             }
 
@@ -1242,6 +1338,14 @@ class ExplorerNode(BaseSwarmNode):
             domain = extract_domain(absolute) or ""
             same_domain = bool(base_domain and domain == base_domain)
 
+            discovery_scores = score_source_target(
+                absolute,
+                source_adapter="",
+                source_kind="html_link",
+                discovery_method="html_link_extraction",
+                existing_score=1.0 if same_domain else 0.65,
+            )
+
             seen.add(absolute)
             discovered.append(
                 {
@@ -1251,7 +1355,16 @@ class ExplorerNode(BaseSwarmNode):
                     "target_depth": parent_depth + 1,
                     "discovery_method": "html_link_extraction",
                     "same_domain": same_domain,
-                    "score": 1.0 if same_domain else 0.65,
+                    "score": discovery_scores["source_score"],
+                    "seed_score": discovery_scores["seed_score"],
+                    "source_type_score": discovery_scores["source_type_score"],
+                    "authority_score": discovery_scores["authority_score"],
+                    "freshness_score": discovery_scores["freshness_score"],
+                    "system_relevance_score": discovery_scores[
+                        "system_relevance_score"
+                    ],
+                    "quality_score": discovery_scores["quality_score"],
+                    "source_score": discovery_scores["source_score"],
                     "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
                     "network_read_candidate": True,
                     "external_write_performed": False,

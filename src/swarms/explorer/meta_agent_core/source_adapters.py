@@ -4,6 +4,7 @@ from typing import Any, Iterable
 from urllib.parse import quote_plus, urlparse
 
 from .utils import is_probably_valid_url, normalize_url
+from .source_scoring import score_source_target
 
 EXPLORER_EXECUTION_RISK_TIER = "network_read"
 EXPLORER_COORDINATION_CHANNEL = "crdt_genomes"
@@ -187,12 +188,27 @@ def _target(
     score: float,
 ) -> dict[str, Any]:
     normalized = normalize_url(url)
+    scores = score_source_target(
+        normalized,
+        source_adapter=source_adapter,
+        source_kind=source_kind,
+        discovery_method=discovery_method,
+        existing_score=score,
+    )
+
     return {
         "url": normalized,
         "source_adapter": source_adapter,
         "source_kind": source_kind,
         "discovery_method": discovery_method,
-        "score": float(score),
+        "score": scores["source_score"],
+        "seed_score": scores["seed_score"],
+        "source_type_score": scores["source_type_score"],
+        "authority_score": scores["authority_score"],
+        "freshness_score": scores["freshness_score"],
+        "system_relevance_score": scores["system_relevance_score"],
+        "quality_score": scores["quality_score"],
+        "source_score": scores["source_score"],
         "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
         "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
         "network_read_candidate": True,
