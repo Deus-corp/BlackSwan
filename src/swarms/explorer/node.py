@@ -60,6 +60,8 @@ DEFAULT_TICK_INTERVAL_SECONDS: float = 2.0
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS: float = 40.0
 DEFAULT_BATCH_LIMIT: int = 10
 COMMAND_DEDUP_WINDOW_SECONDS: float = 5.0
+EXPLORER_EXECUTION_RISK_TIER = "network_read"
+EXPLORER_EVIDENCE_KIND = "web_fetch"
 
 
 class ExplorerNode(BaseSwarmNode):
@@ -112,6 +114,9 @@ class ExplorerNode(BaseSwarmNode):
         self._fetches_attempted = 0
         self._fetches_failed = 0
         self._targets_seen_last_tick = 0
+        self._fetches_policy_blocked = 0
+        self._fetches_robots_blocked = 0
+        self._content_extracted = 0
 
         self.logger.info("🧭 ExplorerNode initialized: %s", self.node_id)
 
@@ -251,6 +256,13 @@ class ExplorerNode(BaseSwarmNode):
                 "findings_emitted": self._findings_emitted,
                 "fetches_attempted": self._fetches_attempted,
                 "fetches_failed": self._fetches_failed,
+                "fetches_policy_blocked": self._fetches_policy_blocked,
+                "fetches_robots_blocked": self._fetches_robots_blocked,
+                "content_extracted": self._content_extracted,
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "network_read_enabled": True,
+                "external_write_enabled": False,
+                "real_execution_enabled": False,
                 "targets_seen_last_tick": self._targets_seen_last_tick,
                 "respect_robots": self.policy.respect_robots,
                 "user_agent": self.policy.user_agent,
@@ -359,9 +371,12 @@ class ExplorerNode(BaseSwarmNode):
 
     async def _consume_targets_and_explore(self, client: httpx.AsyncClient) -> bool:
         if self.is_paused():
-            self.logger.info("ExplorerNode %s is paused; skipping target exploration.", self.node_id)
+            self.logger.info(
+                "ExplorerNode %s is paused; skipping target exploration.",
+                self.node_id,
+            )
             return False
-        
+
         targets = self._collect_targets()
         self._targets_seen_last_tick = len(targets)
 
@@ -372,8 +387,14 @@ class ExplorerNode(BaseSwarmNode):
 
         for url in targets[: self.batch_limit]:
             try:
-                await self._fetch_and_emit(client, url)
-                did_work = True
+                result = await self._fetch_and_emit(client, url)
+                did_work = did_work or result in {
+                    "content_extracted",
+                    "finding_published",
+                    "fetch_failed",
+                    "policy_blocked",
+                    "robots_disallowed",
+                }
             except Exception as exc:
                 self._fetches_failed += 1
                 self.logger.warning("Failed to explore %s: %s", url, exc)
@@ -464,6 +485,11 @@ class ExplorerNode(BaseSwarmNode):
                     "source_gids": source_gids,
                     "provenance": provenance,
                     "agent": self.node_id,
+                    "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                    "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                    "network_read_candidate": True,
+                    "external_write_performed": False,
+                    "real_execution_enabled": False,
                 },
             )
 
@@ -478,79 +504,142 @@ class ExplorerNode(BaseSwarmNode):
         domain = extract_domain(url) or ""
         return self.policy.domain_allowed(domain) and self.policy.url_allowed(url)
 
-    async def _fetch_and_emit(self, client: httpx.AsyncClient, url: str) -> None:
+
+    def _network_read_provenance(
+        self,
+        *,
+        url: str,
+        target_gid: str,
+        fetch_gid: str,
+        robots_allowed: Optional[bool] = None,
+        crawl_delay: Optional[float] = None,
+        policy_allowed: Optional[bool] = None,
+        policy_reason: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Build shared provenance for explorer network-read execution records."""
+        return {
+            "agent": self.node_id,
+            "target_gid": target_gid,
+            "fetch_gid": fetch_gid,
+            "url": url,
+            "normalized_url": normalize_url(url),
+            "domain": extract_domain(url),
+            "timestamp": utc_ts(),
+            "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+            "evidence_kind": EXPLORER_EVIDENCE_KIND,
+            "network_read_performed": False,
+            "external_write_performed": False,
+            "real_execution_enabled": False,
+            "production_paths_mutated": False,
+            "production_secrets_accessed": False,
+            "policy_allowed": policy_allowed,
+            "policy_reason": policy_reason,
+            "robots_respected": bool(self.policy.respect_robots),
+            "robots_allowed": robots_allowed,
+            "crawl_delay": crawl_delay,
+            "memory_ingestion_candidate": True,
+        }
+
+
+    async def _fetch_and_emit(self, client: httpx.AsyncClient, url: str) -> str:
+        """Fetch one URL and emit auditable network-read evidence genomes.
+
+        This is real network-read execution. It does not perform external writes,
+        production path mutation, secret access, subprocess execution, or real
+        financial execution.
+        """
         if self.is_paused():
-            self.logger.info("ExplorerNode %s is paused; skipping fetch for %s.", self.node_id, url)
-            return
+            self.logger.info(
+                "ExplorerNode %s is paused; skipping fetch for %s.",
+                self.node_id,
+                url,
+            )
+            return "paused"
 
         if not url:
-            return
+            return "empty_url"
+
+        normalized_url = normalize_url(url)
+        if not normalized_url or not is_valid_http_url(normalized_url):
+            return "invalid_url"
 
         self._fetches_attempted += 1
 
         target_gid = self._make_gid("exp_tgt")
         fetch_gid = self._make_gid("exp_fetch")
-        domain = extract_domain(url) or ""
+        domain = extract_domain(normalized_url) or ""
 
         allowed, reason = self.memory.can_fetch_domain(domain, self.policy)
         if not allowed:
-            self.logger.info("Skipping %s due to domain policy: %s", url, reason)
-            self._record_event_chain(
-                event_type="fetch_failed",
-                event_gid=fetch_gid,
-                source_gid=target_gid,
-                parent_gid=None,
-                url=url,
-                status=reason,
-                provenance={
-                    "agent": self.node_id,
-                    "policy_reason": reason,
-                },
+            self._fetches_policy_blocked += 1
+            self.logger.info(
+                "Skipping %s due to domain policy: %s",
+                normalized_url,
+                reason,
             )
-            return
 
-        robots_allowed, crawl_delay = await self._robots_allows(client, url)
-
-        if self.policy.respect_robots and not robots_allowed:
-            self.logger.info("robots.txt disallowed %s", url)
+            provenance = self._network_read_provenance(
+                url=normalized_url,
+                target_gid=target_gid,
+                fetch_gid=fetch_gid,
+                policy_allowed=False,
+                policy_reason=reason,
+            )
 
             self.memory.record_fetch_event(
                 event_type="fetch_failed",
                 event_gid=fetch_gid,
                 source_gid=target_gid,
                 parent_gid=None,
-                url=url,
-                status="robots_disallowed",
-                error="robots.txt disallowed",
-                provenance={
-                    "agent": self.node_id,
-                    "robots_allowed": False,
-                },
+                url=normalized_url,
+                status=reason,
+                error=reason,
+                provenance=provenance,
             )
 
-            return
+            return "policy_blocked"
 
-        provenance = {
-            "agent": self.node_id,
-            "target_gid": target_gid,
-            "url": url,
-            "timestamp": utc_ts(),
-            "robots_allowed": robots_allowed,
-            "crawl_delay": crawl_delay,
-        }
+        robots_allowed, crawl_delay = await self._robots_allows(client, normalized_url)
+
+        provenance = self._network_read_provenance(
+            url=normalized_url,
+            target_gid=target_gid,
+            fetch_gid=fetch_gid,
+            robots_allowed=robots_allowed,
+            crawl_delay=crawl_delay,
+            policy_allowed=True,
+            policy_reason="allowed",
+        )
+
+        if self.policy.respect_robots and not robots_allowed:
+            self._fetches_robots_blocked += 1
+            self.logger.info("robots.txt disallowed %s", normalized_url)
+
+            self.memory.record_fetch_event(
+                event_type="fetch_failed",
+                event_gid=fetch_gid,
+                source_gid=target_gid,
+                parent_gid=None,
+                url=normalized_url,
+                status="robots_disallowed",
+                error="robots.txt disallowed",
+                provenance=provenance,
+            )
+
+            return "robots_disallowed"
 
         self._record_event_chain(
             event_type="fetch_started",
             event_gid=fetch_gid,
             source_gid=target_gid,
             parent_gid=None,
-            url=url,
+            url=normalized_url,
             status="started",
             provenance=provenance,
         )
 
         try:
-            response = await client.get(url)
+            response = await client.get(normalized_url)
 
             http_status = response.status_code
             status = "ok" if http_status < 400 else f"http_{http_status}"
@@ -558,6 +647,16 @@ class ExplorerNode(BaseSwarmNode):
             text = response.text or ""
             content_hash = fingerprint_text(text)
             content_bytes = len(text.encode("utf-8", errors="ignore"))
+            content_preview = make_content_preview(text)
+
+            network_provenance = {
+                **provenance,
+                "network_read_performed": True,
+                "http_status": http_status,
+                "content_hash": content_hash,
+                "content_bytes": content_bytes,
+                "fetch_status": status,
+            }
 
             content_already_seen = self.memory.seen_content(content_hash)
 
@@ -565,46 +664,38 @@ class ExplorerNode(BaseSwarmNode):
                 event_type="content_extracted",
                 event_gid=fetch_gid,
                 source_gid=target_gid,
-                parent_gid=fetch_gid,
-                url=url,
+                parent_gid=None,
+                url=normalized_url,
                 status=status,
                 http_status=http_status,
                 error=None,
                 content_hash=content_hash,
                 content_bytes=content_bytes,
-                provenance=provenance,
+                provenance={
+                    **network_provenance,
+                    "content_already_seen": content_already_seen,
+                },
             )
-
-            self.memory.mark_domain_fetch(domain, self.policy)
-
-            if content_already_seen:
-                self.logger.debug("Skipping duplicate content hash for %s", url)
-                return
 
             finding: ExplorerFinding = {
                 "type": "explorer_finding",
                 "event_type": "finding_published",
                 "gid": self._make_gid("exp_find"),
                 "source_gid": target_gid,
-                "url": url,
+                "url": normalized_url,
                 "domain": domain,
-                "content_preview": make_content_preview(text),
+                "content_preview": content_preview,
                 "content_hash": content_hash,
                 "fetch_status": status,
                 "fetch_error": None,
                 "classification": "unclassified",
                 "confidence": 0.0,
-                "reason": "page fetched and preview extracted",
+                "reason": "network read completed",
                 "timestamp": utc_ts(),
                 "provenance": {
-                    "agent": self.node_id,
+                    **network_provenance,
                     "parent_gid": fetch_gid,
-                    "target_gid": target_gid,
-                    "fetch_status": status,
-                    "http_status": http_status,
-                    "content_hash": content_hash,
-                    "content_bytes": content_bytes,
-                    "robots_allowed": robots_allowed,
+                    "content_already_seen": content_already_seen,
                 },
             }
 
@@ -613,7 +704,7 @@ class ExplorerNode(BaseSwarmNode):
                 event_gid=finding["gid"],
                 source_gid=target_gid,
                 parent_gid=fetch_gid,
-                url=url,
+                url=normalized_url,
                 status=status,
                 http_status=http_status,
                 error=None,
@@ -628,38 +719,34 @@ class ExplorerNode(BaseSwarmNode):
             await self._emit_canonical_finding_event(finding)
 
             self._findings_emitted += 1
+            self._content_extracted += 1
 
-            self.logger.info("📥 Emitted finding for %s (%s)", url, status)
+            self.logger.info("📥 Emitted finding for %s (%s)", normalized_url, status)
+            return "finding_published"
 
         except Exception as exc:
             self._fetches_failed += 1
             err = str(exc)[:500]
 
+            failed_provenance = {
+                **provenance,
+                "network_read_performed": True,
+                "fetch_status": "error",
+                "error": err,
+            }
+
             self.memory.record_fetch_event(
                 event_type="fetch_failed",
                 event_gid=fetch_gid,
                 source_gid=target_gid,
-                parent_gid=fetch_gid,
-                url=url,
+                parent_gid=None,
+                url=normalized_url,
                 status="error",
                 http_status=None,
                 error=err,
                 content_hash=None,
                 content_bytes=0,
-                provenance=provenance,
-            )
-
-            self._record_event_chain(
-                event_type="fetch_failed",
-                event_gid=fetch_gid,
-                source_gid=target_gid,
-                parent_gid=None,
-                url=url,
-                status="error",
-                provenance={
-                    "agent": self.node_id,
-                    "error": err,
-                },
+                provenance=failed_provenance,
             )
 
             finding: ExplorerFinding = {
@@ -667,7 +754,7 @@ class ExplorerNode(BaseSwarmNode):
                 "event_type": "finding_published",
                 "gid": self._make_gid("exp_find"),
                 "source_gid": target_gid,
-                "url": url,
+                "url": normalized_url,
                 "domain": domain,
                 "content_preview": None,
                 "content_hash": None,
@@ -678,10 +765,8 @@ class ExplorerNode(BaseSwarmNode):
                 "reason": "fetch failed",
                 "timestamp": utc_ts(),
                 "provenance": {
-                    "agent": self.node_id,
+                    **failed_provenance,
                     "parent_gid": fetch_gid,
-                    "target_gid": target_gid,
-                    "error": err,
                 },
             }
 
@@ -692,7 +777,8 @@ class ExplorerNode(BaseSwarmNode):
 
             self._findings_emitted += 1
 
-            self.logger.warning("Fetch failed for %s: %s", url, exc)
+            self.logger.warning("Fetch failed for %s: %s", normalized_url, exc)
+            return "fetch_failed"
 
     async def _robots_allows(
         self,
@@ -773,10 +859,35 @@ class ExplorerNode(BaseSwarmNode):
                 "classification": finding.get("classification"),
                 "confidence": finding.get("confidence"),
                 "reason": finding.get("reason"),
+                "execution_risk_tier": (
+                    finding.get("provenance", {}).get("execution_risk_tier")
+                    if isinstance(finding.get("provenance"), dict)
+                    else EXPLORER_EXECUTION_RISK_TIER
+                ),
+                "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                "network_read_performed": (
+                    finding.get("provenance", {}).get("network_read_performed")
+                    if isinstance(finding.get("provenance"), dict)
+                    else False
+                ),
+                "external_write_performed": False,
+                "real_execution_enabled": False,
+                "production_paths_mutated": False,
+                "production_secrets_accessed": False,
+                "memory_ingestion_candidate": True,
             },
             provenance={
                 "agent": self.node_id,
                 "legacy_gid": finding.get("gid"),
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                "network_read_performed": (
+                    finding.get("provenance", {}).get("network_read_performed")
+                    if isinstance(finding.get("provenance"), dict)
+                    else False
+                ),
+                "external_write_performed": False,
+                "real_execution_enabled": False,
             },
         )
 

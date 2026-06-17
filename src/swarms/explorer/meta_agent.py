@@ -288,6 +288,17 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "last_classifications_published": self._last_classifications_published,
                 "last_targets_published": self._last_targets_published,
                 "last_error": self._last_error,
+                "consumes_explorer_findings": True,
+                "publishes_explorer_targets": True,
+                "coordination_channel": "crdt_genomes",
+                "input_record_types": [
+                    "explorer_finding",
+                    "swarm_event:explorer_finding",
+                ],
+                "output_record_types": [
+                    "explorer_targets",
+                    "swarm_event:explorer_targets",
+                ],
             }
         )
 
