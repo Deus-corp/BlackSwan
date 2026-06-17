@@ -1165,6 +1165,65 @@ def _trail_summary(**overrides):
         },
         "real_execution_sandbox_rendered_command_scaffold_linkage_complete": True,
         "real_execution_sandbox_rendered_command_scaffold_orphans": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_statuses": {
+            "blocked": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_fail_closed": {
+            "true": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default": {
+            "true": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_performed": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_passed": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_failed": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_materialized": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_executable": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_validated": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_execution_performed": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_external_side_effects_performed": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_paths_mutated": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_secrets_accessed": {
+            "false": 1
+        },
+        "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete": True,
+        "real_execution_sandbox_rendered_command_validation_scaffold_orphans": 0,
     }
     item.update(overrides)
     return item
@@ -2327,6 +2386,29 @@ def test_controlled_execution_readiness_report_contract_shape_from_checks() -> N
         "real_execution_sandbox_rendered_command_scaffold_external_side_effects_performed": 0,
         "real_execution_sandbox_rendered_command_scaffold_production_paths_mutated": 0,
         "real_execution_sandbox_rendered_command_scaffold_production_secrets_accessed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_observed": True,
+        "real_execution_sandbox_rendered_command_validation_scaffold_records": 1,
+        "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete": True,
+        "real_execution_sandbox_rendered_command_validation_scaffold_orphans": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_blocked": 1,
+        "real_execution_sandbox_rendered_command_validation_scaffold_fail_closed": 1,
+        "real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default": 1,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_performed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_passed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_failed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_materialized": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_executable": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validated": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_execution_performed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_external_side_effects_performed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_paths_mutated": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_secrets_accessed": 0,
         "status": "passed" if not failed_checks else "failed",
         "ready_for_mock_execution": not failed_checks,
         "ready_for_real_execution": False,
@@ -3104,6 +3186,29 @@ def test_controlled_execution_readiness_schema_validation_result_shape() -> None
         "real_execution_sandbox_rendered_command_scaffold_external_side_effects_performed": 0,
         "real_execution_sandbox_rendered_command_scaffold_production_paths_mutated": 0,
         "real_execution_sandbox_rendered_command_scaffold_production_secrets_accessed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_observed": True,
+        "real_execution_sandbox_rendered_command_validation_scaffold_records": 1,
+        "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete": True,
+        "real_execution_sandbox_rendered_command_validation_scaffold_orphans": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_blocked": 1,
+        "real_execution_sandbox_rendered_command_validation_scaffold_fail_closed": 1,
+        "real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default": 1,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_performed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_passed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_failed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_materialized": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_executable": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_validated": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_execution_performed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_external_side_effects_performed": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_paths_mutated": 0,
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_secrets_accessed": 0,
         "checks": [],
         "exit_codes": {
             "trail": 0,

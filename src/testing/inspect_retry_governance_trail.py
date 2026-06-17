@@ -64,6 +64,7 @@ TRAIL_RECORD_TYPES = {
     "replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold",
     "replay_lifecycle_retry_real_execution_sandbox_command_render_plan_scaffold",
     "replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold",
+    "replay_lifecycle_retry_real_execution_sandbox_rendered_command_validation_scaffold",
 }
 
 
@@ -384,6 +385,12 @@ def inspect_retry_governance_trail_from_records(
         for item in trail_records
         if item.get("type")
         == "replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold"
+    ]
+    real_execution_sandbox_rendered_command_validation_scaffolds = [
+        item
+        for item in trail_records
+        if item.get("type")
+        == "replay_lifecycle_retry_real_execution_sandbox_rendered_command_validation_scaffold"
     ]
 
     approval_statuses = Counter(_clean_status(item.get("status")) for item in approvals)
@@ -3353,6 +3360,122 @@ def inspect_retry_governance_trail_from_records(
     real_execution_sandbox_rendered_command_scaffold_production_secrets_accessed = (
         _sandbox_rendered_command_scaffold_bool_counter("production_secrets_accessed")
     )
+    real_execution_sandbox_rendered_command_validation_scaffold_statuses = Counter(
+        str(
+            item.get("sandbox_rendered_command_validation_scaffold_status")
+            or "unknown"
+        ).strip()
+        or "unknown"
+        for item in real_execution_sandbox_rendered_command_validation_scaffolds
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_schema_versions = Counter(
+        str(item.get("schema_version") or "unknown").strip() or "unknown"
+        for item in real_execution_sandbox_rendered_command_validation_scaffolds
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_next_actions = Counter(
+        str(item.get("recommended_next_action") or "unknown").strip()
+        or "unknown"
+        for item in real_execution_sandbox_rendered_command_validation_scaffolds
+    )
+
+    def _sandbox_rendered_command_validation_scaffold_bool_counter(
+        key: str,
+    ) -> Counter[str]:
+        return Counter(
+            str(bool(item.get(key))).lower()
+            for item in real_execution_sandbox_rendered_command_validation_scaffolds
+        )
+
+    real_execution_sandbox_rendered_command_validation_scaffold_fail_closed = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_validation_scaffold_fail_closed"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_validation_scaffold_deny_by_default"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_validation_enabled"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_validation_performed = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_validation_performed"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_validation_passed = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_validation_passed"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_validation_failed = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_validation_failed"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_generation_enabled"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_materialized = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_materialized"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_executable = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_executable"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_validated = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_rendered_command_validated"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_execution_enabled"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "sandbox_result_generation_enabled"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_execution_performed = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "execution_performed"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "subprocess_invoked"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "real_execution_enabled"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_external_side_effects_performed = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "external_side_effects_performed"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_production_paths_mutated = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "production_paths_mutated"
+        )
+    )
+    real_execution_sandbox_rendered_command_validation_scaffold_production_secrets_accessed = (
+        _sandbox_rendered_command_validation_scaffold_bool_counter(
+            "production_secrets_accessed"
+        )
+    )
 
     chain_ids = _build_chain_ids(
         proposals=proposals,
@@ -3419,6 +3542,9 @@ def inspect_retry_governance_trail_from_records(
         ),
         real_execution_sandbox_rendered_command_scaffolds=(
             real_execution_sandbox_rendered_command_scaffolds
+        ),
+        real_execution_sandbox_rendered_command_validation_scaffolds=(
+            real_execution_sandbox_rendered_command_validation_scaffolds
         ),
         results=results,
     )
@@ -3696,6 +3822,17 @@ def inspect_retry_governance_trail_from_records(
         )
     )
 
+    real_execution_sandbox_rendered_command_validation_scaffold_linkage = (
+        _real_execution_sandbox_rendered_command_validation_scaffold_linkage_summary(
+            real_execution_sandbox_rendered_command_scaffolds=(
+                real_execution_sandbox_rendered_command_scaffolds
+            ),
+            real_execution_sandbox_rendered_command_validation_scaffolds=(
+                real_execution_sandbox_rendered_command_validation_scaffolds
+            ),
+        )
+    )
+
     return {
         "type": "retry_governance_trail_summary",
         "total_records": len(trail_records),
@@ -3776,6 +3913,9 @@ def inspect_retry_governance_trail_from_records(
             ),
             "real_execution_sandbox_rendered_command_scaffolds": len(
                 real_execution_sandbox_rendered_command_scaffolds
+            ),
+            "real_execution_sandbox_rendered_command_validation_scaffolds": len(
+                real_execution_sandbox_rendered_command_validation_scaffolds
             ),
             "results": len(results),
         },
@@ -6331,6 +6471,89 @@ def inspect_retry_governance_trail_from_records(
                 0,
             )
         ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_statuses": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_statuses
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_schema_versions": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_schema_versions
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_next_actions": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_next_actions
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_fail_closed": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_fail_closed
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_performed": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_validation_performed
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_passed": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_validation_passed
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_failed": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_validation_failed
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_materialized": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_materialized
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_executable": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_executable
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validated": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_validated
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_execution_performed": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_execution_performed
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_external_side_effects_performed": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_external_side_effects_performed
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_paths_mutated": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_production_paths_mutated
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_secrets_accessed": dict(
+            real_execution_sandbox_rendered_command_validation_scaffold_production_secrets_accessed
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_linkage": (
+            real_execution_sandbox_rendered_command_validation_scaffold_linkage
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete": bool(
+            real_execution_sandbox_rendered_command_validation_scaffold_linkage.get(
+                "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete"
+            )
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_rendered_command_matches": (
+            real_execution_sandbox_rendered_command_validation_scaffold_linkage.get(
+                "real_execution_sandbox_rendered_command_validation_scaffold_rendered_command_matches",
+                0,
+            )
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_orphans": (
+            real_execution_sandbox_rendered_command_validation_scaffold_linkage.get(
+                "real_execution_sandbox_rendered_command_validation_scaffold_orphans",
+                0,
+            )
+        ),
     }
 
 def _missing_stages(
@@ -6526,6 +6749,9 @@ def _build_chain_ids(
     ],
     real_execution_sandbox_command_render_plan_scaffolds: list[Mapping[str, Any]],
     real_execution_sandbox_rendered_command_scaffolds: list[Mapping[str, Any]],
+    real_execution_sandbox_rendered_command_validation_scaffolds: list[
+        Mapping[str, Any]
+    ],
     results: list[Mapping[str, Any]],
 ) -> dict[str, list[str]]:
     all_records = (
@@ -6574,6 +6800,7 @@ def _build_chain_ids(
         + real_execution_sandbox_input_materialization_plan_scaffolds
         + real_execution_sandbox_command_render_plan_scaffolds
         + real_execution_sandbox_rendered_command_scaffolds
+        + real_execution_sandbox_rendered_command_validation_scaffolds
         + results
     )
 
@@ -6632,6 +6859,7 @@ def _build_chain_ids(
                 + real_execution_sandbox_input_materialization_plan_scaffolds
                 + real_execution_sandbox_command_render_plan_scaffolds
                 + real_execution_sandbox_rendered_command_scaffolds
+                + real_execution_sandbox_rendered_command_validation_scaffolds
                 + results
                if str(item.get("approval_id") or "").strip()
             }
@@ -6682,6 +6910,7 @@ def _build_chain_ids(
                 + real_execution_sandbox_input_materialization_plan_scaffolds
                 + real_execution_sandbox_command_render_plan_scaffolds
                 + real_execution_sandbox_rendered_command_scaffolds
+                + real_execution_sandbox_rendered_command_validation_scaffolds
                 + results
                 if str(item.get("plan_id") or "").strip()
             }
@@ -6732,6 +6961,7 @@ def _build_chain_ids(
                     + real_execution_sandbox_input_materialization_plan_scaffolds 
                     + real_execution_sandbox_command_render_plan_scaffolds
                     + real_execution_sandbox_rendered_command_scaffolds
+                    + real_execution_sandbox_rendered_command_validation_scaffolds
                     + results
                 )
                 if str(item.get("rendered_command_id") or "").strip()
@@ -7141,6 +7371,23 @@ def _build_chain_ids(
                 for item in real_execution_sandbox_rendered_command_scaffolds
                 if str(
                     item.get("real_execution_sandbox_rendered_command_scaffold_id")
+                    or ""
+                ).strip()
+            }
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_ids": sorted(
+            {
+                str(
+                    item.get(
+                        "real_execution_sandbox_rendered_command_validation_scaffold_id"
+                    )
+                    or ""
+                ).strip()
+                for item in real_execution_sandbox_rendered_command_validation_scaffolds
+                if str(
+                    item.get(
+                        "real_execution_sandbox_rendered_command_validation_scaffold_id"
+                    )
                     or ""
                 ).strip()
             }
@@ -8778,6 +9025,48 @@ def _real_execution_sandbox_rendered_command_scaffold_linkage_summary(
             real_execution_sandbox_rendered_command_scaffolds
         )
         and rendered_command_orphans == 0,
+    }
+
+
+def _real_execution_sandbox_rendered_command_validation_scaffold_linkage_summary(
+    *,
+    real_execution_sandbox_rendered_command_scaffolds: list[Mapping[str, Any]],
+    real_execution_sandbox_rendered_command_validation_scaffolds: list[
+        Mapping[str, Any]
+    ],
+) -> dict[str, Any]:
+    def clean(value: Any) -> str:
+        return str(value or "").strip()
+
+    rendered_command_scaffold_ids = {
+        clean(item.get("real_execution_sandbox_rendered_command_scaffold_id"))
+        for item in real_execution_sandbox_rendered_command_scaffolds
+        if clean(item.get("real_execution_sandbox_rendered_command_scaffold_id"))
+    }
+
+    validation_rendered_command_matches = 0
+    validation_orphans = 0
+
+    for validation in real_execution_sandbox_rendered_command_validation_scaffolds:
+        rendered_scaffold_id = clean(
+            validation.get("real_execution_sandbox_rendered_command_scaffold_id")
+        )
+        if rendered_scaffold_id and rendered_scaffold_id in rendered_command_scaffold_ids:
+            validation_rendered_command_matches += 1
+        else:
+            validation_orphans += 1
+
+    return {
+        "real_execution_sandbox_rendered_command_validation_scaffold_rendered_command_matches": (
+            validation_rendered_command_matches
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_orphans": (
+            validation_orphans
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete": bool(
+            real_execution_sandbox_rendered_command_validation_scaffolds
+        )
+        and validation_orphans == 0,
     }
 
 
