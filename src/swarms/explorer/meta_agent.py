@@ -69,6 +69,21 @@ MEMORY_EVIDENCE_RECORD_KIND = "explorer_useful_evidence"
 MEMORY_EVIDENCE_SCHEMA_VERSION = "1.0"
 MIN_MEMORY_HANDOFF_CONFIDENCE = 0.50
 
+MIN_MEMORY_HANDOFF_SOURCE_SCORE = 0.65
+MIN_MEMORY_HANDOFF_RELEVANCE_SCORE = 0.60
+MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS = 80
+
+PLACEHOLDER_MEMORY_HANDOFF_DOMAINS = frozenset(
+    {
+        "example.com",
+        "example.org",
+        "example.net",
+        "localhost",
+        "127.0.0.1",
+        "0.0.0.0",
+    }
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ExplorerMetaSnapshot:
@@ -663,12 +678,45 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             is_successful_fetch = fetch_status in {"ok", "http_200", "200"}
             has_network_evidence = bool(url) and bool(content_hash)
 
-            classification = "USEFUL" if is_successful_fetch and has_network_evidence else "NEUTRAL"
+            preview = str(base.get("content_preview") or "").strip()
+            base_provenance = (
+                base.get("provenance")
+                if isinstance(base.get("provenance"), dict)
+                else {}
+            )
+            source_score = self._safe_float(
+                base_provenance.get("source_score")
+                or base_provenance.get("quality_score"),
+                default=0.0,
+            )
+            relevance_score = self._safe_float(
+                base_provenance.get("system_relevance_score"),
+                default=0.0,
+            )
+            domain = str(base.get("domain") or self._domain_from_url(str(url or ""))).lower()
+
+            is_placeholder = domain in PLACEHOLDER_MEMORY_HANDOFF_DOMAINS
+            has_meaningful_preview = (
+                len(preview) >= MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS
+            )
+            has_quality = source_score >= MIN_MEMORY_HANDOFF_SOURCE_SCORE
+            has_relevance = relevance_score >= MIN_MEMORY_HANDOFF_RELEVANCE_SCORE
+
+            is_useful = (
+                is_successful_fetch
+                and has_network_evidence
+                and has_meaningful_preview
+                and has_quality
+                and has_relevance
+                and not is_placeholder
+            )
+
+            classification = "USEFUL" if is_useful else "NEUTRAL"
             confidence = 0.55 if classification == "USEFUL" else 0.35
             reason = (
-                "deterministic fallback: successful network_read evidence"
+                "deterministic fallback: quality-gated useful network_read evidence"
                 if classification == "USEFUL"
-                else "deterministic fallback: insufficient useful network_read evidence"
+                else "deterministic fallback: insufficient quality for memory handoff"
             )
 
             event_gid = self._make_gid("exp_cls")
@@ -1163,6 +1211,18 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             return False
         if confidence < MIN_MEMORY_HANDOFF_CONFIDENCE:
             return False
+        
+        quality_passed, quality_reasons, quality_metrics = (
+            self._memory_handoff_quality_gate(finding)
+        )
+
+        if not quality_passed:
+            self.logger.info(
+                "Skipping memory evidence handoff for %s: %s",
+                finding.get("url"),
+                ", ".join(quality_reasons),
+            )
+            return False
 
         provenance = (
             finding.get("provenance")
@@ -1179,6 +1239,18 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             self._record_exploration_run_id(finding)
             or str(self.active_exploration_run_id or "").strip()
         )
+
+        memory_evidence_identity = self._memory_evidence_identity(
+            finding,
+            exploration_run_id=exploration_run_id,
+        )
+
+        if self._memory_evidence_already_published(memory_evidence_identity):
+            self.logger.info(
+                "Skipping duplicate memory evidence handoff for %s",
+                memory_evidence_identity,
+            )
+            return False
 
         memory_gid = self._make_gid("mem_ev")
 
@@ -1198,6 +1270,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             "research_goal_id": exploration_run_id,
             "memory_ingestion_candidate": True,
             "status": "candidate",
+            "memory_evidence_identity": memory_evidence_identity,
+            "handoff_quality_gate_passed": True,
+            "handoff_quality_reasons": quality_reasons,
+            "handoff_quality_metrics": quality_metrics,
             "subject": {
                 "type": "web_source",
                 "url": url,
@@ -1224,6 +1300,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "system_relevance_score": provenance.get("system_relevance_score"),
                 "quality_score": provenance.get("quality_score"),
                 "source_score": provenance.get("source_score"),
+                "memory_evidence_identity": memory_evidence_identity,
+                "handoff_quality_gate_passed": True,
+                "handoff_quality_reasons": quality_reasons,
+                "handoff_quality_metrics": quality_metrics,
             },
             "payload": {
                 "url": url,
@@ -1237,6 +1317,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "exploration_run_id": exploration_run_id,
                 "research_goal_id": exploration_run_id,
                 "memory_ingestion_candidate": True,
+                "memory_evidence_identity": memory_evidence_identity,
+                "handoff_quality_gate_passed": True,
+                "handoff_quality_reasons": quality_reasons,
+                "handoff_quality_metrics": quality_metrics,
             },
             "provenance": {
                 **provenance,
@@ -1256,6 +1340,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "real_execution_enabled": False,
                 "production_paths_mutated": False,
                 "production_secrets_accessed": False,
+                "memory_evidence_identity": memory_evidence_identity,
+                "handoff_quality_gate_passed": True,
+                "handoff_quality_reasons": quality_reasons,
+                "handoff_quality_metrics": quality_metrics,
             },
         }
 
@@ -1281,6 +1369,150 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             confidence,
         )
         return True
+    
+    def _memory_handoff_quality_gate(
+        self,
+        finding: ExplorerFinding,
+    ) -> tuple[bool, list[str], dict[str, Any]]:
+        """Check whether classified Explorer evidence is useful enough for Memory."""
+        reasons: list[str] = []
+
+        provenance = (
+            finding.get("provenance")
+            if isinstance(finding.get("provenance"), dict)
+            else {}
+        )
+
+        url = str(finding.get("url") or "").strip()
+        domain = str(finding.get("domain") or self._domain_from_url(url) or "").lower()
+        fetch_status = str(finding.get("fetch_status") or "").strip().lower()
+        content_hash = str(finding.get("content_hash") or "").strip()
+        content_preview = str(finding.get("content_preview") or "").strip()
+
+        source_score = self._safe_float(
+            provenance.get("source_score")
+            or provenance.get("quality_score"),
+            default=0.0,
+        )
+        system_relevance_score = self._safe_float(
+            provenance.get("system_relevance_score"),
+            default=0.0,
+        )
+        authority_score = self._safe_float(
+            provenance.get("authority_score"),
+            default=0.0,
+        )
+        freshness_score = self._safe_float(
+            provenance.get("freshness_score"),
+            default=0.0,
+        )
+
+        metrics = {
+            "fetch_status": fetch_status,
+            "content_hash_present": bool(content_hash),
+            "content_preview_chars": len(content_preview),
+            "source_score": source_score,
+            "quality_score": self._safe_float(
+                provenance.get("quality_score"),
+                default=source_score,
+            ),
+            "authority_score": authority_score,
+            "freshness_score": freshness_score,
+            "system_relevance_score": system_relevance_score,
+            "domain": domain,
+            "placeholder_domain": domain in PLACEHOLDER_MEMORY_HANDOFF_DOMAINS,
+        }
+
+        if fetch_status != "ok":
+            reasons.append("fetch_status_not_ok")
+        if not content_hash:
+            reasons.append("missing_content_hash")
+        if len(content_preview) < MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS:
+            reasons.append("content_preview_too_short")
+        if source_score < MIN_MEMORY_HANDOFF_SOURCE_SCORE:
+            reasons.append("source_score_below_threshold")
+        if system_relevance_score < MIN_MEMORY_HANDOFF_RELEVANCE_SCORE:
+            reasons.append("system_relevance_below_threshold")
+        if domain in PLACEHOLDER_MEMORY_HANDOFF_DOMAINS:
+            reasons.append("placeholder_domain")
+        if not url:
+            reasons.append("missing_url")
+
+        return not reasons, reasons, metrics
+
+    def _memory_evidence_identity(
+        self,
+        finding: Mapping[str, Any],
+        *,
+        exploration_run_id: str,
+    ) -> str:
+        """Stable dedupe key for Explorer -> Memory evidence handoff."""
+        url = str(finding.get("url") or "").strip()
+        content_hash = str(finding.get("content_hash") or "").strip()
+        run_id = str(exploration_run_id or "").strip()
+
+        return "|".join(
+            [
+                MEMORY_EVIDENCE_RECORD_KIND,
+                run_id or "no_run",
+                url or "no_url",
+                content_hash or "no_content_hash",
+            ]
+        )
+
+    def _memory_evidence_already_published(self, identity: str) -> bool:
+        """Return whether this memory evidence identity already exists in CRDT."""
+        clean_identity = str(identity or "").strip()
+        if not clean_identity:
+            return False
+
+        state = getattr(self.crdt, "state", {}) or {}
+
+        for value in state.values():
+            if not isinstance(value, Mapping):
+                continue
+            if value.get("type") != MEMORY_RECORD_TYPE:
+                continue
+            if value.get("record_kind") != MEMORY_EVIDENCE_RECORD_KIND:
+                continue
+
+            payload = value.get("payload") if isinstance(value.get("payload"), Mapping) else {}
+            existing_identity = str(
+                value.get("memory_evidence_identity")
+                or payload.get("memory_evidence_identity")
+                or ""
+            ).strip()
+
+            if existing_identity == clean_identity:
+                return True
+
+        records = getattr(self.crdt, "records", []) or []
+        for value in records:
+            if not isinstance(value, Mapping):
+                continue
+            if value.get("type") != MEMORY_RECORD_TYPE:
+                continue
+            if value.get("record_kind") != MEMORY_EVIDENCE_RECORD_KIND:
+                continue
+
+            payload = value.get("payload") if isinstance(value.get("payload"), Mapping) else {}
+            existing_identity = str(
+                value.get("memory_evidence_identity")
+                or payload.get("memory_evidence_identity")
+                or ""
+            ).strip()
+
+            if existing_identity == clean_identity:
+                return True
+
+        return False
+
+    @staticmethod
+    def _domain_from_url(url: str) -> str:
+        try:
+            return urlparse(str(url or "")).netloc.lower().split("@")[-1].split(":")[0]
+        except Exception:
+            return ""
 
     @staticmethod
     def _safe_float(value: Any, default: float = 0.0) -> float:

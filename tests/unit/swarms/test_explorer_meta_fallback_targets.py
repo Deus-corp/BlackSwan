@@ -40,10 +40,14 @@ def test_explorer_meta_agent_fallback_classifies_and_publishes_targets(
     finding = {
         "type": "explorer_finding",
         "source_gid": "source-1",
-        "url": "https://example.com/path/page.html",
-        "domain": "example.com",
-        "content_preview": "Useful explorer evidence",
-        "content_hash": "hash-1",
+        "url": "https://docs.python.org/3/library/asyncio.html",
+        "domain": "docs.python.org",
+        "content_preview": (
+            "asyncio documentation for Python async runtime, autonomous agents, "
+            "orchestration, memory systems, network clients, and useful system "
+            "improvement evidence with enough meaningful content."
+        ),
+        "content_hash": "hash-asyncio",
         "fetch_status": "ok",
         "fetch_error": None,
         "classification": "unclassified",
@@ -53,10 +57,20 @@ def test_explorer_meta_agent_fallback_classifies_and_publishes_targets(
         "gid": "finding-1",
         "event_type": "finding_published",
         "provenance": {
+            "exploration_run_id": "run-fallback-targets",
+            "research_goal_id": "run-fallback-targets",
             "execution_risk_tier": "network_read",
             "network_read_performed": True,
             "external_write_performed": False,
             "real_execution_enabled": False,
+            "source_adapter": "sitemap",
+            "source_kind": "sitemap_xml",
+            "discovery_method": "sitemap_candidate",
+            "authority_score": 0.96,
+            "freshness_score": 0.5,
+            "system_relevance_score": 0.90,
+            "quality_score": 0.85,
+            "source_score": 0.85,
         },
     }
 

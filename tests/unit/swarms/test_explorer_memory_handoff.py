@@ -43,7 +43,11 @@ def test_explorer_meta_agent_publishes_memory_record_for_useful_finding(
         "source_gid": "source-1",
         "url": "https://docs.python.org/3/library/asyncio.html",
         "domain": "docs.python.org",
-        "content_preview": "asyncio documentation for Python async runtime",
+        "content_preview": (
+            "asyncio documentation for Python async runtime, autonomous agents, "
+            "orchestration, memory systems, network clients, and useful system "
+            "improvement evidence with enough meaningful content."
+        ),
         "content_hash": "hash-asyncio",
         "fetch_status": "ok",
         "fetch_error": None,
