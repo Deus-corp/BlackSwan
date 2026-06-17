@@ -3249,6 +3249,186 @@ def build_global_swarm_brief(
             )
         )
     )
+    security_sandbox_rendered_command_validation_scaffold_statuses = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_statuses"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_fail_closed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_fail_closed"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_deny_by_default = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_validation_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_validation_performed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validation_performed"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_validation_passed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validation_passed"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_validation_failed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validation_failed"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_generation_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_materialized = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_materialized"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_executable = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_executable"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_validated = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validated"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_result_generation_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_execution_performed = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_execution_performed"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_subprocess_invoked = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked"
+        )
+    )
+    security_sandbox_rendered_command_validation_scaffold_real_execution_enabled = _safe_dict(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled"
+        )
+    )
+
+    security_real_execution_sandbox_rendered_command_validation_scaffolds = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_statuses.get("blocked"),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_fail_closed = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_fail_closed.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_deny_by_default.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_validation_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validation_performed = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_validation_performed.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validation_passed = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_validation_passed.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validation_failed = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_validation_failed.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_generation_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_materialized = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_materialized.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_executable = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_executable.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validated = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_validated.get("true"),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_result_generation_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_execution_performed = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_execution_performed.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_subprocess_invoked.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled = _safe_int(
+        security_sandbox_rendered_command_validation_scaffold_real_execution_enabled.get(
+            "true"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_orphans = _safe_int(
+        security_validation.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_orphans"
+        ),
+        0,
+    )
+    security_real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete = int(
+        bool(
+            security_validation.get(
+                "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete"
+            )
+        )
+    )
     security_real_adapter_supported = bool(
         security_validation.get("security_real_adapter_supported", False)
     )
@@ -5146,6 +5326,68 @@ def build_global_swarm_brief(
                 },
             )
         )
+    
+    if security_real_execution_sandbox_rendered_command_validation_scaffolds > 0:
+        opportunities.append(
+            build_brief_item(
+                title="Sandbox rendered command validation scaffold observed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Sandbox rendered command validation scaffold observed: "
+                    f"blocked={security_real_execution_sandbox_rendered_command_validation_scaffolds}, "
+                    f"fail_closed={security_real_execution_sandbox_rendered_command_validation_scaffold_fail_closed}, "
+                    f"deny_by_default={security_real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default}, "
+                    f"linkage_complete={security_real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete}, "
+                    f"orphans={security_real_execution_sandbox_rendered_command_validation_scaffold_orphans}, "
+                    f"validation_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled}, "
+                    f"validation_performed={security_real_execution_sandbox_rendered_command_validation_scaffold_validation_performed}, "
+                    f"validation_passed={security_real_execution_sandbox_rendered_command_validation_scaffold_validation_passed}, "
+                    f"validation_failed={security_real_execution_sandbox_rendered_command_validation_scaffold_validation_failed}, "
+                    f"generation_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled}, "
+                    f"materialized={security_real_execution_sandbox_rendered_command_validation_scaffold_materialized}, "
+                    f"executable={security_real_execution_sandbox_rendered_command_validation_scaffold_executable}, "
+                    f"validated={security_real_execution_sandbox_rendered_command_validation_scaffold_validated}, "
+                    f"sandbox_execution_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled}, "
+                    f"result_generation_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled}, "
+                    f"execution_performed={security_real_execution_sandbox_rendered_command_validation_scaffold_execution_performed}, "
+                    f"subprocess_invoked={security_real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked}, "
+                    f"real_execution_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled}."
+                ),
+                payload={
+                    "security_real_execution_sandbox_rendered_command_validation_scaffolds": (
+                        security_real_execution_sandbox_rendered_command_validation_scaffolds
+                    ),
+                    "recommendation": (
+                        "keep_sandbox_rendered_command_validation_fail_closed_until_execution_gate_pr"
+                    ),
+                },
+            )
+        )
+        recommended_actions.append(
+            build_brief_item(
+                title="Keep sandbox rendered command validation scaffold fail-closed",
+                severity=BriefSeverity.INFO.value,
+                detail=(
+                    "Use the sandbox rendered command validation scaffold "
+                    "observability check before introducing sandbox execution gate "
+                    "scaffolding. Do not validate rendered commands, mark rendered "
+                    "commands executable, execute sandbox commands, invoke "
+                    "subprocesses, or enable real execution."
+                ),
+                payload={
+                    "recommendation": (
+                        "run_sandbox_rendered_command_validation_scaffold_observability_check"
+                    ),
+                    "target_swarm": "security",
+                    "validation_enabled": False,
+                    "validation_performed": False,
+                    "rendered_command_executable": False,
+                    "sandbox_execution_enabled": False,
+                    "subprocess_enabled": False,
+                    "real_execution_enabled": False,
+                },
+            )
+        )
 
     if simulation_replay_failed > 0:
         risks.append(
@@ -6102,6 +6344,60 @@ def build_global_swarm_brief(
         "security_real_execution_sandbox_rendered_command_scaffold_linkage_complete": (
             security_real_execution_sandbox_rendered_command_scaffold_linkage_complete
         ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffolds": (
+            security_real_execution_sandbox_rendered_command_validation_scaffolds
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_fail_closed": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_fail_closed
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_validation_performed": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validation_performed
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_validation_passed": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validation_passed
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_validation_failed": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validation_failed
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_materialized": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_materialized
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_executable": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_executable
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_validated": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validated
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_execution_performed": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_execution_performed
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_orphans": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_orphans
+        ),
+        "security_real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete": (
+            security_real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete
+        ),
     }
 
     summary = _build_summary(
@@ -6932,6 +7228,60 @@ def build_global_swarm_brief(
         security_real_execution_sandbox_rendered_command_scaffold_real_execution_enabled=(
             security_real_execution_sandbox_rendered_command_scaffold_real_execution_enabled
         ),
+        security_real_execution_sandbox_rendered_command_validation_scaffolds=(
+            security_real_execution_sandbox_rendered_command_validation_scaffolds
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_fail_closed=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_fail_closed
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_orphans=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_orphans
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_validation_performed=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validation_performed
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_validation_passed=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validation_passed
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_validation_failed=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validation_failed
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_materialized=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_materialized
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_executable=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_executable
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_validated=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_validated
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_execution_performed=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_execution_performed
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked
+        ),
+        security_real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled=(
+            security_real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled
+        ),
     )
 
     return build_swarm_brief(
@@ -7277,6 +7627,24 @@ def _build_summary(
     security_real_execution_sandbox_rendered_command_scaffold_execution_performed: int,
     security_real_execution_sandbox_rendered_command_scaffold_subprocess_invoked: int,
     security_real_execution_sandbox_rendered_command_scaffold_real_execution_enabled: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffolds: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_fail_closed: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_orphans: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validation_performed: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validation_passed: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validation_failed: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_materialized: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_executable: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_validated: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_execution_performed: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked: int,
+    security_real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled: int,
 ) -> str:
     active = ", ".join(f"{name}={count}" for name, count in sorted(swarm_counts.items())) or "none"
 
@@ -7865,6 +8233,29 @@ def _build_summary(
             f"execution_performed={security_real_execution_sandbox_rendered_command_scaffold_execution_performed}, "
             f"subprocess_invoked={security_real_execution_sandbox_rendered_command_scaffold_subprocess_invoked}, "
             f"real_execution_enabled={security_real_execution_sandbox_rendered_command_scaffold_real_execution_enabled}."
+        )
+    
+    if security_real_execution_sandbox_rendered_command_validation_scaffolds > 0:
+        parts.append(
+            "Sandbox rendered command validation scaffold observed: "
+            f"blocked={security_real_execution_sandbox_rendered_command_validation_scaffolds}, "
+            f"fail_closed={security_real_execution_sandbox_rendered_command_validation_scaffold_fail_closed}, "
+            f"deny_by_default={security_real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default}, "
+            f"linkage_complete={security_real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete}, "
+            f"orphans={security_real_execution_sandbox_rendered_command_validation_scaffold_orphans}, "
+            f"validation_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled}, "
+            f"validation_performed={security_real_execution_sandbox_rendered_command_validation_scaffold_validation_performed}, "
+            f"validation_passed={security_real_execution_sandbox_rendered_command_validation_scaffold_validation_passed}, "
+            f"validation_failed={security_real_execution_sandbox_rendered_command_validation_scaffold_validation_failed}, "
+            f"generation_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled}, "
+            f"materialized={security_real_execution_sandbox_rendered_command_validation_scaffold_materialized}, "
+            f"executable={security_real_execution_sandbox_rendered_command_validation_scaffold_executable}, "
+            f"validated={security_real_execution_sandbox_rendered_command_validation_scaffold_validated}, "
+            f"sandbox_execution_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled}, "
+            f"result_generation_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled}, "
+            f"execution_performed={security_real_execution_sandbox_rendered_command_validation_scaffold_execution_performed}, "
+            f"subprocess_invoked={security_real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked}, "
+            f"real_execution_enabled={security_real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled}."
         )
 
     blocked_execution_disabled = _safe_int(

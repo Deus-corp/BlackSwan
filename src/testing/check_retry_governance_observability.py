@@ -976,6 +976,90 @@ def check_retry_governance_observability_from_records(
             "real_execution_sandbox_rendered_command_scaffold_linkage_complete",
             False,
         ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_statuses": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_statuses",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_fail_closed": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_fail_closed",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_deny_by_default",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_performed": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validation_performed",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_passed": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validation_passed",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validation_failed": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validation_failed",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_generation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_materialized": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_materialized",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_executable": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_executable",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_validated": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_validated",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_result_generation_enabled",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_execution_performed": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_execution_performed",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_subprocess_invoked",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_real_execution_enabled",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_external_side_effects_performed": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_external_side_effects_performed",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_paths_mutated": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_production_paths_mutated",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_production_secrets_accessed": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_production_secrets_accessed",
+            {},
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_orphans": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_orphans",
+            0,
+        ),
+        "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete": trail_summary.get(
+            "real_execution_sandbox_rendered_command_validation_scaffold_linkage_complete",
+            False,
+        ),
     }
 
     brief = build_global_swarm_brief(

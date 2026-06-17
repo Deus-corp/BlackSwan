@@ -1398,6 +1398,45 @@ This PR does not validate rendered commands, mark rendered commands executable,
 generate rendered commands, materialize rendered commands, sandbox execution,
 subprocesses, or real execution.
 
+## Acceptance criteria for PR 38.14c
+
+PR 38.14c surfaces sandbox rendered command validation scaffold observability
+through a dedicated read-only check and Overseer brief metrics.
+
+The concrete helper is:
+
+```text
+src.testing.check_sandbox_rendered_command_validation_scaffold_observability
+```
+It must verify:
+```text
+sandbox_rendered_command_validation_scaffold_observed=true
+sandbox_rendered_command_validation_scaffold_linkage_complete=true
+sandbox_rendered_command_validation_scaffold_orphans=0
+sandbox_rendered_command_validation_scaffold_blocked=1
+sandbox_rendered_command_validation_scaffold_fail_closed=1
+sandbox_rendered_command_validation_scaffold_deny_by_default=1
+sandbox_rendered_command_validation_scaffold_validation_enabled=0
+sandbox_rendered_command_validation_scaffold_validation_performed=0
+sandbox_rendered_command_validation_scaffold_validation_passed=0
+sandbox_rendered_command_validation_scaffold_validation_failed=0
+sandbox_rendered_command_validation_scaffold_generation_enabled=0
+sandbox_rendered_command_validation_scaffold_materialized=0
+sandbox_rendered_command_validation_scaffold_executable=0
+sandbox_rendered_command_validation_scaffold_validated=0
+sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled=0
+sandbox_rendered_command_validation_scaffold_result_generation_enabled=0
+sandbox_rendered_command_validation_scaffold_execution_performed=0
+sandbox_rendered_command_validation_scaffold_subprocess_invoked=0
+sandbox_rendered_command_validation_scaffold_real_execution_enabled=0
+```
+The Overseer brief must surface the same fail-closed validation scaffold state
+through security_real_execution_sandbox_rendered_command_validation_* key
+metrics.
+
+This PR remains read-only and does not validate rendered commands, mark rendered
+commands executable, sandbox execution, subprocesses, or real execution.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.

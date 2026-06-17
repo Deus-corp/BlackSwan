@@ -2820,6 +2820,51 @@ python -m src.testing.build_real_execution_sandbox_rendered_command_validation_s
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
+
+---
+
+### Sandbox rendered command validation scaffold observability check
+
+`src.testing.check_sandbox_rendered_command_validation_scaffold_observability`
+is a read-only helper that verifies fail-closed sandbox rendered command
+validation scaffold visibility through Security, Inspector, Readiness-style
+gates, and Overseer brief metrics.
+
+The check requires:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_rendered_command_validation_scaffold observed
+Security record type count > 0
+Inspector rendered command validation scaffold linkage complete
+sandbox rendered command validation scaffold orphans = 0
+sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_generation_enabled=false
+sandbox_rendered_command_materialized=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+```
+Runtime command:
+```text
+python -m src.testing.check_sandbox_rendered_command_validation_scaffold_observability \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+This check does not validate rendered commands, mark rendered commands executable,
+execute sandbox commands, invoke subprocesses, or enable real execution.
+
 ---
 
 ## Related modules
