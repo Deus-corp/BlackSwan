@@ -8,6 +8,7 @@ EventType = Literal[
     "fetch_failed",
     "content_extracted",
     "finding_published",
+    "targets_discovered",
 ]
 
 

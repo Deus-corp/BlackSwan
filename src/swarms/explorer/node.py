@@ -23,7 +23,8 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
-from urllib.parse import urlparse
+from html.parser import HTMLParser
+from urllib.parse import urldefrag, urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 
 import httpx
@@ -60,8 +61,69 @@ DEFAULT_TICK_INTERVAL_SECONDS: float = 2.0
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS: float = 40.0
 DEFAULT_BATCH_LIMIT: int = 10
 COMMAND_DEDUP_WINDOW_SECONDS: float = 5.0
+DEFAULT_DISCOVERED_TARGET_LIMIT: int = 12
+DEFAULT_MAX_TARGET_DEPTH: int = 2
+
 EXPLORER_EXECUTION_RISK_TIER = "network_read"
+EXPLORER_COORDINATION_CHANNEL = "crdt_genomes"
 EXPLORER_EVIDENCE_KIND = "web_fetch"
+
+SKIPPED_URL_EXTENSIONS = (
+    ".7z",
+    ".avi",
+    ".bin",
+    ".bmp",
+    ".css",
+    ".dmg",
+    ".doc",
+    ".docx",
+    ".exe",
+    ".gif",
+    ".gz",
+    ".ico",
+    ".iso",
+    ".jpeg",
+    ".jpg",
+    ".js",
+    ".m4a",
+    ".mkv",
+    ".mov",
+    ".mp3",
+    ".mp4",
+    ".pdf",
+    ".png",
+    ".ppt",
+    ".pptx",
+    ".rar",
+    ".svg",
+    ".tar",
+    ".webp",
+    ".xls",
+    ".xlsx",
+    ".zip",
+)
+
+
+class _HTMLLinkExtractor(HTMLParser):
+    """Tiny stdlib HTML link extractor for explorer frontier expansion."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.hrefs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() not in {"a", "area", "link"}:
+            return
+
+        attrs_map = {
+            str(key or "").lower(): str(value or "")
+            for key, value in attrs
+            if key
+        }
+        href = attrs_map.get("href", "").strip()
+
+        if href:
+            self.hrefs.append(href)
 
 
 class ExplorerNode(BaseSwarmNode):
@@ -103,6 +165,8 @@ class ExplorerNode(BaseSwarmNode):
 
         self.http_timeout = httpx.Timeout(20.0, connect=10.0)
         self.batch_limit = DEFAULT_BATCH_LIMIT
+        self.discovered_target_limit = DEFAULT_DISCOVERED_TARGET_LIMIT
+        self.max_target_depth = DEFAULT_MAX_TARGET_DEPTH
 
         self.robots_parser_cache: Dict[str, RobotFileParser] = {}
         self.http_client: Optional[httpx.AsyncClient] = None
@@ -117,6 +181,9 @@ class ExplorerNode(BaseSwarmNode):
         self._fetches_policy_blocked = 0
         self._fetches_robots_blocked = 0
         self._content_extracted = 0
+        self._targets_discovered = 0
+        self._targets_published = 0
+        self._target_context_by_url: Dict[str, Dict[str, Any]] = {}
 
         self.logger.info("🧭 ExplorerNode initialized: %s", self.node_id)
 
@@ -264,6 +331,15 @@ class ExplorerNode(BaseSwarmNode):
                 "external_write_enabled": False,
                 "real_execution_enabled": False,
                 "targets_seen_last_tick": self._targets_seen_last_tick,
+                "targets_discovered": self._targets_discovered,
+                "targets_published": self._targets_published,
+                "discovered_target_limit": self.discovered_target_limit,
+                "max_target_depth": self.max_target_depth,
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
+                "network_read_enabled": True,
+                "external_write_enabled": False,
+                "real_execution_enabled": False,
                 "respect_robots": self.policy.respect_robots,
                 "user_agent": self.policy.user_agent,
             }
@@ -474,6 +550,26 @@ class ExplorerNode(BaseSwarmNode):
                 },
             )
 
+            target_depth = self._safe_int(
+                provenance.get("target_depth")
+                or provenance.get("depth")
+                or 0,
+                default=0,
+            )
+
+            self._target_context_by_url[url] = {
+                "event_gid": event_gid,
+                "source_gids": list(source_gids),
+                "provenance": dict(provenance),
+                "target_depth": target_depth,
+                "parent_gid": (
+                    provenance.get("parent_gid")
+                    or provenance.get("source_finding_gid")
+                    or event_gid
+                    or None
+                ),
+            }
+
             self._record_event_chain(
                 event_type="target_received",
                 event_gid=self._make_gid("exp_evt"),
@@ -486,10 +582,11 @@ class ExplorerNode(BaseSwarmNode):
                     "provenance": provenance,
                     "agent": self.node_id,
                     "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
-                    "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                    "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
                     "network_read_candidate": True,
                     "external_write_performed": False,
                     "real_execution_enabled": False,
+                    "target_depth": target_depth,
                 },
             )
 
@@ -560,8 +657,22 @@ class ExplorerNode(BaseSwarmNode):
             return "empty_url"
 
         normalized_url = normalize_url(url)
+        if normalized_url:
+            url = normalized_url
         if not normalized_url or not is_valid_http_url(normalized_url):
             return "invalid_url"
+        
+        target_context = self._target_context_by_url.get(normalized_url, {})
+        target_depth = self._safe_int(
+            target_context.get("target_depth"),
+            default=0,
+        )
+        source_gids = (
+            target_context.get("source_gids")
+            if isinstance(target_context.get("source_gids"), list)
+            else []
+        )
+        source_event_gid = str(target_context.get("event_gid") or "").strip()
 
         self._fetches_attempted += 1
 
@@ -677,6 +788,12 @@ class ExplorerNode(BaseSwarmNode):
                 },
             )
 
+            discovered_targets = self._extract_discovered_targets(
+                text,
+                base_url=normalized_url,
+                parent_depth=target_depth,
+            )
+
             finding: ExplorerFinding = {
                 "type": "explorer_finding",
                 "event_type": "finding_published",
@@ -695,7 +812,12 @@ class ExplorerNode(BaseSwarmNode):
                 "provenance": {
                     **network_provenance,
                     "parent_gid": fetch_gid,
+                    "source_event_gid": source_event_gid,
+                    "source_gids": source_gids,
+                    "target_depth": target_depth,
                     "content_already_seen": content_already_seen,
+                    "discovered_targets": discovered_targets,
+                    "discovered_target_count": len(discovered_targets),
                 },
             }
 
@@ -721,8 +843,28 @@ class ExplorerNode(BaseSwarmNode):
             self._findings_emitted += 1
             self._content_extracted += 1
 
+            targets_published = await self._publish_discovered_targets(
+                discovered_targets,
+                parent_finding=finding,
+                parent_fetch_gid=fetch_gid,
+                parent_content_hash=content_hash,
+                parent_depth=target_depth,
+                source_event_gid=source_event_gid,
+                source_gids=source_gids,
+            )
+
+            if targets_published:
+                self._targets_discovered += len(discovered_targets)
+                self._targets_published += targets_published
+                self.logger.info(
+                    "🧭 Discovered %s target(s) from %s; published=%s",
+                    len(discovered_targets),
+                    normalized_url,
+                    targets_published,
+                )
+
             self.logger.info("📥 Emitted finding for %s (%s)", normalized_url, status)
-            return "finding_published"
+            return "targets_discovered" if targets_published else "finding_published"
 
         except Exception as exc:
             self._fetches_failed += 1
@@ -779,6 +921,198 @@ class ExplorerNode(BaseSwarmNode):
 
             self.logger.warning("Fetch failed for %s: %s", normalized_url, exc)
             return "fetch_failed"
+    
+
+    def _extract_discovered_targets(
+        self,
+        html: str,
+        *,
+        base_url: str,
+        parent_depth: int,
+    ) -> list[dict[str, Any]]:
+        """Extract policy-safe frontier targets from fetched HTML."""
+        if parent_depth >= self.max_target_depth:
+            return []
+
+        if not html:
+            return []
+
+        parser = _HTMLLinkExtractor()
+        try:
+            parser.feed(html)
+        except Exception as exc:
+            self.logger.debug("HTML link extraction failed for %s: %s", base_url, exc)
+            return []
+
+        base_domain = extract_domain(base_url) or ""
+        discovered: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        for href in parser.hrefs:
+            absolute = self._normalize_discovered_url(href, base_url=base_url)
+            if not absolute:
+                continue
+            if absolute in seen:
+                continue
+            if absolute == base_url:
+                continue
+            if not self._passes_policy(absolute):
+                continue
+            if self.memory.seen_target(absolute):
+                continue
+            if not self._is_probably_fetchable_document(absolute):
+                continue
+
+            domain = extract_domain(absolute) or ""
+            same_domain = bool(base_domain and domain == base_domain)
+
+            seen.add(absolute)
+            discovered.append(
+                {
+                    "url": absolute,
+                    "domain": domain,
+                    "parent_url": base_url,
+                    "target_depth": parent_depth + 1,
+                    "discovery_method": "html_link_extraction",
+                    "same_domain": same_domain,
+                    "score": 1.0 if same_domain else 0.65,
+                    "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                    "network_read_candidate": True,
+                    "external_write_performed": False,
+                    "real_execution_enabled": False,
+                }
+            )
+
+            if len(discovered) >= self.discovered_target_limit:
+                break
+
+        discovered.sort(
+            key=lambda item: (
+                not bool(item.get("same_domain")),
+                -float(item.get("score", 0.0) or 0.0),
+                str(item.get("url") or ""),
+            )
+        )
+        return discovered[: self.discovered_target_limit]
+
+    async def _publish_discovered_targets(
+        self,
+        targets: list[dict[str, Any]],
+        *,
+        parent_finding: ExplorerFinding,
+        parent_fetch_gid: str,
+        parent_content_hash: str,
+        parent_depth: int,
+        source_event_gid: str,
+        source_gids: list[Any],
+    ) -> int:
+        """Publish discovered frontier targets as CRDT genomes.
+
+        The targets are dataflow records, not imperative commands.
+        """
+        urls = [
+            str(item.get("url") or "").strip()
+            for item in targets
+            if str(item.get("url") or "").strip()
+        ]
+        if not urls:
+            return 0
+
+        event_gid = self._make_gid("exp_targets")
+        parent_finding_gid = str(parent_finding.get("gid") or "").strip()
+        parent_source_gid = str(parent_finding.get("source_gid") or "").strip()
+
+        source_gid_list = [
+            item
+            for item in [
+                parent_finding_gid,
+                parent_source_gid,
+                source_event_gid,
+                *source_gids,
+            ]
+            if item
+        ]
+
+        target_event = {
+            "type": "explorer_targets",
+            "event_type": "targets_suggested",
+            "gid": event_gid,
+            "timestamp": utc_ts(),
+            "source_gids": source_gid_list,
+            "data": {
+                "urls": urls,
+                "targets": targets,
+            },
+            "provenance": {
+                "agent": self.node_id,
+                "parent_gid": parent_finding_gid or parent_fetch_gid,
+                "parent_fetch_gid": parent_fetch_gid,
+                "parent_url": parent_finding.get("url"),
+                "parent_content_hash": parent_content_hash,
+                "parent_depth": parent_depth,
+                "target_depth": parent_depth + 1,
+                "discovery_method": "html_link_extraction",
+                "target_generation_mode": "node_link_discovery",
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
+                "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                "network_read_candidate": True,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
+                "production_paths_mutated": False,
+                "production_secrets_accessed": False,
+            },
+        }
+
+        self._record_event_chain(
+            event_type="targets_discovered",
+            event_gid=event_gid,
+            source_gid=parent_source_gid or parent_finding_gid,
+            parent_gid=parent_finding_gid or parent_fetch_gid,
+            url=parent_finding.get("url"),
+            status="published",
+            content_hash=parent_content_hash,
+            provenance=target_event["provenance"],
+        )
+
+        await self._emit_crdt(target_event)
+        return len(urls)
+
+    def _normalize_discovered_url(self, href: str, *, base_url: str) -> str:
+        raw = str(href or "").strip()
+        if not raw:
+            return ""
+
+        lower = raw.lower()
+        if lower.startswith(("mailto:", "tel:", "javascript:", "data:", "#")):
+            return ""
+
+        try:
+            joined = urljoin(base_url, raw)
+            defragged, _fragment = urldefrag(joined)
+            return normalize_url(defragged)
+        except Exception:
+            return ""
+
+    def _is_probably_fetchable_document(self, url: str) -> bool:
+        if not is_valid_http_url(url):
+            return False
+
+        parsed = urlparse(url)
+        path = (parsed.path or "").lower()
+
+        if any(path.endswith(ext) for ext in SKIPPED_URL_EXTENSIONS):
+            return False
+
+        return True
+
+    @staticmethod
+    def _safe_int(value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
 
     async def _robots_allows(
         self,

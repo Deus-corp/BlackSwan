@@ -150,9 +150,11 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
 
         await self._reconcile_crdt_findings()
 
-        findings = self.memory.get_recent_unclassified(
-            limit=self.classification_batch_size,
-        )
+        findings = self._dedupe_findings(
+            self.memory.get_recent_unclassified(
+                limit=self.classification_batch_size * 2,
+            )
+        )[: self.classification_batch_size]
 
         counts = self._classification_counts(findings)
 
@@ -344,20 +346,36 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
     # ------------------------------------------------------------------
 
     async def _reconcile_crdt_findings(self) -> None:
-        """Reconcile newly observed legacy explorer_finding records into memory."""
+        """Reconcile newly observed explorer findings into memory.
+
+        Legacy explorer_finding and canonical swarm_event:explorer_finding can
+        describe the same fetch. Deduplicate them before writing local memory so
+        one network-read finding is classified once.
+        """
+        seen_keys: set[str] = set()
+
         for value in self.crdt.state.values():
             if not isinstance(value, dict):
                 continue
 
             if value.get("type") == "explorer_finding":
                 finding = self._legacy_finding_from_record(value)
-            elif value.get("type") == "swarm_event" and value.get("event_type") == "explorer_finding":
+            elif (
+                value.get("type") == "swarm_event"
+                and value.get("event_type") == "explorer_finding"
+            ):
                 finding = self._finding_from_canonical_event(value)
             else:
                 continue
 
             if finding is None:
                 continue
+
+            identity = self._finding_identity_key(finding)
+            if identity and identity in seen_keys:
+                continue
+            if identity:
+                seen_keys.add(identity)
 
             self.memory.observe_finding(finding)
 
@@ -371,8 +389,49 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 url=finding.get("url"),
                 status="received",
                 content_hash=finding.get("content_hash"),
-                provenance=finding.get("provenance") or {},
+                provenance={
+                    **(
+                        finding.get("provenance")
+                        if isinstance(finding.get("provenance"), dict)
+                        else {}
+                    ),
+                    "dedupe_identity": identity,
+                },
             )
+    
+    def _dedupe_findings(
+        self,
+        findings: Sequence[ExplorerFinding],
+    ) -> List[ExplorerFinding]:
+        """Deduplicate findings before classification."""
+        out: list[ExplorerFinding] = []
+        seen: set[str] = set()
+
+        for finding in findings:
+            identity = self._finding_identity_key(finding)
+            if identity and identity in seen:
+                continue
+            if identity:
+                seen.add(identity)
+            out.append(finding)
+
+        return out
+
+    @staticmethod
+    def _finding_identity_key(finding: Mapping[str, Any]) -> str:
+        """Stable identity for legacy/canonical duplicate findings."""
+        url = normalize_url(str(finding.get("url") or ""))
+        content_hash = str(finding.get("content_hash") or "").strip()
+        fetch_status = str(finding.get("fetch_status") or "").strip()
+        source_gid = str(finding.get("source_gid") or "").strip()
+
+        if url and content_hash:
+            return f"url_hash:{url}:{content_hash}"
+        if url and fetch_status:
+            return f"url_status:{url}:{fetch_status}"
+        if source_gid:
+            return f"source:{source_gid}"
+        return ""
 
     async def _classify_findings(
         self,
@@ -651,7 +710,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             if finding.get("classification") == "USEFUL"
         ]
 
-        if not useful:
+        discovered_urls = self._extract_discovered_target_urls(classified_findings)
+
+        if not useful and not discovered_urls:
             return 0
 
         useful_sorted = sorted(
@@ -711,6 +772,15 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             str(finding.get("source_gid"))
             for finding in useful_sorted[:4]
             if finding.get("source_gid")
+        ]
+
+        raw_urls = [
+            *(
+                raw_urls
+                if isinstance(raw_urls, list)
+                else []
+            ),
+            *discovered_urls,
         ]
 
         candidates: List[str] = []
@@ -846,6 +916,44 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             deduped.append(normalized)
 
         return deduped
+    
+
+    def _extract_discovered_target_urls(
+        self,
+        findings: Sequence[ExplorerFinding],
+    ) -> List[str]:
+        """Extract node-discovered URLs carried in finding provenance."""
+        out: list[str] = []
+        seen: set[str] = set()
+
+        for finding in findings:
+            provenance = (
+                finding.get("provenance")
+                if isinstance(finding.get("provenance"), dict)
+                else {}
+            )
+            raw_targets = provenance.get("discovered_targets") or []
+            if not isinstance(raw_targets, list):
+                continue
+
+            for item in raw_targets:
+                if isinstance(item, Mapping):
+                    raw_url = item.get("url")
+                else:
+                    raw_url = item
+
+                normalized = normalize_url(str(raw_url or ""))
+                if not normalized or normalized in seen:
+                    continue
+                if not is_probably_valid_url(normalized):
+                    continue
+                if self._is_target_blacklisted(normalized):
+                    continue
+
+                seen.add(normalized)
+                out.append(normalized)
+
+        return out[: self.target_batch_size]
 
     # ------------------------------------------------------------------
     # Finding normalization

@@ -146,6 +146,12 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
                 "fetches_attempted": int(getattr(node, "_fetches_attempted", 0) or 0),
                 "fetches_failed": int(getattr(node, "_fetches_failed", 0) or 0),
                 "findings_emitted": int(getattr(node, "_findings_emitted", 0) or 0),
+                "targets_discovered": int(
+                    getattr(node, "_targets_discovered", 0) or 0
+                ),
+                "targets_published": int(
+                    getattr(node, "_targets_published", 0) or 0
+                ),
                 "execution_risk_tier": "network_read",
                 "external_write_performed": False,
                 "real_execution_enabled": False,
@@ -238,6 +244,8 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"node_did_work={str(bool(node.get('did_work'))).lower()} "
         f"fetches_attempted={node.get('fetches_attempted', 0)} "
         f"findings_emitted={node.get('findings_emitted', 0)} "
+        f"targets_discovered={node.get('targets_discovered', 0)} "
+        f"targets_published={node.get('targets_published', 0)} "
         f"meta_snapshot_findings={meta.get('snapshot_findings', 0)} "
         f"classifications_published={meta.get('classifications_published', 0)} "
         f"targets_published={meta.get('targets_published', 0)} "
