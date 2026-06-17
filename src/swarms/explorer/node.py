@@ -181,6 +181,8 @@ class ExplorerNode(BaseSwarmNode):
         self.batch_limit = DEFAULT_BATCH_LIMIT
         self.discovered_target_limit = DEFAULT_DISCOVERED_TARGET_LIMIT
         self.max_target_depth = DEFAULT_MAX_TARGET_DEPTH
+        self.active_exploration_run_id = ""
+        self.max_targets_per_domain_per_tick = 2
 
         self.robots_parser_cache: Dict[str, RobotFileParser] = {}
         self.http_client: Optional[httpx.AsyncClient] = None
@@ -356,6 +358,8 @@ class ExplorerNode(BaseSwarmNode):
                 "real_execution_enabled": False,
                 "respect_robots": self.policy.respect_robots,
                 "user_agent": self.policy.user_agent,
+                "active_exploration_run_id": self.active_exploration_run_id,
+                "max_targets_per_domain_per_tick": self.max_targets_per_domain_per_tick,
             }
         )
 
@@ -481,6 +485,7 @@ class ExplorerNode(BaseSwarmNode):
                 did_work = did_work or result in {
                     "content_extracted",
                     "finding_published",
+                    "targets_discovered",
                     "fetch_failed",
                     "policy_blocked",
                     "robots_disallowed",
@@ -490,6 +495,52 @@ class ExplorerNode(BaseSwarmNode):
                 self.logger.warning("Failed to explore %s: %s", url, exc)
 
         return did_work
+    
+    def _select_domain_aware_targets(self, urls: list[str]) -> list[str]:
+        """Select targets round-robin by domain for one tick.
+
+        This prevents one domain from consuming the entire batch and triggering
+        domain_window_rate_limited before other source adapters get a chance.
+        """
+        buckets: dict[str, list[str]] = {}
+        order: list[str] = []
+
+        for raw_url in urls:
+            url = normalize_url(str(raw_url or ""))
+            if not url:
+                continue
+
+            domain = extract_domain(url) or "unknown"
+            if domain not in buckets:
+                buckets[domain] = []
+                order.append(domain)
+            buckets[domain].append(url)
+
+        selected: list[str] = []
+        per_domain_counts: dict[str, int] = {}
+
+        while len(selected) < self.batch_limit and any(buckets.values()):
+            progressed = False
+
+            for domain in list(order):
+                if len(selected) >= self.batch_limit:
+                    break
+
+                if per_domain_counts.get(domain, 0) >= self.max_targets_per_domain_per_tick:
+                    continue
+
+                bucket = buckets.get(domain) or []
+                if not bucket:
+                    continue
+
+                selected.append(bucket.pop(0))
+                per_domain_counts[domain] = per_domain_counts.get(domain, 0) + 1
+                progressed = True
+
+            if not progressed:
+                break
+
+        return selected
 
     def _collect_targets(self) -> List[str]:
         urls: List[str] = []
@@ -519,7 +570,7 @@ class ExplorerNode(BaseSwarmNode):
 
             urls.extend(accepted)
 
-        return urls
+        return self._select_domain_aware_targets(urls)
 
     def _ingest_direct_targets(
         self,
@@ -540,6 +591,13 @@ class ExplorerNode(BaseSwarmNode):
 
         if provenance is None:
             provenance = {}
+        
+        exploration_run_id = self._extract_exploration_run_id(
+            {
+                "provenance": provenance,
+                "data": {"exploration_run_id": provenance.get("exploration_run_id")},
+            }
+        )
 
         for raw in raw_urls:
             if not isinstance(raw, str):
@@ -576,6 +634,8 @@ class ExplorerNode(BaseSwarmNode):
                 "source_gids": list(source_gids),
                 "provenance": dict(provenance),
                 "target_depth": target_depth,
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
                 "parent_gid": (
                     provenance.get("parent_gid")
                     or provenance.get("source_finding_gid")
@@ -601,6 +661,8 @@ class ExplorerNode(BaseSwarmNode):
                     "external_write_performed": False,
                     "real_execution_enabled": False,
                     "target_depth": target_depth,
+                    "exploration_run_id": exploration_run_id,
+                    "research_goal_id": exploration_run_id,
                 },
             )
 
@@ -626,6 +688,7 @@ class ExplorerNode(BaseSwarmNode):
         crawl_delay: Optional[float] = None,
         policy_allowed: Optional[bool] = None,
         policy_reason: Optional[str] = None,
+        exploration_run_id: str = "",
     ) -> Dict[str, Any]:
         """Build shared provenance for explorer network-read execution records."""
         return {
@@ -649,6 +712,8 @@ class ExplorerNode(BaseSwarmNode):
             "robots_allowed": robots_allowed,
             "crawl_delay": crawl_delay,
             "memory_ingestion_candidate": True,
+            "exploration_run_id": exploration_run_id,
+            "research_goal_id": exploration_run_id,
         }
 
 
@@ -687,6 +752,11 @@ class ExplorerNode(BaseSwarmNode):
             else []
         )
         source_event_gid = str(target_context.get("event_gid") or "").strip()
+        exploration_run_id = str(
+            target_context.get("exploration_run_id")
+            or self.active_exploration_run_id
+            or ""
+        ).strip()
 
         self._fetches_attempted += 1
 
@@ -709,6 +779,7 @@ class ExplorerNode(BaseSwarmNode):
                 fetch_gid=fetch_gid,
                 policy_allowed=False,
                 policy_reason=reason,
+                exploration_run_id=exploration_run_id,
             )
 
             self.memory.record_fetch_event(
@@ -734,6 +805,7 @@ class ExplorerNode(BaseSwarmNode):
             crawl_delay=crawl_delay,
             policy_allowed=True,
             policy_reason="allowed",
+            exploration_run_id=exploration_run_id,
         )
 
         if self.policy.respect_robots and not robots_allowed:
@@ -832,6 +904,8 @@ class ExplorerNode(BaseSwarmNode):
                     "content_already_seen": content_already_seen,
                     "discovered_targets": discovered_targets,
                     "discovered_target_count": len(discovered_targets),
+                    "exploration_run_id": exploration_run_id,
+                    "research_goal_id": exploration_run_id,
                 },
             }
 
@@ -865,6 +939,7 @@ class ExplorerNode(BaseSwarmNode):
                 parent_depth=target_depth,
                 source_event_gid=source_event_gid,
                 source_gids=source_gids,
+                exploration_run_id=exploration_run_id,
             )
 
             if targets_published:
@@ -923,6 +998,8 @@ class ExplorerNode(BaseSwarmNode):
                 "provenance": {
                     **failed_provenance,
                     "parent_gid": fetch_gid,
+                    "exploration_run_id": exploration_run_id,
+                    "research_goal_id": exploration_run_id,
                 },
             }
 
@@ -1043,11 +1120,21 @@ class ExplorerNode(BaseSwarmNode):
         parent_depth: int,
         source_event_gid: str,
         source_gids: list[Any],
+        exploration_run_id: str = "",
     ) -> int:
         """Publish discovered frontier targets as CRDT genomes.
 
         The targets are dataflow records, not imperative commands.
         """
+        targets = [
+            {
+                **item,
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
+            }
+            for item in targets
+        ]
+
         urls = [
             str(item.get("url") or "").strip()
             for item in targets
@@ -1080,6 +1167,8 @@ class ExplorerNode(BaseSwarmNode):
             "data": {
                 "urls": urls,
                 "targets": targets,
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
             },
             "provenance": {
                 "agent": self.node_id,
@@ -1099,6 +1188,8 @@ class ExplorerNode(BaseSwarmNode):
                 "real_execution_enabled": False,
                 "production_paths_mutated": False,
                 "production_secrets_accessed": False,
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
             },
         }
 
@@ -1150,6 +1241,26 @@ class ExplorerNode(BaseSwarmNode):
             return int(value)
         except (TypeError, ValueError):
             return default
+    
+
+    def _extract_exploration_run_id(self, record: Mapping[str, Any]) -> str:
+        payload = record.get("payload")
+        payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+        data = record.get("data")
+        data_mapping = data if isinstance(data, Mapping) else {}
+
+        provenance = record.get("provenance")
+        provenance_mapping = provenance if isinstance(provenance, Mapping) else {}
+
+        return str(
+            record.get("exploration_run_id")
+            or data_mapping.get("exploration_run_id")
+            or provenance_mapping.get("exploration_run_id")
+            or payload_mapping.get("exploration_run_id")
+            or self.active_exploration_run_id
+            or ""
+        ).strip()
 
 
     async def _robots_allows(
@@ -1247,6 +1358,16 @@ class ExplorerNode(BaseSwarmNode):
                 "production_paths_mutated": False,
                 "production_secrets_accessed": False,
                 "memory_ingestion_candidate": True,
+                "exploration_run_id": (
+                    finding.get("provenance", {}).get("exploration_run_id")
+                    if isinstance(finding.get("provenance"), dict)
+                    else self.active_exploration_run_id
+                ),
+                "research_goal_id": (
+                    finding.get("provenance", {}).get("research_goal_id")
+                    if isinstance(finding.get("provenance"), dict)
+                    else self.active_exploration_run_id
+                ),
             },
             provenance={
                 "agent": self.node_id,
@@ -1260,6 +1381,16 @@ class ExplorerNode(BaseSwarmNode):
                 ),
                 "external_write_performed": False,
                 "real_execution_enabled": False,
+                "exploration_run_id": (
+                    finding.get("provenance", {}).get("exploration_run_id")
+                    if isinstance(finding.get("provenance"), dict)
+                    else self.active_exploration_run_id
+                ),
+                "research_goal_id": (
+                    finding.get("provenance", {}).get("research_goal_id")
+                    if isinstance(finding.get("provenance"), dict)
+                    else self.active_exploration_run_id
+                ),
             },
         )
 

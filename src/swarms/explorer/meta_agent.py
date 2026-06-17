@@ -124,6 +124,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         self._last_batch_size = 0
         self._last_targets_published = 0
         self._last_classifications_published = 0
+        self.active_exploration_run_id = ""
         self._last_error = ""
 
         self.logger.info("🔎 ExplorerMetaAgent initialized: %s", self.agent_id)
@@ -304,6 +305,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     "explorer_targets",
                     "swarm_event:explorer_targets",
                 ],
+                "active_exploration_run_id": self.active_exploration_run_id,
             }
         )
 
@@ -371,6 +373,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             if finding is None:
                 continue
 
+            if not self._finding_matches_active_run(finding):
+                continue
+
             identity = self._finding_identity_key(finding)
             if identity and identity in seen_keys:
                 continue
@@ -408,6 +413,8 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         seen: set[str] = set()
 
         for finding in findings:
+            if not self._finding_matches_active_run(finding):
+                continue
             identity = self._finding_identity_key(finding)
             if identity and identity in seen:
                 continue
@@ -432,6 +439,34 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         if source_gid:
             return f"source:{source_gid}"
         return ""
+    
+
+    def _finding_matches_active_run(self, finding: Mapping[str, Any]) -> bool:
+        active_run_id = str(self.active_exploration_run_id or "").strip()
+        if not active_run_id:
+            return True
+
+        return self._record_exploration_run_id(finding) == active_run_id
+
+    @staticmethod
+    def _record_exploration_run_id(record: Mapping[str, Any]) -> str:
+        payload = record.get("payload")
+        payload_mapping = payload if isinstance(payload, Mapping) else {}
+
+        data = record.get("data")
+        data_mapping = data if isinstance(data, Mapping) else {}
+
+        provenance = record.get("provenance")
+        provenance_mapping = provenance if isinstance(provenance, Mapping) else {}
+
+        return str(
+            record.get("exploration_run_id")
+            or data_mapping.get("exploration_run_id")
+            or provenance_mapping.get("exploration_run_id")
+            or payload_mapping.get("exploration_run_id")
+            or ""
+        ).strip()
+
 
     async def _classify_findings(
         self,
@@ -646,6 +681,14 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "evidence_kind": EXPLORER_EVIDENCE_KIND,
                 "external_write_performed": False,
                 "real_execution_enabled": False,
+                "exploration_run_id": (
+                    self._record_exploration_run_id(base)
+                    or self.active_exploration_run_id
+                ),
+                "research_goal_id": (
+                    self._record_exploration_run_id(base)
+                    or self.active_exploration_run_id
+                ),
             }
 
             item: ClassificationItem = {
@@ -711,6 +754,12 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         ]
 
         discovered_urls = self._extract_discovered_target_urls(classified_findings)
+        exploration_run_id = str(self.active_exploration_run_id or "").strip()
+        if not exploration_run_id:
+            for finding in classified_findings:
+                exploration_run_id = self._record_exploration_run_id(finding)
+                if exploration_run_id:
+                    break
 
         if not useful and not discovered_urls:
             return 0
@@ -815,7 +864,11 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         target_event: ExplorerTargets = {
             "type": "explorer_targets",
             "event_type": "targets_suggested",
-            "data": {"urls": [url for url, _score in scored]},
+            "data": {
+                "urls": [url for url, _score in scored],
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
+            },
             "source_gids": source_gids,
             "timestamp": utc_ts(),
             "gid": event_gid,
@@ -835,6 +888,8 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     {"url": url, "score": score}
                     for url, score in scored
                 ],
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
             },
         }
 
@@ -1093,6 +1148,14 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "evidence_kind": EXPLORER_EVIDENCE_KIND,
                 "external_write_performed": False,
                 "real_execution_enabled": False,
+                "exploration_run_id": (
+                    self._record_exploration_run_id(finding)
+                    or self.active_exploration_run_id
+                ),
+                "research_goal_id": (
+                    self._record_exploration_run_id(finding)
+                    or self.active_exploration_run_id
+                ),
             },
             provenance={
                 "agent": self.agent_id,
@@ -1102,6 +1165,14 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "evidence_kind": EXPLORER_EVIDENCE_KIND,
                 "external_write_performed": False,
                 "real_execution_enabled": False,
+                "exploration_run_id": (
+                    self._record_exploration_run_id(finding)
+                    or self.active_exploration_run_id
+                ),
+                "research_goal_id": (
+                    self._record_exploration_run_id(finding)
+                    or self.active_exploration_run_id
+                ),
             },
         )
 
@@ -1131,6 +1202,16 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "network_read_candidate": True,
                 "external_write_performed": False,
                 "real_execution_enabled": False,
+                "exploration_run_id": (
+                    target_event.get("data", {}).get("exploration_run_id")
+                    if isinstance(target_event.get("data"), dict)
+                    else self.active_exploration_run_id
+                ),
+                "research_goal_id": (
+                    target_event.get("data", {}).get("research_goal_id")
+                    if isinstance(target_event.get("data"), dict)
+                    else self.active_exploration_run_id
+                ),
             },
             provenance={
                 "agent": self.agent_id,

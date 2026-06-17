@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import httpx
+import hashlib
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.swarms.explorer.meta_agent import ExplorerMetaAgent
@@ -74,6 +75,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=20,
         help="Maximum source-adapter targets to seed.",
     )
+    parser.add_argument(
+        "--exploration-run-id",
+        default="",
+        help="Optional stable exploration run id. Generated when omitted.",
+    )
     parser.add_argument("--node-id", default="exp-node-network-read-loop")
     parser.add_argument("--meta-agent-id", default="exp-meta-network-read-loop")
     parser.add_argument("--skip-meta", action="store_true")
@@ -102,6 +108,14 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
 
     if not urls:
         urls = ["https://example.com/"]
+    
+    exploration_run_id = (
+        str(getattr(args, "exploration_run_id", "") or "").strip()
+        or _make_exploration_run_id(
+            goal=str(getattr(args, "goal", "") or ""),
+            urls=urls,
+        )
+    )
 
     db_path = str(args.db_path or config.crdt_db_path)
 
@@ -118,6 +132,8 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         node_id=str(args.meta_agent_id or "exp-meta-network-read-loop"),
         memory_db=Path(args.meta_memory_db),
     )
+    node.active_exploration_run_id = exploration_run_id
+    meta.active_exploration_run_id = exploration_run_id
 
     _replace_crdt(node, crdt)
     _replace_crdt(meta, crdt)
@@ -132,6 +148,7 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             goal=str(getattr(args, "goal", "") or ""),
             source_adapters=list(getattr(args, "source_adapter", []) or []),
             source_targets=source_targets,
+            exploration_run_id=exploration_run_id,
         )
         await crdt.add_genome(seed_record)
 
@@ -151,6 +168,7 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "decision_action": None,
             "targets_published": 0,
             "classifications_published": 0,
+            "exploration_run_id": exploration_run_id,
         }
 
         if not args.skip_meta:
@@ -169,6 +187,7 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
                 "classifications_published": int(
                     getattr(meta, "_last_classifications_published", 0) or 0
                 ),
+                "exploration_run_id": exploration_run_id,
             }
 
         state = getattr(crdt, "state", {}) or {}
@@ -179,6 +198,7 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "status": "completed",
             "seed_urls": urls,
             "research_goal": str(getattr(args, "goal", "") or ""),
+            "exploration_run_id": exploration_run_id,
             "source_adapters": list(getattr(args, "source_adapter", []) or []),
             "source_adapter_targets": source_targets,
             "seed_record_gid": seed_record["gid"],
@@ -200,6 +220,7 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
                 "execution_risk_tier": "network_read",
                 "external_write_performed": False,
                 "real_execution_enabled": False,
+                "exploration_run_id": exploration_run_id,
             },
             "meta_agent": meta_result,
             "record_counts": _record_counts(records),
@@ -211,6 +232,20 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
     finally:
         await _safe_aclose(getattr(node, "http_client", None))
         _safe_close(crdt)
+
+
+def _make_exploration_run_id(*, goal: str, urls: list[str]) -> str:
+    raw = "|".join(
+        [
+            "explorer",
+            "network_read",
+            " ".join(str(goal or "").split()),
+            *[str(url or "").strip() for url in urls[:10]],
+            str(int(utc_ts())),
+        ]
+    )
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
+    return f"exp_run_{int(utc_ts())}_{digest}"
 
 
 def _dedupe_urls(urls: list[str]) -> list[str]:
@@ -233,6 +268,7 @@ def _build_seed_targets(
     goal: str = "",
     source_adapters: list[str] | None = None,
     source_targets: list[Mapping[str, Any]] | None = None,
+    exploration_run_id: str = "",
 ) -> dict[str, Any]:
     return {
         "type": "explorer_targets",
@@ -245,6 +281,8 @@ def _build_seed_targets(
             "targets": list(source_targets or []),
             "goal": goal,
             "source_adapters": list(source_adapters or []),
+            "exploration_run_id": exploration_run_id,
+            "research_goal_id": exploration_run_id,
         },
         "provenance": {
             "agent": "explorer-network-read-loop-runner",
@@ -257,6 +295,8 @@ def _build_seed_targets(
             "goal": goal,
             "source_adapters": list(source_adapters or []),
             "source_adapter_target_count": len(source_targets or []),
+            "exploration_run_id": exploration_run_id,
+            "research_goal_id": exploration_run_id,
         },
     }
 
@@ -314,6 +354,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         "Explorer network-read loop: "
         f"status={result.get('status')} "
         f"seed_urls={len(result.get('seed_urls') or [])} "
+        f"exploration_run_id={result.get('exploration_run_id') or ''} "
         f"source_adapters={len(result.get('source_adapters') or [])} "
         f"source_adapter_targets={len(result.get('source_adapter_targets') or [])} "
         f"node_did_work={str(bool(node.get('did_work'))).lower()} "
