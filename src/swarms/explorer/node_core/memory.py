@@ -159,6 +159,61 @@ class NodeMemory:
         with self._connect() as conn:
             row = conn.execute("SELECT url FROM seen_targets WHERE url = ?", (url,)).fetchone()
         return row is not None
+    
+    def seen_target_for_run(self, url: str, exploration_run_id: str) -> bool:
+        """Return whether URL was already seen for this exploration run.
+
+        Historical target memory is global by URL, but scoped explorer runs must
+        be allowed to revisit the same URL under a different research goal/run.
+        """
+        clean_run_id = str(exploration_run_id or "").strip()
+
+        if not clean_run_id:
+            return self.seen_target(url)
+
+        normalized = normalize_url(url)
+
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT metadata_json
+                FROM seen_targets
+                WHERE url = ? OR normalized_url = ?
+                """,
+                (url, normalized),
+            ).fetchall()
+
+        for row in rows:
+            try:
+                metadata = json.loads(row["metadata_json"] or "{}")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                metadata = {}
+
+            provenance = (
+                metadata.get("provenance")
+                if isinstance(metadata.get("provenance"), dict)
+                else {}
+            )
+            target_metadata = (
+                metadata.get("target_metadata")
+                if isinstance(metadata.get("target_metadata"), dict)
+                else {}
+            )
+
+            seen_run_id = str(
+                metadata.get("exploration_run_id")
+                or metadata.get("research_goal_id")
+                or provenance.get("exploration_run_id")
+                or provenance.get("research_goal_id")
+                or target_metadata.get("exploration_run_id")
+                or target_metadata.get("research_goal_id")
+                or ""
+            ).strip()
+
+            if seen_run_id == clean_run_id:
+                return True
+
+        return False
 
     def record_event_chain(
         self,

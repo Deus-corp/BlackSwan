@@ -717,7 +717,10 @@ class ExplorerNode(BaseSwarmNode):
             if not self._passes_policy(url):
                 continue
 
-            if url in seen_local or self.memory.seen_target(url):
+            if url in seen_local or self._memory_seen_target_for_run(
+                url,
+                exploration_run_id,
+            ):
                 continue
 
             seen_local.add(url)
@@ -1400,6 +1403,23 @@ class ExplorerNode(BaseSwarmNode):
         except (TypeError, ValueError):
             return default
     
+    def _memory_seen_target_for_run(
+        self,
+        url: str,
+        exploration_run_id: str,
+    ) -> bool:
+        """Check target dedupe using run-scoped memory when available."""
+        clean_run_id = str(exploration_run_id or "").strip()
+
+        seen_for_run = getattr(self.memory, "seen_target_for_run", None)
+        if callable(seen_for_run):
+            return bool(seen_for_run(url, clean_run_id))
+
+        if clean_run_id:
+            context = self._target_context_by_url.get(normalize_url(url), {})
+            return str(context.get("exploration_run_id") or "").strip() == clean_run_id
+
+        return bool(self.memory.seen_target(url))
 
     def _extract_exploration_run_id(self, record: Mapping[str, Any]) -> str:
         payload = record.get("payload")
