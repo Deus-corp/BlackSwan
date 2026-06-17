@@ -84,6 +84,44 @@ PLACEHOLDER_MEMORY_HANDOFF_DOMAINS = frozenset(
     }
 )
 
+HIGH_VALUE_MEMORY_HANDOFF_DOMAINS = frozenset(
+    {
+        "docs.python.org",
+        "www.python.org",
+        "python.org",
+        "peps.python.org",
+        "github.com",
+        "realpython.com",
+        "pypi.org",
+        "readthedocs.io",
+    }
+)
+
+CONTENT_RELEVANCE_KEYWORDS = (
+    "agent",
+    "agents",
+    "autonomous",
+    "ai",
+    "llm",
+    "memory",
+    "retrieval",
+    "runtime",
+    "async",
+    "asyncio",
+    "python",
+    "orchestration",
+    "testing",
+    "pytest",
+    "security",
+    "sandbox",
+    "crdt",
+    "database",
+    "system",
+    "improvement",
+    "proposal",
+    "architecture",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ExplorerMetaSnapshot:
@@ -679,21 +717,22 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             has_network_evidence = bool(url) and bool(content_hash)
 
             preview = str(base.get("content_preview") or "").strip()
-            base_provenance = (
-                base.get("provenance")
-                if isinstance(base.get("provenance"), dict)
-                else {}
-            )
+            quality_signals = self._fallback_quality_signals(base)
+
+            domain = str(
+                base.get("domain")
+                or quality_signals.get("domain")
+                or self._domain_from_url(str(url or ""))
+            ).lower()
+
             source_score = self._safe_float(
-                base_provenance.get("source_score")
-                or base_provenance.get("quality_score"),
+                quality_signals.get("source_score"),
                 default=0.0,
             )
             relevance_score = self._safe_float(
-                base_provenance.get("system_relevance_score"),
+                quality_signals.get("system_relevance_score"),
                 default=0.0,
             )
-            domain = str(base.get("domain") or self._domain_from_url(str(url or ""))).lower()
 
             is_placeholder = domain in PLACEHOLDER_MEMORY_HANDOFF_DOMAINS
             has_meaningful_preview = (
@@ -756,6 +795,21 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     self._record_exploration_run_id(base)
                     or self.active_exploration_run_id
                 ),
+                "fallback_quality_signals": quality_signals,
+                "source_score": source_score,
+                "quality_score": self._safe_float(
+                    quality_signals.get("quality_score"),
+                    default=source_score,
+                ),
+                "authority_score": self._safe_float(
+                    quality_signals.get("authority_score"),
+                    default=0.0,
+                ),
+                "freshness_score": self._safe_float(
+                    quality_signals.get("freshness_score"),
+                    default=0.50,
+                ),
+                "system_relevance_score": relevance_score,
             }
 
             item: ClassificationItem = {
@@ -1370,6 +1424,99 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         )
         return True
     
+    def _fallback_quality_signals(
+        self,
+        finding: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Infer quality signals from URL/domain/content when metadata is sparse."""
+        provenance = (
+            finding.get("provenance")
+            if isinstance(finding.get("provenance"), Mapping)
+            else {}
+        )
+
+        url = str(finding.get("url") or "").strip()
+        domain = str(finding.get("domain") or self._domain_from_url(url) or "").lower()
+        preview = str(finding.get("content_preview") or "").strip()
+        preview_l = preview.lower()
+        fetch_status = str(finding.get("fetch_status") or "").strip().lower()
+        content_hash = str(finding.get("content_hash") or "").strip()
+
+        explicit_source_score = self._safe_float(
+            provenance.get("source_score") or provenance.get("quality_score"),
+            default=0.0,
+        )
+        explicit_relevance_score = self._safe_float(
+            provenance.get("system_relevance_score"),
+            default=0.0,
+        )
+        explicit_authority_score = self._safe_float(
+            provenance.get("authority_score"),
+            default=0.0,
+        )
+
+        high_value_domain = domain in HIGH_VALUE_MEMORY_HANDOFF_DOMAINS
+        placeholder_domain = domain in PLACEHOLDER_MEMORY_HANDOFF_DOMAINS
+
+        keyword_matches = [
+            keyword
+            for keyword in CONTENT_RELEVANCE_KEYWORDS
+            if keyword in preview_l or keyword in url.lower()
+        ]
+
+        inferred_authority = explicit_authority_score
+        if inferred_authority <= 0.0:
+            if high_value_domain:
+                inferred_authority = 0.85
+            elif domain.endswith(".org"):
+                inferred_authority = 0.65
+            elif domain:
+                inferred_authority = 0.50
+
+        inferred_relevance = explicit_relevance_score
+        if inferred_relevance <= 0.0:
+            if len(keyword_matches) >= 4:
+                inferred_relevance = 0.80
+            elif len(keyword_matches) >= 2:
+                inferred_relevance = 0.68
+            elif len(keyword_matches) == 1:
+                inferred_relevance = 0.55
+            else:
+                inferred_relevance = 0.35
+
+        inferred_source_score = explicit_source_score
+        if inferred_source_score <= 0.0:
+            inferred_source_score = min(
+                0.95,
+                0.35
+                + (0.25 if high_value_domain else 0.0)
+                + min(0.25, len(keyword_matches) * 0.05)
+                + (0.10 if len(preview) >= MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS else 0.0)
+            )
+
+        return {
+            "url": url,
+            "domain": domain,
+            "fetch_status": fetch_status,
+            "content_hash_present": bool(content_hash),
+            "content_preview_chars": len(preview),
+            "placeholder_domain": placeholder_domain,
+            "high_value_domain": high_value_domain,
+            "keyword_matches": keyword_matches,
+            "keyword_match_count": len(keyword_matches),
+            "source_score": inferred_source_score,
+            "quality_score": max(
+                inferred_source_score,
+                self._safe_float(provenance.get("quality_score"), default=0.0),
+            ),
+            "authority_score": inferred_authority,
+            "system_relevance_score": inferred_relevance,
+            "freshness_score": self._safe_float(
+                provenance.get("freshness_score"),
+                default=0.50,
+            ),
+        }
+    
     def _memory_handoff_quality_gate(
         self,
         finding: ExplorerFinding,
@@ -1383,28 +1530,34 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             else {}
         )
 
+        fallback_signals = self._fallback_quality_signals(finding)
+
         url = str(finding.get("url") or "").strip()
-        domain = str(finding.get("domain") or self._domain_from_url(url) or "").lower()
+        domain = str(
+            finding.get("domain")
+            or fallback_signals.get("domain")
+            or self._domain_from_url(url)
+            or ""
+        ).lower()
         fetch_status = str(finding.get("fetch_status") or "").strip().lower()
         content_hash = str(finding.get("content_hash") or "").strip()
         content_preview = str(finding.get("content_preview") or "").strip()
 
         source_score = self._safe_float(
-            provenance.get("source_score")
-            or provenance.get("quality_score"),
+            fallback_signals.get("source_score"),
             default=0.0,
         )
         system_relevance_score = self._safe_float(
-            provenance.get("system_relevance_score"),
+            fallback_signals.get("system_relevance_score"),
             default=0.0,
         )
         authority_score = self._safe_float(
-            provenance.get("authority_score"),
+            fallback_signals.get("authority_score"),
             default=0.0,
         )
         freshness_score = self._safe_float(
-            provenance.get("freshness_score"),
-            default=0.0,
+            fallback_signals.get("freshness_score"),
+            default=0.50,
         )
 
         metrics = {
@@ -1421,6 +1574,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             "system_relevance_score": system_relevance_score,
             "domain": domain,
             "placeholder_domain": domain in PLACEHOLDER_MEMORY_HANDOFF_DOMAINS,
+            "high_value_domain": bool(fallback_signals.get("high_value_domain")),
+            "keyword_match_count": fallback_signals.get("keyword_match_count", 0),
+            "keyword_matches": fallback_signals.get("keyword_matches", []),
         }
 
         if fetch_status != "ok":
