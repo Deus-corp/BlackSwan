@@ -169,6 +169,7 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "targets_published": 0,
             "classifications_published": 0,
             "exploration_run_id": exploration_run_id,
+            "memory_records_published": 0,
         }
 
         if not args.skip_meta:
@@ -188,6 +189,9 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
                     getattr(meta, "_last_classifications_published", 0) or 0
                 ),
                 "exploration_run_id": exploration_run_id,
+                "memory_records_published": int(
+                    getattr(meta, "_last_memory_records_published", 0) or 0
+                ),
             }
 
         state = getattr(crdt, "state", {}) or {}
@@ -371,6 +375,7 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"meta_snapshot_findings={meta.get('snapshot_findings', 0)} "
         f"classifications_published={meta.get('classifications_published', 0)} "
         f"targets_published={meta.get('targets_published', 0)} "
+        f"memory_records_published={meta.get('memory_records_published', 0)} "
         f"external_write_performed={str(bool(result.get('external_write_performed'))).lower()} "
         f"real_execution_enabled={str(bool(result.get('real_execution_enabled'))).lower()}"
     )

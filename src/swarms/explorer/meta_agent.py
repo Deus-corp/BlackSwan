@@ -64,6 +64,11 @@ EXPLORER_EXECUTION_RISK_TIER = "network_read"
 EXPLORER_COORDINATION_CHANNEL = "crdt_genomes"
 EXPLORER_EVIDENCE_KIND = "web_fetch"
 
+MEMORY_RECORD_TYPE = "memory_record"
+MEMORY_EVIDENCE_RECORD_KIND = "explorer_useful_evidence"
+MEMORY_EVIDENCE_SCHEMA_VERSION = "1.0"
+MIN_MEMORY_HANDOFF_CONFIDENCE = 0.50
+
 
 @dataclass(frozen=True, slots=True)
 class ExplorerMetaSnapshot:
@@ -124,6 +129,8 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         self._last_batch_size = 0
         self._last_targets_published = 0
         self._last_classifications_published = 0
+        self._last_memory_records_published = 0
+        self._memory_records_published_total = 0
         self.active_exploration_run_id = ""
         self._last_error = ""
 
@@ -174,6 +181,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
 
     async def decide(self, snapshot: ExplorerMetaSnapshot) -> MetaDecision:
         """Return whether there is classification work to perform."""
+        self._last_memory_records_published = 0
         event_gid = self._make_gid("exp_policy")
 
         if snapshot.is_empty():
@@ -306,6 +314,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     "swarm_event:explorer_targets",
                 ],
                 "active_exploration_run_id": self.active_exploration_run_id,
+                "memory_handoff_enabled": True,
+                "memory_evidence_record_kind": MEMORY_EVIDENCE_RECORD_KIND,
+                "memory_records_published_last_cycle": self._last_memory_records_published,
+                "memory_records_published_total": self._memory_records_published_total,
             }
         )
 
@@ -575,6 +587,13 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 provenance=updated["provenance"],
             )
 
+            await self._publish_memory_evidence_handoff(
+                updated,
+                classification_event_gid=event_gid,
+                parent_gid=batch_gid,
+                handoff_reason="llm_useful_classification",
+            )
+
             if updated.get("url"):
                 normalized = normalize_url(updated["url"] or "")
                 if normalized:
@@ -709,6 +728,13 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 prompt_hash=prompt_h,
                 model_name=f"{model_name}:deterministic_fallback",
                 provenance=updated["provenance"],
+            )
+
+            await self._publish_memory_evidence_handoff(
+                updated,
+                classification_event_gid=event_gid,
+                parent_gid=batch_gid,
+                handoff_reason="fallback_useful_classification",
             )
 
             if url:
@@ -1115,6 +1141,153 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         event: ExplorerEvent | ExplorerFinding | ExplorerTargets,
     ) -> None:
         await self.crdt.add_genome(event)  # type: ignore[arg-type]
+    
+    async def _publish_memory_evidence_handoff(
+        self,
+        finding: ExplorerFinding,
+        *,
+        classification_event_gid: str,
+        parent_gid: str,
+        handoff_reason: str = "useful_explorer_finding",
+    ) -> bool:
+        """Publish structured Explorer evidence for Memory ingestion.
+
+        This is a CRDT dataflow handoff, not a direct external write. The memory
+        swarm can later consume memory_record records and decide how to ingest,
+        index, retain, or discard them.
+        """
+        classification = str(finding.get("classification") or "").strip().upper()
+        confidence = self._safe_float(finding.get("confidence"), default=0.0)
+
+        if classification != "USEFUL":
+            return False
+        if confidence < MIN_MEMORY_HANDOFF_CONFIDENCE:
+            return False
+
+        provenance = (
+            finding.get("provenance")
+            if isinstance(finding.get("provenance"), dict)
+            else {}
+        )
+
+        url = str(finding.get("url") or "").strip()
+        content_hash = str(finding.get("content_hash") or "").strip()
+        content_preview = finding.get("content_preview")
+        fetch_status = str(finding.get("fetch_status") or "").strip()
+        source_gid = str(finding.get("source_gid") or "").strip()
+        exploration_run_id = (
+            self._record_exploration_run_id(finding)
+            or str(self.active_exploration_run_id or "").strip()
+        )
+
+        memory_gid = self._make_gid("mem_ev")
+
+        memory_record = {
+            "type": MEMORY_RECORD_TYPE,
+            "schema_version": MEMORY_EVIDENCE_SCHEMA_VERSION,
+            "record_kind": MEMORY_EVIDENCE_RECORD_KIND,
+            "gid": memory_gid,
+            "timestamp": utc_ts(),
+            "source_swarm": "explorer",
+            "source_agent": self.agent_id,
+            "source_record_gid": finding.get("gid"),
+            "source_gid": source_gid,
+            "classification_event_gid": classification_event_gid,
+            "parent_gid": parent_gid,
+            "exploration_run_id": exploration_run_id,
+            "research_goal_id": exploration_run_id,
+            "memory_ingestion_candidate": True,
+            "status": "candidate",
+            "subject": {
+                "type": "web_source",
+                "url": url,
+                "domain": finding.get("domain"),
+                "content_hash": content_hash or None,
+            },
+            "evidence": {
+                "evidence_kind": EXPLORER_EVIDENCE_KIND,
+                "url": url,
+                "domain": finding.get("domain"),
+                "content_preview": content_preview,
+                "content_hash": content_hash or None,
+                "fetch_status": fetch_status,
+                "classification": classification,
+                "confidence": confidence,
+                "reason": finding.get("reason"),
+                "source_adapter": provenance.get("source_adapter"),
+                "source_kind": provenance.get("source_kind"),
+                "discovery_method": provenance.get("discovery_method"),
+                "seed_score": provenance.get("seed_score"),
+                "source_type_score": provenance.get("source_type_score"),
+                "authority_score": provenance.get("authority_score"),
+                "freshness_score": provenance.get("freshness_score"),
+                "system_relevance_score": provenance.get("system_relevance_score"),
+                "quality_score": provenance.get("quality_score"),
+                "source_score": provenance.get("source_score"),
+            },
+            "payload": {
+                "url": url,
+                "domain": finding.get("domain"),
+                "content_preview": content_preview,
+                "content_hash": content_hash or None,
+                "fetch_status": fetch_status,
+                "classification": classification,
+                "confidence": confidence,
+                "reason": finding.get("reason"),
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
+                "memory_ingestion_candidate": True,
+            },
+            "provenance": {
+                **provenance,
+                "agent": self.agent_id,
+                "source_swarm": "explorer",
+                "source_record_gid": finding.get("gid"),
+                "classification_event_gid": classification_event_gid,
+                "parent_gid": parent_gid,
+                "handoff_reason": handoff_reason,
+                "record_kind": MEMORY_EVIDENCE_RECORD_KIND,
+                "memory_ingestion_candidate": True,
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
+                "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
+                "production_paths_mutated": False,
+                "production_secrets_accessed": False,
+            },
+        }
+
+        await self.crdt.add_genome(memory_record)
+
+        self._last_memory_records_published += 1
+        self._memory_records_published_total += 1
+
+        self._record_event_chain(
+            event_type="memory_handoff_published",
+            event_gid=memory_gid,
+            source_gid=source_gid or str(finding.get("gid") or ""),
+            parent_gid=classification_event_gid or parent_gid,
+            url=url or None,
+            status="candidate",
+            content_hash=content_hash or None,
+            provenance=memory_record["provenance"],
+        )
+
+        self.logger.info(
+            "🧠 Published memory evidence handoff for %s (confidence=%.2f)",
+            url,
+            confidence,
+        )
+        return True
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
     async def _publish_canonical_finding_classified(
         self,

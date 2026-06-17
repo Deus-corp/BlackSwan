@@ -7,6 +7,7 @@ EventType = Literal[
     "classification_started",
     "finding_classified",
     "targets_suggested",
+    "memory_handoff_published",
 ]
 
 
