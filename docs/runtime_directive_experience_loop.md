@@ -2720,6 +2720,106 @@ python -m src.testing.build_real_execution_sandbox_rendered_command_scaffold \
   --json \
   --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
 ```
+
+---
+
+### Sandbox rendered command scaffold observability check
+
+`src.testing.check_sandbox_rendered_command_scaffold_observability`
+is a read-only helper that verifies fail-closed sandbox rendered command scaffold
+visibility through Security, Inspector, Readiness-style gates, and Overseer brief
+metrics.
+
+The check requires:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold observed
+Security record type count > 0
+Inspector rendered command scaffold linkage complete
+sandbox rendered command scaffold orphans = 0
+sandbox_rendered_command_scaffold_status=blocked
+sandbox_rendered_command_scaffold_fail_closed=true
+sandbox_rendered_command_scaffold_deny_by_default=true
+sandbox_rendered_command_generation_enabled=false
+sandbox_rendered_command_materialized=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_command_render_plan_generation_enabled=false
+sandbox_command_render_plan_materialized=false
+sandbox_command_render_plan_executable=false
+sandbox_command_rendering_enabled=false
+sandbox_command_rendered=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+```
+Runtime command:
+```bash
+python -m src.testing.check_sandbox_rendered_command_scaffold_observability \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
+This check does not generate rendered commands, materialize rendered commands,
+validate rendered commands, execute sandbox commands, invoke subprocesses, or
+enable real execution.
+
+---
+
+### Sandbox rendered command validation scaffold
+
+`src.testing.build_real_execution_sandbox_rendered_command_validation_scaffold`
+builds the next blocked artifact after sandbox rendered command scaffold
+observability.
+
+The record type is:
+
+```text
+replay_lifecycle_retry_real_execution_sandbox_rendered_command_validation_scaffold
+```
+This artifact is still read-only and blocked. It does not validate rendered
+commands, mark rendered commands executable, generate rendered commands,
+materialize rendered commands, execute sandbox commands, generate results, invoke
+subprocesses, or enable real execution.
+
+Expected safe fields include:
+```text
+sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_generation_enabled=false
+sandbox_rendered_command_materialized=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_command_render_plan_generation_enabled=false
+sandbox_command_render_plan_materialized=false
+sandbox_command_render_plan_executable=false
+sandbox_command_rendering_enabled=false
+sandbox_command_rendered=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+Runtime command:
+```bash
+python -m src.testing.build_real_execution_sandbox_rendered_command_validation_scaffold \
+  --proposal-id replay-retry-real-observe-smoke-1 \
+  --rendered-command-id replay-retry-real-observe-command-1 \
+  --json \
+  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
+```
 ---
 
 ## Related modules

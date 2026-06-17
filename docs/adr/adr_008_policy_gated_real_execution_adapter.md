@@ -1310,6 +1310,94 @@ This PR does not generate rendered commands, materialize rendered commands,
 validate rendered commands, render sandbox commands, sandbox execution,
 subprocesses, or real execution.
 
+## Acceptance criteria for PR 38.13c
+
+PR 38.13c surfaces sandbox rendered command scaffold observability through a
+dedicated read-only check and Overseer brief metrics.
+
+The concrete helper is:
+
+```text
+src.testing.check_sandbox_rendered_command_scaffold_observability
+```
+It must verify:
+```text
+sandbox_rendered_command_scaffold_observed=true
+sandbox_rendered_command_scaffold_linkage_complete=true
+sandbox_rendered_command_scaffold_orphans=0
+sandbox_rendered_command_scaffold_blocked=1
+sandbox_rendered_command_scaffold_fail_closed=1
+sandbox_rendered_command_scaffold_deny_by_default=1
+sandbox_rendered_command_scaffold_generation_enabled=0
+sandbox_rendered_command_scaffold_materialized=0
+sandbox_rendered_command_scaffold_executable=0
+sandbox_rendered_command_scaffold_validated=0
+sandbox_rendered_command_scaffold_command_plan_generation_enabled=0
+sandbox_rendered_command_scaffold_command_plan_materialized=0
+sandbox_rendered_command_scaffold_command_plan_executable=0
+sandbox_rendered_command_scaffold_command_rendering_enabled=0
+sandbox_rendered_command_scaffold_command_rendered=0
+sandbox_rendered_command_scaffold_sandbox_execution_enabled=0
+sandbox_rendered_command_scaffold_result_generation_enabled=0
+sandbox_rendered_command_scaffold_execution_performed=0
+sandbox_rendered_command_scaffold_subprocess_invoked=0
+sandbox_rendered_command_scaffold_real_execution_enabled=0
+```
+The Overseer brief must surface the same fail-closed rendered command scaffold
+state through security_real_execution_sandbox_rendered_command_* key metrics.
+
+This PR remains read-only and does not generate rendered commands, materialize
+rendered commands, validate rendered commands, sandbox execution, subprocesses,
+or real execution.
+
+## Acceptance criteria for PR 38.14a
+
+PR 38.14a introduces a blocked sandbox rendered command validation scaffold.
+
+The concrete builder is:
+
+```text
+src.testing.build_real_execution_sandbox_rendered_command_validation_scaffold
+```
+It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold
+source.
+
+The produced record type is:
+```text
+replay_lifecycle_retry_real_execution_sandbox_rendered_command_validation_scaffold
+```
+Required invariants:
+```text
+sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_generation_enabled=false
+sandbox_rendered_command_materialized=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_command_render_plan_generation_enabled=false
+sandbox_command_render_plan_materialized=false
+sandbox_command_render_plan_executable=false
+sandbox_command_rendering_enabled=false
+sandbox_command_rendered=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+This PR does not validate rendered commands, mark rendered commands executable,
+generate rendered commands, materialize rendered commands, sandbox execution,
+subprocesses, or real execution.
+
 ## Consequences
 
 This decision keeps BlackSwan aligned with the existing audit-first architecture.
