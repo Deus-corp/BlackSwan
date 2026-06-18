@@ -148,6 +148,52 @@ FRONTIER_URL_HINTS = (
     "atom.xml",
 )
 
+LOW_VALUE_TARGET_DOMAINS = frozenset(
+    {
+        "www.googletagmanager.com",
+        "googletagmanager.com",
+        "www.google-analytics.com",
+        "google-analytics.com",
+        "stats.g.doubleclick.net",
+        "doubleclick.net",
+        "iana.org",
+        "www.iana.org",
+        "donate.python.org",
+    }
+)
+
+LOW_VALUE_TARGET_PATH_PARTS = (
+    "/account/",
+    "/accounts/",
+    "/login",
+    "/logout",
+    "/signin",
+    "/signup",
+    "/sign-up",
+    "/register",
+    "/password",
+    "/onboarding",
+    "/donate",
+    "/donation",
+    "/privacy",
+    "/terms",
+    "/cookies",
+    "/cookie",
+    "/cdn-cgi/",
+    "/help/example-domains",
+    "/domains/example",
+)
+
+LOW_VALUE_TARGET_QUERY_PARTS = (
+    "utm_",
+    "fbclid=",
+    "gclid=",
+    "gtag/js",
+    "google/login",
+    "next=",
+    "intent=learning_plan",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ExplorerMetaSnapshot:
@@ -1029,6 +1075,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 continue
 
             if self._is_target_blacklisted(url):
+                continue
+
+            if self._is_low_value_target_url(url):
                 continue
 
             if self.memory.seen_target(url):
@@ -1952,6 +2001,29 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             }
 
         return super().summarize_snapshot(snapshot)
+    
+    def _is_low_value_target_url(self, url: str) -> bool:
+        parsed = urlparse(str(url or ""))
+        domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
+        path = parsed.path.lower()
+        query = parsed.query.lower()
+
+        if not domain:
+            return True
+
+        if domain in LOW_VALUE_TARGET_DOMAINS:
+            return True
+
+        if any(part in path for part in LOW_VALUE_TARGET_PATH_PARTS):
+            return True
+
+        if any(part in query for part in LOW_VALUE_TARGET_QUERY_PARTS):
+            return True
+
+        if path.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".css", ".js")):
+            return True
+
+        return False
 
     @staticmethod
     def _is_target_blacklisted(url: str) -> bool:

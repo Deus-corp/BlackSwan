@@ -127,6 +127,74 @@ PLAIN_URL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+LOW_VALUE_DISCOVERY_DOMAINS = frozenset(
+    {
+        "www.googletagmanager.com",
+        "googletagmanager.com",
+        "www.google-analytics.com",
+        "google-analytics.com",
+        "stats.g.doubleclick.net",
+        "doubleclick.net",
+        "facebook.com",
+        "www.facebook.com",
+        "twitter.com",
+        "x.com",
+        "linkedin.com",
+        "www.linkedin.com",
+        "iana.org",
+        "www.iana.org",
+        "donate.python.org",
+    }
+)
+
+LOW_VALUE_DISCOVERY_PATH_PARTS = (
+    "/account/",
+    "/accounts/",
+    "/login",
+    "/logout",
+    "/signin",
+    "/signup",
+    "/sign-up",
+    "/register",
+    "/password",
+    "/onboarding",
+    "/donate",
+    "/donation",
+    "/privacy",
+    "/terms",
+    "/cookies",
+    "/cookie",
+    "/cdn-cgi/",
+    "/help/example-domains",
+    "/domains/example",
+)
+
+LOW_VALUE_DISCOVERY_QUERY_PARTS = (
+    "utm_",
+    "fbclid=",
+    "gclid=",
+    "gtag/js",
+    "google/login",
+    "next=",
+    "intent=learning_plan",
+)
+
+PREFERRED_EVIDENCE_PATH_PARTS = (
+    "/library/",
+    "/reference/",
+    "/tutorial/",
+    "/howto/",
+    "/guide/",
+    "/docs/",
+    "/doc/",
+    "/articles/",
+    "/article/",
+    "/learn/",
+    "/pep-",
+    "/api/",
+    "/packages/",
+)
+
 
 class _HTMLLinkExtractor(HTMLParser):
     """Tiny stdlib HTML link extractor for explorer frontier expansion."""
@@ -1324,6 +1392,10 @@ class ExplorerNode(BaseSwarmNode):
             absolute = self._normalize_discovered_url(href, base_url=base_url)
             if not absolute:
                 continue
+
+            if self._is_low_value_discovered_target(absolute):
+                continue
+
             if absolute in seen:
                 continue
             if absolute == base_url:
@@ -1338,12 +1410,18 @@ class ExplorerNode(BaseSwarmNode):
             domain = extract_domain(absolute) or ""
             same_domain = bool(base_domain and domain == base_domain)
 
+            base_score = 1.0 if same_domain else 0.65
+            base_score = min(
+                1.0,
+                base_score + self._preferred_evidence_score_boost(absolute),
+            )
+
             discovery_scores = score_source_target(
                 absolute,
                 source_adapter="",
                 source_kind="html_link",
                 discovery_method="html_link_extraction",
-                existing_score=1.0 if same_domain else 0.65,
+                existing_score=base_score,
             )
 
             seen.add(absolute)
@@ -1355,6 +1433,9 @@ class ExplorerNode(BaseSwarmNode):
                     "target_depth": parent_depth + 1,
                     "discovery_method": "html_link_extraction",
                     "same_domain": same_domain,
+                    "preferred_evidence_target": (
+                        self._preferred_evidence_score_boost(absolute) > 0.0
+                    ),
                     "score": discovery_scores["source_score"],
                     "seed_score": discovery_scores["seed_score"],
                     "source_type_score": discovery_scores["source_type_score"],
@@ -1496,6 +1577,49 @@ class ExplorerNode(BaseSwarmNode):
             return normalize_url(defragged)
         except Exception:
             return ""
+    
+    def _is_low_value_discovered_target(self, url: str) -> bool:
+        parsed = urlparse(str(url or ""))
+        domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
+        path = parsed.path.lower()
+        query = parsed.query.lower()
+        full = f"{path}?{query}" if query else path
+
+        if not domain:
+            return True
+
+        if domain in LOW_VALUE_DISCOVERY_DOMAINS:
+            return True
+
+        if any(part in path for part in LOW_VALUE_DISCOVERY_PATH_PARTS):
+            return True
+
+        if any(part in query for part in LOW_VALUE_DISCOVERY_QUERY_PARTS):
+            return True
+
+        if full.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".css", ".js")):
+            return True
+
+        return False
+
+    def _preferred_evidence_score_boost(self, url: str) -> float:
+        parsed = urlparse(str(url or ""))
+        domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
+        path = parsed.path.lower()
+
+        if any(part in path for part in PREFERRED_EVIDENCE_PATH_PARTS):
+            return 0.18
+
+        if domain == "github.com":
+            # Prefer repository-like URLs over GitHub search/login/assets.
+            parts = [part for part in path.split("/") if part]
+            if len(parts) >= 2 and parts[0] not in {"search", "login", "signup"}:
+                return 0.14
+
+        if domain in {"docs.python.org", "peps.python.org", "realpython.com"}:
+            return 0.10
+
+        return 0.0
 
     def _is_probably_fetchable_document(self, url: str) -> bool:
         if not is_valid_http_url(url):
