@@ -170,6 +170,9 @@ LOW_VALUE_TARGET_DOMAINS = frozenset(
         "www.pythonjobshq.com",
         "pythonjobshq.com",
         "brochure.getpython.info",
+        "support.github.com",
+        "skills.github.com",
+        "translations.python.org",
     }
 )
 
@@ -1591,8 +1594,19 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
 
         if domain == "realpython.com":
             parts = [part for part in path.split("/") if part]
-            return len(parts) == 1 and not parts[0].startswith(("account", "search"))
-
+            return (
+                len(parts) == 1
+                and not parts[0].startswith(
+                    (
+                        "account",
+                        "search",
+                        "tutorials",
+                        "learning-paths",
+                        "quizzes",
+                        "bonus",
+                    )
+                )
+            )
         if domain == "docs.github.com":
             return path not in {"", "en"}
 
@@ -1741,7 +1755,16 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         elif domain == "realpython.com":
             is_concrete_evidence = (
                 len(path_parts) == 1
-                and not path_parts[0].startswith(("account", "search"))
+                and not path_parts[0].startswith(
+                    (
+                        "account",
+                        "search",
+                        "tutorials",
+                        "learning-paths",
+                        "quizzes",
+                        "bonus",
+                    )
+                )
             )
         elif domain == "docs.github.com":
             normalized_path = parsed_path.strip("/")
@@ -2141,6 +2164,22 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
         path = parsed.path.lower()
         query = parsed.query.lower()
+
+        if domain == "realpython.com" and path.startswith("/tutorials/"):
+            return True
+
+        if domain == "realpython.com" and path.startswith("/learning-paths/"):
+            return True
+
+        if domain == "github.com" and path.startswith(
+            (
+                "/customer-stories",
+                "/features",
+                "/pricing",
+                "/enterprise",
+            )
+        ):
+            return True
 
         if not domain:
             return True

@@ -155,6 +155,9 @@ LOW_VALUE_DISCOVERY_DOMAINS = frozenset(
         "www.pythonjobshq.com",
         "pythonjobshq.com",
         "brochure.getpython.info",
+        "support.github.com",
+        "skills.github.com",
+        "translations.python.org",
     }
 )
 
@@ -186,6 +189,28 @@ LOW_VALUE_DISCOVERY_PATH_PARTS = (
     "/1999/xlink",
     "/xfn/",
     "/@",
+)
+
+TOPIC_ALIGNED_EVIDENCE_HINTS = (
+    "agent",
+    "agents",
+    "autonomous",
+    "ai",
+    "llm",
+    "memory",
+    "retrieval",
+    "rag",
+    "context",
+    "engineering",
+    "orchestration",
+    "runtime",
+    "async",
+    "asyncio",
+    "security",
+    "sandbox",
+    "testing",
+    "pytest",
+    "architecture",
 )
 
 LOW_VALUE_DISCOVERY_QUERY_PARTS = (
@@ -1430,9 +1455,12 @@ class ExplorerNode(BaseSwarmNode):
             same_domain = bool(base_domain and domain == base_domain)
 
             base_score = 1.0 if same_domain else 0.65
-            base_score = min(
-                1.0,
-                base_score + self._preferred_evidence_score_boost(absolute),
+            base_score = max(
+                0.0,
+                min(
+                    1.0,
+                    base_score + self._preferred_evidence_score_boost(absolute),
+                ),
             )
 
             discovery_scores = score_source_target(
@@ -1604,6 +1632,22 @@ class ExplorerNode(BaseSwarmNode):
         query = parsed.query.lower()
         full = f"{path}?{query}" if query else path
 
+        if domain == "realpython.com" and path.startswith("/tutorials/"):
+            return True
+
+        if domain == "realpython.com" and path.startswith("/learning-paths/"):
+            return True
+
+        if domain == "github.com" and path.startswith(
+            (
+                "/customer-stories",
+                "/features",
+                "/pricing",
+                "/enterprise",
+            )
+        ):
+            return True
+
         if not domain:
             return True
 
@@ -1644,18 +1688,47 @@ class ExplorerNode(BaseSwarmNode):
         parsed = urlparse(str(url or ""))
         domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
         path = parsed.path.lower()
+        topic_boost = self._topic_aligned_url_boost(url)
+
+        if domain == "realpython.com":
+            parts = [part for part in path.strip("/").split("/") if part]
+            if len(parts) == 1:
+                return max(0.16, topic_boost)
+            return topic_boost
 
         if any(part in path for part in PREFERRED_EVIDENCE_PATH_PARTS):
-            return 0.18
+            return max(0.12, topic_boost)
 
         if domain == "github.com":
-            # Prefer repository-like URLs over GitHub search/login/assets.
             parts = [part for part in path.split("/") if part]
             if len(parts) >= 2 and parts[0] not in {"search", "login", "signup"}:
-                return 0.14
+                return max(0.12, topic_boost)
 
-        if domain in {"docs.python.org", "peps.python.org", "realpython.com"}:
-            return 0.10
+        if domain in {"docs.python.org", "peps.python.org", "docs.github.com"}:
+            return max(0.10, topic_boost)
+
+        return topic_boost
+    
+    def _topic_aligned_url_boost(self, url: str) -> float:
+        parsed = urlparse(str(url or ""))
+        haystack = " ".join(
+            [
+                parsed.netloc.lower(),
+                parsed.path.lower(),
+                parsed.query.lower(),
+            ]
+        )
+
+        matches = sum(1 for hint in TOPIC_ALIGNED_EVIDENCE_HINTS if hint in haystack)
+
+        if matches >= 4:
+            return 0.22
+        if matches >= 3:
+            return 0.18
+        if matches >= 2:
+            return 0.14
+        if matches == 1:
+            return 0.08
 
         return 0.0
 
