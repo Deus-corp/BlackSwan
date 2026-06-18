@@ -163,6 +163,18 @@ LOW_VALUE_DISCOVERY_DOMAINS = frozenset(
         "www.helpscout.com",
         "pycon.blogspot.com",
         "pyfound.blogspot.com",
+        "realpython.workable.com",
+        "apply.workable.com",
+        "workable.com",
+        "www.workable.com",
+        "workablehr.s3.amazonaws.com",
+        "workable-application-form.s3.amazonaws.com",
+        "youtube.com",
+        "www.youtube.com",
+        "youtu.be",
+        "developers.google.com",
+        "planetpython.org",
+        "www.planetpython.org",
     }
 )
 
@@ -198,6 +210,20 @@ LOW_VALUE_DISCOVERY_PATH_PARTS = (
     "/discussion",
     "/category/",
     "/docs-refer",
+    "/events",
+    "/event",
+    "/calendar",
+    "/jobs",
+    "/job",
+    "/careers",
+    "/career",
+    "/apply",
+    "/application",
+    "/llms.txt",
+    "/youtube",
+    "/channel/",
+    "/watch",
+    "/playlist",
 )
 
 TOPIC_ALIGNED_EVIDENCE_HINTS = (
@@ -733,6 +759,43 @@ class ExplorerNode(BaseSwarmNode):
 
         return selected
     
+    def _target_evidence_priority(self, url: str) -> tuple[int, float, float, float]:
+        context = self._target_context_by_url.get(url, {})
+        provenance = (
+            context.get("provenance")
+            if isinstance(context.get("provenance"), dict)
+            else {}
+        )
+
+        preferred = bool(
+            context.get("preferred_evidence_target")
+            or provenance.get("preferred_evidence_target")
+        )
+        goal_alignment_score = self._safe_float(
+            context.get("goal_alignment_score")
+            or provenance.get("goal_alignment_score"),
+            default=0.0,
+        )
+        source_score = self._safe_float(
+            context.get("source_score")
+            or context.get("quality_score")
+            or context.get("score")
+            or provenance.get("source_score")
+            or provenance.get("quality_score")
+            or provenance.get("score"),
+            default=0.0,
+        )
+
+        sink_penalty = 1 if self._is_low_value_discovered_target(url) else 0
+        preferred_rank = 0 if preferred else 1
+
+        return (
+            sink_penalty,
+            preferred_rank,
+            -goal_alignment_score,
+            -source_score,
+        )
+    
     def _target_priority_key(self, url: str) -> tuple[int, float, str]:
         context = self._target_context_by_url.get(url, {})
         source_adapter = str(context.get("source_adapter") or "").strip()
@@ -745,7 +808,18 @@ class ExplorerNode(BaseSwarmNode):
             default=0.0,
         )
 
-        return (source_priority, -score, url)
+        sink_penalty, preferred_rank, negative_goal_score, negative_source_score = (
+            self._target_evidence_priority(url)
+        )
+
+        return (
+            sink_penalty,
+            preferred_rank,
+            negative_goal_score,
+            source_priority,
+            negative_source_score,
+            url,
+        )
 
     @staticmethod
     def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -1627,6 +1701,8 @@ class ExplorerNode(BaseSwarmNode):
                     "goal_alignment_score": goal_boost,
                     "goal_terms_matched": goal_terms_matched,
                     "research_goal": goal,
+                    "goal": goal,
+                    "research_goal_text": goal,
                 }
             )
 
@@ -1723,6 +1799,19 @@ class ExplorerNode(BaseSwarmNode):
                 "production_secrets_accessed": False,
                 "exploration_run_id": exploration_run_id,
                 "research_goal_id": exploration_run_id,
+                "goal": parent_finding.get("provenance", {}).get("goal")
+                if isinstance(parent_finding.get("provenance"), dict)
+                else "",
+                "research_goal": parent_finding.get("provenance", {}).get(
+                    "research_goal"
+                )
+                if isinstance(parent_finding.get("provenance"), dict)
+                else "",
+                "research_goal_text": parent_finding.get("provenance", {}).get(
+                    "research_goal_text"
+                )
+                if isinstance(parent_finding.get("provenance"), dict)
+                else "",
             },
         }
 
@@ -1781,6 +1870,25 @@ class ExplorerNode(BaseSwarmNode):
         path = parsed.path.lower()
         query = parsed.query.lower()
         full = f"{path}?{query}" if query else path
+
+        if domain == "wiki.python.org" and (
+            "event" in path or "calendar" in path
+        ):
+            return True
+
+        if domain == "realpython.com" and path in {
+            "/security",
+            "/security/",
+            "/books",
+            "/books/",
+        }:
+            return True
+
+        if domain == "github.com" and "is%3aprivate" in query:
+            return True
+
+        if domain == "github.com" and "is:private" in query:
+            return True
 
         if domain == "realpython.com" and path.startswith("/courses/"):
             if path.endswith("/continue") or path.endswith("/discussion"):

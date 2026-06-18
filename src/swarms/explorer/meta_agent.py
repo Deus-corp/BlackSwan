@@ -185,6 +185,18 @@ LOW_VALUE_TARGET_DOMAINS = frozenset(
         "www.helpscout.com",
         "pycon.blogspot.com",
         "pyfound.blogspot.com",
+        "realpython.workable.com",
+        "apply.workable.com",
+        "workable.com",
+        "www.workable.com",
+        "workablehr.s3.amazonaws.com",
+        "workable-application-form.s3.amazonaws.com",
+        "youtube.com",
+        "www.youtube.com",
+        "youtu.be",
+        "developers.google.com",
+        "planetpython.org",
+        "www.planetpython.org",
     }
 )
 
@@ -220,6 +232,20 @@ LOW_VALUE_TARGET_PATH_PARTS = (
     "/discussion",
     "/category/",
     "/docs-refer",
+    "/events",
+    "/event",
+    "/calendar",
+    "/jobs",
+    "/job",
+    "/careers",
+    "/career",
+    "/apply",
+    "/application",
+    "/llms.txt",
+    "/youtube",
+    "/channel/",
+    "/watch",
+    "/playlist",
 )
 
 LOW_VALUE_TARGET_QUERY_PARTS = (
@@ -2210,6 +2236,25 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
         path = parsed.path.lower()
         query = parsed.query.lower()
+
+        if domain == "wiki.python.org" and (
+            "event" in path or "calendar" in path
+        ):
+            return True
+
+        if domain == "realpython.com" and path in {
+            "/security",
+            "/security/",
+            "/books",
+            "/books/",
+        }:
+            return True
+
+        if domain == "github.com" and "is%3aprivate" in query:
+            return True
+
+        if domain == "github.com" and "is:private" in query:
+            return True
 
         if domain == "realpython.com" and path.startswith("/courses/"):
             if path.endswith("/continue") or path.endswith("/discussion"):
