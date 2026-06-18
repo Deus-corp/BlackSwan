@@ -2977,7 +2977,69 @@ memory
   Ingestion, normalization, deduplication, classification, storage, retrieval,
   retention, and evidence routing for all swarms.
 ```
+---
 
+## Explorer Network-Read Evidence Loop
+
+The Explorer swarm now has a verified `network_read` execution path that can turn an explicit research/evidence seed into structured memory.
+
+Verified path:
+
+```text
+research goal
+  -> evidence seed target
+  -> explorer_targets
+  -> explorer node network_read fetch
+  -> explorer_finding
+  -> explorer meta-agent classification
+  -> USEFUL finding
+  -> memory handoff quality gate
+  -> memory_record
+```
+
+The verified runtime contract is intentionally read-only:
+
+```text
+execution_risk_tier=network_read
+network_read_candidate=true
+network_read_performed=true
+external_write_performed=false
+real_execution_enabled=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+The first verified runtime loop used an explicit evidence seed URL and produced at least one `memory_record` from Explorer output.
+
+Expected success signals:
+
+```text
+source_adapter_targets_seen.evidence_seed >= 1
+source_adapter_targets_selected.evidence_seed >= 1
+findings_emitted > 0
+classifications_published > 0
+memory_records_published > 0
+total_memory_records_published > 0
+```
+
+This closes the first useful Explorer execution bridge:
+
+```text
+goal/evidence seed -> network read -> finding -> USEFUL -> memory_record
+```
+
+The loop does not enable external writes. It only reads public network sources under source policy, rate limits, robots handling, quality gates, and CRDT audit records.
+
+Important implementation notes:
+
+* evidence seed targets may be re-ingested across exploration runs even if the URL was seen before;
+* evidence seed metadata is propagated into finding provenance;
+* meta-agent classification preserves evidence payload fields such as URL, domain, content hash, fetch status, and content preview;
+* missing or empty previews can be repaired for evidence-seed memory handoff through metadata-derived preview fallback;
+* placeholder domains such as `example.com` remain blocked from memory handoff;
+* short-preview GitHub/search/root pages may be classified as useful candidates but still rejected by memory quality gates until a stronger evidence preview exists.
+
+This loop is now the canonical starting point for Explorer-to-Memory execution work. Future Explorer improvements should extend the research planner and source discovery path so that the system can generate high-priority evidence seeds from a research goal without manual URL seeding.
 
 ---
 

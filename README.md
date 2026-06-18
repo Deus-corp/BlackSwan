@@ -20,7 +20,7 @@ BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime wit
 
 Validated in the current architecture:
 
-* ✅ 1157+ tests passing.
+* ✅ 1211+ tests passing.
 * ✅ Retry governance smoke test passing.
 * ✅ Swarm runtime smoke test passing.
 * ✅ Trade runtime command loop passing.
@@ -50,6 +50,7 @@ Validated in the current architecture:
 * ✅ `RUN_REPLAY` is available as a gated directive: security validates it, simulation consumes it, and unsafe execution is rejected unless the controlled path explicitly allows it.
 * ✅ Runtime directive evidence can be published back into CRDT as `evidence_record`.
 * ✅ Verified runtime evidence can be bridged into explicit `memory_record` payloads.
+* ✅ Explorer `network_read` execution can turn an explicit research/evidence seed into a fetched `explorer_finding`, classify it as `USEFUL`, and hand it off as a structured `memory_record`.
 * ✅ The controlled retry / guarded repair loop is now end-to-end verified through post-repair evidence.
 
 ### Latest Milestone — Verified Controlled Retry & Guarded Repair Loop
@@ -183,6 +184,51 @@ classified as `testnet_external_write`: real execution, but not production
 financial danger. It still requires explicit testnet configuration, budget/cap
 limits, capability policy, and operator-visible records, but it does not need to
 be reduced to pure simulation by default.
+
+### Latest Milestone — Explorer Network-Read Evidence Loop
+
+Explorer now has a verified read-only execution bridge from research/evidence seed to memory.
+
+Verified path:
+
+```text
+research goal
+  -> evidence seed target
+  -> explorer_targets
+  -> explorer node network_read fetch
+  -> explorer_finding
+  -> explorer meta-agent classification
+  -> USEFUL finding
+  -> memory handoff quality gate
+  -> memory_record
+```
+
+The verified runtime remains read-only and audit-first:
+
+```text
+execution_risk_tier=network_read
+network_read_performed=true
+external_write_performed=false
+real_execution_enabled=false
+production_paths_mutated=false
+production_secrets_accessed=false
+```
+
+The first successful runtime loop produced a Memory handoff from Explorer output:
+
+```text
+source_adapter_targets_seen.evidence_seed >= 1
+source_adapter_targets_selected.evidence_seed >= 1
+total_memory_records_published >= 1
+```
+
+This milestone closes the first useful Explorer execution contour:
+
+```text
+goal/evidence seed -> network read -> finding -> USEFUL -> memory_record
+```
+
+Explorer is still read-only. It does not perform external writes, credential access, production mutation, or financial execution. Future work should move from manually provided evidence URLs toward goal-driven source planning, source adapters, ranking, extraction, deduplication, and richer Memory ingestion.
 
 ### Latest Milestone — Memory Intelligence & Resilience
 
@@ -602,10 +648,9 @@ Near-term milestone plan:
 
 ```text
 PR 38.14d — document execution substrate closure and swarm execution transition
-PR 39.1a — explorer network-read execution plan
-PR 39.1b — explorer source collection nodes
-PR 39.1c — explorer evidence handoff to memory
-PR 39.2a — memory ingestion and classification pipeline
+PR 39.1a–39.1y — explorer network-read evidence loop to memory_record
+PR 39.2a — explorer research-goal source planner and evidence candidate generation
+PR 39.3a — memory ingestion, classification, dedupe, indexing, and retrieval pipeline
 ```
 
 Explorer direction:

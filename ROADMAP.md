@@ -32,7 +32,7 @@ The current milestone is no longer only "directive lifecycle through CRDT". The 
 
 ### Validated
 
-* ✅ 1157+ tests passing.
+* ✅ 1211+ tests passing.
 * ✅ Retry governance smoke test passing.
 * ✅ Swarm runtime smoke test passing.
 * ✅ Trade runtime command loop passing.
@@ -101,6 +101,7 @@ The current milestone is no longer only "directive lifecycle through CRDT". The 
 * ✅ Secure gossip and signed exchange components.
 * ✅ Genetic/evolution engine generalized beyond trading.
 * ✅ Curiosity, survival, and meta-policy components generalized into cognition layer.
+* ✅ Explorer `network_read` execution loop from explicit evidence seed to fetched finding, `USEFUL` classification, memory handoff quality gate, and structured `memory_record`.
 
 ### Latest verified loop
 
@@ -266,14 +267,14 @@ system_dangerous_stub
 
 ```text
 P0 — Explorer swarm execution
-  - network_read execution policy
-  - internet research goals
+  - completed: explicit evidence seed -> network_read -> finding -> USEFUL -> memory_record
+  - next: research goal -> source planner -> high-priority evidence candidates
   - source discovery
   - source-specific collection nodes
   - freshness/ranking
   - evidence extraction
   - conflict/quality checks
-  - handoff to memory
+  - richer handoff to memory
 
 P0 — Memory swarm execution
   - ingestion
@@ -334,6 +335,47 @@ explorer nodes
 Explorer should start with `network_read` execution only. It should not perform
 external writes.
 
+### Explorer execution milestone
+
+Explorer has now crossed from scaffolded swarm behavior into useful read-only execution.
+
+Verified loop:
+
+```text
+research goal
+  -> evidence seed target
+  -> explorer_targets
+  -> network_read fetch
+  -> explorer_finding
+  -> USEFUL classification
+  -> memory handoff quality gate
+  -> memory_record
+```
+
+Runtime success criteria:
+
+```text
+source_adapter_targets_seen.evidence_seed >= 1
+source_adapter_targets_selected.evidence_seed >= 1
+findings_emitted > 0
+classifications_published > 0
+total_memory_records_published > 0
+```
+
+This establishes the first Explorer-to-Memory execution bridge. The remaining Explorer work is no longer basic execution proof; it is autonomous research quality:
+
+```text
+research goal
+  -> source plan
+  -> high-priority evidence candidates
+  -> source-specific collection
+  -> freshness/authority/quality scoring
+  -> dedupe/conflict checks
+  -> memory handoff
+```
+
+Explorer remains `network_read` only. External writes, private data access, credential use, production mutation, and financial execution are out of scope for Explorer.
+
 ### Memory architecture direction
 
 Memory does not need many autonomous agents at first. Start with one memory
@@ -372,7 +414,7 @@ specialization, or fault-isolation pressure requires it.
 | Overseer | Generic topology observer, brief builder, directive coordinator, retry/repair observability consumer | 4 | `src/swarms/overseer/` |
 | Trade swarm | Mature proving-ground swarm with safe directive consumer | 4 | `src/swarms/trade/` |
 | Security swarm | Runtime defensive swarm with directive, retry, guarded execution, repair, and post-repair validation | 4 | `src/swarms/security/` |
-| Explorer swarm | Signal discovery swarm | 3 | `src/swarms/explorer/` |
+| Explorer swarm | Network-read evidence execution with explicit evidence seed to `memory_record`; source planning and autonomous research quality still maturing | 3-4 | `src/swarms/explorer/` |
 | Improver swarm | Controlled improvement/maintenance swarm, advisory-first and review-gated | 3 | `src/swarms/improver/` |
 | Memory swarm | First-class advisory memory intelligence and resilience swarm | 3-4 | `src/swarms/memory/`, `src/memory/`, `src/intelligence/*memory*` |
 | Simulation swarm | First-class advisory replay/evidence swarm with gated execution surfaces | 3-4 | `src/swarms/simulation/`, `src/simulation/` |
@@ -505,13 +547,35 @@ Next:
 
 ### Explorer
 
-Signal discovery and external observation swarm.
+Read-only signal discovery, external observation, and evidence collection swarm.
+
+Current role:
+
+* first useful `network_read` execution bridge,
+* explicit research/evidence seed ingestion,
+* source adapter target scheduling,
+* public network fetches under policy and robots handling,
+* link discovery and frontier scheduling,
+* source quality, freshness, authority, and relevance scoring,
+* useful finding classification,
+* memory handoff quality gate,
+* structured `memory_record` publication for high-value evidence.
+
+Verified execution loop:
+
+```text
+goal/evidence seed -> network read -> finding -> USEFUL -> memory_record
+```
 
 Next:
 
-- stronger sandboxing,
-- target governance,
-- memory integration.
+* research-goal source planner,
+* automatic high-priority evidence candidate generation,
+* stronger source-specific adapters,
+* better HTML/content extraction,
+* duplicate and conflict handling,
+* richer evidence summaries for Memory and Improver,
+* long-running network-read stability checks.
 
 ### Improver
 
@@ -753,6 +817,8 @@ BlackSwan = trading bot
 * [x] Post-repair evidence check verifies repair outcome and emits `close_repair_loop`.
 * [x] Security/Inspector/Readiness surface the verified guarded repair lifecycle.
 * [x] Closed fail-closed policy-gated sandbox execution substrate through rendered command validation scaffold.
+* [x] Explorer explicit evidence seed can execute `network_read` and publish a useful `memory_record`.
+* [x] Explorer-to-Memory read-only evidence bridge validated in runtime.
 * [ ] Golden-path smoke script for the full controlled retry / guarded repair lifecycle.
 * [ ] Dashboard views for retry governance, guarded execution, repair status, and post-repair evidence.
 * [ ] Better local cluster profiles.
@@ -766,6 +832,9 @@ BlackSwan = trading bot
 * [x] Directive outcome memory records.
 * [x] Memory swarm classification of `runtime_evidence` memory records.
 * [x] Overseer brief enrichment from evidence and runtime memory records.
+* [x] Explorer useful evidence can be handed off to Memory as structured `memory_record`.
+* [ ] Research-goal source planner generates high-priority evidence candidates without manual evidence URLs.
+* [ ] Memory deduplicates, indexes, summarizes, and routes Explorer evidence to Improver and Overseer.
 * [ ] Dashboard-ready summary cards for memory, replay, retry, repair, and post-repair verification.
 * [ ] Memory retrieval and consolidation.
 * [ ] Simulation scenario execution.
