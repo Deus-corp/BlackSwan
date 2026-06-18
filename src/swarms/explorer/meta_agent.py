@@ -159,6 +159,17 @@ LOW_VALUE_TARGET_DOMAINS = frozenset(
         "iana.org",
         "www.iana.org",
         "donate.python.org",
+        "github.githubassets.com",
+        "analytics.githubassets.com",
+        "githubassets.com",
+        "gmpg.org",
+        "www.w3.org",
+        "w3.org",
+        "fosstodon.org",
+        "githubuniverse.com",
+        "www.pythonjobshq.com",
+        "pythonjobshq.com",
+        "brochure.getpython.info",
     }
 )
 
@@ -182,6 +193,14 @@ LOW_VALUE_TARGET_PATH_PARTS = (
     "/cdn-cgi/",
     "/help/example-domains",
     "/domains/example",
+    "/_static",
+    "/assets/",
+    "/static/",
+    "/fonts/",
+    "/font/",
+    "/1999/xlink",
+    "/xfn/",
+    "/@",
 )
 
 LOW_VALUE_TARGET_QUERY_PARTS = (
@@ -1536,6 +1555,60 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         )
         return True
     
+    def _is_concrete_evidence_page(
+        self,
+        finding: Mapping[str, Any],
+        quality_signals: Mapping[str, Any],
+    ) -> bool:
+        """Return whether URL looks like a concrete document/article page."""
+        raw_url = str(finding.get("url") or "")
+        parsed = urlparse(raw_url)
+        domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
+        path = parsed.path.lower().strip("/")
+
+        if not domain or not path:
+            return False
+
+        if self._is_low_value_target_url(raw_url):
+            return False
+
+        if any(
+            marker in f"/{path}"
+            for marker in (
+                "/library/",
+                "/reference/",
+                "/tutorial/",
+                "/howto/",
+                "/guide/",
+                "/docs/",
+                "/articles/",
+                "/article/",
+                "/learn/",
+                "/pep-",
+            )
+        ):
+            return True
+
+        if domain == "realpython.com":
+            parts = [part for part in path.split("/") if part]
+            return len(parts) == 1 and not parts[0].startswith(("account", "search"))
+
+        if domain == "docs.github.com":
+            return path not in {"", "en"}
+
+        if domain == "github.com":
+            parts = [part for part in path.split("/") if part]
+            return len(parts) >= 2 and parts[0] not in {
+                "search",
+                "login",
+                "signup",
+                "features",
+                "security",
+                "about",
+            }
+
+        return False
+    
     def _is_frontier_source_finding(
         self,
         finding: Mapping[str, Any],
@@ -1552,6 +1625,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             if isinstance(finding.get("provenance"), Mapping)
             else {}
         )
+
+        if self._is_concrete_evidence_page(finding, quality_signals):
+            return False
 
         raw_url = str(finding.get("url") or "")
         url = raw_url.lower()
@@ -1607,7 +1683,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         )
 
         url = str(finding.get("url") or "").strip()
-        domain = str(finding.get("domain") or self._domain_from_url(url) or "").lower()
+        domain = str(
+            finding.get("domain") or self._domain_from_url(url) or ""
+        ).lower()
         preview = str(finding.get("content_preview") or "").strip()
         preview_l = preview.lower()
         fetch_status = str(finding.get("fetch_status") or "").strip().lower()
@@ -1634,6 +1712,53 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             for keyword in CONTENT_RELEVANCE_KEYWORDS
             if keyword in preview_l or keyword in url.lower()
         ]
+
+        parsed_path = urlparse(url).path.lower()
+        path_parts = [
+            part
+            for part in parsed_path.strip("/").split("/")
+            if part
+        ]
+
+        is_concrete_evidence = False
+
+        if any(
+            marker in parsed_path
+            for marker in (
+                "/library/",
+                "/reference/",
+                "/tutorial/",
+                "/howto/",
+                "/guide/",
+                "/docs/",
+                "/articles/",
+                "/article/",
+                "/learn/",
+                "/pep-",
+            )
+        ):
+            is_concrete_evidence = True
+        elif domain == "realpython.com":
+            is_concrete_evidence = (
+                len(path_parts) == 1
+                and not path_parts[0].startswith(("account", "search"))
+            )
+        elif domain == "docs.github.com":
+            normalized_path = parsed_path.strip("/")
+            is_concrete_evidence = bool(normalized_path) and normalized_path != "en"
+        elif domain == "github.com":
+            is_concrete_evidence = (
+                len(path_parts) >= 2
+                and path_parts[0]
+                not in {
+                    "search",
+                    "login",
+                    "signup",
+                    "features",
+                    "security",
+                    "about",
+                }
+            )
 
         inferred_authority = explicit_authority_score
         if inferred_authority <= 0.0:
@@ -1662,8 +1787,16 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 0.35
                 + (0.25 if high_value_domain else 0.0)
                 + min(0.25, len(keyword_matches) * 0.05)
-                + (0.10 if len(preview) >= MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS else 0.0)
+                + (
+                    0.10
+                    if len(preview) >= MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS
+                    else 0.0
+                ),
             )
+
+        if is_concrete_evidence:
+            inferred_relevance = max(inferred_relevance, 0.68)
+            inferred_source_score = max(inferred_source_score, 0.68)
 
         return {
             "url": url,
@@ -1673,6 +1806,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             "content_preview_chars": len(preview),
             "placeholder_domain": placeholder_domain,
             "high_value_domain": high_value_domain,
+            "concrete_evidence_page": is_concrete_evidence,
             "keyword_matches": keyword_matches,
             "keyword_match_count": len(keyword_matches),
             "source_score": inferred_source_score,
@@ -2020,7 +2154,26 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         if any(part in query for part in LOW_VALUE_TARGET_QUERY_PARTS):
             return True
 
-        if path.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".css", ".js")):
+        if path.endswith(
+            (
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".svg",
+                ".ico",
+                ".css",
+                ".js",
+                ".mjs",
+                ".woff",
+                ".woff2",
+                ".ttf",
+                ".otf",
+                ".eot",
+                ".map",
+                ".xml",
+            )
+        ):
             return True
 
         return False

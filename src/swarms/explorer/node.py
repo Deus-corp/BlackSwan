@@ -144,6 +144,17 @@ LOW_VALUE_DISCOVERY_DOMAINS = frozenset(
         "iana.org",
         "www.iana.org",
         "donate.python.org",
+        "github.githubassets.com",
+        "analytics.githubassets.com",
+        "githubassets.com",
+        "gmpg.org",
+        "www.w3.org",
+        "w3.org",
+        "fosstodon.org",
+        "githubuniverse.com",
+        "www.pythonjobshq.com",
+        "pythonjobshq.com",
+        "brochure.getpython.info",
     }
 )
 
@@ -167,6 +178,14 @@ LOW_VALUE_DISCOVERY_PATH_PARTS = (
     "/cdn-cgi/",
     "/help/example-domains",
     "/domains/example",
+    "/_static",
+    "/assets/",
+    "/static/",
+    "/fonts/",
+    "/font/",
+    "/1999/xlink",
+    "/xfn/",
+    "/@",
 )
 
 LOW_VALUE_DISCOVERY_QUERY_PARTS = (
@@ -1597,7 +1616,26 @@ class ExplorerNode(BaseSwarmNode):
         if any(part in query for part in LOW_VALUE_DISCOVERY_QUERY_PARTS):
             return True
 
-        if full.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".css", ".js")):
+        if full.endswith(
+            (
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".svg",
+                ".ico",
+                ".css",
+                ".js",
+                ".mjs",
+                ".woff",
+                ".woff2",
+                ".ttf",
+                ".otf",
+                ".eot",
+                ".map",
+                ".xml",
+            )
+        ):
             return True
 
         return False
