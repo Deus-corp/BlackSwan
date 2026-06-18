@@ -2032,13 +2032,51 @@ class ExplorerNode(BaseSwarmNode):
         url: str,
         target_quality_provenance: Mapping[str, Any],
     ) -> str:
-        """Extract a non-empty text preview from HTML when normal preview is empty."""
+        """Extract readable text preview from HTML when normal preview is weak."""
         raw = str(html or "")
         if not raw:
             return ""
 
         import html as html_lib
         import re
+
+        def clean_text(value: str, *, limit: int = 2000) -> str:
+            text = html_lib.unescape(str(value or ""))
+            text = re.sub(
+                r"<(script|style|noscript|svg|canvas|iframe)\b.*?</\1>",
+                " ",
+                text,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            text = re.sub(r"<[^>]+>", " ", text)
+            text = re.sub(r"\s+", " ", text).strip()
+            return text[:limit]
+
+        def tag_attrs(tag: str) -> dict[str, str]:
+            attrs: dict[str, str] = {}
+            for match in re.finditer(
+                r"""([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*["']([^"']*)["']""",
+                tag,
+                flags=re.DOTALL,
+            ):
+                attrs[match.group(1).lower()] = html_lib.unescape(match.group(2))
+            return attrs
+
+        def add_unique(parts: list[str], value: str, *, min_len: int = 3) -> None:
+            text = clean_text(value)
+            if len(text) < min_len:
+                return
+
+            lower = text.lower()
+            for existing in parts:
+                if lower == existing.lower():
+                    return
+                if len(lower) > 40 and lower in existing.lower():
+                    return
+                if len(existing) > 40 and existing.lower() in lower:
+                    return
+
+            parts.append(text)
 
         parts: list[str] = []
 
@@ -2048,39 +2086,81 @@ class ExplorerNode(BaseSwarmNode):
             flags=re.IGNORECASE | re.DOTALL,
         )
         if title_match:
-            title = re.sub(r"\s+", " ", title_match.group(1)).strip()
-            if title:
-                parts.append(title)
+            add_unique(parts, title_match.group(1))
 
-        for meta_name in ("description", "og:description", "twitter:description"):
-            meta_match = re.search(
-                (
-                    r"<meta\b[^>]*(?:name|property)=[\"']"
-                    + re.escape(meta_name)
-                    + r"[\"'][^>]*content=[\"']([^\"']+)[\"'][^>]*>"
-                ),
+        wanted_meta = {
+            "description",
+            "og:description",
+            "twitter:description",
+            "og:title",
+            "twitter:title",
+        }
+
+        for meta_tag in re.findall(
+            r"<meta\b[^>]*>",
+            raw,
+            flags=re.IGNORECASE | re.DOTALL,
+        ):
+            attrs = tag_attrs(meta_tag)
+            name = str(attrs.get("name") or attrs.get("property") or "").lower()
+            content = str(attrs.get("content") or "").strip()
+            if name in wanted_meta and content:
+                add_unique(parts, content)
+
+        for pattern in (
+            r"<h1\b[^>]*>(.*?)</h1>",
+            r"<h2\b[^>]*>(.*?)</h2>",
+        ):
+            for match in re.findall(pattern, raw, flags=re.IGNORECASE | re.DOTALL):
+                add_unique(parts, match, min_len=4)
+                if len(parts) >= 8:
+                    break
+
+        # Prefer semantic content containers before falling back to whole-body text.
+        semantic_blocks: list[str] = []
+        for pattern in (
+            r"<main\b[^>]*>(.*?)</main>",
+            r"<article\b[^>]*>(.*?)</article>",
+            r"<section\b[^>]*>(.*?)</section>",
+        ):
+            semantic_blocks.extend(
+                re.findall(pattern, raw, flags=re.IGNORECASE | re.DOTALL)
+            )
+
+        candidate_blocks = semantic_blocks or [raw]
+
+        for block in candidate_blocks[:4]:
+            for pattern in (
+                r"<p\b[^>]*>(.*?)</p>",
+                r"<li\b[^>]*>(.*?)</li>",
+                r"<pre\b[^>]*>(.*?)</pre>",
+                r"<code\b[^>]*>(.*?)</code>",
+            ):
+                for match in re.findall(pattern, block, flags=re.IGNORECASE | re.DOTALL):
+                    add_unique(parts, match, min_len=20)
+                    if len(" ".join(parts)) >= 1600:
+                        break
+                if len(" ".join(parts)) >= 1600:
+                    break
+            if len(" ".join(parts)) >= 1600:
+                break
+
+        if not parts:
+            body_match = re.search(
+                r"<body\b[^>]*>(.*?)</body>",
                 raw,
                 flags=re.IGNORECASE | re.DOTALL,
             )
-            if meta_match:
-                meta_text = html_lib.unescape(meta_match.group(1))
-                meta_text = re.sub(r"\s+", " ", meta_text).strip()
-                if meta_text:
-                    parts.append(meta_text)
+            visible_source = body_match.group(1) if body_match else raw
+            visible = clean_text(visible_source, limit=2000)
 
-        # Remove scripts/styles/nav-heavy markup, then take a compact visible-text sample.
-        visible = re.sub(
-            r"<(script|style|noscript|svg)\b.*?</\1>",
-            " ",
-            raw,
-            flags=re.IGNORECASE | re.DOTALL,
-        )
-        visible = re.sub(r"<[^>]+>", " ", visible)
-        visible = html_lib.unescape(visible)
-        visible = re.sub(r"\s+", " ", visible).strip()
-
-        if visible:
-            parts.append(visible[:1200])
+            # Avoid returning pure boilerplate HTML skeletons as evidence.
+            if visible and visible.lower() not in {
+                "html",
+                "head body",
+                "head body html",
+            }:
+                add_unique(parts, visible, min_len=20)
 
         preview = " ".join(parts)
         preview = re.sub(r"\s+", " ", preview).strip()
@@ -2093,6 +2173,9 @@ class ExplorerNode(BaseSwarmNode):
         *,
         target_quality_provenance: Mapping[str, Any],
     ) -> bool:
+        """Return whether a preview is empty, raw HTML, or too weak to classify."""
+        import re
+
         text = str(preview or "").strip()
         if not text:
             return True
@@ -2103,6 +2186,7 @@ class ExplorerNode(BaseSwarmNode):
             or lower.startswith("<!doctype")
             or ("<body" in lower and "</body>" in lower)
             or ("<head" in lower and "</head>" in lower)
+            or len(re.findall(r"</?[a-z][a-z0-9:-]*\b[^>]*>", lower)) >= 2
         )
 
         if looks_like_raw_html:
