@@ -120,6 +120,13 @@ CONTENT_RELEVANCE_KEYWORDS = (
     "improvement",
     "proposal",
     "architecture",
+    "pydantic",
+    "type-safe",
+    "type",
+    "safe",
+    "course",
+    "workflow",
+    "workflows",
 )
 
 FRONTIER_SOURCE_KINDS = frozenset(
@@ -173,6 +180,11 @@ LOW_VALUE_TARGET_DOMAINS = frozenset(
         "support.github.com",
         "skills.github.com",
         "translations.python.org",
+        "support.realpython.com",
+        "helpscout.com",
+        "www.helpscout.com",
+        "pycon.blogspot.com",
+        "pyfound.blogspot.com",
     }
 )
 
@@ -204,6 +216,10 @@ LOW_VALUE_TARGET_PATH_PARTS = (
     "/1999/xlink",
     "/xfn/",
     "/@",
+    "/continue",
+    "/discussion",
+    "/category/",
+    "/docs-refer",
 )
 
 LOW_VALUE_TARGET_QUERY_PARTS = (
@@ -1594,7 +1610,8 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
 
         if domain == "realpython.com":
             parts = [part for part in path.split("/") if part]
-            return (
+
+            if (
                 len(parts) == 1
                 and not parts[0].startswith(
                     (
@@ -1606,7 +1623,25 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                         "bonus",
                     )
                 )
-            )
+            ):
+                return True
+
+            if len(parts) == 2 and parts[0] == "courses":
+                slug = parts[1]
+                if slug in {"", "continue", "discussion"}:
+                    return False
+                if slug.startswith(("continue", "discussion")):
+                    return False
+
+                haystack = slug.replace("-", " ")
+                topic_hits = sum(
+                    1
+                    for keyword in CONTENT_RELEVANCE_KEYWORDS
+                    if keyword in haystack
+                )
+                return topic_hits >= 2
+
+            return False
         if domain == "docs.github.com":
             return path not in {"", "en"}
 
@@ -1766,6 +1801,17 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     )
                 )
             )
+
+            if not is_concrete_evidence and len(path_parts) == 2:
+                section, slug = path_parts
+                if section == "courses":
+                    haystack = slug.replace("-", " ")
+                    topic_hits = sum(
+                        1
+                        for keyword in CONTENT_RELEVANCE_KEYWORDS
+                        if keyword in haystack
+                    )
+                    is_concrete_evidence = topic_hits >= 2
         elif domain == "docs.github.com":
             normalized_path = parsed_path.strip("/")
             is_concrete_evidence = bool(normalized_path) and normalized_path != "en"
@@ -2164,6 +2210,12 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
         path = parsed.path.lower()
         query = parsed.query.lower()
+
+        if domain == "realpython.com" and path.startswith("/courses/"):
+            if path.endswith("/continue") or path.endswith("/discussion"):
+                return True
+            if "/continue/" in path or "/discussion/" in path:
+                return True
 
         if domain == "realpython.com" and path.startswith("/tutorials/"):
             return True

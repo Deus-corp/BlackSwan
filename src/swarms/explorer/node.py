@@ -158,6 +158,11 @@ LOW_VALUE_DISCOVERY_DOMAINS = frozenset(
         "support.github.com",
         "skills.github.com",
         "translations.python.org",
+        "support.realpython.com",
+        "helpscout.com",
+        "www.helpscout.com",
+        "pycon.blogspot.com",
+        "pyfound.blogspot.com",
     }
 )
 
@@ -189,6 +194,10 @@ LOW_VALUE_DISCOVERY_PATH_PARTS = (
     "/1999/xlink",
     "/xfn/",
     "/@",
+    "/continue",
+    "/discussion",
+    "/category/",
+    "/docs-refer",
 )
 
 TOPIC_ALIGNED_EVIDENCE_HINTS = (
@@ -211,6 +220,13 @@ TOPIC_ALIGNED_EVIDENCE_HINTS = (
     "testing",
     "pytest",
     "architecture",
+    "pydantic",
+    "type-safe",
+    "type",
+    "safe",
+    "course",
+    "workflow",
+    "workflows",
 )
 
 GOAL_STOPWORDS = frozenset(
@@ -1766,6 +1782,12 @@ class ExplorerNode(BaseSwarmNode):
         query = parsed.query.lower()
         full = f"{path}?{query}" if query else path
 
+        if domain == "realpython.com" and path.startswith("/courses/"):
+            if path.endswith("/continue") or path.endswith("/discussion"):
+                return True
+            if "/continue/" in path or "/discussion/" in path:
+                return True
+
         if domain == "realpython.com" and path.startswith("/tutorials/"):
             return True
 
@@ -1826,8 +1848,17 @@ class ExplorerNode(BaseSwarmNode):
 
         if domain == "realpython.com":
             parts = [part for part in path.strip("/").split("/") if part]
+
             if len(parts) == 1:
                 return max(0.16, topic_boost)
+
+            if (
+                len(parts) == 2
+                and parts[0] == "courses"
+                and not parts[1].startswith(("continue", "discussion"))
+            ):
+                return max(0.18, topic_boost)
+
             return topic_boost
 
         if any(part in path for part in PREFERRED_EVIDENCE_PATH_PARTS):
