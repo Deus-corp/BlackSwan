@@ -119,6 +119,14 @@ def build_parser() -> argparse.ArgumentParser:
             "frontier. Can be passed multiple times."
         ),
     )
+    parser.add_argument(
+        "--json-output",
+        default="",
+        help=(
+            "Optional path for writing a clean JSON runtime result. "
+            "Useful when logs make stdout unsuitable for contract checks."
+        ),
+    )
     parser.add_argument("--node-id", default="exp-node-network-read-loop")
     parser.add_argument("--meta-agent-id", default="exp-meta-network-read-loop")
     parser.add_argument("--skip-meta", action="store_true")
@@ -790,14 +798,39 @@ def _format_result(result: Mapping[str, Any]) -> str:
     )
 
 
+def _write_json_output(path_value: str, result: Mapping[str, Any]) -> None:
+    path_text = str(path_value or "").strip()
+    if not path_text:
+        return
+
+    path = Path(path_text)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    path.write_text(
+        json.dumps(
+            result,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 async def _async_main() -> None:
     args = build_parser().parse_args()
     result = await run_explorer_network_read_loop(args)
 
+    _write_json_output(
+        str(getattr(args, "json_output", "") or ""),
+        result,
+    )
+
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
     else:
-        print(_format_result(result))
+        print(result)
 
 
 def main() -> None:
