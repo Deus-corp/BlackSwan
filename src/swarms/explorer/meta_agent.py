@@ -122,6 +122,32 @@ CONTENT_RELEVANCE_KEYWORDS = (
     "architecture",
 )
 
+FRONTIER_SOURCE_KINDS = frozenset(
+    {
+        "sitemap_xml",
+        "rss_or_atom_feed",
+        "public_search_html",
+        "github_repository_search",
+        "github_code_search",
+        "arxiv_api_query",
+        "arxiv_web_search",
+    }
+)
+
+FRONTIER_URL_HINTS = (
+    "sitemap.xml",
+    "sitemap-index.xml",
+    "sitemap_index.xml",
+    "/search",
+    "github.com/search",
+    "duckduckgo.com/html",
+    "export.arxiv.org/api/query",
+    "arxiv.org/search",
+    "/feed",
+    "rss.xml",
+    "atom.xml",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ExplorerMetaSnapshot:
@@ -719,6 +745,11 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             preview = str(base.get("content_preview") or "").strip()
             quality_signals = self._fallback_quality_signals(base)
 
+            is_frontier_source = self._is_frontier_source_finding(
+                base,
+                quality_signals,
+            )
+
             domain = str(
                 base.get("domain")
                 or quality_signals.get("domain")
@@ -748,14 +779,31 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 and has_quality
                 and has_relevance
                 and not is_placeholder
+                and not is_frontier_source
             )
 
-            classification = "USEFUL" if is_useful else "NEUTRAL"
-            confidence = 0.55 if classification == "USEFUL" else 0.35
+            if is_useful:
+                classification = "USEFUL"
+                confidence = 0.55
+            elif (
+                is_successful_fetch
+                and has_network_evidence
+                and not is_placeholder
+                and is_frontier_source
+            ):
+                classification = "FRONTIER"
+                confidence = 0.50
+            else:
+                classification = "NEUTRAL"
+                confidence = 0.35
             reason = (
                 "deterministic fallback: quality-gated useful network_read evidence"
                 if classification == "USEFUL"
-                else "deterministic fallback: insufficient quality for memory handoff"
+                else (
+                    "deterministic fallback: frontier source for target expansion"
+                    if classification == "FRONTIER"
+                    else "deterministic fallback: insufficient quality for memory handoff"
+                )
             )
 
             event_gid = self._make_gid("exp_cls")
@@ -810,6 +858,8 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     default=0.50,
                 ),
                 "system_relevance_score": relevance_score,
+                "frontier_source": is_frontier_source,
+                "memory_handoff_candidate": classification == "USEFUL",
             }
 
             item: ClassificationItem = {
@@ -880,8 +930,15 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             for finding in classified_findings
             if finding.get("classification") == "USEFUL"
         ]
+        frontier = [
+            finding
+            for finding in classified_findings
+            if finding.get("classification") == "FRONTIER"
+        ]
+        target_source_findings = [*useful, *frontier]
 
         discovered_urls = self._extract_discovered_target_urls(classified_findings)
+
         exploration_run_id = str(self.active_exploration_run_id or "").strip()
         if not exploration_run_id:
             for finding in classified_findings:
@@ -889,14 +946,14 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 if exploration_run_id:
                     break
 
-        if not useful and not discovered_urls:
+        if not target_source_findings and not discovered_urls:
             return 0
 
         useful_sorted = sorted(
-            useful,
+            target_source_findings,
             key=lambda item: (
-                float(item.get("confidence", 0.0)),
-                float(item.get("timestamp", 0.0)),
+                float(item.get("confidence", 0.0) or 0.0),
+                float(item.get("timestamp", 0.0) or 0.0),
             ),
             reverse=True,
         )
@@ -910,54 +967,54 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             if url
         ]
 
-        if not context_urls:
-            return 0
+        raw_urls: list[Any] = []
+        target_generation_mode = "discovered_targets_only"
+        prompt = ""
 
-        prompt = build_target_prompt(
-            context_urls,
-            useful_sorted[:4],
-            top_domains=self.memory.get_top_domains(limit=8),
-        )
-
-        response = await asyncio.to_thread(
-            self.llm.generate,
-            prompt,
-            max_tokens=350,
-            temperature=0.25,
-        )
-
-        target_generation_mode = "llm"
-
-        if not response:
-            self.logger.warning(
-                "LLM failed to generate target URLs; using deterministic explorer target fallback."
+        if context_urls:
+            prompt = build_target_prompt(
+                context_urls,
+                useful_sorted[:4],
+                top_domains=self.memory.get_top_domains(limit=8),
             )
-            raw_urls = self._fallback_target_urls(context_urls, useful_sorted[:4])
-            target_generation_mode = "deterministic_fallback"
-        else:
-            data = extract_json_object(response)
-            raw_urls = data.get("urls") if isinstance(data, dict) else None
 
-        if not isinstance(raw_urls, list):
-            self.logger.warning(
-                "Target response missing urls array; using deterministic explorer target fallback."
+            response = await asyncio.to_thread(
+                self.llm.generate,
+                prompt,
+                max_tokens=350,
+                temperature=0.25,
             )
-            raw_urls = self._fallback_target_urls(context_urls, useful_sorted[:4])
-            target_generation_mode = "deterministic_fallback"
+
+            target_generation_mode = "llm"
+
+            if not response:
+                self.logger.warning(
+                    "LLM failed to generate target URLs; using deterministic "
+                    "explorer target fallback."
+                )
+                raw_urls = self._fallback_target_urls(context_urls, useful_sorted[:4])
+                target_generation_mode = "deterministic_fallback"
+            else:
+                data = extract_json_object(response)
+                raw_urls = data.get("urls") if isinstance(data, dict) else None
+
+            if not isinstance(raw_urls, list):
+                self.logger.warning(
+                    "Target response missing urls array; using deterministic "
+                    "explorer target fallback."
+                )
+                raw_urls = self._fallback_target_urls(context_urls, useful_sorted[:4])
+                target_generation_mode = "deterministic_fallback"
+
+        raw_urls = [
+            *(raw_urls if isinstance(raw_urls, list) else []),
+            *discovered_urls,
+        ]
 
         source_gids = [
             str(finding.get("source_gid"))
             for finding in useful_sorted[:4]
             if finding.get("source_gid")
-        ]
-
-        raw_urls = [
-            *(
-                raw_urls
-                if isinstance(raw_urls, list)
-                else []
-            ),
-            *discovered_urls,
         ]
 
         candidates: List[str] = []
@@ -988,12 +1045,14 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             return 0
 
         event_gid = self._make_gid("exp_targets")
+        urls = [url for url, _score in scored]
+        max_score = max((score for _url, score in scored), default=0.0)
 
         target_event: ExplorerTargets = {
             "type": "explorer_targets",
             "event_type": "targets_suggested",
             "data": {
-                "urls": [url for url, _score in scored],
+                "urls": urls,
                 "exploration_run_id": exploration_run_id,
                 "research_goal_id": exploration_run_id,
             },
@@ -1004,8 +1063,12 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "agent": self.agent_id,
                 "parent_gid": parent_gid,
                 "model_name": getattr(self.llm, "model_name", "llm"),
-                "prompt_hash": prompt_hash(prompt),
+                "prompt_hash": prompt_hash(prompt) if prompt else "",
                 "target_generation_mode": target_generation_mode,
+                "target_source_classifications": {
+                    "useful": len(useful),
+                    "frontier": len(frontier),
+                },
                 "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
                 "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
                 "evidence_kind": EXPLORER_EVIDENCE_KIND,
@@ -1025,12 +1088,12 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         await self._publish_canonical_targets_event(target_event)
 
         self.memory.record_targets(
-            [url for url, _score in scored],
+            urls,
             source_gids,
             event_gid=event_gid,
             parent_gid=parent_gid,
-            prompt_hash=prompt_hash(prompt),
-            score=max((score for _url, score in scored), default=0.0),
+            prompt_hash=prompt_hash(prompt) if prompt else "",
+            score=max_score,
             provenance=target_event["provenance"],
         )
 
@@ -1424,6 +1487,65 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         )
         return True
     
+    def _is_frontier_source_finding(
+        self,
+        finding: Mapping[str, Any],
+        quality_signals: Mapping[str, Any],
+    ) -> bool:
+        """Return whether a finding is useful as frontier, not memory evidence.
+
+        Important: source_kind can be inherited from the source adapter that
+        discovered a concrete page. Therefore source_kind alone should not make
+        a concrete documentation/article page a FRONTIER finding.
+        """
+        provenance = (
+            finding.get("provenance")
+            if isinstance(finding.get("provenance"), Mapping)
+            else {}
+        )
+
+        raw_url = str(finding.get("url") or "")
+        url = raw_url.lower()
+        source_kind = str(provenance.get("source_kind") or "").strip().lower()
+
+        discovered_targets = provenance.get("discovered_targets")
+        discovered_count = 0
+        if isinstance(discovered_targets, list):
+            discovered_count = len(discovered_targets)
+        else:
+            discovered_count = self._safe_int(
+                provenance.get("discovered_target_count"),
+                default=0,
+            )
+
+        has_frontier_url_hint = any(hint in url for hint in FRONTIER_URL_HINTS)
+
+        if has_frontier_url_hint:
+            return True
+
+        parsed_path = urlparse(raw_url).path.strip("/").lower()
+
+        # Root/index pages with many outgoing links are frontier/navigation pages.
+        if not parsed_path and discovered_count >= 4:
+            return True
+
+        if parsed_path in {"", "index.html", "index.htm"} and discovered_count >= 4:
+            return True
+
+        # Adapter/search/feed/sitemap source kinds are frontier only when the
+        # fetched URL itself looks like an index/frontier source or produced many
+        # targets without enough content relevance. Concrete pages discovered
+        # from those sources should still be allowed to become USEFUL evidence.
+        if source_kind in FRONTIER_SOURCE_KINDS:
+            if discovered_count >= 8 and quality_signals.get("keyword_match_count", 0) < 3:
+                return True
+            return False
+
+        if discovered_count >= 8 and quality_signals.get("keyword_match_count", 0) < 3:
+            return True
+
+        return False
+    
     def _fallback_quality_signals(
         self,
         finding: Mapping[str, Any],
@@ -1674,6 +1796,13 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
     def _safe_float(value: Any, default: float = 0.0) -> float:
         try:
             return float(value)
+        except (TypeError, ValueError):
+            return default
+    
+    @staticmethod
+    def _safe_int(value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
         except (TypeError, ValueError):
             return default
 

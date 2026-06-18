@@ -80,6 +80,18 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional stable exploration run id. Generated when omitted.",
     )
+    parser.add_argument(
+        "--ticks",
+        type=int,
+        default=1,
+        help="Number of explorer node/meta cycles to run.",
+    )
+    parser.add_argument(
+        "--tick-delay-seconds",
+        type=float,
+        default=0.0,
+        help="Optional delay between explorer ticks.",
+    )
     parser.add_argument("--node-id", default="exp-node-network-read-loop")
     parser.add_argument("--meta-agent-id", default="exp-meta-network-read-loop")
     parser.add_argument("--skip-meta", action="store_true")
@@ -108,13 +120,19 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
 
     if not urls:
         urls = ["https://example.com/"]
-    
+
     exploration_run_id = (
         str(getattr(args, "exploration_run_id", "") or "").strip()
         or _make_exploration_run_id(
             goal=str(getattr(args, "goal", "") or ""),
             urls=urls,
         )
+    )
+
+    ticks = max(1, int(getattr(args, "ticks", 1) or 1))
+    tick_delay_seconds = max(
+        0.0,
+        float(getattr(args, "tick_delay_seconds", 0.0) or 0.0),
     )
 
     db_path = str(args.db_path or config.crdt_db_path)
@@ -132,11 +150,61 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         node_id=str(args.meta_agent_id or "exp-meta-network-read-loop"),
         memory_db=Path(args.meta_memory_db),
     )
+
     node.active_exploration_run_id = exploration_run_id
     meta.active_exploration_run_id = exploration_run_id
 
     _replace_crdt(node, crdt)
     _replace_crdt(meta, crdt)
+
+    def _node_counters() -> dict[str, int]:
+        return {
+            "targets_seen_last_tick": int(
+                getattr(node, "_targets_seen_last_tick", 0) or 0
+            ),
+            "fetches_attempted": int(getattr(node, "_fetches_attempted", 0) or 0),
+            "fetches_failed": int(getattr(node, "_fetches_failed", 0) or 0),
+            "findings_emitted": int(getattr(node, "_findings_emitted", 0) or 0),
+            "targets_discovered": int(getattr(node, "_targets_discovered", 0) or 0),
+            "targets_published": int(getattr(node, "_targets_published", 0) or 0),
+        }
+
+    def _delta(after: Mapping[str, int], before: Mapping[str, int], key: str) -> int:
+        return max(0, int(after.get(key, 0) or 0) - int(before.get(key, 0) or 0))
+
+    def _build_node_result(*, did_work: bool) -> dict[str, Any]:
+        counters = _node_counters()
+        return {
+            "node_id": node.node_id,
+            "did_work": bool(did_work),
+            "targets_seen_last_tick": counters["targets_seen_last_tick"],
+            "fetches_attempted": counters["fetches_attempted"],
+            "fetches_failed": counters["fetches_failed"],
+            "findings_emitted": counters["findings_emitted"],
+            "targets_discovered": counters["targets_discovered"],
+            "targets_published": counters["targets_published"],
+            "execution_risk_tier": "network_read",
+            "external_write_performed": False,
+            "real_execution_enabled": False,
+            "exploration_run_id": exploration_run_id,
+            "source_adapter_targets_seen": dict(
+                getattr(node, "_source_adapter_targets_seen", {}) or {}
+            ),
+            "source_adapter_targets_selected": dict(
+                getattr(node, "_source_adapter_targets_selected", {}) or {}
+            ),
+        }
+
+    def _build_skipped_meta_result() -> dict[str, Any]:
+        return {
+            "skipped": True,
+            "snapshot_findings": 0,
+            "decision_action": None,
+            "targets_published": 0,
+            "classifications_published": 0,
+            "exploration_run_id": exploration_run_id,
+            "memory_records_published": 0,
+        }
 
     try:
         refresh = getattr(crdt, "refresh_from_storage", None)
@@ -152,47 +220,121 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         )
         await crdt.add_genome(seed_record)
 
+        tick_results: list[dict[str, Any]] = []
+        final_node_result: dict[str, Any] = _build_node_result(did_work=False)
+        final_meta_result: dict[str, Any] = _build_skipped_meta_result()
+
         async with httpx.AsyncClient(
             timeout=node.http_timeout,
             follow_redirects=True,
             headers={"User-Agent": node.policy.user_agent},
         ) as client:
-            did_node_work = await node._consume_targets_and_explore(client)
+            for tick_index in range(1, ticks + 1):
+                if callable(refresh):
+                    refresh()
+
+                before_node_counters = _node_counters()
+
+                did_node_work = await node._consume_targets_and_explore(client)
+
+                after_node_counters = _node_counters()
+                node_result = _build_node_result(did_work=did_node_work)
+
+                if callable(refresh):
+                    refresh()
+
+                meta_result: dict[str, Any] = _build_skipped_meta_result()
+
+                if not bool(getattr(args, "skip_meta", False)):
+                    snapshot = await meta.collect()
+                    decision = await meta.decide(snapshot)
+                    commands = await meta.issue_commands(decision, snapshot)
+                    await meta.persist_decision(decision, snapshot, commands)
+
+                    meta_result = {
+                        "skipped": False,
+                        "snapshot_findings": len(
+                            getattr(snapshot, "findings", []) or []
+                        ),
+                        "decision_action": _extract_mapping_value(
+                            decision,
+                            "action",
+                        ),
+                        "targets_published": int(
+                            getattr(meta, "_last_targets_published", 0) or 0
+                        ),
+                        "classifications_published": int(
+                            getattr(
+                                meta,
+                                "_last_classifications_published",
+                                0,
+                            )
+                            or 0
+                        ),
+                        "exploration_run_id": exploration_run_id,
+                        "memory_records_published": int(
+                            getattr(
+                                meta,
+                                "_last_memory_records_published",
+                                0,
+                            )
+                            or 0
+                        ),
+                    }
+
+                if callable(refresh):
+                    refresh()
+
+                tick_results.append(
+                    {
+                        "tick": tick_index,
+                        "node": node_result,
+                        "meta_agent": meta_result,
+                        "fetches_attempted": _delta(
+                            after_node_counters,
+                            before_node_counters,
+                            "fetches_attempted",
+                        ),
+                        "fetches_failed": _delta(
+                            after_node_counters,
+                            before_node_counters,
+                            "fetches_failed",
+                        ),
+                        "findings_emitted": _delta(
+                            after_node_counters,
+                            before_node_counters,
+                            "findings_emitted",
+                        ),
+                        "targets_discovered": _delta(
+                            after_node_counters,
+                            before_node_counters,
+                            "targets_discovered",
+                        ),
+                        "targets_published": _delta(
+                            after_node_counters,
+                            before_node_counters,
+                            "targets_published",
+                        ),
+                        "classifications_published": int(
+                            meta_result.get("classifications_published", 0) or 0
+                        ),
+                        "meta_targets_published": int(
+                            meta_result.get("targets_published", 0) or 0
+                        ),
+                        "memory_records_published": int(
+                            meta_result.get("memory_records_published", 0) or 0
+                        ),
+                    }
+                )
+
+                final_node_result = node_result
+                final_meta_result = meta_result
+
+                if tick_delay_seconds and tick_index < ticks:
+                    await asyncio.sleep(tick_delay_seconds)
 
         if callable(refresh):
             refresh()
-
-        meta_result: dict[str, Any] = {
-            "skipped": bool(args.skip_meta),
-            "snapshot_findings": 0,
-            "decision_action": None,
-            "targets_published": 0,
-            "classifications_published": 0,
-            "exploration_run_id": exploration_run_id,
-            "memory_records_published": 0,
-        }
-
-        if not args.skip_meta:
-            snapshot = await meta.collect()
-            decision = await meta.decide(snapshot)
-            commands = await meta.issue_commands(decision, snapshot)
-            await meta.persist_decision(decision, snapshot, commands)
-
-            meta_result = {
-                "skipped": False,
-                "snapshot_findings": len(getattr(snapshot, "findings", []) or []),
-                "decision_action": _extract_mapping_value(decision, "action"),
-                "targets_published": int(
-                    getattr(meta, "_last_targets_published", 0) or 0
-                ),
-                "classifications_published": int(
-                    getattr(meta, "_last_classifications_published", 0) or 0
-                ),
-                "exploration_run_id": exploration_run_id,
-                "memory_records_published": int(
-                    getattr(meta, "_last_memory_records_published", 0) or 0
-                ),
-            }
 
         state = getattr(crdt, "state", {}) or {}
         records = [value for value in state.values() if isinstance(value, Mapping)]
@@ -206,33 +348,32 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "source_adapters": list(getattr(args, "source_adapter", []) or []),
             "source_adapter_targets": source_targets,
             "seed_record_gid": seed_record["gid"],
-            "node": {
-                "node_id": node.node_id,
-                "did_work": bool(did_node_work),
-                "targets_seen_last_tick": int(
-                    getattr(node, "_targets_seen_last_tick", 0) or 0
-                ),
-                "fetches_attempted": int(getattr(node, "_fetches_attempted", 0) or 0),
-                "fetches_failed": int(getattr(node, "_fetches_failed", 0) or 0),
-                "findings_emitted": int(getattr(node, "_findings_emitted", 0) or 0),
-                "targets_discovered": int(
-                    getattr(node, "_targets_discovered", 0) or 0
-                ),
-                "targets_published": int(
-                    getattr(node, "_targets_published", 0) or 0
-                ),
-                "execution_risk_tier": "network_read",
-                "external_write_performed": False,
-                "real_execution_enabled": False,
-                "exploration_run_id": exploration_run_id,
-                "source_adapter_targets_seen": dict(
-                    getattr(node, "_source_adapter_targets_seen", {}) or {}
-                ),
-                "source_adapter_targets_selected": dict(
-                    getattr(node, "_source_adapter_targets_selected", {}) or {}
-                ),
-            },
-            "meta_agent": meta_result,
+            "ticks_requested": ticks,
+            "ticks_completed": len(tick_results),
+            "tick_results": tick_results,
+            "total_fetches_attempted": sum(
+                item.get("fetches_attempted", 0) for item in tick_results
+            ),
+            "total_fetches_failed": sum(
+                item.get("fetches_failed", 0) for item in tick_results
+            ),
+            "total_findings_emitted": sum(
+                item.get("findings_emitted", 0) for item in tick_results
+            ),
+            "total_targets_discovered": sum(
+                item.get("targets_discovered", 0) for item in tick_results
+            ),
+            "total_targets_published": sum(
+                item.get("targets_published", 0) for item in tick_results
+            ),
+            "total_meta_targets_published": sum(
+                item.get("meta_targets_published", 0) for item in tick_results
+            ),
+            "total_memory_records_published": sum(
+                item.get("memory_records_published", 0) for item in tick_results
+            ),
+            "node": final_node_result,
+            "meta_agent": final_meta_result,
             "record_counts": _record_counts(records),
             "external_write_performed": False,
             "real_execution_enabled": False,
@@ -327,6 +468,73 @@ def _record_counts(records: list[Mapping[str, Any]]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def _counter_delta(after: int, before: int) -> int:
+    return max(0, int(after or 0) - int(before or 0))
+
+
+def _snapshot_explorer_counters(node: Any, meta: Any) -> dict[str, int]:
+    return {
+        "fetches_attempted": int(getattr(node, "_fetches_attempted", 0) or 0),
+        "fetches_failed": int(getattr(node, "_fetches_failed", 0) or 0),
+        "findings_emitted": int(getattr(node, "_findings_emitted", 0) or 0),
+        "targets_discovered": int(getattr(node, "_targets_discovered", 0) or 0),
+        "targets_published": int(getattr(node, "_targets_published", 0) or 0),
+        "classifications_published": int(
+            getattr(meta, "_last_classifications_published", 0) or 0
+        ),
+        "meta_targets_published": int(
+            getattr(meta, "_last_targets_published", 0) or 0
+        ),
+        "memory_records_published": int(
+            getattr(meta, "_last_memory_records_published", 0) or 0
+        ),
+    }
+
+
+def _tick_delta(
+    *,
+    tick_index: int,
+    before: dict[str, int],
+    after: dict[str, int],
+    node_result: Mapping[str, Any],
+    meta_result: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "tick": tick_index,
+        "node": dict(node_result),
+        "meta_agent": dict(meta_result),
+        "fetches_attempted": _counter_delta(
+            after.get("fetches_attempted", 0),
+            before.get("fetches_attempted", 0),
+        ),
+        "fetches_failed": _counter_delta(
+            after.get("fetches_failed", 0),
+            before.get("fetches_failed", 0),
+        ),
+        "findings_emitted": _counter_delta(
+            after.get("findings_emitted", 0),
+            before.get("findings_emitted", 0),
+        ),
+        "targets_discovered": _counter_delta(
+            after.get("targets_discovered", 0),
+            before.get("targets_discovered", 0),
+        ),
+        "targets_published": _counter_delta(
+            after.get("targets_published", 0),
+            before.get("targets_published", 0),
+        ),
+        "classifications_published": int(
+            meta_result.get("classifications_published", 0) or 0
+        ),
+        "meta_targets_published": int(
+            meta_result.get("targets_published", 0) or 0
+        ),
+        "memory_records_published": int(
+            meta_result.get("memory_records_published", 0) or 0
+        ),
+    }
+
+
 def _replace_crdt(obj: Any, crdt: CRDTAdapter) -> None:
     old = getattr(obj, "crdt", None)
     if old is not crdt:
@@ -378,6 +586,11 @@ def _format_result(result: Mapping[str, Any]) -> str:
         f"memory_records_published={meta.get('memory_records_published', 0)} "
         f"external_write_performed={str(bool(result.get('external_write_performed'))).lower()} "
         f"real_execution_enabled={str(bool(result.get('real_execution_enabled'))).lower()}"
+        f"ticks={result.get('ticks_completed', 1)} "
+        f"total_fetches_attempted={result.get('total_fetches_attempted', 0)} "
+        f"total_findings_emitted={result.get('total_findings_emitted', 0)} "
+        f"total_targets_discovered={result.get('total_targets_discovered', 0)} "
+        f"total_memory_records_published={result.get('total_memory_records_published', 0)} "
     )
 
 
