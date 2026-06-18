@@ -42,6 +42,7 @@ from .source_plan import (
     build_research_source_plan_targets,
     goal_terms,
     normalize_plan_url,
+    goal_profile_tags,
 )
 from .frontier_filters import is_low_value_frontier_url
 
@@ -73,4 +74,5 @@ __all__ = [
     "goal_terms",
     "normalize_plan_url",
     "is_low_value_frontier_url",
+    "goal_profile_tags",
 ]

@@ -64,6 +64,10 @@ class SourcePlanCandidate(TypedDict, total=False):
     planner_version: str
     rationale: str
 
+    evidence_category: str
+    topic_tags: list[str]
+    content_expectation: str
+
 
 class ResearchSourcePlan(TypedDict):
     """Deterministic source plan emitted by Explorer meta-agent planning code."""
@@ -113,6 +117,68 @@ _GOAL_STOPWORDS = frozenset(
     }
 )
 
+_GOAL_PROFILE_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "agents": (
+        "agent",
+        "agents",
+        "autonomous",
+        "multiagent",
+        "multi-agent",
+        "llm",
+        "ai",
+    ),
+    "memory": (
+        "memory",
+        "memories",
+        "retrieval",
+        "rag",
+        "vector",
+        "embedding",
+        "index",
+        "knowledge",
+    ),
+    "orchestration": (
+        "orchestration",
+        "workflow",
+        "runtime",
+        "async",
+        "asyncio",
+        "task",
+        "coordination",
+        "scheduler",
+    ),
+    "evaluation": (
+        "evaluation",
+        "benchmark",
+        "quality",
+        "test",
+        "testing",
+        "score",
+        "metrics",
+    ),
+    "code_improvement": (
+        "code",
+        "coding",
+        "improvement",
+        "review",
+        "repository",
+        "github",
+        "python",
+    ),
+}
+
+
+def goal_profile_tags(terms: list[str]) -> list[str]:
+    """Infer broad research profile tags from normalized goal terms."""
+    tags: list[str] = []
+
+    term_set = set(terms)
+    for tag, keywords in _GOAL_PROFILE_KEYWORDS.items():
+        if any(keyword in term_set for keyword in keywords):
+            tags.append(tag)
+
+    return tags
+
 _DEFAULT_ADAPTERS: tuple[str, ...] = (
     "github",
     "arxiv",
@@ -137,24 +203,12 @@ _CURATED_EVIDENCE_CANDIDATES: tuple[dict[str, Any], ...] = (
             "safe",
             "workflow",
         ),
+        "topic_tags": ("agents", "code_improvement", "orchestration"),
+        "evidence_category": "python_llm_agents",
         "authority_score": 0.72,
         "freshness_score": 0.50,
         "rationale": "course-level Python LLM agent evidence candidate",
-    },
-    {
-        "url": "https://docs.github.com/en/search-github/searching-on-github/searching-code",
-        "keywords": (
-            "github",
-            "code",
-            "search",
-            "agent",
-            "agents",
-            "repository",
-            "repositories",
-        ),
-        "authority_score": 0.79,
-        "freshness_score": 0.50,
-        "rationale": "GitHub code search documentation useful for source discovery",
+        "content_expectation": "Python LLM agent implementation pattern with typed runtime validation",
     },
     {
         "url": "https://docs.python.org/3/library/asyncio.html",
@@ -166,10 +220,148 @@ _CURATED_EVIDENCE_CANDIDATES: tuple[dict[str, Any], ...] = (
             "agent",
             "agents",
             "orchestration",
+            "task",
+            "event",
+            "loop",
         ),
+        "topic_tags": ("orchestration", "code_improvement"),
+        "evidence_category": "python_async_runtime",
         "authority_score": 0.96,
         "freshness_score": 0.50,
         "rationale": "Python async runtime documentation",
+        "content_expectation": "Runtime primitives for concurrent agent/node execution",
+    },
+    {
+        "url": "https://docs.python.org/3/library/asyncio-task.html",
+        "keywords": (
+            "python",
+            "asyncio",
+            "task",
+            "tasks",
+            "coroutine",
+            "runtime",
+            "orchestration",
+            "agent",
+        ),
+        "topic_tags": ("orchestration", "code_improvement"),
+        "evidence_category": "python_async_tasks",
+        "authority_score": 0.96,
+        "freshness_score": 0.50,
+        "rationale": "Python asyncio tasks documentation",
+        "content_expectation": "Task lifecycle and scheduling patterns for swarm runtime",
+    },
+    {
+        "url": "https://docs.python.org/3/library/queue.html",
+        "keywords": (
+            "python",
+            "queue",
+            "task",
+            "coordination",
+            "producer",
+            "consumer",
+            "thread",
+            "runtime",
+        ),
+        "topic_tags": ("orchestration", "memory", "code_improvement"),
+        "evidence_category": "python_coordination_primitives",
+        "authority_score": 0.96,
+        "freshness_score": 0.50,
+        "rationale": "Python queue coordination primitives",
+        "content_expectation": "Deterministic coordination primitives for pipeline components",
+    },
+    {
+        "url": "https://docs.python.org/3/library/sqlite3.html",
+        "keywords": (
+            "python",
+            "sqlite",
+            "sqlite3",
+            "database",
+            "memory",
+            "persistence",
+            "storage",
+            "index",
+        ),
+        "topic_tags": ("memory", "code_improvement"),
+        "evidence_category": "python_persistence",
+        "authority_score": 0.96,
+        "freshness_score": 0.50,
+        "rationale": "Python sqlite persistence documentation",
+        "content_expectation": "Local persistence and indexing patterns for memory swarm",
+    },
+    {
+        "url": "https://docs.python.org/3/library/dataclasses.html",
+        "keywords": (
+            "python",
+            "dataclass",
+            "dataclasses",
+            "schema",
+            "typed",
+            "model",
+            "data",
+        ),
+        "topic_tags": ("memory", "code_improvement"),
+        "evidence_category": "python_data_models",
+        "authority_score": 0.96,
+        "freshness_score": 0.50,
+        "rationale": "Python dataclasses documentation",
+        "content_expectation": "Structured data modeling for evidence and memory records",
+    },
+    {
+        "url": "https://docs.github.com/en/search-github/searching-on-github/searching-code",
+        "keywords": (
+            "github",
+            "code",
+            "search",
+            "agent",
+            "agents",
+            "repository",
+            "repositories",
+            "implementation",
+        ),
+        "topic_tags": ("code_improvement", "agents"),
+        "evidence_category": "github_code_search",
+        "authority_score": 0.79,
+        "freshness_score": 0.50,
+        "rationale": "GitHub code search documentation useful for source discovery",
+        "content_expectation": "Code search syntax for implementation evidence discovery",
+    },
+    {
+        "url": "https://docs.github.com/en/search-github/searching-on-github/searching-for-repositories",
+        "keywords": (
+            "github",
+            "repository",
+            "repositories",
+            "search",
+            "code",
+            "agent",
+            "agents",
+            "project",
+        ),
+        "topic_tags": ("code_improvement", "agents"),
+        "evidence_category": "github_repository_search",
+        "authority_score": 0.79,
+        "freshness_score": 0.50,
+        "rationale": "GitHub repository search documentation",
+        "content_expectation": "Repository discovery syntax for open-source agent/memory systems",
+    },
+    {
+        "url": "https://docs.github.com/en/copilot",
+        "keywords": (
+            "github",
+            "copilot",
+            "ai",
+            "coding",
+            "code",
+            "agent",
+            "review",
+            "improvement",
+        ),
+        "topic_tags": ("code_improvement", "agents"),
+        "evidence_category": "ai_code_assistance",
+        "authority_score": 0.79,
+        "freshness_score": 0.60,
+        "rationale": "GitHub Copilot documentation root for AI coding workflows",
+        "content_expectation": "AI-assisted code improvement and review workflow evidence",
     },
 )
 
@@ -277,6 +469,9 @@ def _candidate(
     authority_score: float,
     freshness_score: float,
     rationale: str,
+    evidence_category: str = "",
+    topic_tags: Iterable[str] | None = None,
+    content_expectation: str = "",
 ) -> SourcePlanCandidate:
     normalized_url = normalize_plan_url(url)
     matched = _matched_goal_terms(normalized_url, terms, rationale=rationale)
@@ -330,6 +525,13 @@ def _candidate(
         "plan_rank": 0,
         "planner_version": EXPLORER_SOURCE_PLANNER_VERSION,
         "rationale": rationale,
+        "evidence_category": str(evidence_category or ""),
+        "topic_tags": [
+            str(tag)
+            for tag in list(topic_tags or [])
+            if str(tag).strip()
+        ],
+        "content_expectation": str(content_expectation or ""),
     }
 
 
@@ -486,6 +688,7 @@ def _curated_evidence_candidates(
     terms: list[str],
 ) -> list[SourcePlanCandidate]:
     candidates: list[SourcePlanCandidate] = []
+    profile_tags = set(goal_profile_tags(terms))
 
     for item in _CURATED_EVIDENCE_CANDIDATES:
         url = str(item.get("url") or "").strip()
@@ -494,6 +697,11 @@ def _curated_evidence_candidates(
             for keyword in item.get("keywords", ())
             if str(keyword).strip()
         ]
+        item_topic_tags = {
+            str(tag).lower()
+            for tag in item.get("topic_tags", ())
+            if str(tag).strip()
+        }
         rationale = str(item.get("rationale") or "curated evidence candidate")
 
         matched_terms = [
@@ -501,30 +709,50 @@ def _curated_evidence_candidates(
             for term in terms
             if term in keywords or term in _url_haystack(url, rationale=rationale)
         ]
+        profile_overlap = bool(profile_tags and item_topic_tags & profile_tags)
 
-        # Keep curated candidates conservative: include if they match at least one
-        # goal term, or if the goal is sparse and the URL/rationale is clearly
-        # agent/AI related.
-        if not matched_terms:
+        # Include direct term matches, plus category/profile matches. This lets
+        # goals like "autonomous agents memory systems" pull runtime, persistence,
+        # and code-search evidence even when every term is not in the URL.
+        if not matched_terms and not profile_overlap:
             continue
 
-        candidates.append(
-            _candidate(
-                url=url,
-                goal=goal,
-                plan_id=plan_id,
-                source_adapter="evidence",
-                source_kind="curated_evidence_url",
-                discovery_method="research_goal_curated_evidence_candidate",
-                terms=terms,
-                preferred_evidence_target=True,
-                seed_score=0.92,
-                source_type_score=0.90,
-                authority_score=float(item.get("authority_score", 0.70)),
-                freshness_score=float(item.get("freshness_score", 0.50)),
-                rationale=rationale,
-            )
+        candidate = _candidate(
+            url=url,
+            goal=goal,
+            plan_id=plan_id,
+            source_adapter="evidence",
+            source_kind="curated_evidence_url",
+            discovery_method="research_goal_curated_evidence_candidate",
+            terms=terms,
+            preferred_evidence_target=True,
+            seed_score=0.92,
+            source_type_score=0.90,
+            authority_score=float(item.get("authority_score", 0.70)),
+            freshness_score=float(item.get("freshness_score", 0.50)),
+            rationale=rationale,
+            evidence_category=str(item.get("evidence_category") or ""),
+            topic_tags=sorted(item_topic_tags),
+            content_expectation=str(item.get("content_expectation") or ""),
         )
+
+        # Profile overlap is useful but weaker than direct URL/keyword matches.
+        if profile_overlap and not matched_terms:
+            candidate["goal_alignment_score"] = max(
+                float(candidate.get("goal_alignment_score", 0.0)),
+                0.10,
+            )
+            candidate["system_relevance_score"] = max(
+                float(candidate.get("system_relevance_score", 0.0)),
+                0.72,
+            )
+            candidate["source_score"] = max(
+                float(candidate.get("source_score", 0.0)),
+                0.72,
+            )
+            candidate["score"] = candidate["source_score"]
+
+        candidates.append(candidate)
 
     return candidates
 
@@ -585,23 +813,130 @@ def _rank_and_dedupe(
             deduped[url] = candidate
             continue
 
+        existing_adapter = str(existing.get("source_adapter") or "")
+        candidate_adapter = str(candidate.get("source_adapter") or "")
+
+        # Operator seed URLs are protected. They must remain in the plan even
+        # when a generated sitemap/docs candidate for the same URL has a higher
+        # computed score.
+        if existing_adapter == "seed" and candidate_adapter != "seed":
+            continue
+
+        if candidate_adapter == "seed" and existing_adapter != "seed":
+            deduped[url] = candidate
+            continue
+
         if float(candidate.get("source_score", 0.0)) > float(
             existing.get("source_score", 0.0)
         ):
             deduped[url] = candidate
 
-    ranked = sorted(
-        deduped.values(),
-        key=lambda item: (
+    def sort_key(item: SourcePlanCandidate) -> tuple[Any, ...]:
+        return (
+            str(item.get("source_adapter") or "") != "seed",
             not bool(item.get("preferred_evidence_target")),
             -float(item.get("goal_alignment_score", 0.0) or 0.0),
+            -float(item.get("seed_score", 0.0) or 0.0),
             -float(item.get("source_score", 0.0) or 0.0),
             str(item.get("source_adapter") or ""),
             str(item.get("url") or ""),
-        ),
-    )
+        )
 
-    limited = ranked[: max(1, int(limit or 1))]
+    ranked = sorted(deduped.values(), key=sort_key)
+
+    max_items = max(1, int(limit or 1))
+    limited = ranked[:max_items]
+
+    # Preserve broad source coverage under expanded curated evidence. Without
+    # this, high-scoring evidence candidates can crowd out source adapters such
+    # as public search, which breaks the source-planning contract.
+    coverage_adapters = ("seed", "github", "arxiv", "search", "sitemap")
+
+    def adapter_counts(items: list[SourcePlanCandidate]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for item in items:
+            adapter = str(item.get("source_adapter") or "")
+            if not adapter:
+                continue
+            counts[adapter] = counts.get(adapter, 0) + 1
+        return counts
+
+    def best_adapter_candidate(adapter: str) -> SourcePlanCandidate | None:
+        for item in ranked:
+            if str(item.get("source_adapter") or "") == adapter:
+                return item
+        return None
+
+    def replacement_index(
+        items: list[SourcePlanCandidate],
+    ) -> int:
+        counts = adapter_counts(items)
+
+        # First try replacing optional duplicate adapter candidates from the end.
+        for index in range(len(items) - 1, -1, -1):
+            item = items[index]
+            adapter = str(item.get("source_adapter") or "")
+
+            if adapter == "seed":
+                continue
+
+            if adapter in coverage_adapters and counts.get(adapter, 0) <= 1:
+                continue
+
+            if not bool(item.get("preferred_evidence_target")):
+                return index
+
+        # If every removable candidate is preferred evidence, replace the weakest
+        # non-seed preferred evidence candidate. Adapter coverage is more useful
+        # than keeping every curated evidence URL in a small top-N plan.
+        for index in range(len(items) - 1, -1, -1):
+            item = items[index]
+            adapter = str(item.get("source_adapter") or "")
+
+            if adapter == "seed":
+                continue
+
+            if adapter in coverage_adapters and counts.get(adapter, 0) <= 1:
+                continue
+
+            return index
+
+        # Last resort: replace the final non-seed item.
+        for index in range(len(items) - 1, -1, -1):
+            if str(items[index].get("source_adapter") or "") != "seed":
+                return index
+
+        return len(items) - 1
+
+    limited_urls = {
+        str(item.get("url") or "")
+        for item in limited
+        if str(item.get("url") or "")
+    }
+
+    for adapter in coverage_adapters:
+        candidate = best_adapter_candidate(adapter)
+        if candidate is None:
+            continue
+
+        candidate_url = str(candidate.get("url") or "")
+        if not candidate_url or candidate_url in limited_urls:
+            continue
+
+        if len(limited) < max_items:
+            limited.append(candidate)
+            limited_urls.add(candidate_url)
+            continue
+
+        index = replacement_index(limited)
+        removed_url = str(limited[index].get("url") or "")
+        if removed_url in limited_urls:
+            limited_urls.remove(removed_url)
+
+        limited[index] = candidate
+        limited_urls.add(candidate_url)
+
+    limited = sorted(limited, key=sort_key)
 
     for index, candidate in enumerate(limited, start=1):
         candidate["plan_rank"] = index
