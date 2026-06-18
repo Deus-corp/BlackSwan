@@ -34,6 +34,9 @@ from swarm_config import config
 from src.swarms.explorer.meta_agent_core.source_adapters import (
     build_source_adapter_targets,
 )
+from src.swarms.explorer.meta_agent_core.source_plan import (
+    build_research_source_plan,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +77,21 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=20,
         help="Maximum source-adapter targets to seed.",
+    )
+    parser.add_argument(
+        "--source-plan",
+        action="store_true",
+        default=False,
+        help=(
+            "Enable deterministic research-goal source planning. The planner "
+            "adds ranked network_read candidates derived from --goal."
+        ),
+    )
+    parser.add_argument(
+        "--source-plan-limit",
+        type=int,
+        default=20,
+        help="Maximum number of source-plan candidates to add to the seed frontier.",
     )
     parser.add_argument(
         "--exploration-run-id",
@@ -136,6 +154,12 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         exploration_run_id=exploration_run_id,
     )
 
+    source_plan_result = _build_runtime_research_source_plan(
+        args,
+        seed_urls=_dedupe_urls([*evidence_urls, *urls]),
+    )
+    source_plan_targets = list(source_plan_result.get("targets", []) or [])
+
     source_targets = build_source_adapter_targets(
         goal=str(getattr(args, "goal", "") or ""),
         adapters=list(getattr(args, "source_adapter", []) or []),
@@ -143,7 +167,11 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         limit=int(getattr(args, "source_limit", 20) or 20),
     )
 
-    source_targets = [*evidence_seed_targets, *source_targets]
+    source_targets = [
+        *evidence_seed_targets,
+        *source_plan_targets,
+        *source_targets,
+    ]
 
     adapter_urls = [
         str(item.get("url") or "").strip()
@@ -380,6 +408,9 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "source_adapter_targets": source_targets,
             "evidence_seed_urls": evidence_urls,
             "evidence_seed_targets": evidence_seed_targets,
+            "source_plan_enabled": bool(getattr(args, "source_plan", False)),
+            "source_plan": source_plan_result.get("plan"),
+            "source_plan_targets": source_plan_targets,
             "seed_record_gid": seed_record["gid"],
             "ticks_requested": ticks,
             "ticks_completed": len(tick_results),
@@ -483,6 +514,43 @@ def _goal_terms_for_seed(goal: str) -> list[str]:
             terms.append(term)
 
     return terms
+
+
+def _build_runtime_research_source_plan(
+    args: argparse.Namespace,
+    *,
+    seed_urls: list[str],
+) -> dict[str, Any]:
+    """Build a deterministic research source plan for runtime seeding."""
+    if not bool(getattr(args, "source_plan", False)):
+        return {
+            "enabled": False,
+            "plan": None,
+            "targets": [],
+        }
+
+    goal = str(getattr(args, "goal", "") or "").strip()
+    adapters = list(getattr(args, "source_adapter", []) or [])
+    limit = int(getattr(args, "source_plan_limit", 20) or 20)
+
+    plan = build_research_source_plan(
+        goal=goal,
+        seed_urls=seed_urls,
+        adapters=adapters,
+        limit=limit,
+    )
+
+    targets = [
+        item
+        for item in list(plan.get("candidates", []) or [])
+        if isinstance(item, dict) and str(item.get("url") or "").strip()
+    ]
+
+    return {
+        "enabled": True,
+        "plan": plan,
+        "targets": targets,
+    }
 
 
 def _build_evidence_seed_targets(
