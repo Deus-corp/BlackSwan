@@ -50,6 +50,9 @@ from .meta_agent_core.utils import (
     normalize_url,
     prompt_hash,
 )
+from src.swarms.explorer.meta_agent_core.frontier_filters import (
+    is_low_value_frontier_url,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -2698,6 +2701,13 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         return super().summarize_snapshot(snapshot)
     
     def _is_low_value_target_url(self, url: str) -> bool:
+        normalized = normalize_url(str(url or ""))
+        if not normalized:
+            return True
+
+        if is_low_value_frontier_url(normalized):
+            return True
+
         parsed = urlparse(str(url or ""))
         domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
         path = parsed.path.lower()

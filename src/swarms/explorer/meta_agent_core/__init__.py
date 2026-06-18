@@ -43,6 +43,7 @@ from .source_plan import (
     goal_terms,
     normalize_plan_url,
 )
+from .frontier_filters import is_low_value_frontier_url
 
 __all__ = [
     "ClassificationItem",
@@ -71,4 +72,5 @@ __all__ = [
     "build_research_source_plan_targets",
     "goal_terms",
     "normalize_plan_url",
+    "is_low_value_frontier_url",
 ]
