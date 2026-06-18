@@ -448,6 +448,9 @@ def _build_seed_targets(
             "source_adapter_target_count": len(source_targets or []),
             "exploration_run_id": exploration_run_id,
             "research_goal_id": exploration_run_id,
+            "goal": goal,
+            "research_goal": goal,
+            "research_goal_text": goal,
         },
     }
 

@@ -213,6 +213,34 @@ TOPIC_ALIGNED_EVIDENCE_HINTS = (
     "architecture",
 )
 
+GOAL_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "how",
+        "in",
+        "into",
+        "is",
+        "it",
+        "of",
+        "on",
+        "or",
+        "the",
+        "to",
+        "with",
+        "systems",
+        "system",
+    }
+)
+
 LOW_VALUE_DISCOVERY_QUERY_PARTS = (
     "utm_",
     "fbclid=",
@@ -879,6 +907,12 @@ class ExplorerNode(BaseSwarmNode):
                     ),
                     "quality_score": merged_provenance.get("quality_score"),
                     "source_score": merged_provenance.get("source_score"),
+                    "goal": merged_provenance.get("goal"),
+                    "research_goal": merged_provenance.get("research_goal"),
+                    "research_goal_text": merged_provenance.get("research_goal_text"),
+                    "anchor_text": merged_provenance.get("anchor_text"),
+                    "goal_alignment_score": merged_provenance.get("goal_alignment_score"),
+                    "goal_terms_matched": merged_provenance.get("goal_terms_matched"),
                 },
             )
 
@@ -938,6 +972,15 @@ class ExplorerNode(BaseSwarmNode):
                     merged_provenance.get("source_score"),
                     default=0.0,
                 ),
+                "goal": merged_provenance.get("goal"),
+                "research_goal": merged_provenance.get("research_goal"),
+                "research_goal_text": merged_provenance.get("research_goal_text"),
+                "anchor_text": merged_provenance.get("anchor_text"),
+                "goal_alignment_score": self._safe_float(
+                    merged_provenance.get("goal_alignment_score"),
+                    default=0.0,
+                ),
+                "goal_terms_matched": merged_provenance.get("goal_terms_matched", []),
             }
 
             self._record_event_chain(
@@ -1076,6 +1119,14 @@ class ExplorerNode(BaseSwarmNode):
             if isinstance(target_context.get("target_metadata"), Mapping)
             else {}
         )
+        research_goal = str(
+            target_context.get("goal")
+            or target_context.get("research_goal")
+            or target_context.get("research_goal_text")
+            or target_context.get("target_metadata", {}).get("goal")
+            if isinstance(target_context.get("target_metadata"), Mapping)
+            else ""
+        ).strip()
         source_adapter = str(target_context.get("source_adapter") or "").strip()
         source_kind = str(target_context.get("source_kind") or "").strip()
         discovery_method = str(target_context.get("discovery_method") or "").strip()
@@ -1235,6 +1286,7 @@ class ExplorerNode(BaseSwarmNode):
                 text,
                 base_url=normalized_url,
                 parent_depth=target_depth,
+                goal=research_goal,
             )
 
             finding: ExplorerFinding = {
@@ -1414,26 +1466,63 @@ class ExplorerNode(BaseSwarmNode):
 
     def _extract_discovered_targets(
         self,
-        html: str,
+        text: str,
         *,
         base_url: str,
         parent_depth: int,
+        goal: str = "",
     ) -> list[dict[str, Any]]:
         """Extract policy-safe frontier targets from fetched HTML."""
         if parent_depth >= self.max_target_depth:
             return []
 
+        html = str(text or "")
         if not html:
             return []
 
-        raw_links = self._extract_source_links(html)
+        import html as html_lib
+        import re
+
+        anchor_links: list[tuple[str, str]] = []
+        for match in re.finditer(
+            r"<a\b[^>]*\bhref=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>",
+            html,
+            flags=re.IGNORECASE | re.DOTALL,
+        ):
+            href = str(match.group(1) or "").strip()
+            anchor_html = str(match.group(2) or "")
+            anchor_text = re.sub(r"<[^>]+>", " ", anchor_html)
+            anchor_text = html_lib.unescape(anchor_text)
+            anchor_text = re.sub(r"\s+", " ", anchor_text).strip()
+
+            if href:
+                anchor_links.append((href, anchor_text))
+
+        if anchor_links:
+            raw_links: list[Any] = anchor_links
+        else:
+            raw_links = [
+                (href, "")
+                for href in self._extract_source_links(html)
+            ]
 
         base_domain = extract_domain(base_url) or ""
         discovered: list[dict[str, Any]] = []
         seen: set[str] = set()
 
-        for href in raw_links:
-            absolute = self._normalize_discovered_url(href, base_url=base_url)
+        for href_entry in raw_links:
+            anchor_text = ""
+
+            if isinstance(href_entry, tuple):
+                raw_href = href_entry[0]
+                anchor_text = str(href_entry[1] or "").strip()
+            else:
+                raw_href = href_entry
+
+            absolute = self._normalize_discovered_url(
+                str(raw_href or ""),
+                base_url=base_url,
+            )
             if not absolute:
                 continue
 
@@ -1454,12 +1543,22 @@ class ExplorerNode(BaseSwarmNode):
             domain = extract_domain(absolute) or ""
             same_domain = bool(base_domain and domain == base_domain)
 
+            goal_boost, goal_terms_matched = self._goal_alignment_score(
+                url=absolute,
+                anchor_text=anchor_text,
+                goal=goal,
+            )
+
+            preferred_boost = self._preferred_evidence_score_boost(absolute)
+
             base_score = 1.0 if same_domain else 0.65
             base_score = max(
                 0.0,
                 min(
                     1.0,
-                    base_score + self._preferred_evidence_score_boost(absolute),
+                    base_score
+                    + preferred_boost
+                    + goal_boost,
                 ),
             )
 
@@ -1471,6 +1570,19 @@ class ExplorerNode(BaseSwarmNode):
                 existing_score=base_score,
             )
 
+            adjusted_source_score = max(
+                0.0,
+                min(
+                    1.0,
+                    float(discovery_scores["source_score"] or 0.0)
+                    + goal_boost,
+                ),
+            )
+            adjusted_quality_score = max(
+                float(discovery_scores["quality_score"] or 0.0),
+                adjusted_source_score,
+            )
+
             seen.add(absolute)
             discovered.append(
                 {
@@ -1480,10 +1592,8 @@ class ExplorerNode(BaseSwarmNode):
                     "target_depth": parent_depth + 1,
                     "discovery_method": "html_link_extraction",
                     "same_domain": same_domain,
-                    "preferred_evidence_target": (
-                        self._preferred_evidence_score_boost(absolute) > 0.0
-                    ),
-                    "score": discovery_scores["source_score"],
+                    "preferred_evidence_target": preferred_boost > 0.0,
+                    "score": adjusted_source_score,
                     "seed_score": discovery_scores["seed_score"],
                     "source_type_score": discovery_scores["source_type_score"],
                     "authority_score": discovery_scores["authority_score"],
@@ -1491,12 +1601,16 @@ class ExplorerNode(BaseSwarmNode):
                     "system_relevance_score": discovery_scores[
                         "system_relevance_score"
                     ],
-                    "quality_score": discovery_scores["quality_score"],
-                    "source_score": discovery_scores["source_score"],
+                    "quality_score": adjusted_quality_score,
+                    "source_score": adjusted_source_score,
                     "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
                     "network_read_candidate": True,
                     "external_write_performed": False,
                     "real_execution_enabled": False,
+                    "anchor_text": anchor_text,
+                    "goal_alignment_score": goal_boost,
+                    "goal_terms_matched": goal_terms_matched,
+                    "research_goal": goal,
                 }
             )
 
@@ -1506,6 +1620,7 @@ class ExplorerNode(BaseSwarmNode):
         discovered.sort(
             key=lambda item: (
                 not bool(item.get("same_domain")),
+                -float(item.get("goal_alignment_score", 0.0) or 0.0),
                 -float(item.get("score", 0.0) or 0.0),
                 str(item.get("url") or ""),
             )
@@ -1608,6 +1723,25 @@ class ExplorerNode(BaseSwarmNode):
 
         await self._emit_crdt(target_event)
         return len(urls)
+    
+    def _extract_anchor_links(self, html: str) -> list[tuple[str, str]]:
+        """Extract href + anchor text pairs from simple HTML anchors."""
+        links: list[tuple[str, str]] = []
+
+        for match in re.finditer(
+            r"<a\b[^>]*\bhref=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>",
+            str(html or ""),
+            flags=re.IGNORECASE | re.DOTALL,
+        ):
+            href = str(match.group(1) or "").strip()
+            anchor_html = str(match.group(2) or "")
+            anchor_text = re.sub(r"<[^>]+>", " ", anchor_html)
+            anchor_text = re.sub(r"\s+", " ", anchor_text).strip()
+
+            if href:
+                links.append((href, anchor_text))
+
+        return links
 
     def _normalize_discovered_url(self, href: str, *, base_url: str) -> str:
         raw = str(href or "").strip()
@@ -1708,6 +1842,57 @@ class ExplorerNode(BaseSwarmNode):
             return max(0.10, topic_boost)
 
         return topic_boost
+    
+    def _goal_terms(self, goal: str) -> list[str]:
+        terms: list[str] = []
+
+        for raw in str(goal or "").replace("-", " ").replace("_", " ").split():
+            term = raw.strip().lower()
+            if not term:
+                continue
+            if len(term) < 3:
+                continue
+            if term in GOAL_STOPWORDS:
+                continue
+            if term not in terms:
+                terms.append(term)
+
+        return terms
+
+    def _goal_alignment_score(
+        self,
+        *,
+        url: str,
+        anchor_text: str = "",
+        goal: str = "",
+    ) -> tuple[float, list[str]]:
+        terms = self._goal_terms(goal)
+        if not terms:
+            return 0.0, []
+
+        parsed = urlparse(str(url or ""))
+        haystack = " ".join(
+            [
+                parsed.netloc.lower(),
+                parsed.path.lower().replace("-", " ").replace("_", " "),
+                parsed.query.lower().replace("+", " "),
+                str(anchor_text or "").lower(),
+            ]
+        )
+
+        matched = [term for term in terms if term in haystack]
+        if not matched:
+            return 0.0, []
+
+        ratio = len(matched) / max(1, len(terms))
+        if ratio >= 0.75:
+            return 0.28, matched
+        if ratio >= 0.50:
+            return 0.22, matched
+        if ratio >= 0.25:
+            return 0.14, matched
+
+        return 0.08, matched
     
     def _topic_aligned_url_boost(self, url: str) -> float:
         parsed = urlparse(str(url or ""))
