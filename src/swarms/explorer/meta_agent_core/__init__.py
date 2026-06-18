@@ -34,6 +34,15 @@ from .source_adapters import (
     build_source_adapter_targets,
 )
 from .source_scoring import score_source_target
+from .source_plan import (
+    EXPLORER_SOURCE_PLANNER_VERSION,
+    ResearchSourcePlan,
+    SourcePlanCandidate,
+    build_research_source_plan,
+    build_research_source_plan_targets,
+    goal_terms,
+    normalize_plan_url,
+)
 
 __all__ = [
     "ClassificationItem",
@@ -55,4 +64,11 @@ __all__ = [
     "DEFAULT_SOURCE_ADAPTERS",
     "build_source_adapter_targets",
     "score_source_target",
+    "EXPLORER_SOURCE_PLANNER_VERSION",
+    "ResearchSourcePlan",
+    "SourcePlanCandidate",
+    "build_research_source_plan",
+    "build_research_source_plan_targets",
+    "goal_terms",
+    "normalize_plan_url",
 ]
