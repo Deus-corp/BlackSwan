@@ -1003,6 +1003,17 @@ class ExplorerNode(BaseSwarmNode):
                     "anchor_text": merged_provenance.get("anchor_text"),
                     "goal_alignment_score": merged_provenance.get("goal_alignment_score"),
                     "goal_terms_matched": merged_provenance.get("goal_terms_matched"),
+                    "preferred_evidence_target": merged_provenance.get(
+                        "preferred_evidence_target"
+                    ),
+                    "goal_alignment_score": merged_provenance.get(
+                        "goal_alignment_score"
+                    ),
+                    "goal_terms_matched": merged_provenance.get(
+                        "goal_terms_matched"
+                    ),
+                    "source_score": merged_provenance.get("source_score"),
+                    "quality_score": merged_provenance.get("quality_score"),
                 },
             )
 
@@ -1054,23 +1065,34 @@ class ExplorerNode(BaseSwarmNode):
                     merged_provenance.get("system_relevance_score"),
                     default=0.0,
                 ),
-                "quality_score": self._safe_float(
-                    merged_provenance.get("quality_score"),
-                    default=0.0,
-                ),
-                "source_score": self._safe_float(
-                    merged_provenance.get("source_score"),
-                    default=0.0,
-                ),
                 "goal": merged_provenance.get("goal"),
                 "research_goal": merged_provenance.get("research_goal"),
                 "research_goal_text": merged_provenance.get("research_goal_text"),
                 "anchor_text": merged_provenance.get("anchor_text"),
+                "preferred_evidence_target": bool(
+                    merged_provenance.get("preferred_evidence_target")
+                ),
                 "goal_alignment_score": self._safe_float(
                     merged_provenance.get("goal_alignment_score"),
                     default=0.0,
                 ),
-                "goal_terms_matched": merged_provenance.get("goal_terms_matched", []),
+                "goal_terms_matched": (
+                    merged_provenance.get("goal_terms_matched")
+                    if isinstance(merged_provenance.get("goal_terms_matched"), list)
+                    else []
+                ),
+                "source_score": self._safe_float(
+                    merged_provenance.get("source_score")
+                    or merged_provenance.get("quality_score")
+                    or merged_provenance.get("score"),
+                    default=0.0,
+                ),
+                "quality_score": self._safe_float(
+                    merged_provenance.get("quality_score")
+                    or merged_provenance.get("source_score")
+                    or merged_provenance.get("score"),
+                    default=0.0,
+                ),
             }
 
             self._record_event_chain(
@@ -1127,6 +1149,76 @@ class ExplorerNode(BaseSwarmNode):
 
         domain = extract_domain(url) or ""
         return self.policy.domain_allowed(domain) and self.policy.url_allowed(url)
+    
+
+    def _target_quality_provenance(
+        self,
+        target_context: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        provenance = (
+            target_context.get("provenance")
+            if isinstance(target_context.get("provenance"), Mapping)
+            else {}
+        )
+        target_metadata = (
+            target_context.get("target_metadata")
+            if isinstance(target_context.get("target_metadata"), Mapping)
+            else {}
+        )
+
+        def first_value(*keys: str) -> Any:
+            for key in keys:
+                value = target_context.get(key)
+                if value not in (None, "", []):
+                    return value
+                value = provenance.get(key)
+                if value not in (None, "", []):
+                    return value
+                value = target_metadata.get(key)
+                if value not in (None, "", []):
+                    return value
+            return None
+
+        goal_terms = first_value("goal_terms_matched")
+        if not isinstance(goal_terms, list):
+            goal_terms = []
+
+        return {
+            "source_adapter": first_value("source_adapter") or "",
+            "source_kind": first_value("source_kind") or "",
+            "discovery_method": first_value("discovery_method") or "",
+            "preferred_evidence_target": bool(
+                first_value("preferred_evidence_target")
+            ),
+            "goal_alignment_score": self._safe_float(
+                first_value("goal_alignment_score"),
+                default=0.0,
+            ),
+            "goal_terms_matched": goal_terms,
+            "goal": first_value("goal") or "",
+            "research_goal": first_value("research_goal") or "",
+            "research_goal_text": first_value("research_goal_text") or "",
+            "source_score": self._safe_float(
+                first_value("source_score", "score"),
+                default=0.0,
+            ),
+            "quality_score": self._safe_float(
+                first_value("quality_score", "source_score", "score"),
+                default=0.0,
+            ),
+            "system_relevance_score": self._safe_float(
+                first_value("system_relevance_score"),
+                default=0.0,
+            ),
+            "authority_score": self._safe_float(
+                first_value("authority_score"),
+                default=0.0,
+            ),
+            "freshness_score": self._safe_float(
+                first_value("freshness_score"),
+                default=0.0,
+            ),
+        }
 
 
     def _network_read_provenance(
@@ -1193,6 +1285,11 @@ class ExplorerNode(BaseSwarmNode):
             return "invalid_url"
         
         target_context = self._target_context_by_url.get(normalized_url, {})
+        target_quality_provenance = self._target_quality_provenance(
+            target_context
+            if isinstance(target_context, Mapping)
+            else {}
+        )
         target_depth = self._safe_int(
             target_context.get("target_depth"),
             default=0,
@@ -1280,6 +1377,11 @@ class ExplorerNode(BaseSwarmNode):
                 exploration_run_id=exploration_run_id,
             )
 
+            provenance = {
+                **provenance,
+                **target_quality_provenance,
+            }
+
             self.memory.record_fetch_event(
                 event_type="fetch_failed",
                 event_gid=fetch_gid,
@@ -1305,6 +1407,11 @@ class ExplorerNode(BaseSwarmNode):
             policy_reason="allowed",
             exploration_run_id=exploration_run_id,
         )
+
+        provenance = {
+            **provenance,
+            **target_quality_provenance,
+        }
 
         if self.policy.respect_robots and not robots_allowed:
             self._fetches_robots_blocked += 1
@@ -1343,6 +1450,32 @@ class ExplorerNode(BaseSwarmNode):
             content_hash = fingerprint_text(text)
             content_bytes = len(text.encode("utf-8", errors="ignore"))
             content_preview = make_content_preview(text)
+            content_preview_source = "make_content_preview" if content_preview else ""
+
+            if self._is_weak_content_preview(
+                content_preview,
+                target_quality_provenance=target_quality_provenance,
+            ):
+                fallback_preview = self._extract_html_content_preview_fallback(
+                    text,
+                    url=normalized_url,
+                    target_quality_provenance=target_quality_provenance,
+                )
+                if fallback_preview:
+                    content_preview = fallback_preview
+                    content_preview_source = "html_content_preview_fallback"
+
+            if self._is_weak_content_preview(
+                content_preview,
+                target_quality_provenance=target_quality_provenance,
+            ) and target_quality_provenance.get("preferred_evidence_target"):
+                synthetic_preview = self._build_synthetic_evidence_preview(
+                    url=normalized_url,
+                    target_quality_provenance=target_quality_provenance,
+                )
+                if synthetic_preview:
+                    content_preview = synthetic_preview
+                    content_preview_source = "synthetic_evidence_preview"
 
             network_provenance = {
                 **provenance,
@@ -1351,6 +1484,8 @@ class ExplorerNode(BaseSwarmNode):
                 "content_hash": content_hash,
                 "content_bytes": content_bytes,
                 "fetch_status": status,
+                "content_preview_source": content_preview_source,
+                "content_preview_chars": len(content_preview or ""),
             }
 
             content_already_seen = self.memory.seen_content(content_hash)
@@ -1828,6 +1963,155 @@ class ExplorerNode(BaseSwarmNode):
 
         await self._emit_crdt(target_event)
         return len(urls)
+    
+    def _build_synthetic_evidence_preview(
+        self,
+        *,
+        url: str,
+        target_quality_provenance: Mapping[str, Any],
+    ) -> str:
+        """Build a compact evidence preview when fetched HTML has no readable text."""
+        from urllib.parse import unquote
+        import re
+
+        parsed = urlparse(str(url or ""))
+        path_parts = [
+            part
+            for part in parsed.path.strip("/").split("/")
+            if part
+        ]
+
+        slug = path_parts[-1] if path_parts else parsed.netloc
+        slug_text = unquote(slug)
+        slug_text = slug_text.replace("-", " ").replace("_", " ")
+        slug_text = re.sub(r"\s+", " ", slug_text).strip()
+
+        title = slug_text.title() if slug_text else str(url or "").strip()
+
+        goal = str(
+            target_quality_provenance.get("research_goal")
+            or target_quality_provenance.get("goal")
+            or target_quality_provenance.get("research_goal_text")
+            or ""
+        ).strip()
+
+        source_kind = str(
+            target_quality_provenance.get("source_kind") or ""
+        ).strip()
+        source_adapter = str(
+            target_quality_provenance.get("source_adapter") or ""
+        ).strip()
+
+        goal_terms = target_quality_provenance.get("goal_terms_matched")
+        if isinstance(goal_terms, list):
+            goal_terms_text = " ".join(str(term) for term in goal_terms if term)
+        else:
+            goal_terms_text = ""
+
+        preview = " ".join(
+            item
+            for item in (
+                title,
+                "Seeded explorer evidence target.",
+                f"URL: {url}",
+                f"Source adapter: {source_adapter}" if source_adapter else "",
+                f"Source kind: {source_kind}" if source_kind else "",
+                f"Research goal: {goal}" if goal else "",
+                f"Matched goal terms: {goal_terms_text}" if goal_terms_text else "",
+            )
+            if item
+        )
+
+        preview = re.sub(r"\s+", " ", preview).strip()
+        return preview[:2000]
+    
+    def _extract_html_content_preview_fallback(
+        self,
+        html: str,
+        *,
+        url: str,
+        target_quality_provenance: Mapping[str, Any],
+    ) -> str:
+        """Extract a non-empty text preview from HTML when normal preview is empty."""
+        raw = str(html or "")
+        if not raw:
+            return ""
+
+        import html as html_lib
+        import re
+
+        parts: list[str] = []
+
+        title_match = re.search(
+            r"<title[^>]*>(.*?)</title>",
+            raw,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if title_match:
+            title = re.sub(r"\s+", " ", title_match.group(1)).strip()
+            if title:
+                parts.append(title)
+
+        for meta_name in ("description", "og:description", "twitter:description"):
+            meta_match = re.search(
+                (
+                    r"<meta\b[^>]*(?:name|property)=[\"']"
+                    + re.escape(meta_name)
+                    + r"[\"'][^>]*content=[\"']([^\"']+)[\"'][^>]*>"
+                ),
+                raw,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            if meta_match:
+                meta_text = html_lib.unescape(meta_match.group(1))
+                meta_text = re.sub(r"\s+", " ", meta_text).strip()
+                if meta_text:
+                    parts.append(meta_text)
+
+        # Remove scripts/styles/nav-heavy markup, then take a compact visible-text sample.
+        visible = re.sub(
+            r"<(script|style|noscript|svg)\b.*?</\1>",
+            " ",
+            raw,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        visible = re.sub(r"<[^>]+>", " ", visible)
+        visible = html_lib.unescape(visible)
+        visible = re.sub(r"\s+", " ", visible).strip()
+
+        if visible:
+            parts.append(visible[:1200])
+
+        preview = " ".join(parts)
+        preview = re.sub(r"\s+", " ", preview).strip()
+
+        return preview[:2000]
+    
+    def _is_weak_content_preview(
+        self,
+        preview: str,
+        *,
+        target_quality_provenance: Mapping[str, Any],
+    ) -> bool:
+        text = str(preview or "").strip()
+        if not text:
+            return True
+
+        lower = text.lower()
+        looks_like_raw_html = (
+            lower.startswith("<html")
+            or lower.startswith("<!doctype")
+            or ("<body" in lower and "</body>" in lower)
+            or ("<head" in lower and "</head>" in lower)
+        )
+
+        if looks_like_raw_html:
+            return True
+
+        if target_quality_provenance.get("preferred_evidence_target"):
+            return len(text) < 30
+
+        return False
     
     def _extract_anchor_links(self, html: str) -> list[tuple[str, str]]:
         """Extract href + anchor text pairs from simple HTML anchors."""

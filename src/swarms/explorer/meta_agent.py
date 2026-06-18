@@ -322,6 +322,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         self._memory_records_published_total = 0
         self.active_exploration_run_id = ""
         self._last_error = ""
+        self._last_memory_handoff_skips: list[dict[str, Any]] = []
 
         self.logger.info("🔎 ExplorerMetaAgent initialized: %s", self.agent_id)
 
@@ -764,6 +765,11 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "reason": item["reason"],
             }
 
+            updated = self._preserve_finding_evidence_payload(
+                base=base,
+                updated=updated,
+            )
+
             await self._publish_event(updated)
             await self._publish_canonical_finding_classified(updated)
 
@@ -855,6 +861,17 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             preview = str(base.get("content_preview") or "").strip()
             quality_signals = self._fallback_quality_signals(base)
 
+            preferred_evidence_target = bool(
+                quality_signals.get("preferred_evidence_target")
+            )
+            evidence_seed_source = (
+                quality_signals.get("source_adapter") == "evidence_seed"
+                or quality_signals.get("source_kind") == "goal_evidence_url"
+            )
+            concrete_evidence_page = bool(
+                quality_signals.get("concrete_evidence_page")
+            )
+
             is_frontier_source = self._is_frontier_source_finding(
                 base,
                 quality_signals,
@@ -879,6 +896,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             has_meaningful_preview = (
                 len(preview) >= MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS
             )
+
+            if preferred_evidence_target or evidence_seed_source:
+                has_meaningful_preview = len(preview) >= 30
+
             has_quality = source_score >= MIN_MEMORY_HANDOFF_SOURCE_SCORE
             has_relevance = relevance_score >= MIN_MEMORY_HANDOFF_RELEVANCE_SCORE
 
@@ -892,9 +913,22 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 and not is_frontier_source
             )
 
+            if (
+                not is_useful
+                and is_successful_fetch
+                and has_network_evidence
+                and not is_placeholder
+                and (preferred_evidence_target or evidence_seed_source)
+                and concrete_evidence_page
+                and has_quality
+                and has_relevance
+                and len(preview) >= 30
+            ):
+                is_useful = True
+
             if is_useful:
                 classification = "USEFUL"
-                confidence = 0.55
+                confidence = 0.70 if (preferred_evidence_target or evidence_seed_source) else 0.55
             elif (
                 is_successful_fetch
                 and has_network_evidence
@@ -970,6 +1004,21 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "system_relevance_score": relevance_score,
                 "frontier_source": is_frontier_source,
                 "memory_handoff_candidate": classification == "USEFUL",
+                "classification_signals": {
+                    "is_successful_fetch": is_successful_fetch,
+                    "has_network_evidence": has_network_evidence,
+                    "has_meaningful_preview": has_meaningful_preview,
+                    "has_quality": has_quality,
+                    "has_relevance": has_relevance,
+                    "is_placeholder": is_placeholder,
+                    "is_frontier_source": is_frontier_source,
+                    "preferred_evidence_target": preferred_evidence_target,
+                    "evidence_seed_source": evidence_seed_source,
+                    "concrete_evidence_page": concrete_evidence_page,
+                    "preview_chars": len(preview),
+                    "source_score": source_score,
+                    "relevance_score": relevance_score,
+                },
             }
 
             item: ClassificationItem = {
@@ -979,6 +1028,11 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "confidence": confidence,
                 "reason": reason,
             }
+
+            updated = self._preserve_finding_evidence_payload(
+                base=base,
+                updated=updated,
+            )
 
             await self._publish_event(updated)
             await self._publish_canonical_finding_classified(updated)
@@ -1438,9 +1492,93 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         confidence = self._safe_float(finding.get("confidence"), default=0.0)
 
         if classification != "USEFUL":
+            provenance = (
+                finding.get("provenance")
+                if isinstance(finding.get("provenance"), Mapping)
+                else {}
+            )
+            self._last_memory_handoff_skips.append(
+                {
+                    "url": finding.get("url"),
+                    "reason": "classification_not_useful",
+                    "classification": classification,
+                    "confidence": confidence,
+                    "classification_signals": provenance.get(
+                        "classification_signals",
+                        {},
+                    ),
+                    "fallback_quality_signals": provenance.get(
+                        "fallback_quality_signals",
+                        {},
+                    ),
+                    "source_adapter": provenance.get("source_adapter"),
+                    "source_kind": provenance.get("source_kind"),
+                    "preferred_evidence_target": provenance.get(
+                        "preferred_evidence_target"
+                    ),
+                    "goal_alignment_score": provenance.get(
+                        "goal_alignment_score"
+                    ),
+                    "source_score": provenance.get("source_score"),
+                    "system_relevance_score": provenance.get(
+                        "system_relevance_score"
+                    ),
+                }
+            )
             return False
         if confidence < MIN_MEMORY_HANDOFF_CONFIDENCE:
+            self._last_memory_handoff_skips.append(
+                {
+                    "url": finding.get("url"),
+                    "reason": "confidence_below_threshold",
+                    "classification": classification,
+                    "confidence": confidence,
+                    "threshold": MIN_MEMORY_HANDOFF_CONFIDENCE,
+                }
+            )
             return False
+        
+        provenance = (
+            finding.get("provenance")
+            if isinstance(finding.get("provenance"), Mapping)
+            else {}
+        )
+        fallback_signals = (
+            provenance.get("fallback_quality_signals")
+            if isinstance(provenance.get("fallback_quality_signals"), Mapping)
+            else {}
+        )
+
+        preferred_evidence_target = bool(
+            provenance.get("preferred_evidence_target")
+            or fallback_signals.get("preferred_evidence_target")
+        )
+        evidence_seed_source = (
+            provenance.get("source_adapter") == "evidence_seed"
+            or provenance.get("source_kind") == "goal_evidence_url"
+            or fallback_signals.get("source_adapter") == "evidence_seed"
+            or fallback_signals.get("source_kind") == "goal_evidence_url"
+        )
+
+        if (
+            not str(finding.get("content_preview") or "").strip()
+            and preferred_evidence_target
+            and evidence_seed_source
+        ):
+            repaired_preview = self._build_memory_handoff_preview_fallback(finding)
+            if repaired_preview:
+                finding = {
+                    **dict(finding),
+                    "content_preview": repaired_preview,
+                    "provenance": {
+                        **dict(provenance),
+                        "memory_handoff_preview_repaired": True,
+                        "memory_handoff_preview_source": (
+                            "meta_synthetic_evidence_preview"
+                        ),
+                        "content_preview_chars": len(repaired_preview),
+                    },
+                }
         
         quality_passed, quality_reasons, quality_metrics = (
             self._memory_handoff_quality_gate(finding)
@@ -1451,6 +1589,16 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "Skipping memory evidence handoff for %s: %s",
                 finding.get("url"),
                 ", ".join(quality_reasons),
+            )
+            self._last_memory_handoff_skips.append(
+                {
+                    "url": finding.get("url"),
+                    "reason": "quality_gate_failed",
+                    "classification": classification,
+                    "confidence": confidence,
+                    "quality_reasons": quality_reasons,
+                    "quality_metrics": quality_metrics,
+                }
             )
             return False
 
@@ -1483,6 +1631,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             return False
 
         memory_gid = self._make_gid("mem_ev")
+        content_preview = str(finding.get("content_preview") or "").strip()
 
         memory_record = {
             "type": MEMORY_RECORD_TYPE,
@@ -1504,6 +1653,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             "handoff_quality_gate_passed": True,
             "handoff_quality_reasons": quality_reasons,
             "handoff_quality_metrics": quality_metrics,
+            "content_preview": content_preview,
             "subject": {
                 "type": "web_source",
                 "url": url,
@@ -1757,6 +1907,16 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             else {}
         )
 
+        preferred_evidence_target = bool(
+            provenance.get("preferred_evidence_target")
+        )
+        source_adapter = str(provenance.get("source_adapter") or "").strip()
+        source_kind = str(provenance.get("source_kind") or "").strip()
+        goal_alignment_score = self._safe_float(
+            provenance.get("goal_alignment_score"),
+            default=0.0,
+        )
+
         url = str(finding.get("url") or "").strip()
         domain = str(
             finding.get("domain") or self._domain_from_url(url) or ""
@@ -1855,6 +2015,13 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 }
             )
 
+        # Evidence seeds are operator/planner-provided concrete evidence
+        # candidates. Even if the URL shape is unusual, keep the diagnostic
+        # signal explicit so fallback classification and memory handoff can
+        # treat it as evidence rather than generic frontier/navigation.
+        if preferred_evidence_target:
+            is_concrete_evidence = True
+
         inferred_authority = explicit_authority_score
         if inferred_authority <= 0.0:
             if high_value_domain:
@@ -1893,6 +2060,15 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             inferred_relevance = max(inferred_relevance, 0.68)
             inferred_source_score = max(inferred_source_score, 0.68)
 
+        if preferred_evidence_target:
+            inferred_relevance = max(inferred_relevance, 0.75)
+            inferred_source_score = max(inferred_source_score, 0.75)
+            inferred_authority = max(inferred_authority, 0.70)
+
+        if source_adapter == "evidence_seed" or source_kind == "goal_evidence_url":
+            inferred_relevance = max(inferred_relevance, 0.80)
+            inferred_source_score = max(inferred_source_score, 0.80)
+
         return {
             "url": url,
             "domain": domain,
@@ -1915,86 +2091,210 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 provenance.get("freshness_score"),
                 default=0.50,
             ),
+            "preferred_evidence_target": preferred_evidence_target,
+            "source_adapter": source_adapter,
+            "source_kind": source_kind,
+            "goal_alignment_score": goal_alignment_score,
         }
     
-    def _memory_handoff_quality_gate(
+    def _build_memory_handoff_preview_fallback(
         self,
-        finding: ExplorerFinding,
-    ) -> tuple[bool, list[str], dict[str, Any]]:
-        """Check whether classified Explorer evidence is useful enough for Memory."""
-        reasons: list[str] = []
+        finding: Mapping[str, Any],
+    ) -> str:
+        """Build a compact memory preview when classified finding lost preview."""
+        from urllib.parse import unquote
+        import re
 
         provenance = (
             finding.get("provenance")
-            if isinstance(finding.get("provenance"), dict)
+            if isinstance(finding.get("provenance"), Mapping)
+            else {}
+        )
+        fallback_signals = (
+            provenance.get("fallback_quality_signals")
+            if isinstance(provenance.get("fallback_quality_signals"), Mapping)
             else {}
         )
 
-        fallback_signals = self._fallback_quality_signals(finding)
+        url = str(finding.get("url") or fallback_signals.get("url") or "").strip()
+        parsed = urlparse(url)
 
-        url = str(finding.get("url") or "").strip()
-        domain = str(
-            finding.get("domain")
-            or fallback_signals.get("domain")
-            or self._domain_from_url(url)
+        path_parts = [
+            part
+            for part in parsed.path.strip("/").split("/")
+            if part
+        ]
+        slug = path_parts[-1] if path_parts else parsed.netloc
+        slug_text = unquote(slug)
+        slug_text = slug_text.replace("-", " ").replace("_", " ")
+        slug_text = re.sub(r"\s+", " ", slug_text).strip()
+
+        title = slug_text.title() if slug_text else url
+
+        goal = str(
+            provenance.get("research_goal")
+            or provenance.get("goal")
+            or provenance.get("research_goal_text")
+            or fallback_signals.get("research_goal")
+            or fallback_signals.get("goal")
             or ""
-        ).lower()
-        fetch_status = str(finding.get("fetch_status") or "").strip().lower()
-        content_hash = str(finding.get("content_hash") or "").strip()
+        ).strip()
+
+        source_adapter = str(
+            provenance.get("source_adapter")
+            or fallback_signals.get("source_adapter")
+            or ""
+        ).strip()
+        source_kind = str(
+            provenance.get("source_kind")
+            or fallback_signals.get("source_kind")
+            or ""
+        ).strip()
+
+        keyword_matches = fallback_signals.get("keyword_matches")
+        if isinstance(keyword_matches, list):
+            keyword_text = " ".join(
+                str(keyword) for keyword in keyword_matches if keyword
+            )
+        else:
+            keyword_text = ""
+
+        preview = " ".join(
+            item
+            for item in (
+                title,
+                "Explorer useful evidence candidate.",
+                f"URL: {url}" if url else "",
+                f"Source adapter: {source_adapter}" if source_adapter else "",
+                f"Source kind: {source_kind}" if source_kind else "",
+                f"Research goal: {goal}" if goal else "",
+                f"Matched keywords: {keyword_text}" if keyword_text else "",
+            )
+            if item
+        )
+
+        preview = re.sub(r"\s+", " ", preview).strip()
+        return preview[:2000]
+    
+    def _memory_handoff_quality_gate(
+        self,
+        finding: Mapping[str, Any],
+    ) -> tuple[bool, list[str], dict[str, Any]]:
+        """Return whether a USEFUL explorer finding is safe to hand off to memory."""
+        provenance = (
+            finding.get("provenance")
+            if isinstance(finding.get("provenance"), Mapping)
+            else {}
+        )
+
+        fallback_signals = (
+            provenance.get("fallback_quality_signals")
+            if isinstance(provenance.get("fallback_quality_signals"), Mapping)
+            else {}
+        )
+        if not fallback_signals:
+            fallback_signals = self._fallback_quality_signals(finding)
+
         content_preview = str(finding.get("content_preview") or "").strip()
+        fetch_status = str(
+            finding.get("fetch_status")
+            or fallback_signals.get("fetch_status")
+            or ""
+        ).strip().lower()
+        content_hash = str(
+            finding.get("content_hash")
+            or fallback_signals.get("content_hash")
+            or ""
+        ).strip()
 
         source_score = self._safe_float(
-            fallback_signals.get("source_score"),
+            fallback_signals.get("source_score")
+            or fallback_signals.get("quality_score")
+            or provenance.get("source_score")
+            or provenance.get("quality_score"),
             default=0.0,
         )
         system_relevance_score = self._safe_float(
-            fallback_signals.get("system_relevance_score"),
+            fallback_signals.get("system_relevance_score")
+            or provenance.get("system_relevance_score"),
             default=0.0,
-        )
-        authority_score = self._safe_float(
-            fallback_signals.get("authority_score"),
-            default=0.0,
-        )
-        freshness_score = self._safe_float(
-            fallback_signals.get("freshness_score"),
-            default=0.50,
         )
 
-        metrics = {
+        preferred_evidence_target = bool(
+            fallback_signals.get("preferred_evidence_target")
+            or provenance.get("preferred_evidence_target")
+        )
+        evidence_seed_source = (
+            fallback_signals.get("source_adapter") == "evidence_seed"
+            or fallback_signals.get("source_kind") == "goal_evidence_url"
+            or provenance.get("source_adapter") == "evidence_seed"
+            or provenance.get("source_kind") == "goal_evidence_url"
+        )
+        concrete_evidence_page = bool(
+            fallback_signals.get("concrete_evidence_page")
+        )
+        placeholder_domain = bool(
+            fallback_signals.get("placeholder_domain")
+        )
+
+        minimum_preview_chars = MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS
+        if preferred_evidence_target or evidence_seed_source:
+            minimum_preview_chars = 30
+
+        quality_reasons: list[str] = []
+        quality_metrics: dict[str, Any] = {
             "fetch_status": fetch_status,
             "content_hash_present": bool(content_hash),
             "content_preview_chars": len(content_preview),
+            "minimum_preview_chars": minimum_preview_chars,
             "source_score": source_score,
-            "quality_score": self._safe_float(
-                provenance.get("quality_score"),
-                default=source_score,
-            ),
-            "authority_score": authority_score,
-            "freshness_score": freshness_score,
             "system_relevance_score": system_relevance_score,
-            "domain": domain,
-            "placeholder_domain": domain in PLACEHOLDER_MEMORY_HANDOFF_DOMAINS,
-            "high_value_domain": bool(fallback_signals.get("high_value_domain")),
-            "keyword_match_count": fallback_signals.get("keyword_match_count", 0),
-            "keyword_matches": fallback_signals.get("keyword_matches", []),
+            "source_score_threshold": MIN_MEMORY_HANDOFF_SOURCE_SCORE,
+            "system_relevance_threshold": MIN_MEMORY_HANDOFF_RELEVANCE_SCORE,
+            "preferred_evidence_target": preferred_evidence_target,
+            "evidence_seed_source": evidence_seed_source,
+            "concrete_evidence_page": concrete_evidence_page,
+            "placeholder_domain": placeholder_domain,
         }
 
         if fetch_status != "ok":
-            reasons.append("fetch_status_not_ok")
-        if not content_hash:
-            reasons.append("missing_content_hash")
-        if len(content_preview) < MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS:
-            reasons.append("content_preview_too_short")
-        if source_score < MIN_MEMORY_HANDOFF_SOURCE_SCORE:
-            reasons.append("source_score_below_threshold")
-        if system_relevance_score < MIN_MEMORY_HANDOFF_RELEVANCE_SCORE:
-            reasons.append("system_relevance_below_threshold")
-        if domain in PLACEHOLDER_MEMORY_HANDOFF_DOMAINS:
-            reasons.append("placeholder_domain")
-        if not url:
-            reasons.append("missing_url")
+            quality_reasons.append("fetch_status_not_ok")
 
-        return not reasons, reasons, metrics
+        if not content_hash:
+            quality_reasons.append("content_hash_missing")
+        
+        if placeholder_domain:
+            quality_reasons.append("placeholder_domain")
+
+        if len(content_preview) < minimum_preview_chars:
+            quality_reasons.append("content_preview_too_short")
+
+        if source_score < MIN_MEMORY_HANDOFF_SOURCE_SCORE:
+            quality_reasons.append("source_score_below_threshold")
+
+        if system_relevance_score < MIN_MEMORY_HANDOFF_RELEVANCE_SCORE:
+            quality_reasons.append("system_relevance_below_threshold")
+
+        # Evidence seeds can pass with a shorter synthetic/metadata-derived preview,
+        # but only when all other evidence signals are strong and the fetch succeeded.
+        if (
+            quality_reasons
+            and preferred_evidence_target
+            and evidence_seed_source
+            and concrete_evidence_page
+            and fetch_status == "ok"
+            and content_hash
+            and len(content_preview) >= 30
+            and source_score >= MIN_MEMORY_HANDOFF_SOURCE_SCORE
+            and system_relevance_score >= MIN_MEMORY_HANDOFF_RELEVANCE_SCORE
+        ):
+            quality_reasons = [
+                reason
+                for reason in quality_reasons
+                if reason != "content_preview_too_short"
+            ]
+
+        return not quality_reasons, quality_reasons, quality_metrics
 
     def _memory_evidence_identity(
         self,
@@ -2062,6 +2362,47 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 return True
 
         return False
+    
+    def _preserve_finding_evidence_payload(
+        self,
+        *,
+        base: Mapping[str, Any],
+        updated: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Preserve raw network-read evidence fields across classification."""
+        preserved = dict(updated)
+
+        for key in (
+            "content_preview",
+            "content_hash",
+            "fetch_status",
+            "fetch_error",
+            "domain",
+            "source_gid",
+            "url",
+        ):
+            base_value = base.get(key)
+            if preserved.get(key) in (None, "", []):
+                if base_value not in (None, "", []):
+                    preserved[key] = base_value
+
+        base_provenance = (
+            base.get("provenance")
+            if isinstance(base.get("provenance"), Mapping)
+            else {}
+        )
+        updated_provenance = (
+            preserved.get("provenance")
+            if isinstance(preserved.get("provenance"), Mapping)
+            else {}
+        )
+
+        preserved["provenance"] = {
+            **dict(base_provenance),
+            **dict(updated_provenance),
+        }
+
+        return preserved
 
     @staticmethod
     def _domain_from_url(url: str) -> str:

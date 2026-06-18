@@ -92,6 +92,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="Optional delay between explorer ticks.",
     )
+    parser.add_argument(
+        "--evidence-url",
+        action="append",
+        default=[],
+        help=(
+            "High-priority evidence URL to seed directly into the explorer "
+            "frontier. Can be passed multiple times."
+        ),
+    )
     parser.add_argument("--node-id", default="exp-node-network-read-loop")
     parser.add_argument("--meta-agent-id", default="exp-meta-network-read-loop")
     parser.add_argument("--skip-meta", action="store_true")
@@ -103,6 +112,30 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
     urls = [normalize_url(url) for url in list(args.url or [])]
     urls = [url for url in urls if url]
 
+    evidence_urls = [
+        normalize_url(url)
+        for url in list(getattr(args, "evidence_url", []) or [])
+    ]
+    evidence_urls = [url for url in evidence_urls if url]
+
+    initial_urls_for_run_id = _dedupe_urls([*evidence_urls, *urls])
+    if not initial_urls_for_run_id:
+        initial_urls_for_run_id = ["https://example.com/"]
+
+    exploration_run_id = (
+        str(getattr(args, "exploration_run_id", "") or "").strip()
+        or _make_exploration_run_id(
+            goal=str(getattr(args, "goal", "") or ""),
+            urls=initial_urls_for_run_id,
+        )
+    )
+
+    evidence_seed_targets = _build_evidence_seed_targets(
+        evidence_urls,
+        goal=str(getattr(args, "goal", "") or ""),
+        exploration_run_id=exploration_run_id,
+    )
+
     source_targets = build_source_adapter_targets(
         goal=str(getattr(args, "goal", "") or ""),
         adapters=list(getattr(args, "source_adapter", []) or []),
@@ -110,24 +143,18 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         limit=int(getattr(args, "source_limit", 20) or 20),
     )
 
+    source_targets = [*evidence_seed_targets, *source_targets]
+
     adapter_urls = [
         str(item.get("url") or "").strip()
         for item in source_targets
         if str(item.get("url") or "").strip()
     ]
 
-    urls = _dedupe_urls([*urls, *adapter_urls])
+    urls = _dedupe_urls([*evidence_urls, *urls, *adapter_urls])
 
     if not urls:
         urls = ["https://example.com/"]
-
-    exploration_run_id = (
-        str(getattr(args, "exploration_run_id", "") or "").strip()
-        or _make_exploration_run_id(
-            goal=str(getattr(args, "goal", "") or ""),
-            urls=urls,
-        )
-    )
 
     ticks = max(1, int(getattr(args, "ticks", 1) or 1))
     tick_delay_seconds = max(
@@ -204,6 +231,7 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "classifications_published": 0,
             "exploration_run_id": exploration_run_id,
             "memory_records_published": 0,
+            "memory_handoff_skips": [],
         }
 
     try:
@@ -280,6 +308,9 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
                             )
                             or 0
                         ),
+                        "memory_handoff_skips": list(
+                            getattr(meta, "_last_memory_handoff_skips", []) or []
+                        )[-20:],
                     }
 
                 if callable(refresh):
@@ -347,6 +378,8 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "exploration_run_id": exploration_run_id,
             "source_adapters": list(getattr(args, "source_adapter", []) or []),
             "source_adapter_targets": source_targets,
+            "evidence_seed_urls": evidence_urls,
+            "evidence_seed_targets": evidence_seed_targets,
             "seed_record_gid": seed_record["gid"],
             "ticks_requested": ticks,
             "ticks_completed": len(tick_results),
@@ -411,6 +444,98 @@ def _dedupe_urls(urls: list[str]) -> list[str]:
         out.append(url)
 
     return out
+
+
+def _goal_terms_for_seed(goal: str) -> list[str]:
+    stopwords = {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "in",
+        "into",
+        "is",
+        "it",
+        "of",
+        "on",
+        "or",
+        "the",
+        "to",
+        "with",
+        "system",
+        "systems",
+    }
+
+    terms: list[str] = []
+    for raw in str(goal or "").replace("-", " ").replace("_", " ").split():
+        term = raw.strip().lower()
+        if len(term) < 3:
+            continue
+        if term in stopwords:
+            continue
+        if term not in terms:
+            terms.append(term)
+
+    return terms
+
+
+def _build_evidence_seed_targets(
+    evidence_urls: list[str],
+    *,
+    goal: str,
+    exploration_run_id: str,
+) -> list[dict[str, Any]]:
+    terms = _goal_terms_for_seed(goal)
+    targets: list[dict[str, Any]] = []
+
+    for raw_url in evidence_urls:
+        url = normalize_url(str(raw_url or ""))
+        if not url:
+            continue
+
+        haystack = url.lower().replace("-", " ").replace("_", " ")
+        matched_terms = [term for term in terms if term in haystack]
+
+        goal_alignment_score = 0.28 if matched_terms else 0.14
+        source_score = 0.95 if matched_terms else 0.88
+
+        targets.append(
+            {
+                "url": url,
+                "source_adapter": "evidence_seed",
+                "source_kind": "goal_evidence_url",
+                "discovery_method": "operator_seeded_evidence_url",
+                "score": source_score,
+                "seed_score": 1.0,
+                "source_type_score": 0.95,
+                "authority_score": 0.80,
+                "freshness_score": 0.50,
+                "system_relevance_score": 0.92 if matched_terms else 0.75,
+                "quality_score": source_score,
+                "source_score": source_score,
+                "preferred_evidence_target": True,
+                "goal_alignment_score": goal_alignment_score,
+                "goal_terms_matched": matched_terms,
+                "goal": goal,
+                "research_goal": goal,
+                "research_goal_text": goal,
+                "exploration_run_id": exploration_run_id,
+                "research_goal_id": exploration_run_id,
+                "execution_risk_tier": "network_read",
+                "coordination_channel": "crdt_genomes",
+                "network_read_candidate": True,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
+            }
+        )
+
+    return targets
 
 
 def _build_seed_targets(
