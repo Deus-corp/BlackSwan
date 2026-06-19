@@ -699,68 +699,259 @@ class ExplorerNode(BaseSwarmNode):
 
         return did_work
     
-    def _select_domain_aware_targets(self, urls: list[str]) -> list[str]:
-        """Select targets round-robin by domain for one tick.
+    def _target_priority_score(self, url: str) -> tuple[float, float, float, str]:
+        """Return deterministic priority for target scheduling.
 
-        This prevents one domain from consuming the entire batch and triggering
-        domain_window_rate_limited before other source adapters get a chance.
+        Higher tuple values are selected first.
         """
-        buckets: dict[str, list[str]] = {}
-        order: list[str] = []
+        normalized = normalize_url(str(url or ""))
+        context = self._target_context_by_url.get(normalized, {})
+
+        source_adapter = str(context.get("source_adapter") or "").strip()
+        source_kind = str(context.get("source_kind") or "").strip()
+
+        preferred_evidence_target = bool(
+            context.get("preferred_evidence_target")
+        )
+        evidence_candidate = (
+            source_adapter in {"evidence", "evidence_seed"}
+            or source_kind in {"curated_evidence_url", "goal_evidence_url"}
+            or preferred_evidence_target
+        )
+
+        source_score = self._safe_float(
+            context.get("source_score")
+            or context.get("score")
+            or context.get("quality_score"),
+            default=0.0,
+        )
+        goal_alignment_score = self._safe_float(
+            context.get("goal_alignment_score"),
+            default=0.0,
+        )
+
+        adapter_priority = {
+            "evidence_seed": 1.00,
+            "evidence": 0.96,
+            "seed": 0.92,
+            "sitemap": 0.78,
+            "github": 0.70,
+            "arxiv": 0.68,
+            "search": 0.60,
+        }.get(source_adapter, 0.40)
+
+        if evidence_candidate:
+            adapter_priority = max(adapter_priority, 0.96)
+
+        if source_kind in {"curated_evidence_url", "goal_evidence_url"}:
+            adapter_priority = max(adapter_priority, 0.98)
+
+        return (
+            adapter_priority,
+            source_score,
+            goal_alignment_score,
+            normalized,
+        )
+    
+    def _select_domain_aware_targets(self, urls: list[str]) -> list[str]:
+        """Select targets for one tick with evidence priority and domain diversity.
+
+        This keeps high-value planned evidence near the front of the batch while
+        preserving per-domain limits so one domain cannot consume the whole tick
+        and trigger domain_window_rate_limited before other adapters run.
+        """
+        normalized_urls: list[str] = []
+        seen: set[str] = set()
 
         for raw_url in urls:
             url = normalize_url(str(raw_url or ""))
-            if not url:
+            if not url or url in seen:
                 continue
 
-            domain = extract_domain(url) or "unknown"
-            if domain not in buckets:
-                buckets[domain] = []
-                order.append(domain)
-            buckets[domain].append(url)
+            seen.add(url)
+            normalized_urls.append(url)
 
-        for domain, bucket in buckets.items():
-            bucket.sort(key=self._target_priority_key)
+        if not normalized_urls:
+            return []
 
-        selected: list[str] = []
-        per_domain_counts: dict[str, int] = {}
+        batch_limit = max(
+            1,
+            int(
+                getattr(
+                    self,
+                    "targets_per_tick",
+                    None,
+                )
+                or getattr(self, "batch_limit", 10)
+                or 10
+            ),
+        )
+        max_per_domain = max(
+            1,
+            int(
+                getattr(
+                    self,
+                    "max_targets_per_domain_per_tick",
+                    batch_limit,
+                )
+                or batch_limit
+            ),
+        )
 
-        while len(selected) < self.batch_limit and any(buckets.values()):
-            progressed = False
+        def is_evidence_like(url: str) -> bool:
+            context = self._target_context_by_url.get(url, {})
+            source_adapter = str(context.get("source_adapter") or "").strip()
+            source_kind = str(context.get("source_kind") or "").strip()
+            preferred_evidence_target = bool(
+                context.get("preferred_evidence_target")
+            )
 
-            for domain in list(order):
-                if len(selected) >= self.batch_limit:
+            return (
+                source_adapter in {"evidence", "evidence_seed"}
+                or source_kind in {"curated_evidence_url", "goal_evidence_url"}
+                or preferred_evidence_target
+            )
+
+        def priority_key(url: str) -> tuple[float, float, float]:
+            adapter_priority, source_score, goal_alignment_score, _normalized = (
+                self._target_priority_score(url)
+            )
+            return (
+                adapter_priority,
+                source_score,
+                goal_alignment_score,
+            )
+
+        def build_buckets(
+            source_urls: list[str],
+            *,
+            sort_by_priority: bool,
+        ) -> tuple[dict[str, list[str]], list[str]]:
+            buckets: dict[str, list[str]] = {}
+            order: list[str] = []
+
+            ordered_urls = (
+                sorted(source_urls, key=priority_key, reverse=True)
+                if sort_by_priority
+                else list(source_urls)
+            )
+
+            for url in ordered_urls:
+                domain = extract_domain(url) or "unknown"
+                if domain not in buckets:
+                    buckets[domain] = []
+                    order.append(domain)
+                buckets[domain].append(url)
+
+            return buckets, order
+
+        def add_selected(url: str) -> None:
+            selected.append(url)
+
+            selected_context = self._target_context_by_url.get(url, {})
+            selected_source_adapter = str(
+                selected_context.get("source_adapter") or ""
+            ).strip()
+
+            if selected_source_adapter:
+                self._source_adapter_targets_selected[selected_source_adapter] = (
+                    self._source_adapter_targets_selected.get(
+                        selected_source_adapter,
+                        0,
+                    )
+                    + 1
+                )
+
+        def select_round_robin(
+            source_urls: list[str],
+            *,
+            max_items: int,
+            per_domain_counts: dict[str, int],
+            sort_by_priority: bool,
+        ) -> None:
+            if max_items <= 0 or not source_urls:
+                return
+
+            buckets, order = build_buckets(
+                source_urls,
+                sort_by_priority=sort_by_priority,
+            )
+
+            while len(selected) < batch_limit and max_items > 0 and any(
+                buckets.values()
+            ):
+                progressed = False
+
+                for domain in list(order):
+                    if len(selected) >= batch_limit or max_items <= 0:
+                        break
+
+                    if per_domain_counts.get(domain, 0) >= max_per_domain:
+                        continue
+
+                    bucket = buckets.get(domain) or []
+                    if not bucket:
+                        continue
+
+                    selected_url = bucket.pop(0)
+                    if selected_url in selected_seen:
+                        continue
+
+                    selected_seen.add(selected_url)
+                    add_selected(selected_url)
+
+                    per_domain_counts[domain] = (
+                        per_domain_counts.get(domain, 0) + 1
+                    )
+                    max_items -= 1
+                    progressed = True
+
+                if not progressed:
                     break
 
-                if per_domain_counts.get(domain, 0) >= self.max_targets_per_domain_per_tick:
-                    continue
+        prioritized = sorted(
+            normalized_urls,
+            key=priority_key,
+            reverse=True,
+        )
 
-                bucket = buckets.get(domain) or []
-                if not bucket:
-                    continue
+        # Evidence candidates are priority-sorted; ordinary source-adapter
+        # targets keep input order to preserve the existing source-aware
+        # scheduler contract.
+        evidence_urls = [url for url in prioritized if is_evidence_like(url)]
+        other_urls = [url for url in normalized_urls if not is_evidence_like(url)]
 
-                selected_url = bucket.pop(0)
-                selected.append(selected_url)
+        selected: list[str] = []
+        selected_seen: set[str] = set()
+        per_domain_counts: dict[str, int] = {}
 
-                selected_context = self._target_context_by_url.get(selected_url, {})
-                selected_source_adapter = str(
-                    selected_context.get("source_adapter") or ""
-                ).strip()
-                if selected_source_adapter:
-                    self._source_adapter_targets_selected[selected_source_adapter] = (
-                        self._source_adapter_targets_selected.get(
-                            selected_source_adapter,
-                            0,
-                        )
-                        + 1
-                    )
-                per_domain_counts[domain] = per_domain_counts.get(domain, 0) + 1
-                progressed = True
+        # Give planned/seeded evidence most of the first tick, but leave room
+        # for source adapters and discovery anchors.
+        evidence_budget = min(
+            len(evidence_urls),
+            max(1, int(batch_limit * 0.70)),
+        )
 
-            if not progressed:
-                break
+        select_round_robin(
+            evidence_urls,
+            max_items=evidence_budget,
+            per_domain_counts=per_domain_counts,
+            sort_by_priority=True,
+        )
 
-        return selected
+        remaining_budget = batch_limit - len(selected)
+        if remaining_budget > 0:
+            select_round_robin(
+                other_urls,
+                max_items=remaining_budget,
+                per_domain_counts=per_domain_counts,
+                sort_by_priority=False,
+            )
+
+        # If per-domain limits prevented filling the batch, do not force-fill
+        # from exhausted domains. Keeping the domain window healthy is more
+        # important than maxing out every tick.
+        return selected[:batch_limit]
     
     def _target_evidence_priority(self, url: str) -> tuple[int, float, float, float]:
         context = self._target_context_by_url.get(url, {})
