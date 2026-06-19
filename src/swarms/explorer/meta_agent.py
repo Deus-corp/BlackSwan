@@ -866,12 +866,25 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             preferred_evidence_target = bool(
                 quality_signals.get("preferred_evidence_target")
             )
-            evidence_candidate_source = bool(
-                quality_signals.get("evidence_candidate_source")
-            ) or self._is_evidence_candidate_source(
-                source_adapter=str(quality_signals.get("source_adapter") or ""),
-                source_kind=str(quality_signals.get("source_kind") or ""),
+            discovered_preferred_evidence_source = bool(
+                quality_signals.get("discovered_preferred_evidence_source")
+            ) or self._is_discovered_preferred_evidence_source(
+                provenance=(
+                    base.get("provenance")
+                    if isinstance(base.get("provenance"), Mapping)
+                    else {}
+                ),
                 fallback_signals=quality_signals,
+            )
+
+            evidence_candidate_source = (
+                bool(quality_signals.get("evidence_candidate_source"))
+                or discovered_preferred_evidence_source
+                or self._is_evidence_candidate_source(
+                    source_adapter=str(quality_signals.get("source_adapter") or ""),
+                    source_kind=str(quality_signals.get("source_kind") or ""),
+                    fallback_signals=quality_signals,
+                )
             )
             evidence_seed_source = (
                 quality_signals.get("source_adapter") == "evidence_seed"
@@ -905,6 +918,15 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                         },
                     }
                 )
+
+                if not repaired_preview:
+                    repaired_preview = (
+                        "Discovered preferred explorer evidence target. "
+                        f"URL: {url}. "
+                        f"Domain: {quality_signals.get('domain') or ''}. "
+                        f"Matched terms: {', '.join(quality_signals.get('keyword_matches') or [])}. "
+                        f"Research goal: {quality_signals.get('research_goal') or quality_signals.get('goal') or ''}."
+                    ).strip()
 
                 if repaired_preview:
                     base = {
@@ -1093,6 +1115,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     "preview_chars": len(preview),
                     "source_score": source_score,
                     "relevance_score": relevance_score,
+                    "discovered_preferred_evidence_source": (
+                        discovered_preferred_evidence_source
+                    ),
                 },
             }
 
@@ -1628,9 +1653,19 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             provenance.get("preferred_evidence_target")
             or fallback_signals.get("preferred_evidence_target")
         )
-        evidence_candidate_source = self._is_evidence_candidate_source(
-            provenance=provenance,
-            fallback_signals=fallback_signals,
+        discovered_preferred_evidence_source = (
+            self._is_discovered_preferred_evidence_source(
+                provenance=provenance,
+                fallback_signals=fallback_signals,
+            )
+        )
+
+        evidence_candidate_source = (
+            self._is_evidence_candidate_source(
+                provenance=provenance,
+                fallback_signals=fallback_signals,
+            )
+            or discovered_preferred_evidence_source
         )
         evidence_seed_source = (
             provenance.get("source_adapter") == "evidence_seed"
@@ -1659,6 +1694,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                         "content_preview_chars": len(repaired_preview),
                         "memory_handoff_evidence_candidate_source": (
                             evidence_candidate_source
+                        ),
+                        "memory_handoff_discovered_preferred_evidence_source": (
+                            discovered_preferred_evidence_source
                         ),
                     },
                 }
@@ -2102,6 +2140,13 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     "about",
                 }
             )
+        
+        discovered_preferred_evidence_source = (
+            preferred_evidence_target and is_concrete_evidence
+        )
+
+        if discovered_preferred_evidence_source:
+            evidence_candidate_source = True
 
         # Evidence seeds are operator/planner-provided concrete evidence
         # candidates. Even if the URL shape is unusual, keep the diagnostic
@@ -2185,6 +2230,9 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             "source_kind": source_kind,
             "goal_alignment_score": goal_alignment_score,
             "evidence_candidate_source": evidence_candidate_source,
+            "discovered_preferred_evidence_source": (
+                discovered_preferred_evidence_source
+            ),
         }
     
     def _build_memory_handoff_preview_fallback(
@@ -2314,10 +2362,22 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             fallback_signals.get("preferred_evidence_target")
             or provenance.get("preferred_evidence_target")
         )
-        evidence_candidate_source = self._is_evidence_candidate_source(
-            provenance=provenance,
-            fallback_signals=fallback_signals,
+
+        discovered_preferred_evidence_source = (
+            self._is_discovered_preferred_evidence_source(
+                provenance=provenance,
+                fallback_signals=fallback_signals,
+            )
         )
+
+        evidence_candidate_source = (
+            self._is_evidence_candidate_source(
+                provenance=provenance,
+                fallback_signals=fallback_signals,
+            )
+            or discovered_preferred_evidence_source
+        )
+
         evidence_seed_source = (
             fallback_signals.get("source_adapter") == "evidence_seed"
             or fallback_signals.get("source_kind") == "goal_evidence_url"
@@ -2325,15 +2385,23 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             or provenance.get("source_kind") == "goal_evidence_url"
             or evidence_candidate_source
         )
+
         concrete_evidence_page = bool(
             fallback_signals.get("concrete_evidence_page")
+            or provenance.get("concrete_evidence_page")
         )
         placeholder_domain = bool(
             fallback_signals.get("placeholder_domain")
+            or provenance.get("placeholder_domain")
         )
 
         minimum_preview_chars = MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS
-        if preferred_evidence_target or evidence_seed_source:
+        if (
+            preferred_evidence_target
+            or evidence_seed_source
+            or evidence_candidate_source
+            or discovered_preferred_evidence_source
+        ):
             minimum_preview_chars = 30
 
         quality_reasons: list[str] = []
@@ -2348,9 +2416,12 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             "system_relevance_threshold": MIN_MEMORY_HANDOFF_RELEVANCE_SCORE,
             "preferred_evidence_target": preferred_evidence_target,
             "evidence_seed_source": evidence_seed_source,
+            "evidence_candidate_source": evidence_candidate_source,
+            "discovered_preferred_evidence_source": (
+                discovered_preferred_evidence_source
+            ),
             "concrete_evidence_page": concrete_evidence_page,
             "placeholder_domain": placeholder_domain,
-            "evidence_candidate_source": evidence_candidate_source,
         }
 
         if fetch_status != "ok":
@@ -2358,7 +2429,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
 
         if not content_hash:
             quality_reasons.append("content_hash_missing")
-        
+
         if placeholder_domain:
             quality_reasons.append("placeholder_domain")
 
@@ -2371,12 +2442,17 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         if system_relevance_score < MIN_MEMORY_HANDOFF_RELEVANCE_SCORE:
             quality_reasons.append("system_relevance_below_threshold")
 
-        # Evidence seeds can pass with a shorter synthetic/metadata-derived preview,
-        # but only when all other evidence signals are strong and the fetch succeeded.
+        # Evidence-like targets can pass with a shorter synthetic/metadata-derived
+        # preview, but only when all other evidence signals are strong and the
+        # fetch succeeded.
         if (
             quality_reasons
             and preferred_evidence_target
-            and evidence_seed_source
+            and (
+                evidence_seed_source
+                or evidence_candidate_source
+                or discovered_preferred_evidence_source
+            )
             and concrete_evidence_page
             and fetch_status == "ok"
             and content_hash
@@ -2391,7 +2467,8 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             ]
 
         return not quality_reasons, quality_reasons, quality_metrics
-
+    
+    
     def _memory_evidence_identity(
         self,
         finding: Mapping[str, Any],
@@ -2499,6 +2576,51 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         }
 
         return preserved
+    
+
+    def _is_discovered_preferred_evidence_source(
+        self,
+        *,
+        provenance: Mapping[str, Any] | None = None,
+        fallback_signals: Mapping[str, Any] | None = None,
+    ) -> bool:
+        """Return whether a discovered target is evidence-like without adapter metadata."""
+        provenance = provenance or {}
+        fallback_signals = fallback_signals or {}
+
+        preferred = bool(
+            provenance.get("preferred_evidence_target")
+            or fallback_signals.get("preferred_evidence_target")
+        )
+        concrete = bool(
+            provenance.get("concrete_evidence_page")
+            or fallback_signals.get("concrete_evidence_page")
+        )
+        placeholder = bool(
+            provenance.get("placeholder_domain")
+            or fallback_signals.get("placeholder_domain")
+        )
+
+        source_score = self._safe_float(
+            provenance.get("source_score")
+            or fallback_signals.get("source_score")
+            or provenance.get("quality_score")
+            or fallback_signals.get("quality_score"),
+            default=0.0,
+        )
+        relevance_score = self._safe_float(
+            provenance.get("system_relevance_score")
+            or fallback_signals.get("system_relevance_score"),
+            default=0.0,
+        )
+
+        return (
+            preferred
+            and concrete
+            and not placeholder
+            and source_score >= 0.70
+            and relevance_score >= 0.70
+        )
     
 
     def _is_evidence_candidate_source(
