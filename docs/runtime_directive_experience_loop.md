@@ -3043,6 +3043,31 @@ This loop is now the canonical starting point for Explorer-to-Memory execution w
 
 ---
 
+### Explorer source-planned evidence loop contract
+
+The source-planned explorer runtime contract validates more than successful execution.
+It also checks that the loop produces useful evidence safely.
+
+The checker verifies:
+
+- the requested ticks completed;
+- no external writes were performed;
+- real execution remained disabled;
+- production paths and secrets were not touched;
+- enough findings and targets were produced;
+- enough `explorer_useful_evidence` memory records were published;
+- evidence targets were seen and selected by the node scheduler;
+- source-adapter rate limits are reported as telemetry, not treated as fatal failures.
+
+Safe rate-limit telemetry currently includes:
+
+- `robots_disallowed`
+- `domain_window_rate_limited`
+- `http_429`
+- `policy_blocked`
+
+---
+
 ## Related modules
 
 ```text
