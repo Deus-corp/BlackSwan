@@ -256,6 +256,15 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "source_adapter_targets_selected": dict(
                 getattr(node, "_source_adapter_targets_selected", {}) or {}
             ),
+            "source_adapter_rate_limits": dict(
+                getattr(node, "_source_adapter_rate_limits", {}) or {}
+            ),
+            "source_adapter_blocked_targets": dict(
+                getattr(node, "_source_adapter_blocked_targets", {}) or {}
+            ),
+            "domain_rate_limits": dict(
+                getattr(node, "_domain_rate_limits", {}) or {}
+            ),
         }
 
     def _build_skipped_meta_result() -> dict[str, Any]:

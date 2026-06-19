@@ -397,6 +397,10 @@ class ExplorerNode(BaseSwarmNode):
         self._source_adapter_targets_seen: Dict[str, int] = {}
         self._source_adapter_targets_selected: Dict[str, int] = {}
         self._target_context_by_url: Dict[str, Dict[str, Any]] = {}
+        self._source_adapter_rate_limits: dict[str, int] = {}
+        self._source_adapter_blocked_targets: dict[str, int] = {}
+        self._domain_rate_limits: dict[str, int] = {}
+        self._rate_limited_domains_seen_this_run: set[str] = set()
 
         self.logger.info("🧭 ExplorerNode initialized: %s", self.node_id)
 
@@ -766,6 +770,10 @@ class ExplorerNode(BaseSwarmNode):
         for raw_url in urls:
             url = normalize_url(str(raw_url or ""))
             if not url or url in seen:
+                continue
+
+            if self._source_adapter_backoff_active(url):
+                self._record_source_adapter_blocked_target(url)
                 continue
 
             seen.add(url)
@@ -1700,6 +1708,12 @@ class ExplorerNode(BaseSwarmNode):
                 reason,
             )
 
+            if self._is_source_adapter_target(normalized_url):
+                self._record_source_adapter_rate_limit(
+                    url=normalized_url,
+                    reason=str(reason or "policy_blocked"),
+                )
+
             provenance = self._network_read_provenance(
                 url=normalized_url,
                 target_gid=target_gid,
@@ -1749,6 +1763,12 @@ class ExplorerNode(BaseSwarmNode):
             self._fetches_robots_blocked += 1
             self.logger.info("robots.txt disallowed %s", normalized_url)
 
+            if self._is_source_adapter_target(normalized_url):
+                self._record_source_adapter_rate_limit(
+                    url=normalized_url,
+                    reason="robots_disallowed",
+                )
+
             self.memory.record_fetch_event(
                 event_type="fetch_failed",
                 event_gid=fetch_gid,
@@ -1777,6 +1797,20 @@ class ExplorerNode(BaseSwarmNode):
 
             http_status = response.status_code
             status = "ok" if http_status < 400 else f"http_{http_status}"
+
+            source_adapter_rate_limited = (
+                http_status == 429
+                and self._is_source_adapter_target(normalized_url)
+            )
+            source_adapter_backoff_domain = (
+                domain if source_adapter_rate_limited else ""
+            )
+
+            if source_adapter_rate_limited:
+                self._record_source_adapter_rate_limit(
+                    url=normalized_url,
+                    reason="http_429",
+                )
 
             text = response.text or ""
             content_hash = fingerprint_text(text)
@@ -1816,6 +1850,8 @@ class ExplorerNode(BaseSwarmNode):
                 "content_hash": content_hash,
                 "content_bytes": content_bytes,
                 "fetch_status": status,
+                "source_adapter_rate_limited": source_adapter_rate_limited,
+                "source_adapter_backoff_domain": source_adapter_backoff_domain,
                 "content_preview_source": content_preview_source,
                 "content_preview_chars": len(content_preview or ""),
             }
@@ -3592,6 +3628,76 @@ class ExplorerNode(BaseSwarmNode):
     @staticmethod
     def _make_gid(prefix: str) -> str:
         return f"{prefix}_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    
+
+    def _target_source_adapter(self, url: str) -> str:
+        """Return source adapter for a target URL from local context."""
+        normalized = normalize_url(str(url or ""))
+        context = self._target_context_by_url.get(normalized, {})
+        return str(context.get("source_adapter") or "").strip()
+
+    def _target_source_kind(self, url: str) -> str:
+        """Return source kind for a target URL from local context."""
+        normalized = normalize_url(str(url or ""))
+        context = self._target_context_by_url.get(normalized, {})
+        return str(context.get("source_kind") or "").strip()
+
+    def _is_source_adapter_target(self, url: str) -> bool:
+        """Return whether a target is a source-adapter page rather than evidence."""
+        source_adapter = self._target_source_adapter(url)
+        source_kind = self._target_source_kind(url)
+
+        return source_adapter in {
+            "github",
+            "arxiv",
+            "search",
+            "sitemap",
+        } or source_kind in {
+            "github_repository_search",
+            "github_code_search",
+            "arxiv_api_query",
+            "public_search_html",
+            "sitemap_xml",
+        }
+
+    def _record_source_adapter_rate_limit(
+        self,
+        *,
+        url: str,
+        reason: str,
+    ) -> None:
+        """Record rate-limit/backoff telemetry for source-adapter targets."""
+        normalized = normalize_url(str(url or ""))
+        domain = extract_domain(normalized) or "unknown"
+        source_adapter = self._target_source_adapter(normalized) or "unknown"
+
+        key = f"{source_adapter}:{domain}:{reason}"
+
+        self._source_adapter_rate_limits[key] = (
+            self._source_adapter_rate_limits.get(key, 0) + 1
+        )
+        self._domain_rate_limits[domain] = self._domain_rate_limits.get(domain, 0) + 1
+        self._rate_limited_domains_seen_this_run.add(domain)
+
+    def _source_adapter_backoff_active(self, url: str) -> bool:
+        """Return whether this target should be skipped due to current-run backoff."""
+        normalized = normalize_url(str(url or ""))
+        if not normalized:
+            return False
+
+        if not self._is_source_adapter_target(normalized):
+            return False
+
+        domain = extract_domain(normalized) or ""
+        return bool(domain and domain in self._rate_limited_domains_seen_this_run)
+
+    def _record_source_adapter_blocked_target(self, url: str) -> None:
+        """Record source-adapter target skipped by current-run backoff."""
+        normalized = normalize_url(str(url or ""))
+        source_adapter = self._target_source_adapter(normalized) or "unknown"
+        self._source_adapter_blocked_targets[source_adapter] = (
+            self._source_adapter_blocked_targets.get(source_adapter, 0) + 1
+        )
 
 
 async def main() -> None:
