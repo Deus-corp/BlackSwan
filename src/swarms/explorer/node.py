@@ -1085,6 +1085,34 @@ class ExplorerNode(BaseSwarmNode):
             urls.extend(accepted)
 
         return self._select_domain_aware_targets(urls)
+    
+    def _per_target_provenance(
+        self,
+        *,
+        url: str,
+        raw_target: Any,
+        provenance: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Merge target-level metadata from raw target and URL-keyed provenance."""
+        merged: dict[str, Any] = dict(provenance or {})
+
+        if isinstance(raw_target, Mapping):
+            for key, value in raw_target.items():
+                if key != "url":
+                    merged[key] = value
+
+        metadata_by_url = provenance.get("discovered_target_metadata_by_url")
+        if isinstance(metadata_by_url, Mapping):
+            direct = metadata_by_url.get(url)
+            if isinstance(direct, Mapping):
+                merged.update(dict(direct))
+
+            normalized_lookup = normalize_url(url)
+            normalized = metadata_by_url.get(normalized_lookup)
+            if isinstance(normalized, Mapping):
+                merged.update(dict(normalized))
+
+        return merged
 
     def _ingest_direct_targets(
         self,
@@ -1126,9 +1154,16 @@ class ExplorerNode(BaseSwarmNode):
 
             url = normalize_url(str(raw_url or ""))
 
+            target_provenance = self._per_target_provenance(
+                url=url,
+                raw_target=raw,
+                provenance=provenance,
+            )
+
             merged_provenance = {
                 **dict(provenance),
                 **target_metadata,
+                **dict(target_provenance),
             }
 
             source_scores = score_source_target(
@@ -1136,15 +1171,72 @@ class ExplorerNode(BaseSwarmNode):
                 source_adapter=str(merged_provenance.get("source_adapter") or ""),
                 source_kind=str(merged_provenance.get("source_kind") or ""),
                 discovery_method=str(merged_provenance.get("discovery_method") or ""),
-                goal=str(merged_provenance.get("goal") or ""),
-                existing_score=merged_provenance.get("score"),
+                goal=str(
+                    merged_provenance.get("goal")
+                    or merged_provenance.get("research_goal")
+                    or merged_provenance.get("research_goal_text")
+                    or ""
+                ),
+                existing_score=(
+                    merged_provenance.get("source_score")
+                    or merged_provenance.get("score")
+                ),
                 metadata=merged_provenance,
             )
 
+            # Keep explicit per-target metadata authoritative. Scoring fills gaps
+            # but must not overwrite discovered_target_metadata_by_url values.
+            source_score = self._safe_float(
+                merged_provenance.get("source_score")
+                or merged_provenance.get("score")
+                or source_scores.get("source_score"),
+                default=0.0,
+            )
+            seed_score = self._safe_float(
+                merged_provenance.get("seed_score")
+                or merged_provenance.get("score")
+                or source_scores.get("seed_score"),
+                default=source_score,
+            )
+            quality_score = self._safe_float(
+                merged_provenance.get("quality_score")
+                or merged_provenance.get("score")
+                or source_scores.get("quality_score"),
+                default=source_score,
+            )
+
             merged_provenance = {
-                **merged_provenance,
                 **source_scores,
-                "score": source_scores["source_score"],
+                **merged_provenance,
+                "source_score": source_score,
+                "seed_score": seed_score,
+                "quality_score": quality_score,
+                "score": source_score,
+                "source_type_score": self._safe_float(
+                    merged_provenance.get("source_type_score")
+                    or source_scores.get("source_type_score"),
+                    default=0.0,
+                ),
+                "authority_score": self._safe_float(
+                    merged_provenance.get("authority_score")
+                    or source_scores.get("authority_score"),
+                    default=0.0,
+                ),
+                "freshness_score": self._safe_float(
+                    merged_provenance.get("freshness_score")
+                    or source_scores.get("freshness_score"),
+                    default=0.5,
+                ),
+                "system_relevance_score": self._safe_float(
+                    merged_provenance.get("system_relevance_score")
+                    or source_scores.get("system_relevance_score"),
+                    default=0.0,
+                ),
+            }
+
+            target_provenance = {
+                **dict(target_provenance),
+                **merged_provenance,
             }
 
             exploration_run_id = self._extract_exploration_run_id(
@@ -1212,7 +1304,9 @@ class ExplorerNode(BaseSwarmNode):
             )
 
             target_depth = self._safe_int(
-                provenance.get("target_depth")
+                target_provenance.get("target_depth")
+                or target_provenance.get("depth")
+                or provenance.get("target_depth")
                 or provenance.get("depth")
                 or 0,
                 default=0,
@@ -1221,72 +1315,104 @@ class ExplorerNode(BaseSwarmNode):
             self._target_context_by_url[url] = {
                 "event_gid": event_gid,
                 "source_gids": list(source_gids),
-                "provenance": dict(merged_provenance),
+                "provenance": dict(target_provenance),
                 "target_depth": target_depth,
                 "exploration_run_id": exploration_run_id,
                 "research_goal_id": exploration_run_id,
                 "parent_gid": (
-                    provenance.get("parent_gid")
-                    or provenance.get("source_finding_gid")
+                    target_provenance.get("parent_gid")
+                    or target_provenance.get("source_finding_gid")
                     or event_gid
                     or None
                 ),
-                "target_metadata": target_metadata,
-                "source_adapter": merged_provenance.get("source_adapter", ""),
-                "source_kind": merged_provenance.get("source_kind", ""),
-                "discovery_method": merged_provenance.get("discovery_method", ""),
+                "source_adapter": str(
+                    target_provenance.get("source_adapter") or ""
+                ).strip(),
+                "source_kind": str(
+                    target_provenance.get("source_kind") or ""
+                ).strip(),
+                "discovery_method": str(
+                    target_provenance.get("discovery_method") or ""
+                ).strip(),
+                "preferred_evidence_target": bool(
+                    target_provenance.get("preferred_evidence_target")
+                ),
+                "anchor_text": str(
+                    target_provenance.get("anchor_text") or ""
+                ).strip(),
+                "goal_alignment_score": self._safe_float(
+                    target_provenance.get("goal_alignment_score"),
+                    default=0.0,
+                ),
+                "source_score": self._safe_float(
+                    target_provenance.get("source_score")
+                    or target_provenance.get("score"),
+                    default=0.0,
+                ),
                 "score": self._safe_float(
-                    merged_provenance.get("score"),
+                    target_provenance.get("source_score")
+                    or target_provenance.get("score"),
                     default=0.0,
                 ),
                 "seed_score": self._safe_float(
-                    merged_provenance.get("seed_score"),
-                    default=0.0,
-                ),
-                "source_type_score": self._safe_float(
-                    merged_provenance.get("source_type_score"),
-                    default=0.0,
-                ),
-                "authority_score": self._safe_float(
-                    merged_provenance.get("authority_score"),
-                    default=0.0,
-                ),
-                "freshness_score": self._safe_float(
-                    merged_provenance.get("freshness_score"),
-                    default=0.0,
-                ),
-                "system_relevance_score": self._safe_float(
-                    merged_provenance.get("system_relevance_score"),
-                    default=0.0,
-                ),
-                "goal": merged_provenance.get("goal"),
-                "research_goal": merged_provenance.get("research_goal"),
-                "research_goal_text": merged_provenance.get("research_goal_text"),
-                "anchor_text": merged_provenance.get("anchor_text"),
-                "preferred_evidence_target": bool(
-                    merged_provenance.get("preferred_evidence_target")
-                ),
-                "goal_alignment_score": self._safe_float(
-                    merged_provenance.get("goal_alignment_score"),
-                    default=0.0,
-                ),
-                "goal_terms_matched": (
-                    merged_provenance.get("goal_terms_matched")
-                    if isinstance(merged_provenance.get("goal_terms_matched"), list)
-                    else []
-                ),
-                "source_score": self._safe_float(
-                    merged_provenance.get("source_score")
-                    or merged_provenance.get("quality_score")
-                    or merged_provenance.get("score"),
+                    target_provenance.get("seed_score")
+                    or target_provenance.get("score"),
                     default=0.0,
                 ),
                 "quality_score": self._safe_float(
-                    merged_provenance.get("quality_score")
-                    or merged_provenance.get("source_score")
-                    or merged_provenance.get("score"),
+                    target_provenance.get("quality_score")
+                    or target_provenance.get("score"),
                     default=0.0,
                 ),
+                "system_relevance_score": self._safe_float(
+                    target_provenance.get("system_relevance_score"),
+                    default=0.0,
+                ),
+                "authority_score": self._safe_float(
+                    target_provenance.get("authority_score"),
+                    default=0.0,
+                ),
+                "freshness_score": self._safe_float(
+                    target_provenance.get("freshness_score"),
+                    default=0.5,
+                ),
+                "research_goal": str(
+                    target_provenance.get("research_goal")
+                    or target_provenance.get("goal")
+                    or target_provenance.get("research_goal_text")
+                    or ""
+                ).strip(),
+                "goal": str(
+                    target_provenance.get("goal")
+                    or target_provenance.get("research_goal")
+                    or target_provenance.get("research_goal_text")
+                    or ""
+                ).strip(),
+                "research_goal_text": str(
+                    target_provenance.get("research_goal_text")
+                    or target_provenance.get("research_goal")
+                    or target_provenance.get("goal")
+                    or ""
+                ).strip(),
+                "goal_terms_matched": list(
+                    target_provenance.get("goal_terms_matched")
+                    if isinstance(
+                        target_provenance.get("goal_terms_matched"),
+                        list,
+                    )
+                    else []
+                ),
+                "evidence_category": str(
+                    target_provenance.get("evidence_category") or ""
+                ).strip(),
+                "topic_tags": list(
+                    target_provenance.get("topic_tags")
+                    if isinstance(target_provenance.get("topic_tags"), list)
+                    else []
+                ),
+                "content_expectation": str(
+                    target_provenance.get("content_expectation") or ""
+                ).strip(),
             }
 
             self._record_event_chain(
@@ -1298,11 +1424,12 @@ class ExplorerNode(BaseSwarmNode):
                 status="received",
                 provenance={
                     "source_gids": source_gids,
-                    "provenance": merged_provenance,
+                    "provenance": target_provenance,
                     "target_metadata": target_metadata,
                     "source_adapter": merged_provenance.get("source_adapter"),
                     "source_kind": merged_provenance.get("source_kind"),
                     "discovery_method": merged_provenance.get("discovery_method"),
+                    "anchor_text": target_provenance.get("anchor_text"),
                     "score": merged_provenance.get("score"),
                     "agent": self.node_id,
                     "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
@@ -1313,7 +1440,6 @@ class ExplorerNode(BaseSwarmNode):
                     "target_depth": target_depth,
                     "exploration_run_id": exploration_run_id,
                     "research_goal_id": exploration_run_id,
-                    "seed_score": merged_provenance.get("seed_score"),
                     "source_type_score": merged_provenance.get("source_type_score"),
                     "authority_score": merged_provenance.get("authority_score"),
                     "freshness_score": merged_provenance.get("freshness_score"),
@@ -1321,7 +1447,19 @@ class ExplorerNode(BaseSwarmNode):
                         "system_relevance_score"
                     ),
                     "quality_score": merged_provenance.get("quality_score"),
-                    "source_score": merged_provenance.get("source_score"),
+                    "source_score": target_provenance.get("source_score")
+                    or target_provenance.get("score"),
+                    "seed_score": target_provenance.get("seed_score")
+                    or target_provenance.get("score"),
+                    "source_adapter": target_provenance.get("source_adapter"),
+                    "source_kind": target_provenance.get("source_kind"),
+                    "discovery_method": target_provenance.get("discovery_method"),
+                    "preferred_evidence_target": bool(
+                        target_provenance.get("preferred_evidence_target")
+                    ),
+                    "goal_alignment_score": target_provenance.get(
+                        "goal_alignment_score"
+                    ),
                 },
             )
 
@@ -2047,6 +2185,29 @@ class ExplorerNode(BaseSwarmNode):
             )
         )
         return discovered[: self.discovered_target_limit]
+    
+    def _discovered_target_metadata_by_url(
+        self,
+        discovered_targets: list[dict[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        """Build URL-keyed metadata map for discovered frontier targets."""
+        metadata_by_url: dict[str, dict[str, Any]] = {}
+
+        for item in discovered_targets:
+            if not isinstance(item, dict):
+                continue
+
+            url = normalize_url(str(item.get("url") or ""))
+            if not url:
+                continue
+
+            metadata_by_url[url] = {
+                key: value
+                for key, value in item.items()
+                if key != "url"
+            }
+
+        return metadata_by_url
 
     async def _publish_discovered_targets(
         self,
@@ -2064,22 +2225,74 @@ class ExplorerNode(BaseSwarmNode):
 
         The targets are dataflow records, not imperative commands.
         """
-        targets = [
-            {
-                **item,
-                "exploration_run_id": exploration_run_id,
-                "research_goal_id": exploration_run_id,
-            }
-            for item in targets
-        ]
+        parent_provenance = (
+            parent_finding.get("provenance")
+            if isinstance(parent_finding.get("provenance"), dict)
+            else {}
+        )
+
+        effective_exploration_run_id = (
+            str(exploration_run_id or "").strip()
+            or str(parent_provenance.get("exploration_run_id") or "").strip()
+            or str(parent_provenance.get("research_goal_id") or "").strip()
+            or str(self.active_exploration_run_id or "").strip()
+        )
+
+        parent_goal = str(
+            parent_provenance.get("goal")
+            or parent_provenance.get("research_goal")
+            or parent_provenance.get("research_goal_text")
+            or ""
+        ).strip()
+
+        normalized_targets: list[dict[str, Any]] = []
+
+        for item in targets:
+            if not isinstance(item, dict):
+                continue
+
+            url = normalize_url(str(item.get("url") or ""))
+            if not url:
+                continue
+
+            normalized_targets.append(
+                {
+                    **item,
+                    "url": url,
+                    "exploration_run_id": (
+                        str(item.get("exploration_run_id") or "").strip()
+                        or effective_exploration_run_id
+                    ),
+                    "research_goal_id": (
+                        str(item.get("research_goal_id") or "").strip()
+                        or effective_exploration_run_id
+                    ),
+                    "goal": (
+                        str(item.get("goal") or "").strip()
+                        or parent_goal
+                    ),
+                    "research_goal": (
+                        str(item.get("research_goal") or "").strip()
+                        or parent_goal
+                    ),
+                    "research_goal_text": (
+                        str(item.get("research_goal_text") or "").strip()
+                        or parent_goal
+                    ),
+                }
+            )
 
         urls = [
             str(item.get("url") or "").strip()
-            for item in targets
+            for item in normalized_targets
             if str(item.get("url") or "").strip()
         ]
         if not urls:
             return 0
+
+        target_metadata_by_url = self._discovered_target_metadata_by_url(
+            normalized_targets
+        )
 
         event_gid = self._make_gid("exp_targets")
         parent_finding_gid = str(parent_finding.get("gid") or "").strip()
@@ -2104,9 +2317,9 @@ class ExplorerNode(BaseSwarmNode):
             "source_gids": source_gid_list,
             "data": {
                 "urls": urls,
-                "targets": targets,
-                "exploration_run_id": exploration_run_id,
-                "research_goal_id": exploration_run_id,
+                "targets": normalized_targets,
+                "exploration_run_id": effective_exploration_run_id,
+                "research_goal_id": effective_exploration_run_id,
             },
             "provenance": {
                 "agent": self.node_id,
@@ -2117,6 +2330,7 @@ class ExplorerNode(BaseSwarmNode):
                 "parent_depth": parent_depth,
                 "target_depth": parent_depth + 1,
                 "discovery_method": "html_link_extraction",
+                "discovered_target_metadata_by_url": target_metadata_by_url,
                 "target_generation_mode": "node_link_discovery",
                 "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
                 "coordination_channel": EXPLORER_COORDINATION_CHANNEL,
@@ -2126,21 +2340,11 @@ class ExplorerNode(BaseSwarmNode):
                 "real_execution_enabled": False,
                 "production_paths_mutated": False,
                 "production_secrets_accessed": False,
-                "exploration_run_id": exploration_run_id,
-                "research_goal_id": exploration_run_id,
-                "goal": parent_finding.get("provenance", {}).get("goal")
-                if isinstance(parent_finding.get("provenance"), dict)
-                else "",
-                "research_goal": parent_finding.get("provenance", {}).get(
-                    "research_goal"
-                )
-                if isinstance(parent_finding.get("provenance"), dict)
-                else "",
-                "research_goal_text": parent_finding.get("provenance", {}).get(
-                    "research_goal_text"
-                )
-                if isinstance(parent_finding.get("provenance"), dict)
-                else "",
+                "exploration_run_id": effective_exploration_run_id,
+                "research_goal_id": effective_exploration_run_id,
+                "goal": parent_goal,
+                "research_goal": parent_goal,
+                "research_goal_text": parent_goal,
             },
         }
 
