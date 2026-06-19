@@ -22,6 +22,7 @@ import sys
 import time
 import uuid
 import re
+import html
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 from html.parser import HTMLParser
@@ -1821,6 +1822,22 @@ class ExplorerNode(BaseSwarmNode):
             if self._is_weak_content_preview(
                 content_preview,
                 target_quality_provenance=target_quality_provenance,
+            ) and self._is_github_evidence_target(
+                url=normalized_url,
+                target_quality_provenance=target_quality_provenance,
+            ):
+                github_preview = self._extract_github_evidence_content_preview(
+                    text,
+                    url=normalized_url,
+                    target_quality_provenance=target_quality_provenance,
+                )
+                if github_preview:
+                    content_preview = github_preview
+                    content_preview_source = "github_evidence_content_preview"
+
+            if self._is_weak_content_preview(
+                content_preview,
+                target_quality_provenance=target_quality_provenance,
             ):
                 fallback_preview = self._extract_html_content_preview_fallback(
                     text,
@@ -3120,6 +3137,156 @@ class ExplorerNode(BaseSwarmNode):
         preview = re.sub(r"\s+", " ", preview).strip()
 
         return preview[:2000]
+    
+    def _is_github_evidence_target(
+        self,
+        *,
+        url: str,
+        target_quality_provenance: Mapping[str, Any],
+    ) -> bool:
+        """Return whether URL is a concrete GitHub evidence target."""
+        domain = extract_domain(url) or ""
+        if domain != "github.com":
+            return False
+
+        source_adapter = str(
+            target_quality_provenance.get("source_adapter") or ""
+        ).strip()
+        source_kind = str(
+            target_quality_provenance.get("source_kind") or ""
+        ).strip()
+
+        return (
+            source_adapter == "evidence"
+            and source_kind in {"github_repository", "github_code_blob"}
+        ) or bool(target_quality_provenance.get("preferred_evidence_target"))
+
+    def _clean_preview_text(self, value: str, *, limit: int = 1200) -> str:
+        """Normalize extracted preview text."""
+        text = html.unescape(str(value or ""))
+        text = re.sub(r"<script\b[^>]*>.*?</script>", " ", text, flags=re.I | re.S)
+        text = re.sub(r"<style\b[^>]*>.*?</style>", " ", text, flags=re.I | re.S)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text[:limit].strip()
+
+    def _extract_meta_content(self, text: str, *, name: str) -> str:
+        """Extract a meta content value by name/property."""
+        pattern = (
+            rf'<meta[^>]+(?:name|property)=["\']{re.escape(name)}["\'][^>]+'
+            rf'content=["\']([^"\']+)["\'][^>]*>'
+        )
+        match = re.search(pattern, text or "", flags=re.I | re.S)
+        if match:
+            return self._clean_preview_text(match.group(1), limit=600)
+
+        pattern = (
+            rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+'
+            rf'(?:name|property)=["\']{re.escape(name)}["\'][^>]*>'
+        )
+        match = re.search(pattern, text or "", flags=re.I | re.S)
+        if match:
+            return self._clean_preview_text(match.group(1), limit=600)
+
+        return ""
+
+    def _extract_github_evidence_content_preview(
+        self,
+        text: str,
+        *,
+        url: str,
+        target_quality_provenance: Mapping[str, Any],
+    ) -> str:
+        """Extract a useful preview from GitHub repository/blob HTML."""
+        raw = str(text or "")
+        if not raw:
+            return ""
+
+        source_kind = str(
+            target_quality_provenance.get("source_kind") or ""
+        ).strip()
+
+        title = self._extract_meta_content(raw, name="og:title")
+        description = (
+            self._extract_meta_content(raw, name="description")
+            or self._extract_meta_content(raw, name="og:description")
+        )
+
+        parts: list[str] = []
+
+        if source_kind == "github_code_blob" or "/blob/" in url:
+            blob_lines = re.findall(
+                r'<td[^>]+class=["\'][^"\']*blob-code[^"\']*["\'][^>]*>(.*?)</td>',
+                raw,
+                flags=re.I | re.S,
+            )
+            if not blob_lines:
+                blob_lines = re.findall(
+                    r'<span[^>]+class=["\'][^"\']*pl-[^"\']*["\'][^>]*>(.*?)</span>',
+                    raw,
+                    flags=re.I | re.S,
+                )
+
+            code_preview = self._clean_preview_text(
+                "\n".join(blob_lines),
+                limit=1200,
+            )
+
+            if title:
+                parts.append(title)
+            if description:
+                parts.append(description)
+            if code_preview:
+                parts.append(code_preview)
+
+            if parts:
+                return self._clean_preview_text(
+                    "GitHub code evidence. " + " ".join(parts),
+                    limit=1400,
+                )
+
+            return ""
+
+        readme_match = re.search(
+            r'<article[^>]+class=["\'][^"\']*markdown-body[^"\']*["\'][^>]*>'
+            r"(.*?)</article>",
+            raw,
+            flags=re.I | re.S,
+        )
+
+        about_match = re.search(
+            r'<p[^>]+class=["\'][^"\']*f4[^"\']*["\'][^>]*>(.*?)</p>',
+            raw,
+            flags=re.I | re.S,
+        )
+
+        readme_preview = (
+            self._clean_preview_text(readme_match.group(1), limit=1000)
+            if readme_match
+            else ""
+        )
+        about_preview = (
+            self._clean_preview_text(about_match.group(1), limit=500)
+            if about_match
+            else ""
+        )
+
+        if title:
+            parts.append(title)
+        if description:
+            parts.append(description)
+        if about_preview:
+            parts.append(about_preview)
+        if readme_preview:
+            parts.append(readme_preview)
+
+        if not parts:
+            return ""
+
+        return self._clean_preview_text(
+            "GitHub repository evidence. " + " ".join(parts),
+            limit=1400,
+        )
     
     def _is_weak_content_preview(
         self,
