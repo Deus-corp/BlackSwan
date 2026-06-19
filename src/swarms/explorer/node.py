@@ -1839,12 +1839,32 @@ class ExplorerNode(BaseSwarmNode):
                 },
             )
 
-            discovered_targets = self._extract_discovered_targets(
+            research_goal = str(
+                target_context.get("research_goal")
+                or target_context.get("goal")
+                or target_context.get("research_goal_text")
+                or ""
+            ).strip()
+
+            source_adapter_targets = self._extract_source_adapter_result_targets(
+                text,
+                base_url=normalized_url,
+                parent_depth=target_depth,
+                goal=research_goal,
+                target_context=target_context,
+            )
+
+            html_discovered_targets = self._extract_discovered_targets(
                 text,
                 base_url=normalized_url,
                 parent_depth=target_depth,
                 goal=research_goal,
             )
+
+            discovered_targets = [
+                *source_adapter_targets,
+                *html_discovered_targets,
+            ]
 
             finding: ExplorerFinding = {
                 "type": "explorer_finding",
@@ -2019,6 +2039,209 @@ class ExplorerNode(BaseSwarmNode):
             deduped.append(clean)
 
         return deduped
+    
+
+    def _extract_source_adapter_result_targets(
+        self,
+        text: str,
+        *,
+        base_url: str,
+        parent_depth: int,
+        goal: str = "",
+        target_context: Mapping[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Extract concrete evidence targets from source-adapter result pages."""
+        target_context = target_context or {}
+        source_adapter = str(target_context.get("source_adapter") or "").strip()
+        source_kind = str(target_context.get("source_kind") or "").strip()
+
+        if (
+            source_adapter == "arxiv"
+            or source_kind == "arxiv_api_query"
+            or "export.arxiv.org/api/query" in str(base_url)
+        ):
+            return self._extract_arxiv_atom_result_targets(
+                text,
+                base_url=base_url,
+                parent_depth=parent_depth,
+                goal=goal,
+            )
+
+        return []
+    
+
+    def _extract_arxiv_atom_result_targets(
+        self,
+        text: str,
+        *,
+        base_url: str,
+        parent_depth: int,
+        goal: str = "",
+    ) -> list[dict[str, Any]]:
+        """Extract concrete arXiv paper targets from an arXiv Atom API response."""
+        if parent_depth >= self.max_target_depth:
+            return []
+
+        raw = str(text or "").strip()
+        if not raw or "<entry" not in raw:
+            return []
+
+        import xml.etree.ElementTree as ET
+
+        try:
+            root = ET.fromstring(raw)
+        except ET.ParseError:
+            return []
+
+        ns = "{http://www.w3.org/2005/Atom}"
+        targets: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        for entry in root.findall(f"{ns}entry"):
+            paper_id = str(entry.findtext(f"{ns}id") or "").strip()
+            if not paper_id:
+                continue
+
+            paper_url = normalize_url(paper_id.replace("http://", "https://"))
+            if not paper_url:
+                continue
+
+            if "/abs/" not in paper_url:
+                continue
+
+            if paper_url in seen:
+                continue
+
+            if self._is_low_value_discovered_target(paper_url):
+                continue
+
+            if not self._passes_policy(paper_url):
+                continue
+
+            if self.memory.seen_target(paper_url):
+                continue
+
+            title = " ".join(
+                str(entry.findtext(f"{ns}title") or "").split()
+            )
+            summary = " ".join(
+                str(entry.findtext(f"{ns}summary") or "").split()
+            )
+            published = str(entry.findtext(f"{ns}published") or "").strip()
+            updated = str(entry.findtext(f"{ns}updated") or "").strip()
+
+            authors: list[str] = []
+            for author in entry.findall(f"{ns}author"):
+                name = str(author.findtext(f"{ns}name") or "").strip()
+                if name:
+                    authors.append(name)
+
+            categories: list[str] = []
+            for category in entry.findall(f"{ns}category"):
+                term = str(category.attrib.get("term") or "").strip()
+                if term:
+                    categories.append(term)
+
+            anchor_text = " ".join(
+                part
+                for part in [title, summary[:500], " ".join(categories)]
+                if part
+            )
+
+            goal_alignment_score, goal_terms_matched = self._goal_alignment_score(
+                url=paper_url,
+                anchor_text=anchor_text,
+                goal=goal,
+            )
+
+            source_scores = score_source_target(
+                paper_url,
+                source_adapter="evidence",
+                source_kind="arxiv_paper_abs",
+                discovery_method="arxiv_api_result_entry",
+                goal=goal,
+                existing_score=0.86,
+                metadata={
+                    "title": title,
+                    "summary": summary,
+                    "authors": authors,
+                    "categories": categories,
+                    "published": published,
+                    "updated": updated,
+                    "preferred_evidence_target": True,
+                    "goal_alignment_score": goal_alignment_score,
+                    "goal_terms_matched": goal_terms_matched,
+                },
+            )
+
+            seen.add(paper_url)
+            targets.append(
+                {
+                    "url": paper_url,
+                    "domain": extract_domain(paper_url) or "",
+                    "parent_url": base_url,
+                    "target_depth": parent_depth + 1,
+                    "source_adapter": "evidence",
+                    "source_kind": "arxiv_paper_abs",
+                    "discovery_method": "arxiv_api_result_entry",
+                    "preferred_evidence_target": True,
+                    "evidence_category": "arxiv_research_paper",
+                    "topic_tags": ["agents", "memory", "research"],
+                    "content_expectation": (
+                        "arXiv paper abstract and metadata relevant to the research goal"
+                    ),
+                    "anchor_text": title,
+                    "paper_title": title,
+                    "paper_summary_preview": summary[:1000],
+                    "paper_authors": authors[:8],
+                    "paper_categories": categories,
+                    "paper_published": published,
+                    "paper_updated": updated,
+                    "goal_alignment_score": goal_alignment_score,
+                    "goal_terms_matched": goal_terms_matched,
+                    "research_goal": goal,
+                    "goal": goal,
+                    "research_goal_text": goal,
+                    "score": max(
+                        float(source_scores.get("source_score", 0.0) or 0.0),
+                        0.86,
+                    ),
+                    "seed_score": source_scores.get("seed_score"),
+                    "source_type_score": source_scores.get("source_type_score"),
+                    "authority_score": max(
+                        float(source_scores.get("authority_score", 0.0) or 0.0),
+                        0.86,
+                    ),
+                    "freshness_score": source_scores.get("freshness_score"),
+                    "system_relevance_score": max(
+                        float(
+                            source_scores.get(
+                                "system_relevance_score",
+                                0.0,
+                            )
+                            or 0.0
+                        ),
+                        0.75,
+                    ),
+                    "quality_score": max(
+                        float(source_scores.get("quality_score", 0.0) or 0.0),
+                        0.80,
+                    ),
+                    "source_score": max(
+                        float(source_scores.get("source_score", 0.0) or 0.0),
+                        0.86,
+                    ),
+                    "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                    "network_read_candidate": True,
+                    "external_write_performed": False,
+                    "real_execution_enabled": False,
+                }
+            )
+
+            if len(targets) >= self.discovered_target_limit:
+                break
+
+        return targets
     
 
     def _extract_discovered_targets(
