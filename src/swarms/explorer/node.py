@@ -2067,7 +2067,260 @@ class ExplorerNode(BaseSwarmNode):
                 goal=goal,
             )
 
+        if (
+            source_adapter == "github"
+            or source_kind in {
+                "github_repository_search",
+                "github_code_search",
+            }
+            or "github.com/search" in str(base_url)
+        ):
+            return self._extract_github_search_result_targets(
+                text,
+                base_url=base_url,
+                parent_depth=parent_depth,
+                goal=goal,
+                source_kind=source_kind,
+            )
+
         return []
+    
+
+    def _extract_github_search_result_targets(
+        self,
+        text: str,
+        *,
+        base_url: str,
+        parent_depth: int,
+        goal: str = "",
+        source_kind: str = "",
+    ) -> list[dict[str, Any]]:
+        """Extract concrete GitHub repository/code targets from GitHub search HTML."""
+        if parent_depth >= self.max_target_depth:
+            return []
+
+        html = str(text or "")
+        if not html:
+            return []
+
+        from urllib.parse import urlparse, urlunparse
+
+        raw_links = self._extract_source_links(html)
+
+        reserved_owners = {
+            "about",
+            "apps",
+            "blog",
+            "business",
+            "codespaces",
+            "collections",
+            "contact",
+            "customer-stories",
+            "dashboard",
+            "enterprise",
+            "events",
+            "explore",
+            "features",
+            "github",
+            "issues",
+            "login",
+            "marketplace",
+            "new",
+            "notifications",
+            "orgs",
+            "pricing",
+            "pulls",
+            "readme",
+            "search",
+            "security",
+            "settings",
+            "showcases",
+            "signup",
+            "sponsors",
+            "topics",
+            "trending",
+        }
+
+        targets: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        is_code_search = (
+            source_kind == "github_code_search"
+            or "type=code" in str(base_url).lower()
+        )
+
+        for href in raw_links:
+            anchor_text = ""
+            if isinstance(href, tuple):
+                raw_href = href[0]
+                anchor_text = str(href[1] or "").strip()
+            else:
+                raw_href = href
+
+            absolute = self._normalize_discovered_url(
+                str(raw_href or ""),
+                base_url=base_url,
+            )
+            if not absolute:
+                continue
+
+            parsed = urlparse(absolute)
+            domain = parsed.netloc.lower()
+            if domain not in {"github.com", "www.github.com"}:
+                continue
+
+            parts = [
+                part
+                for part in parsed.path.strip("/").split("/")
+                if part
+            ]
+            if len(parts) < 2:
+                continue
+
+            owner = parts[0]
+            repo = parts[1]
+
+            if owner.lower() in reserved_owners:
+                continue
+
+            if repo.lower() in {
+                "followers",
+                "following",
+                "repositories",
+                "stars",
+            }:
+                continue
+
+            # Keep concrete code blob URLs for code search; otherwise collapse
+            # results to repository roots to avoid noisy navigation URLs.
+            if is_code_search and len(parts) >= 5 and parts[2] == "blob":
+                target_path = "/" + "/".join(parts)
+                target_source_kind = "github_code_blob"
+                evidence_category = "github_code_evidence"
+                content_expectation = (
+                    "GitHub code file relevant to the research goal"
+                )
+            else:
+                target_path = f"/{owner}/{repo}"
+                target_source_kind = "github_repository"
+                evidence_category = "github_repository_evidence"
+                content_expectation = (
+                    "GitHub repository relevant to the research goal"
+                )
+
+            target_url = normalize_url(
+                urlunparse(
+                    (
+                        "https",
+                        "github.com",
+                        target_path.rstrip("/"),
+                        "",
+                        "",
+                        "",
+                    )
+                )
+            )
+            if not target_url or target_url in seen:
+                continue
+
+            if self._is_low_value_discovered_target(target_url):
+                continue
+
+            if not self._passes_policy(target_url):
+                continue
+
+            if self.memory.seen_target(target_url):
+                continue
+
+            goal_alignment_score, goal_terms_matched = self._goal_alignment_score(
+                url=target_url,
+                anchor_text=anchor_text,
+                goal=goal,
+            )
+
+            source_scores = score_source_target(
+                target_url,
+                source_adapter="evidence",
+                source_kind=target_source_kind,
+                discovery_method="github_search_result_link",
+                goal=goal,
+                existing_score=0.84,
+                metadata={
+                    "anchor_text": anchor_text,
+                    "preferred_evidence_target": True,
+                    "goal_alignment_score": goal_alignment_score,
+                    "goal_terms_matched": goal_terms_matched,
+                    "github_owner": owner,
+                    "github_repo": repo,
+                },
+            )
+
+            source_score = max(
+                float(source_scores.get("source_score", 0.0) or 0.0),
+                0.84,
+            )
+            system_relevance_score = max(
+                float(
+                    source_scores.get("system_relevance_score", 0.0)
+                    or 0.0
+                ),
+                0.72,
+            )
+
+            seen.add(target_url)
+            targets.append(
+                {
+                    "url": target_url,
+                    "domain": "github.com",
+                    "parent_url": base_url,
+                    "target_depth": parent_depth + 1,
+                    "source_adapter": "evidence",
+                    "source_kind": target_source_kind,
+                    "discovery_method": "github_search_result_link",
+                    "preferred_evidence_target": True,
+                    "evidence_category": evidence_category,
+                    "topic_tags": [
+                        "agents",
+                        "memory",
+                        "code_improvement",
+                    ],
+                    "content_expectation": content_expectation,
+                    "anchor_text": anchor_text,
+                    "github_owner": owner,
+                    "github_repo": repo,
+                    "goal_alignment_score": goal_alignment_score,
+                    "goal_terms_matched": goal_terms_matched,
+                    "research_goal": goal,
+                    "goal": goal,
+                    "research_goal_text": goal,
+                    "score": source_score,
+                    "seed_score": source_scores.get("seed_score"),
+                    "source_type_score": source_scores.get("source_type_score"),
+                    "authority_score": max(
+                        float(
+                            source_scores.get("authority_score", 0.0)
+                            or 0.0
+                        ),
+                        0.84,
+                    ),
+                    "freshness_score": source_scores.get("freshness_score"),
+                    "system_relevance_score": system_relevance_score,
+                    "quality_score": max(
+                        float(source_scores.get("quality_score", 0.0) or 0.0),
+                        0.78,
+                    ),
+                    "source_score": source_score,
+                    "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,
+                    "network_read_candidate": True,
+                    "external_write_performed": False,
+                    "real_execution_enabled": False,
+                }
+            )
+
+            if len(targets) >= self.discovered_target_limit:
+                break
+
+        return targets
     
 
     def _extract_arxiv_atom_result_targets(
@@ -2413,8 +2666,26 @@ class ExplorerNode(BaseSwarmNode):
         self,
         discovered_targets: list[dict[str, Any]],
     ) -> dict[str, dict[str, Any]]:
-        """Build URL-keyed metadata map for discovered frontier targets."""
+        """Build URL-keyed metadata map for discovered frontier targets.
+
+        When the same URL is discovered through both a source-adapter parser and
+        generic HTML link extraction, preserve the richer/source-aware metadata.
+        """
         metadata_by_url: dict[str, dict[str, Any]] = {}
+
+        def metadata_weight(metadata: Mapping[str, Any]) -> tuple[int, int, int, int]:
+            return (
+                1 if str(metadata.get("source_adapter") or "").strip() else 0,
+                1 if str(metadata.get("source_kind") or "").strip() else 0,
+                1 if bool(metadata.get("preferred_evidence_target")) else 0,
+                len(
+                    [
+                        key
+                        for key, value in metadata.items()
+                        if key != "url" and value not in (None, "", [], {})
+                    ]
+                ),
+            )
 
         for item in discovered_targets:
             if not isinstance(item, dict):
@@ -2424,11 +2695,37 @@ class ExplorerNode(BaseSwarmNode):
             if not url:
                 continue
 
-            metadata_by_url[url] = {
+            metadata = {
                 key: value
                 for key, value in item.items()
                 if key != "url"
             }
+
+            existing = metadata_by_url.get(url)
+            if existing is None:
+                metadata_by_url[url] = metadata
+                continue
+
+            existing_weight = metadata_weight(existing)
+            incoming_weight = metadata_weight(metadata)
+
+            if incoming_weight >= existing_weight:
+                # Merge so older fields are not lost, but richer incoming values
+                # can fill/override weaker generic HTML metadata.
+                metadata_by_url[url] = {
+                    **existing,
+                    **{
+                        key: value
+                        for key, value in metadata.items()
+                        if value not in (None, "", [], {})
+                    },
+                }
+            else:
+                # Preserve richer source-adapter metadata, only filling gaps.
+                metadata_by_url[url] = {
+                    **metadata,
+                    **existing,
+                }
 
         return metadata_by_url
 
