@@ -2584,40 +2584,52 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         provenance: Mapping[str, Any] | None = None,
         fallback_signals: Mapping[str, Any] | None = None,
     ) -> bool:
-        """Return whether a discovered target is evidence-like without adapter metadata."""
+        """Return whether a discovered target is evidence-like without adapter metadata.
+
+        This covers discovered pages where node preserved quality metadata
+        (`preferred_evidence_target`, `concrete_evidence_page`, source/relevance
+        scores), but source_adapter/source_kind are absent.
+        """
         provenance = provenance or {}
         fallback_signals = fallback_signals or {}
 
         preferred = bool(
-            provenance.get("preferred_evidence_target")
-            or fallback_signals.get("preferred_evidence_target")
+            fallback_signals.get("preferred_evidence_target")
+            or provenance.get("preferred_evidence_target")
         )
         concrete = bool(
-            provenance.get("concrete_evidence_page")
-            or fallback_signals.get("concrete_evidence_page")
+            fallback_signals.get("concrete_evidence_page")
+            or provenance.get("concrete_evidence_page")
         )
         placeholder = bool(
-            provenance.get("placeholder_domain")
-            or fallback_signals.get("placeholder_domain")
+            fallback_signals.get("placeholder_domain")
+            or provenance.get("placeholder_domain")
         )
 
         source_score = self._safe_float(
-            provenance.get("source_score")
-            or fallback_signals.get("source_score")
-            or provenance.get("quality_score")
-            or fallback_signals.get("quality_score"),
+            fallback_signals.get("source_score")
+            or fallback_signals.get("quality_score")
+            or provenance.get("source_score")
+            or provenance.get("quality_score"),
             default=0.0,
         )
         relevance_score = self._safe_float(
-            provenance.get("system_relevance_score")
-            or fallback_signals.get("system_relevance_score"),
+            fallback_signals.get("system_relevance_score")
+            or provenance.get("system_relevance_score"),
             default=0.0,
         )
+
+        fetch_status = str(
+            fallback_signals.get("fetch_status")
+            or provenance.get("fetch_status")
+            or ""
+        ).strip().lower()
 
         return (
             preferred
             and concrete
             and not placeholder
+            and fetch_status in {"", "ok", "http_200", "200"}
             and source_score >= 0.70
             and relevance_score >= 0.70
         )
