@@ -3091,6 +3091,32 @@ The ingestion path remains advisory and dataflow-only:
 
 ---
 
+### Memory evidence catalog
+
+Memory ingestion candidates can be normalized into catalog/index-ready evidence
+items.
+
+The catalog layer converts:
+
+```text
+memory_ingest_candidate
+→ memory_evidence_catalog_item
+→ memory_evidence_catalog
+```
+The catalog indexes evidence by:
+
+- domain;
+- evidence category;
+- topic tags;
+- dedupe key;
+- deterministic ranking score.
+
+This layer is still local/dataflow-only. It performs no external writes, does not
+enable real execution, does not mutate production paths, and does not access
+production secrets.
+
+---
+
 ## Related modules
 
 ```text
