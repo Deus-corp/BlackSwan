@@ -3068,6 +3068,29 @@ Safe rate-limit telemetry currently includes:
 
 ---
 
+### Memory swarm ingestion candidates
+
+Explorer useful evidence records are normalized before entering local memory.
+
+The memory ingestion contract converts:
+
+```text
+explorer memory_record(record_kind=explorer_useful_evidence)
+→ memory_ingest_candidate
+→ LocalMemory-compatible evidence record
+```
+The candidate contract preserves URL, domain, content preview, evidence scores,
+topic tags, category, dedupe key, and source provenance.
+
+The ingestion path remains advisory and dataflow-only:
+
+- no external writes;
+- no real execution;
+- no production path mutation;
+- no production secrets access.
+
+---
+
 ## Related modules
 
 ```text

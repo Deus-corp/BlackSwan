@@ -9,10 +9,17 @@ from __future__ import annotations
 import logging
 from typing import Any, Iterable
 
+from src.swarms.memory.ingestion import (
+    build_memory_ingest_candidate,
+    is_explorer_useful_evidence_record,
+    memory_record_from_ingest_candidate,
+)
+
 logger = logging.getLogger(__name__)
 
 MEMORY_COMPATIBLE_TYPES = {
     "memory_record",
+    "memory_ingest_candidate",
     "swarm_event",
 }
 
@@ -126,7 +133,14 @@ class SharedMemoryBridge:
         record_type = str(payload.get("type", "") or "")
 
         if record_type == "memory_record":
+            if is_explorer_useful_evidence_record(payload):
+                candidate = build_memory_ingest_candidate(payload)
+                return memory_record_from_ingest_candidate(candidate)
+
             return cls._memory_record_from_payload(record_id, payload)
+
+        if record_type == "memory_ingest_candidate":
+            return memory_record_from_ingest_candidate(payload)
 
         if record_type == "swarm_event" and include_swarm_events:
             return cls._memory_record_from_event(record_id, payload)
