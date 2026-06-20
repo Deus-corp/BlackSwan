@@ -1341,6 +1341,61 @@ class ExplorerNode(BaseSwarmNode):
                 default=0,
             )
 
+            direct_target_metadata = (
+                target_metadata if isinstance(target_metadata, Mapping) else {}
+            )
+
+            discovered_target_metadata_by_url = (
+                provenance.get("discovered_target_metadata_by_url")
+                if isinstance(
+                    provenance.get("discovered_target_metadata_by_url"),
+                    Mapping,
+                )
+                else {}
+            )
+            discovered_target_metadata = (
+                discovered_target_metadata_by_url.get(url)
+                if isinstance(discovered_target_metadata_by_url.get(url), Mapping)
+                else {}
+            )
+
+            safe_public_search_metadata = {
+                key: value
+                for key, value in {
+                    "safe_public_search_template": (
+                        direct_target_metadata.get("safe_public_search_template")
+                        or target_provenance.get("safe_public_search_template")
+                        or merged_provenance.get("safe_public_search_template")
+                        or discovered_target_metadata.get("safe_public_search_template")
+                    ),
+                    "search_query": (
+                        direct_target_metadata.get("search_query")
+                        or target_provenance.get("search_query")
+                        or merged_provenance.get("search_query")
+                        or discovered_target_metadata.get("search_query")
+                    ),
+                    "search_query_site": (
+                        direct_target_metadata.get("search_query_site")
+                        or target_provenance.get("search_query_site")
+                        or merged_provenance.get("search_query_site")
+                        or discovered_target_metadata.get("search_query_site")
+                    ),
+                    "search_query_template_kind": (
+                        direct_target_metadata.get("search_query_template_kind")
+                        or target_provenance.get("search_query_template_kind")
+                        or merged_provenance.get("search_query_template_kind")
+                        or discovered_target_metadata.get("search_query_template_kind")
+                    ),
+                    "search_query_rationale": (
+                        direct_target_metadata.get("search_query_rationale")
+                        or target_provenance.get("search_query_rationale")
+                        or merged_provenance.get("search_query_rationale")
+                        or discovered_target_metadata.get("search_query_rationale")
+                    ),
+                }.items()
+                if value not in (None, "", [], {})
+            }
+
             self._target_context_by_url[url] = {
                 "event_gid": event_gid,
                 "source_gids": list(source_gids),
@@ -1442,7 +1497,10 @@ class ExplorerNode(BaseSwarmNode):
                 "content_expectation": str(
                     target_provenance.get("content_expectation") or ""
                 ).strip(),
+                **safe_public_search_metadata,
             }
+
+            self._record_safe_public_search_template_seen(url)
 
             self._record_event_chain(
                 event_type="target_received",
@@ -1489,6 +1547,7 @@ class ExplorerNode(BaseSwarmNode):
                     "goal_alignment_score": target_provenance.get(
                         "goal_alignment_score"
                     ),
+                    **safe_public_search_metadata,
                 },
             )
 
