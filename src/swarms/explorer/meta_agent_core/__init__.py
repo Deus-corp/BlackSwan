@@ -45,6 +45,12 @@ from .source_plan import (
     goal_profile_tags,
 )
 from .frontier_filters import is_low_value_frontier_url
+from src.swarms.explorer.meta_agent_core.public_search_templates import (
+    build_safe_public_search_candidates,
+    build_safe_public_search_templates,
+    public_search_template_to_candidate,
+    validate_public_search_template,
+)
 
 __all__ = [
     "ClassificationItem",
@@ -75,4 +81,8 @@ __all__ = [
     "normalize_plan_url",
     "is_low_value_frontier_url",
     "goal_profile_tags",
+    "build_safe_public_search_candidates",
+    "build_safe_public_search_templates",
+    "public_search_template_to_candidate",
+    "validate_public_search_template",
 ]

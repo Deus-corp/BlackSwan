@@ -3196,6 +3196,30 @@ command for deterministic local memory evidence catalog queries.
 
 ---
 
+### Safe public search query templates
+
+Explorer source planning can generate safe public search templates for
+allowlisted public sources.
+
+Allowed source sites include:
+
+- `arxiv.org`
+- `docs.github.com`
+- `docs.python.org`
+- `github.blog`
+- `github.com`
+- `realpython.com`
+
+The templates are used only as network-read source-plan candidates and remain
+dataflow-only. They do not perform external writes, do not enable real
+execution, do not mutate production paths, and do not access production secrets.
+
+Unsafe dork-style intent is rejected. Queries containing terms such as
+credentials, secrets, tokens, password dumps, admin panels, exposed files,
+private keys, dark web, or exploit-oriented terms are not generated.
+
+---
+
 ## Related modules
 
 ```text

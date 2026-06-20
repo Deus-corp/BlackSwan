@@ -11,6 +11,10 @@ import re
 from typing import Any, Iterable, Literal, TypedDict
 from urllib.parse import quote_plus, urlparse
 
+from src.swarms.explorer.meta_agent_core.public_search_templates import (
+    build_safe_public_search_candidates,
+)
+
 
 EXPLORER_SOURCE_PLANNER_VERSION = "explorer_source_planner_v1"
 
@@ -984,6 +988,16 @@ def build_research_source_plan(
             terms=terms,
         )
     )
+
+    adapter_set = {str(adapter).strip().lower() for adapter in adapters}
+
+    if "search" in adapter_set or "public_search" in adapter_set:
+        candidates.extend(
+            build_safe_public_search_candidates(
+                goal,
+                limit=8,
+            )
+        )
 
     # Evidence candidates are planner-internal and may be emitted regardless of
     # adapter selection because they are read-only and ranked by goal alignment.
