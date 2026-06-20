@@ -53,6 +53,9 @@ UNSAFE_PUBLIC_SEARCH_TERMS = {
     "vulnerability",
 }
 
+DEFAULT_SAFE_PUBLIC_SEARCH_TEMPLATE_SCORE = 0.70
+SAFE_PUBLIC_SEARCH_TEMPLATE_PRIORITY_CLASS = "safe_public_search_template"
+
 
 @dataclass(frozen=True)
 class PublicSearchTemplate:
@@ -281,7 +284,7 @@ def public_search_template_to_candidate(
     template: Mapping[str, Any],
     *,
     goal: str = "",
-    existing_score: float = 0.62,
+    existing_score: float = DEFAULT_SAFE_PUBLIC_SEARCH_TEMPLATE_SCORE,
 ) -> dict[str, Any]:
     """Convert a safe public search template into an explorer source-plan candidate."""
     errors = validate_public_search_template(template)
@@ -293,6 +296,8 @@ def public_search_template_to_candidate(
     kind = _clean_text(template.get("kind"))
 
     url = f"https://duckduckgo.com/html?q={quote_plus(query)}"
+
+    score = max(0.0, min(1.0, float(existing_score or 0.0)))
 
     return {
         "url": url,
@@ -313,10 +318,13 @@ def public_search_template_to_candidate(
         "research_goal": _clean_text(goal),
         "goal": _clean_text(goal),
         "research_goal_text": _clean_text(goal),
-        "score": max(0.0, min(1.0, float(existing_score or 0.0))),
-        "source_score": max(0.0, min(1.0, float(existing_score or 0.0))),
-        "quality_score": max(0.0, min(1.0, float(existing_score or 0.0))),
-        "system_relevance_score": 0.68,
+        "source_priority_class": SAFE_PUBLIC_SEARCH_TEMPLATE_PRIORITY_CLASS,
+        "planner_priority": score,
+        "preferred_evidence_target": False,
+        "score": score,
+        "source_score": score,
+        "quality_score": score,
+        "system_relevance_score": max(0.68, min(0.74, score)),
         "authority_score": 0.55,
         "freshness_score": 0.50,
     }
@@ -326,6 +334,7 @@ def build_safe_public_search_candidates(
     goal: str,
     *,
     limit: int = 12,
+    existing_score: float = DEFAULT_SAFE_PUBLIC_SEARCH_TEMPLATE_SCORE,
 ) -> list[dict[str, Any]]:
     """Build safe public-search source-plan candidates for a research goal."""
     templates = build_safe_public_search_templates(goal, limit=limit)
@@ -333,7 +342,7 @@ def build_safe_public_search_candidates(
         public_search_template_to_candidate(
             template,
             goal=goal,
-            existing_score=0.62,
+            existing_score=existing_score,
         )
         for template in templates
     ]

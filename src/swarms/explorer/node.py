@@ -784,9 +784,28 @@ class ExplorerNode(BaseSwarmNode):
         seen: set[str] = set()
 
         for raw_url in urls:
-            url = normalize_url(str(raw_url or ""))
+            raw_url_text = str(raw_url or "")
+            url = normalize_url(raw_url_text)
             if not url or url in seen:
                 continue
+
+            if url not in self._target_context_by_url:
+                raw_context = self._target_context_by_url.get(raw_url_text)
+
+                if not isinstance(raw_context, Mapping):
+                    raw_context = {}
+                    for stored_url, stored_context in list(
+                        self._target_context_by_url.items()
+                    ):
+                        if (
+                            normalize_url(str(stored_url or "")) == url
+                            and isinstance(stored_context, Mapping)
+                        ):
+                            raw_context = stored_context
+                            break
+
+                if isinstance(raw_context, Mapping) and raw_context:
+                    self._target_context_by_url[url] = dict(raw_context)
 
             self._record_safe_public_search_template_seen(url)
 
@@ -825,8 +844,39 @@ class ExplorerNode(BaseSwarmNode):
             ),
         )
 
+        def target_context(url: str) -> Mapping[str, Any]:
+            normalized_url = normalize_url(str(url or ""))
+
+            context = self._target_context_by_url.get(url)
+            if isinstance(context, Mapping):
+                return context
+
+            context = self._target_context_by_url.get(normalized_url)
+            if isinstance(context, Mapping):
+                return context
+
+            for stored_url, stored_context in self._target_context_by_url.items():
+                if (
+                    normalize_url(str(stored_url or "")) == normalized_url
+                    and isinstance(stored_context, Mapping)
+                ):
+                    return stored_context
+
+            return {}
+
+        def is_safe_public_search_template(url: str) -> bool:
+            context = target_context(url)
+            source_adapter = str(context.get("source_adapter") or "").strip()
+            source_kind = str(context.get("source_kind") or "").strip()
+
+            return (
+                bool(context.get("safe_public_search_template"))
+                and source_adapter == "search"
+                and source_kind == "public_search_html"
+            )
+
         def is_evidence_like(url: str) -> bool:
-            context = self._target_context_by_url.get(url, {})
+            context = target_context(url)
             source_adapter = str(context.get("source_adapter") or "").strip()
             source_kind = str(context.get("source_kind") or "").strip()
             preferred_evidence_target = bool(
@@ -847,6 +897,21 @@ class ExplorerNode(BaseSwarmNode):
                 adapter_priority,
                 source_score,
                 goal_alignment_score,
+            )
+
+        original_index = {
+            url: index
+            for index, url in enumerate(normalized_urls)
+        }
+
+        def ordinary_bucket_key(url: str) -> tuple[int, int]:
+            # Preserve legacy input order for ordinary source-adapter targets,
+            # but let safe public search templates outrank generic search targets
+            # within the same domain bucket.
+            safe_rank = 0 if is_safe_public_search_template(url) else 1
+            return (
+                safe_rank,
+                original_index.get(url, 0),
             )
 
         def build_buckets(
@@ -870,12 +935,16 @@ class ExplorerNode(BaseSwarmNode):
                     order.append(domain)
                 buckets[domain].append(url)
 
+            if not sort_by_priority:
+                for bucket in buckets.values():
+                    bucket.sort(key=ordinary_bucket_key)
+
             return buckets, order
 
         def add_selected(url: str) -> None:
             selected.append(url)
 
-            selected_context = self._target_context_by_url.get(url, {})
+            selected_context = target_context(url)
             selected_source_adapter = str(
                 selected_context.get("source_adapter") or ""
             ).strip()
@@ -945,8 +1014,8 @@ class ExplorerNode(BaseSwarmNode):
         )
 
         # Evidence candidates are priority-sorted; ordinary source-adapter
-        # targets keep input order to preserve the existing source-aware
-        # scheduler contract.
+        # targets keep input/domain order, with only a narrow same-domain boost
+        # for safe public search templates over generic public search.
         evidence_urls = [url for url in prioritized if is_evidence_like(url)]
         other_urls = [url for url in normalized_urls if not is_evidence_like(url)]
 
@@ -1019,29 +1088,81 @@ class ExplorerNode(BaseSwarmNode):
             -source_score,
         )
     
-    def _target_priority_key(self, url: str) -> tuple[int, float, str]:
-        context = self._target_context_by_url.get(url, {})
+    def _target_priority_key(
+        self,
+        url: str,
+    ) -> tuple[int, int, int, float, int, float, str]:
+        normalized_url = normalize_url(str(url or ""))
+
+        context = self._target_context_by_url.get(url)
+        if not isinstance(context, Mapping):
+            context = self._target_context_by_url.get(normalized_url)
+
+        if not isinstance(context, Mapping):
+            context = {}
+            for stored_url, stored_context in self._target_context_by_url.items():
+                if (
+                    normalize_url(str(stored_url or "")) == normalized_url
+                    and isinstance(stored_context, Mapping)
+                ):
+                    context = stored_context
+                    break
+
+        if not isinstance(context, Mapping):
+            context = {}
+
         source_adapter = str(context.get("source_adapter") or "").strip()
+        source_kind = str(context.get("source_kind") or "").strip()
+
         source_priority = SOURCE_ADAPTER_PRIORITY.get(
             source_adapter,
             SOURCE_ADAPTER_PRIORITY[""],
         )
-        score = self._safe_float(
-            context.get("source_score") or context.get("quality_score") or context.get("score"),
+
+        source_score = self._safe_float(
+            context.get("source_score")
+            or context.get("quality_score")
+            or context.get("score"),
             default=0.0,
         )
 
         sink_penalty, preferred_rank, negative_goal_score, negative_source_score = (
-            self._target_evidence_priority(url)
+            self._target_evidence_priority(normalized_url or url)
         )
+
+        safe_public_search_template = (
+            bool(context.get("safe_public_search_template"))
+            and source_adapter == "search"
+            and source_kind == "public_search_html"
+        )
+
+        # Order is intentional:
+        # 1. sink_penalty keeps low-value/sink targets down;
+        # 2. preferred_rank keeps curated/preferred evidence above everything;
+        # 3. safe_public_search_rank lets safe templates beat generic search;
+        # 4. goal/source scores rank within those buckets.
+        safe_public_search_rank = 0 if safe_public_search_template else 1
+
+        if safe_public_search_template:
+            planner_priority = self._safe_float(
+                context.get("planner_priority"),
+                default=0.0,
+            )
+            calibrated_source_score = max(
+                source_score,
+                planner_priority,
+                0.70,
+            )
+            negative_source_score = -min(0.74, calibrated_source_score + 0.04)
 
         return (
             sink_penalty,
             preferred_rank,
+            safe_public_search_rank,
             negative_goal_score,
             source_priority,
             negative_source_score,
-            url,
+            normalized_url or url,
         )
 
     @staticmethod

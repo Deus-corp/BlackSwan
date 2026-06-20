@@ -3235,6 +3235,18 @@ execution, mutate production paths, or access production secrets.
 
 ---
 
+### Safe public search template ranking
+
+Safe public search templates are ranked above generic public search targets but
+below curated/direct evidence targets.
+
+This keeps allowlisted public search discovery visible to the scheduler without
+letting it displace higher-quality evidence URLs. The runtime contract remains
+tolerant: safe templates must be seen and unsafe templates must remain zero, but
+selection can vary by batch budget, robots.txt, and domain policy.
+
+---
+
 ## Related modules
 
 ```text

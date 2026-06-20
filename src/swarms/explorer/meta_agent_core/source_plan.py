@@ -996,6 +996,7 @@ def build_research_source_plan(
             build_safe_public_search_candidates(
                 goal,
                 limit=8,
+                existing_score=0.70,
             )
         )
 
