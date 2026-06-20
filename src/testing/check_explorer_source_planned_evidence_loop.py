@@ -60,6 +60,31 @@ def _last_node_result(result: Mapping[str, Any]) -> Mapping[str, Any]:
     return {}
 
 
+SAFE_PUBLIC_SEARCH_AUDIT_SAFETY_FLAGS = (
+    "external_write_performed",
+    "real_execution_enabled",
+    "production_paths_mutated",
+    "production_secrets_accessed",
+)
+
+
+def _safe_public_search_template_audit(
+    result: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Return planning-time safe public search audit when present."""
+    audit = result.get("safe_public_search_template_audit")
+    if isinstance(audit, Mapping):
+        return audit
+
+    source_plan_audit = result.get("source_plan_audit")
+    if isinstance(source_plan_audit, Mapping):
+        nested = source_plan_audit.get("safe_public_search_template_audit")
+        if isinstance(nested, Mapping):
+            return nested
+
+    return {}
+
+
 def _total_or_sum(
     result: Mapping[str, Any],
     *,
@@ -292,6 +317,108 @@ def _validate_safe_public_search_template_telemetry(
         )
 
 
+def _validate_safe_public_search_template_audit_contract(
+    result: Mapping[str, Any],
+    errors: list[str],
+) -> None:
+    """Validate planning-time safe public search audit when present.
+
+    Backward-compatible: older runtime JSON without this audit is accepted.
+    """
+    audit = _safe_public_search_template_audit(result)
+    if not audit:
+        return
+
+    audit_type = str(audit.get("type") or "").strip()
+    if audit_type != "safe_public_search_template_audit":
+        errors.append(
+            "safe public search template audit has invalid type: "
+            f"{audit_type!r}"
+        )
+
+    for flag in SAFE_PUBLIC_SEARCH_AUDIT_SAFETY_FLAGS:
+        if bool(audit.get(flag)):
+            errors.append(
+                "safe public search template audit has unsafe flag true: "
+                f"{flag}"
+            )
+
+    generated_count = _safe_int(audit.get("generated_count"), default=0)
+    accepted_count = _safe_int(audit.get("accepted_count"), default=0)
+    rejected_count = _safe_int(audit.get("rejected_count"), default=0)
+    unsafe_rejected_count = _safe_int(
+        audit.get("unsafe_rejected_count"),
+        default=0,
+    )
+    deduped_count = _safe_int(audit.get("deduped_count"), default=0)
+
+    if generated_count < 0:
+        errors.append("safe public search audit generated_count must be >= 0")
+    if accepted_count < 0:
+        errors.append("safe public search audit accepted_count must be >= 0")
+    if rejected_count < 0:
+        errors.append("safe public search audit rejected_count must be >= 0")
+    if unsafe_rejected_count < 0:
+        errors.append(
+            "safe public search audit unsafe_rejected_count must be >= 0"
+        )
+    if deduped_count < 0:
+        errors.append("safe public search audit deduped_count must be >= 0")
+
+    if generated_count and accepted_count > generated_count:
+        errors.append(
+            "safe public search audit accepted_count must be <= generated_count "
+            f"(accepted_count={accepted_count}, generated_count={generated_count})"
+        )
+
+    node = _last_node_result(result)
+    runtime_seen = 0
+    runtime_unsafe = 0
+    search_seen = 0
+
+    if node:
+        runtime_seen = _safe_int(
+            node.get("safe_public_search_templates_seen"),
+            default=0,
+        )
+        runtime_unsafe = _safe_int(
+            node.get("unsafe_public_search_templates_detected"),
+            default=0,
+        )
+
+        source_adapter_targets_seen = node.get("source_adapter_targets_seen")
+        if isinstance(source_adapter_targets_seen, Mapping):
+            search_seen = _safe_int(
+                source_adapter_targets_seen.get("search"),
+                default=0,
+            )
+
+    if runtime_unsafe != 0:
+        errors.append(
+            "unsafe public search templates detected at runtime: "
+            f"unsafe_public_search_templates_detected={runtime_unsafe}"
+        )
+
+    # If the new audit is present and the runtime saw search/safe-template
+    # activity, the planning audit should show accepted safe templates.
+    if (runtime_seen > 0 or search_seen > 0) and accepted_count <= 0:
+        errors.append(
+            "safe public search audit accepted_count must be > 0 when "
+            "runtime search template telemetry is present"
+        )
+
+    by_site = audit.get("by_site")
+    by_kind = audit.get("by_kind")
+    queries = audit.get("queries")
+
+    if accepted_count > 0 and not isinstance(by_site, Mapping):
+        errors.append("safe public search audit by_site must be a mapping")
+    if accepted_count > 0 and not isinstance(by_kind, Mapping):
+        errors.append("safe public search audit by_kind must be a mapping")
+    if accepted_count > 0 and not isinstance(queries, list):
+        errors.append("safe public search audit queries must be a list")
+
+
 def validate_explorer_source_planned_evidence_loop(
     result: Mapping[str, Any],
 ) -> list[str]:
@@ -312,6 +439,7 @@ def validate_explorer_source_planned_evidence_loop(
     _validate_evidence_yield(result, errors)
     _validate_rate_limit_telemetry(result, errors)
     _validate_safe_public_search_template_telemetry(result, errors)
+    _validate_safe_public_search_template_audit_contract(result, errors)
 
     return errors
 

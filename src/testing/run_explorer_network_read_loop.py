@@ -167,6 +167,12 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         seed_urls=_dedupe_urls([*evidence_urls, *urls]),
     )
     source_plan_targets = list(source_plan_result.get("targets", []) or [])
+    source_plan_audit = dict(
+        source_plan_result.get("source_plan_audit", {}) or {}
+    )
+    safe_public_search_template_audit = dict(
+        source_plan_audit.get("safe_public_search_template_audit", {}) or {}
+    )
 
     source_targets = build_source_adapter_targets(
         goal=str(getattr(args, "goal", "") or ""),
@@ -442,6 +448,8 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "evidence_seed_targets": evidence_seed_targets,
             "source_plan_enabled": bool(getattr(args, "source_plan", False)),
             "source_plan": source_plan_result.get("plan"),
+            "source_plan_audit": source_plan_audit,
+            "safe_public_search_template_audit": safe_public_search_template_audit,
             "source_plan_targets": source_plan_targets,
             "seed_record_gid": seed_record["gid"],
             "ticks_requested": ticks,
@@ -559,6 +567,9 @@ def _build_runtime_research_source_plan(
             "enabled": False,
             "plan": None,
             "targets": [],
+            "source_plan_audit": {
+                "safe_public_search_template_audit": {},
+            },
         }
 
     goal = str(getattr(args, "goal", "") or "").strip()
@@ -572,6 +583,10 @@ def _build_runtime_research_source_plan(
         limit=limit,
     )
 
+    safe_public_search_template_audit = dict(
+        plan.get("safe_public_search_template_audit", {}) or {}
+    )
+
     targets = [
         item
         for item in list(plan.get("candidates", []) or [])
@@ -582,6 +597,9 @@ def _build_runtime_research_source_plan(
         "enabled": True,
         "plan": plan,
         "targets": targets,
+        "source_plan_audit": {
+            "safe_public_search_template_audit": safe_public_search_template_audit,
+        },
     }
 
 

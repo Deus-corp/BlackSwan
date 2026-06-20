@@ -3268,6 +3268,20 @@ secrets.
 
 ---
 
+### Runtime/source-plan safe public search audit contract
+
+The source-planned evidence runtime contract validates planning-time safe public
+search audit telemetry together with node runtime telemetry.
+
+The contract checks that safe public search audits remain dataflow-only and safe,
+that accepted template counts are present when runtime search-template telemetry
+is present, and that runtime unsafe template detections remain zero.
+
+Robots.txt or domain-policy blocked safe templates remain valid telemetry and are
+not contract failures.
+
+---
+
 ## Related modules
 
 ```text
