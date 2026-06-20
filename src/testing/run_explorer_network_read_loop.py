@@ -265,6 +265,21 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "domain_rate_limits": dict(
                 getattr(node, "_domain_rate_limits", {}) or {}
             ),
+            "safe_public_search_templates_seen": int(
+                getattr(node, "_safe_public_search_templates_seen", 0) or 0
+            ),
+            "safe_public_search_templates_selected": int(
+                getattr(node, "_safe_public_search_templates_selected", 0) or 0
+            ),
+            "safe_public_search_templates_fetched": int(
+                getattr(node, "_safe_public_search_templates_fetched", 0) or 0
+            ),
+            "safe_public_search_templates_blocked": int(
+                getattr(node, "_safe_public_search_templates_blocked", 0) or 0
+            ),
+            "unsafe_public_search_templates_detected": int(
+                getattr(node, "_unsafe_public_search_templates_detected", 0) or 0
+            ),
         }
 
     def _build_skipped_meta_result() -> dict[str, Any]:

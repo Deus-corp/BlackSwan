@@ -3220,6 +3220,21 @@ private keys, dark web, or exploit-oriented terms are not generated.
 
 ---
 
+### Safe public search template telemetry
+
+Safe public search template telemetry reports how many allowlisted public search
+template targets were seen, selected, fetched, and blocked by normal network-read
+controls such as robots.txt, domain policy, or rate limits.
+
+The runtime contract also verifies that unsafe public search templates remain at
+zero.
+
+Blocked safe templates are telemetry, not failures. They preserve the normal
+network-read safety model and do not perform external writes, enable real
+execution, mutate production paths, or access production secrets.
+
+---
+
 ## Related modules
 
 ```text

@@ -222,6 +222,76 @@ def _validate_rate_limit_telemetry(
                 )
 
 
+SAFE_PUBLIC_SEARCH_TELEMETRY_KEYS = {
+    "safe_public_search_templates_seen",
+    "safe_public_search_templates_selected",
+    "safe_public_search_templates_fetched",
+    "safe_public_search_templates_blocked",
+    "unsafe_public_search_templates_detected",
+}
+
+
+def _validate_safe_public_search_template_telemetry(
+    result: Mapping[str, Any],
+    errors: list[str],
+) -> None:
+    """Validate safe public search template telemetry when present."""
+    node = _last_node_result(result)
+    if not node:
+        return
+
+    has_template_telemetry = any(key in node for key in SAFE_PUBLIC_SEARCH_TELEMETRY_KEYS)
+    if not has_template_telemetry:
+        return
+
+    seen = _safe_int(node.get("safe_public_search_templates_seen"), default=0)
+    selected = _safe_int(
+        node.get("safe_public_search_templates_selected"),
+        default=0,
+    )
+    fetched = _safe_int(
+        node.get("safe_public_search_templates_fetched"),
+        default=0,
+    )
+    blocked = _safe_int(
+        node.get("safe_public_search_templates_blocked"),
+        default=0,
+    )
+    unsafe = _safe_int(
+        node.get("unsafe_public_search_templates_detected"),
+        default=0,
+    )
+
+    if unsafe != 0:
+        errors.append(
+            "unsafe public search templates detected: "
+            f"unsafe_public_search_templates_detected={unsafe}"
+        )
+
+    if seen <= 0:
+        errors.append(
+            "safe public search template telemetry is present but no templates were seen"
+        )
+
+    if selected > seen:
+        errors.append(
+            "safe public search templates selected must be <= seen "
+            f"(selected={selected}, seen={seen})"
+        )
+
+    if fetched > selected:
+        errors.append(
+            "safe public search templates fetched must be <= selected "
+            f"(fetched={fetched}, selected={selected})"
+        )
+
+    if blocked > fetched:
+        errors.append(
+            "safe public search templates blocked must be <= fetched "
+            f"(blocked={blocked}, fetched={fetched})"
+        )
+
+
 def validate_explorer_source_planned_evidence_loop(
     result: Mapping[str, Any],
 ) -> list[str]:
@@ -241,6 +311,7 @@ def validate_explorer_source_planned_evidence_loop(
     _validate_safe_flags(result, errors)
     _validate_evidence_yield(result, errors)
     _validate_rate_limit_telemetry(result, errors)
+    _validate_safe_public_search_template_telemetry(result, errors)
 
     return errors
 

@@ -55,6 +55,9 @@ from src.swarms.explorer.meta_agent_core.source_scoring import score_source_targ
 from src.swarms.explorer.meta_agent_core.frontier_filters import (
     is_low_value_frontier_url,
 )
+from src.swarms.explorer.meta_agent_core.public_search_templates import (
+    validate_public_search_template,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -402,6 +405,18 @@ class ExplorerNode(BaseSwarmNode):
         self._source_adapter_blocked_targets: dict[str, int] = {}
         self._domain_rate_limits: dict[str, int] = {}
         self._rate_limited_domains_seen_this_run: set[str] = set()
+
+        self._safe_public_search_templates_seen = 0
+        self._safe_public_search_templates_selected = 0
+        self._safe_public_search_templates_fetched = 0
+        self._safe_public_search_templates_blocked = 0
+        self._unsafe_public_search_templates_detected = 0
+
+        self._safe_public_search_template_seen_urls: set[str] = set()
+        self._safe_public_search_template_selected_urls: set[str] = set()
+        self._safe_public_search_template_fetched_urls: set[str] = set()
+        self._safe_public_search_template_blocked_urls: set[str] = set()
+        self._unsafe_public_search_template_urls: set[str] = set()
 
         self.logger.info("🧭 ExplorerNode initialized: %s", self.node_id)
 
@@ -773,8 +788,11 @@ class ExplorerNode(BaseSwarmNode):
             if not url or url in seen:
                 continue
 
+            self._record_safe_public_search_template_seen(url)
+
             if self._source_adapter_backoff_active(url):
                 self._record_source_adapter_blocked_target(url)
+                self._record_safe_public_search_template_blocked(url)
                 continue
 
             seen.add(url)
@@ -908,6 +926,8 @@ class ExplorerNode(BaseSwarmNode):
 
                     selected_seen.add(selected_url)
                     add_selected(selected_url)
+
+                    self._record_safe_public_search_template_selected(selected_url)
 
                     per_domain_counts[domain] = (
                         per_domain_counts.get(domain, 0) + 1
@@ -1625,6 +1645,8 @@ class ExplorerNode(BaseSwarmNode):
         if not normalized_url or not is_valid_http_url(normalized_url):
             return "invalid_url"
         
+        self._record_safe_public_search_template_fetched(normalized_url)
+        
         target_context = self._target_context_by_url.get(normalized_url, {})
         target_quality_provenance = self._target_quality_provenance(
             target_context
@@ -1715,6 +1737,8 @@ class ExplorerNode(BaseSwarmNode):
                     reason=str(reason or "policy_blocked"),
                 )
 
+            self._record_safe_public_search_template_blocked(normalized_url)
+
             provenance = self._network_read_provenance(
                 url=normalized_url,
                 target_gid=target_gid,
@@ -1770,6 +1794,8 @@ class ExplorerNode(BaseSwarmNode):
                     reason="robots_disallowed",
                 )
 
+            self._record_safe_public_search_template_blocked(normalized_url)
+
             self.memory.record_fetch_event(
                 event_type="fetch_failed",
                 event_gid=fetch_gid,
@@ -1812,6 +1838,7 @@ class ExplorerNode(BaseSwarmNode):
                     url=normalized_url,
                     reason="http_429",
                 )
+                self._record_safe_public_search_template_blocked(normalized_url)
 
             text = response.text or ""
             content_hash = fingerprint_text(text)
@@ -3865,6 +3892,107 @@ class ExplorerNode(BaseSwarmNode):
         self._source_adapter_blocked_targets[source_adapter] = (
             self._source_adapter_blocked_targets.get(source_adapter, 0) + 1
         )
+    
+
+    def _safe_public_search_template_context(
+        self,
+        url: str,
+    ) -> dict[str, Any]:
+        """Return local target context for a safe public search template URL."""
+        normalized = normalize_url(str(url or ""))
+        context = self._target_context_by_url.get(normalized, {})
+        return dict(context) if isinstance(context, Mapping) else {}
+
+    def _is_safe_public_search_template_target(self, url: str) -> bool:
+        """Return whether target came from safe public search query templates."""
+        context = self._safe_public_search_template_context(url)
+        return bool(context.get("safe_public_search_template"))
+
+    def _safe_public_search_template_errors(self, url: str) -> list[str]:
+        """Validate stored safe public search template metadata for a target."""
+        context = self._safe_public_search_template_context(url)
+        if not bool(context.get("safe_public_search_template")):
+            return []
+
+        template = {
+            "kind": context.get("search_query_template_kind"),
+            "site": context.get("search_query_site"),
+            "query": context.get("search_query"),
+            "rationale": context.get("search_query_rationale", ""),
+        }
+        return validate_public_search_template(template)
+
+    def _record_unsafe_public_search_template_if_needed(self, url: str) -> None:
+        """Record invalid safe-template metadata once per URL."""
+        normalized = normalize_url(str(url or ""))
+        if not normalized:
+            return
+
+        errors = self._safe_public_search_template_errors(normalized)
+        if not errors:
+            return
+
+        if normalized in self._unsafe_public_search_template_urls:
+            return
+
+        self._unsafe_public_search_template_urls.add(normalized)
+        self._unsafe_public_search_templates_detected += 1
+
+    def _record_safe_public_search_template_seen(self, url: str) -> None:
+        """Record that a safe public search template target was visible."""
+        normalized = normalize_url(str(url or ""))
+        if not normalized or not self._is_safe_public_search_template_target(normalized):
+            return
+
+        self._record_unsafe_public_search_template_if_needed(normalized)
+
+        if normalized in self._safe_public_search_template_seen_urls:
+            return
+
+        self._safe_public_search_template_seen_urls.add(normalized)
+        self._safe_public_search_templates_seen += 1
+
+    def _record_safe_public_search_template_selected(self, url: str) -> None:
+        """Record that a safe public search template target was selected."""
+        normalized = normalize_url(str(url or ""))
+        if not normalized or not self._is_safe_public_search_template_target(normalized):
+            return
+
+        self._record_safe_public_search_template_seen(normalized)
+
+        if normalized in self._safe_public_search_template_selected_urls:
+            return
+
+        self._safe_public_search_template_selected_urls.add(normalized)
+        self._safe_public_search_templates_selected += 1
+
+    def _record_safe_public_search_template_fetched(self, url: str) -> None:
+        """Record that fetch flow reached a safe public search template target."""
+        normalized = normalize_url(str(url or ""))
+        if not normalized or not self._is_safe_public_search_template_target(normalized):
+            return
+
+        self._record_safe_public_search_template_selected(normalized)
+
+        if normalized in self._safe_public_search_template_fetched_urls:
+            return
+
+        self._safe_public_search_template_fetched_urls.add(normalized)
+        self._safe_public_search_templates_fetched += 1
+
+    def _record_safe_public_search_template_blocked(self, url: str) -> None:
+        """Record safe public search template blocked by policy/robots/rate-limit."""
+        normalized = normalize_url(str(url or ""))
+        if not normalized or not self._is_safe_public_search_template_target(normalized):
+            return
+
+        self._record_safe_public_search_template_fetched(normalized)
+
+        if normalized in self._safe_public_search_template_blocked_urls:
+            return
+
+        self._safe_public_search_template_blocked_urls.add(normalized)
+        self._safe_public_search_templates_blocked += 1
 
 
 async def main() -> None:
