@@ -418,3 +418,188 @@ def build_memory_evidence_catalog_from_memory_records(
         candidates,
         top_items_limit=top_items_limit,
     )
+
+
+def _normalize_query_text(value: Any) -> str:
+    """Normalize text for deterministic catalog query matching."""
+    return _clean_text(value).lower()
+
+
+def _query_terms(value: str) -> list[str]:
+    """Split query text into stable lowercase terms."""
+    return [
+        term
+        for term in _normalize_query_text(value).split()
+        if term
+    ]
+
+
+def _item_text_haystack(item: Mapping[str, Any]) -> str:
+    """Build searchable text from catalog item fields."""
+    values: list[str] = [
+        str(item.get("url") or ""),
+        str(item.get("domain") or ""),
+        str(item.get("summary") or ""),
+        str(item.get("content_preview") or ""),
+        str(item.get("evidence_category") or ""),
+    ]
+
+    values.extend(str(tag) for tag in _as_list(item.get("topic_tags")))
+
+    return _normalize_query_text(" ".join(values))
+
+
+def _catalog_item_matches(
+    item: Mapping[str, Any],
+    *,
+    domain: str = "",
+    evidence_category: str = "",
+    topic_tags: list[str] | None = None,
+    text_query: str = "",
+    min_ranking_score: float = 0.0,
+) -> bool:
+    """Return whether a catalog item satisfies deterministic local filters."""
+    item_domain = _normalize_query_text(item.get("domain"))
+    query_domain = _normalize_query_text(domain)
+
+    if query_domain and item_domain != query_domain:
+        return False
+
+    item_category = _normalize_query_text(item.get("evidence_category"))
+    query_category = _normalize_query_text(evidence_category)
+
+    if query_category and item_category != query_category:
+        return False
+
+    required_tags = {
+        _normalize_query_text(tag)
+        for tag in (topic_tags or [])
+        if _normalize_query_text(tag)
+    }
+    item_tags = {
+        _normalize_query_text(tag)
+        for tag in _as_list(item.get("topic_tags"))
+        if _normalize_query_text(tag)
+    }
+
+    if required_tags and not required_tags.issubset(item_tags):
+        return False
+
+    ranking_score = _safe_float(item.get("ranking_score"), default=0.0)
+    if ranking_score < float(min_ranking_score or 0.0):
+        return False
+
+    terms = _query_terms(text_query)
+    if terms:
+        haystack = _item_text_haystack(item)
+        if not all(term in haystack for term in terms):
+            return False
+
+    return True
+
+
+def _text_match_score(
+    item: Mapping[str, Any],
+    *,
+    text_query: str = "",
+) -> float:
+    """Return a small deterministic boost for text-query term coverage."""
+    terms = _query_terms(text_query)
+    if not terms:
+        return 0.0
+
+    haystack = _item_text_haystack(item)
+    matched = sum(1 for term in terms if term in haystack)
+
+    if not terms:
+        return 0.0
+
+    return round(matched / len(terms), 4)
+
+
+def query_memory_evidence_catalog(
+    catalog: Mapping[str, Any],
+    *,
+    domain: str = "",
+    evidence_category: str = "",
+    topic_tags: list[str] | None = None,
+    text_query: str = "",
+    min_ranking_score: float = 0.0,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """Query a memory evidence catalog locally and deterministically.
+
+    This function performs no I/O and does not mutate runtime state.
+    """
+    raw_items = _as_list(catalog.get("top_items"))
+
+    matched: list[dict[str, Any]] = []
+
+    for raw in raw_items:
+        if not isinstance(raw, Mapping):
+            continue
+
+        item = dict(raw)
+        if validate_memory_evidence_catalog_item(item):
+            continue
+
+        if not _catalog_item_matches(
+            item,
+            domain=domain,
+            evidence_category=evidence_category,
+            topic_tags=topic_tags,
+            text_query=text_query,
+            min_ranking_score=min_ranking_score,
+        ):
+            continue
+
+        item["_query_text_match_score"] = _text_match_score(
+            item,
+            text_query=text_query,
+        )
+        matched.append(item)
+
+    matched.sort(
+        key=lambda item: (
+            -_safe_float(item.get("ranking_score"), default=0.0),
+            -_safe_float(item.get("system_relevance_score"), default=0.0),
+            -_safe_float(item.get("source_score"), default=0.0),
+            -_safe_float(item.get("_query_text_match_score"), default=0.0),
+            str(item.get("domain") or ""),
+            str(item.get("url") or ""),
+        )
+    )
+
+    safe_limit = max(0, int(limit or 0))
+    results = matched[:safe_limit]
+
+    for item in results:
+        item.pop("_query_text_match_score", None)
+
+    query = {
+        "domain": _clean_text(domain),
+        "evidence_category": _clean_text(evidence_category),
+        "topic_tags": sorted(
+            {
+                _clean_text(tag)
+                for tag in (topic_tags or [])
+                if _clean_text(tag)
+            }
+        ),
+        "text_query": _clean_text(text_query),
+        "min_ranking_score": float(min_ranking_score or 0.0),
+        "limit": safe_limit,
+    }
+
+    return {
+        "type": "memory_evidence_query_result",
+        "query": query,
+        "catalog_item_count": int(catalog.get("item_count", 0) or 0),
+        "matched_count": len(matched),
+        "result_count": len(results),
+        "results": results,
+        "external_write_performed": False,
+        "real_execution_enabled": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
+    }

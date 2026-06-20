@@ -4,6 +4,7 @@ from src.swarms.memory.catalog import (
     build_memory_evidence_catalog_item,
     is_memory_evidence_catalog_item,
     is_memory_ingest_candidate,
+    query_memory_evidence_catalog,
     validate_memory_evidence_catalog_item,
 )
 from src.swarms.memory.ingestion import (
@@ -24,4 +25,5 @@ __all__ = [
     "is_memory_ingest_candidate",
     "validate_memory_evidence_catalog_item",
     "build_memory_evidence_catalog_from_memory_records",
+    "query_memory_evidence_catalog",
 ]

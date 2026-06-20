@@ -3137,6 +3137,27 @@ production secrets.
 
 ---
 
+### Memory evidence catalog retrieval
+
+Memory evidence catalog retrieval is deterministic and local-only.
+
+The query contract filters catalog items by:
+
+- exact normalized domain;
+- exact evidence category;
+- required topic tags;
+- text query terms across URL, domain, summary, preview, category, and tags;
+- minimum ranking score;
+- result limit.
+
+Query results are sorted by ranking score, relevance, source score, text match,
+domain, and URL.
+
+The retrieval layer performs no external writes, does not enable real execution,
+does not mutate production paths, and does not access production secrets.
+
+---
+
 ## Related modules
 
 ```text
