@@ -3179,6 +3179,23 @@ production paths, and does not access production secrets.
 
 ---
 
+### Cluster CLI evidence profiles
+
+The local cluster CLI includes evidence-oriented development profiles:
+
+- `full-safe` — preserves the existing safe local cluster defaults;
+- `explorer-evidence` — starts explorer node/meta without trade/security services;
+- `memory-evidence` — starts memory node(s) for local evidence ingestion and catalog telemetry;
+- `explorer-memory-evidence` — starts explorer node/meta plus memory node(s).
+
+The profiles are advisory and safe by default. They force dry-run/no-execution
+settings unless the operator explicitly chooses unsafe mode.
+
+The cluster CLI also exposes a `memory-query` helper that prints the testing
+command for deterministic local memory evidence catalog queries.
+
+---
+
 ## Related modules
 
 ```text

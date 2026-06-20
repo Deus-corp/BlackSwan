@@ -17,6 +17,12 @@ from uvicorn import config
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RUN_DIR = PROJECT_ROOT / "data" / "cluster_runtime" / "latest"
+CLUSTER_PROFILES = {
+    "full-safe",
+    "explorer-evidence",
+    "memory-evidence",
+    "explorer-memory-evidence",
+}
 
 
 @dataclass
@@ -259,6 +265,68 @@ def _simulation_env(base: Mapping[str, str], args: argparse.Namespace, idx: int)
     env["SIMULATION_HEARTBEAT_INTERVAL_SECONDS"] = str(args.simulation_heartbeat_interval)
     return env
 
+def _apply_profile_defaults(args: argparse.Namespace) -> None:
+    """Apply curated local cluster profiles before service construction.
+
+    Profiles are development/runtime UX shortcuts. Explicit safety remains
+    conservative: profiles force safe mode unless the operator also passes
+    --unsafe.
+    """
+    profile = str(getattr(args, "profile", "") or "full-safe").strip()
+
+    if profile not in CLUSTER_PROFILES:
+        raise ValueError(f"Unsupported cluster profile: {profile}")
+
+    if profile == "full-safe":
+        return
+
+    # Evidence-oriented profiles should not start trading by default.
+    args.no_trade = True
+    args.with_trade_meta = False
+    args.no_trade_meta = True
+
+    # Keep these profiles advisory-only unless operator explicitly passed --unsafe.
+    if bool(getattr(args, "safe", True)):
+        args.execution_enabled = False
+        args.dry_run = True
+        args.tradingview_webhook_enabled = False
+        args.hedge_enabled = False
+        args.orderbook_analysis_enabled = False
+        args.internet_researcher_enabled = False
+
+    if profile == "explorer-evidence":
+        args.no_security = True
+        args.no_security_meta = True
+        args.no_explorer = False
+        args.no_explorer_meta = False
+        args.memory_nodes = 0
+        args.simulation_nodes = 0
+        args.no_overseer = True
+        return
+
+    if profile == "memory-evidence":
+        args.no_security = True
+        args.no_security_meta = True
+        args.no_explorer = True
+        args.no_explorer_meta = True
+        args.memory_nodes = max(1, int(args.memory_nodes or 0))
+        args.simulation_nodes = 0
+        args.no_overseer = True
+        args.memory_ingest_since_start = False
+        return
+
+    if profile == "explorer-memory-evidence":
+        args.no_security = True
+        args.no_security_meta = True
+        args.no_explorer = False
+        args.no_explorer_meta = False
+        args.memory_nodes = max(1, int(args.memory_nodes or 0))
+        args.simulation_nodes = 0
+        args.no_overseer = True
+        args.memory_ingest_since_start = False
+        return
+
+
 def _build_services(args: argparse.Namespace, run_dir: Path) -> List[ServiceSpec]:
     base = _base_env(args, run_dir)
 
@@ -490,6 +558,7 @@ def _write_run_metadata(args: argparse.Namespace, run_dir: Path, services: List[
     lines = [
         f"RUN_DIR={run_dir}",
         f"PROJECT_ROOT={PROJECT_ROOT}",
+        f"PROFILE={getattr(args, 'profile', 'full-safe')}",
         f"SAFE={args.safe}",
         f"DURATION={args.duration}",
         f"TRADE_NODES={args.trade_nodes}",
@@ -506,6 +575,8 @@ def _write_run_metadata(args: argparse.Namespace, run_dir: Path, services: List[
 
 async def run_up(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir).resolve()
+
+    _apply_profile_defaults(args)
 
     if args.clean and run_dir.exists():
         import shutil
@@ -693,6 +764,18 @@ def build_parser() -> argparse.ArgumentParser:
     up.add_argument("--start-delay", type=float, default=1.5, help="Delay between service starts.")
     up.add_argument("--stop-timeout", type=float, default=20.0, help="Graceful shutdown timeout.")
 
+    up.add_argument(
+        "--profile",
+        choices=sorted(CLUSTER_PROFILES),
+        default="full-safe",
+        help=(
+            "Curated local cluster profile. "
+            "full-safe preserves existing defaults; explorer-evidence starts "
+            "explorer node/meta only; memory-evidence starts memory node(s); "
+            "explorer-memory-evidence starts explorer plus memory ingestion."
+        ),
+    )
+
     # Service toggles.
     up.add_argument("--no-trade", action="store_true")
     up.add_argument("--with-trade-meta", action="store_true", help="Start legacy trade meta-agent.")
@@ -774,7 +857,34 @@ def build_parser() -> argparse.ArgumentParser:
     logs.add_argument("--tail", type=int, default=120)
     logs.add_argument("services", nargs="*", help="Service names, e.g. trade-1 overseer")
 
+    memory_query = sub.add_parser(
+        "memory-query",
+        help="Print the testing CLI command for local memory evidence catalog queries.",
+    )
+    memory_query.add_argument("--text-query", default="agents memory")
+    memory_query.add_argument("--limit", type=int, default=5)
+    memory_query.add_argument("--json", action="store_true", default=True)
+
     return parser
+
+def run_memory_query_hint(args: argparse.Namespace) -> int:
+    command = [
+        sys.executable,
+        "-m",
+        "src.testing.query_memory_evidence_catalog",
+        "--text-query",
+        str(args.text_query),
+        "--limit",
+        str(args.limit),
+    ]
+
+    if bool(getattr(args, "json", True)):
+        command.append("--json")
+
+    print("Run local memory evidence catalog query:")
+    print(" ".join(command))
+    return 0
+
 
 def _remove_sqlite_database_files(db_path: str) -> None:
     """Remove SQLite database and sidecar WAL/SHM/lock files for fresh local runs."""
@@ -896,6 +1006,9 @@ def main() -> None:
 
     if args.command == "logs":
         raise SystemExit(run_logs(args))
+    
+    if args.command == "memory-query":
+        raise SystemExit(run_memory_query_hint(args))
 
     parser.error(f"Unsupported command: {args.command}")
 
