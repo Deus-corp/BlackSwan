@@ -3158,6 +3158,27 @@ does not mutate production paths, and does not access production secrets.
 
 ---
 
+### Memory evidence catalog query CLI
+
+The memory evidence catalog query CLI provides a testing-only way to inspect
+local memory evidence records without running a full swarm loop.
+
+Example:
+
+```bash
+python -m src.testing.query_memory_evidence_catalog \
+  --text-query "agents memory" \
+  --limit 5 \
+  --json
+```
+The CLI builds a local memory_evidence_catalog, applies deterministic filters,
+and returns memory_evidence_query_result.
+
+It performs no external writes, does not enable real execution, does not mutate
+production paths, and does not access production secrets.
+
+---
+
 ## Related modules
 
 ```text
