@@ -3117,6 +3117,26 @@ production secrets.
 
 ---
 
+### Memory catalog heartbeat telemetry
+
+Memory swarm heartbeats report evidence catalog telemetry derived from local
+memory evidence records.
+
+The heartbeat metrics include:
+
+- `evidence_catalog_items`
+- `evidence_catalog_rejected_items`
+- `evidence_catalog_domains`
+- `evidence_catalog_categories`
+- `evidence_catalog_topic_tags`
+- `evidence_catalog_top_items`
+
+This telemetry is local and dataflow-only. It performs no external writes, does
+not enable real execution, does not mutate production paths, and does not access
+production secrets.
+
+---
+
 ## Related modules
 
 ```text

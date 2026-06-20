@@ -300,3 +300,121 @@ def build_memory_evidence_catalog(
         "production_paths_mutated": False,
         "production_secrets_accessed": False,
     }
+
+
+def _record_to_mapping(record: Any) -> Mapping[str, Any]:
+    """Return a mapping view for dict-like or dataclass-like memory records."""
+    if isinstance(record, Mapping):
+        return record
+
+    to_dict = getattr(record, "to_dict", None)
+    if callable(to_dict):
+        value = to_dict()
+        if isinstance(value, Mapping):
+            return value
+
+    data: dict[str, Any] = {}
+
+    for key in (
+        "id",
+        "kind",
+        "scope",
+        "topic",
+        "payload",
+        "source",
+        "confidence",
+        "priority",
+        "verified",
+    ):
+        if hasattr(record, key):
+            data[key] = getattr(record, key)
+
+    return data
+
+
+def _memory_record_to_ingest_candidate(
+    record: Any,
+) -> dict[str, Any] | None:
+    """Convert a LocalMemory-compatible evidence record back to an ingest candidate."""
+    data = _record_to_mapping(record)
+    if not data:
+        return None
+
+    payload = _as_mapping(data.get("payload"))
+
+    kind = _clean_text(data.get("kind"))
+    candidate_kind = _clean_text(payload.get("candidate_kind"))
+
+    if kind != "evidence" or candidate_kind != "explorer_useful_evidence":
+        return None
+
+    provenance = _as_mapping(payload.get("provenance"))
+    source_record_gid = _clean_text(payload.get("source_record_gid"))
+    url = _clean_text(payload.get("url"))
+    content_hash = _clean_text(payload.get("content_hash"))
+    content_preview = _clean_text(payload.get("content_preview"))
+
+    dedupe_key = _clean_text(
+        payload.get("dedupe_key")
+        or data.get("id")
+        or _stable_hash(
+            "memory_ingest_candidate",
+            source_record_gid,
+            url,
+            content_hash,
+            content_preview[:300],
+        )
+    )
+
+    return {
+        "type": "memory_ingest_candidate",
+        "candidate_kind": candidate_kind,
+        "source_record_gid": source_record_gid,
+        "url": url,
+        "domain": _clean_text(payload.get("domain")),
+        "content_preview": content_preview,
+        "content_hash": content_hash,
+        "source_score": _safe_float(payload.get("source_score"), default=0.0),
+        "quality_score": _safe_float(payload.get("quality_score"), default=0.0),
+        "system_relevance_score": _safe_float(
+            payload.get("system_relevance_score"),
+            default=0.0,
+        ),
+        "authority_score": _safe_float(payload.get("authority_score"), default=0.0),
+        "freshness_score": _safe_float(payload.get("freshness_score"), default=0.50),
+        "topic_tags": _as_list(payload.get("topic_tags")),
+        "evidence_category": _clean_text(
+            payload.get("evidence_category") or data.get("topic")
+        ),
+        "ingestion_status": "candidate",
+        "dedupe_key": dedupe_key,
+        "provenance": {
+            **dict(provenance),
+            "source": "local_memory",
+            "source_record_gid": source_record_gid,
+            "record_kind": "explorer_useful_evidence",
+            "external_write_performed": False,
+            "real_execution_enabled": False,
+            "production_paths_mutated": False,
+            "production_secrets_accessed": False,
+        },
+    }
+
+
+def build_memory_evidence_catalog_from_memory_records(
+    records: Iterable[Any],
+    *,
+    top_items_limit: int = CATALOG_TOP_ITEMS_LIMIT,
+) -> dict[str, Any]:
+    """Build evidence catalog telemetry from LocalMemory-compatible records."""
+    candidates: list[dict[str, Any]] = []
+
+    for record in records:
+        candidate = _memory_record_to_ingest_candidate(record)
+        if candidate is not None:
+            candidates.append(candidate)
+
+    return build_memory_evidence_catalog(
+        candidates,
+        top_items_limit=top_items_limit,
+    )

@@ -40,6 +40,9 @@ from src.memory.resilience import (
     MemoryHealth,
     assess_memory_resilience,
 )
+from src.swarms.memory.catalog import (
+    build_memory_evidence_catalog_from_memory_records,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +138,10 @@ class MemorySwarmNode:
             degraded=bool(self.last_error),
             reason=self.last_error or "ok",
         )
+        evidence_catalog = build_memory_evidence_catalog_from_memory_records(
+            recent_records,
+            top_items_limit=5,
+        )
 
         memory_health = MemoryHealth(
             local=MemoryAvailability.AVAILABLE,
@@ -195,6 +202,24 @@ class MemorySwarmNode:
                 "runtime_evidence_gold_candidates": memory_summary.runtime_evidence_gold_candidates,
                 "runtime_evidence_review_candidates": memory_summary.runtime_evidence_review_candidates,
                 "runtime_evidence_alert_candidates": memory_summary.runtime_evidence_alert_candidates,
+                "evidence_catalog_items": int(
+                    evidence_catalog.get("item_count", 0)
+                ),
+                "evidence_catalog_rejected_items": int(
+                    evidence_catalog.get("rejected_count", 0)
+                ),
+                "evidence_catalog_domains": dict(
+                    evidence_catalog.get("by_domain", {}) or {}
+                ),
+                "evidence_catalog_categories": dict(
+                    evidence_catalog.get("by_category", {}) or {}
+                ),
+                "evidence_catalog_topic_tags": dict(
+                    evidence_catalog.get("by_topic_tag", {}) or {}
+                ),
+                "evidence_catalog_top_items": list(
+                    evidence_catalog.get("top_items", []) or []
+                )[:5],
             },
             details={
                 "last_error": self.last_error,
@@ -204,6 +229,15 @@ class MemorySwarmNode:
                 "memory_health": memory_health.to_dict(),
                 "memory_resilience": memory_resilience.to_dict(),
                 "gold_sample_candidates": len(gold_samples),
+                "evidence_catalog_status": str(
+                    evidence_catalog.get("catalog_status", "unknown")
+                ),
+                "evidence_catalog_input_count": int(
+                    evidence_catalog.get("input_count", 0)
+                ),
+                "evidence_catalog_deduped_count": int(
+                    evidence_catalog.get("deduped_count", 0)
+                ),
             },
             status="running" if not self.last_error else "degraded",
         )
