@@ -50,6 +50,9 @@ from src.swarms.explorer.meta_agent_core.public_search_templates import (
     build_safe_public_search_templates,
     public_search_template_to_candidate,
     validate_public_search_template,
+    build_safe_public_search_template_plan,
+    empty_safe_public_search_template_audit,
+    summarize_safe_public_search_templates,
 )
 
 __all__ = [
@@ -85,4 +88,7 @@ __all__ = [
     "build_safe_public_search_templates",
     "public_search_template_to_candidate",
     "validate_public_search_template",
+    "build_safe_public_search_template_plan",
+    "empty_safe_public_search_template_audit",
+    "summarize_safe_public_search_templates",
 ]

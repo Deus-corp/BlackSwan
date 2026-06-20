@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 from urllib.parse import quote_plus
+from collections import Counter
 
 
 SAFE_PUBLIC_SEARCH_SITES = {
@@ -99,19 +100,39 @@ def _contains_unsafe_public_search_term(value: str) -> bool:
     return any(term in haystack for term in UNSAFE_PUBLIC_SEARCH_TERMS)
 
 
-def validate_public_search_template(
+def _template_to_dict(
     template: Mapping[str, Any] | PublicSearchTemplate,
-) -> list[str]:
-    """Return validation errors for a public search template."""
+) -> dict[str, Any]:
     if isinstance(template, PublicSearchTemplate):
-        data = {
+        return {
             "kind": template.kind,
             "site": template.site,
             "query": template.query,
             "rationale": template.rationale,
         }
-    else:
-        data = dict(template)
+
+    return dict(template)
+
+
+def _template_to_dict(
+    template: Mapping[str, Any] | PublicSearchTemplate,
+) -> dict[str, Any]:
+    if isinstance(template, PublicSearchTemplate):
+        return {
+            "kind": template.kind,
+            "site": template.site,
+            "query": template.query,
+            "rationale": template.rationale,
+        }
+
+    return dict(template)
+
+
+def validate_public_search_template(
+    template: Mapping[str, Any] | PublicSearchTemplate,
+) -> list[str]:
+    """Return validation errors for a public search template."""
+    data = _template_to_dict(template)
 
     errors: list[str] = []
 
@@ -138,6 +159,146 @@ def validate_public_search_template(
     return errors
 
 
+def summarize_safe_public_search_templates(
+    templates: Iterable[Mapping[str, Any] | PublicSearchTemplate],
+    *,
+    generated_count: int | None = None,
+    rejected_count: int = 0,
+    unsafe_rejected_count: int = 0,
+    deduped_count: int = 0,
+) -> dict[str, Any]:
+    """Build a compact audit summary for safe public search templates."""
+    accepted_templates: list[dict[str, Any]] = []
+
+    for template in templates:
+        data = _template_to_dict(template)
+        if validate_public_search_template(data):
+            continue
+        accepted_templates.append(data)
+
+    by_site = Counter()
+    by_kind = Counter()
+    queries: list[str] = []
+
+    for template in accepted_templates:
+        site = _clean_text(template.get("site")).lower()
+        kind = _clean_text(template.get("kind"))
+        query = _clean_text(template.get("query"))
+
+        if site:
+            by_site[site] += 1
+        if kind:
+            by_kind[kind] += 1
+        if query:
+            queries.append(query)
+
+    generated = (
+        int(generated_count)
+        if generated_count is not None
+        else len(accepted_templates) + int(rejected_count or 0)
+    )
+
+    return {
+        "type": "safe_public_search_template_audit",
+        "generated_count": generated,
+        "accepted_count": len(accepted_templates),
+        "rejected_count": int(rejected_count or 0),
+        "unsafe_rejected_count": int(unsafe_rejected_count or 0),
+        "deduped_count": int(deduped_count or 0),
+        "by_site": dict(sorted(by_site.items())),
+        "by_kind": dict(sorted(by_kind.items())),
+        "queries": sorted(set(queries)),
+        "external_write_performed": False,
+        "real_execution_enabled": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
+    }
+
+
+def empty_safe_public_search_template_audit(
+    *,
+    unsafe_rejected_count: int = 0,
+) -> dict[str, Any]:
+    """Return an empty safe public search template audit summary."""
+    return summarize_safe_public_search_templates(
+        [],
+        generated_count=0,
+        rejected_count=0,
+        unsafe_rejected_count=unsafe_rejected_count,
+        deduped_count=0,
+    )
+
+
+def summarize_safe_public_search_templates(
+    templates: Iterable[Mapping[str, Any] | PublicSearchTemplate],
+    *,
+    generated_count: int | None = None,
+    rejected_count: int = 0,
+    unsafe_rejected_count: int = 0,
+    deduped_count: int = 0,
+) -> dict[str, Any]:
+    """Build a compact audit summary for safe public search templates."""
+    accepted_templates: list[dict[str, Any]] = []
+
+    for template in templates:
+        data = _template_to_dict(template)
+        if validate_public_search_template(data):
+            continue
+        accepted_templates.append(data)
+
+    by_site = Counter()
+    by_kind = Counter()
+    queries: list[str] = []
+
+    for template in accepted_templates:
+        site = _clean_text(template.get("site")).lower()
+        kind = _clean_text(template.get("kind"))
+        query = _clean_text(template.get("query"))
+
+        if site:
+            by_site[site] += 1
+        if kind:
+            by_kind[kind] += 1
+        if query:
+            queries.append(query)
+
+    generated = (
+        int(generated_count)
+        if generated_count is not None
+        else len(accepted_templates) + int(rejected_count or 0)
+    )
+
+    return {
+        "type": "safe_public_search_template_audit",
+        "generated_count": generated,
+        "accepted_count": len(accepted_templates),
+        "rejected_count": int(rejected_count or 0),
+        "unsafe_rejected_count": int(unsafe_rejected_count or 0),
+        "deduped_count": int(deduped_count or 0),
+        "by_site": dict(sorted(by_site.items())),
+        "by_kind": dict(sorted(by_kind.items())),
+        "queries": sorted(set(queries)),
+        "external_write_performed": False,
+        "real_execution_enabled": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
+    }
+
+
+def empty_safe_public_search_template_audit(
+    *,
+    unsafe_rejected_count: int = 0,
+) -> dict[str, Any]:
+    """Return an empty safe public search template audit summary."""
+    return summarize_safe_public_search_templates(
+        [],
+        generated_count=0,
+        rejected_count=0,
+        unsafe_rejected_count=unsafe_rejected_count,
+        deduped_count=0,
+    )
+
+
 def _template(
     *,
     kind: str,
@@ -162,19 +323,26 @@ def _template(
     )
 
 
-def build_safe_public_search_templates(
+def build_safe_public_search_template_plan(
     goal: str,
     *,
     limit: int = 12,
-) -> list[dict[str, Any]]:
-    """Build safe allowlisted public search templates for a research goal."""
+) -> dict[str, Any]:
+    """Build safe public search templates plus planning-time audit summary."""
     if _contains_unsafe_public_search_term(goal):
-        return []
+        return {
+            "templates": [],
+            "audit": empty_safe_public_search_template_audit(
+                unsafe_rejected_count=1,
+            ),
+        }
 
     terms = _goal_terms(goal)
-
     if not terms:
-        return []
+        return {
+            "templates": [],
+            "audit": empty_safe_public_search_template_audit(),
+        }
 
     # Keep the query compact and deterministic. Too many goal terms make search
     # URLs noisy and less useful.
@@ -253,23 +421,178 @@ def build_safe_public_search_templates(
 
     safe: list[dict[str, Any]] = []
     seen_queries: set[str] = set()
+    rejected_count = 0
+    unsafe_rejected_count = 0
+    deduped_count = 0
+    template_limit = max(0, int(limit or 0))
 
     for item in candidates:
-        errors = validate_public_search_template(item)
+        data = _template_to_dict(item)
+
+        errors = validate_public_search_template(data)
         if errors:
+            rejected_count += 1
+            if any("unsafe public search term" in error for error in errors):
+                unsafe_rejected_count += 1
             continue
 
-        query_key = item.query.lower()
+        query_key = _clean_text(data.get("query")).lower()
         if query_key in seen_queries:
+            deduped_count += 1
+            continue
+
+        seen_queries.add(query_key)
+
+        if len(safe) < template_limit:
+            safe.append(
+                {
+                    **data,
+                    "safe_public_search_template": True,
+                }
+            )
+
+    audit = summarize_safe_public_search_templates(
+        safe,
+        generated_count=len(candidates),
+        rejected_count=rejected_count,
+        unsafe_rejected_count=unsafe_rejected_count,
+        deduped_count=deduped_count,
+    )
+
+    return {
+        "templates": safe,
+        "audit": audit,
+    }
+
+
+def build_safe_public_search_templates(
+    goal: str,
+    *,
+    limit: int = 12,
+) -> list[dict[str, Any]]:
+    """Build safe allowlisted public search templates for a research goal."""
+    plan = build_safe_public_search_template_plan(goal, limit=limit)
+    return list(plan.get("templates", []) or [])
+
+
+def build_safe_public_search_template_plan(
+    goal: str,
+    *,
+    limit: int = 12,
+) -> dict[str, Any]:
+    """Build safe public search templates plus planning-time audit summary."""
+    if _contains_unsafe_public_search_term(goal):
+        return {
+            "templates": [],
+            "audit": empty_safe_public_search_template_audit(
+                unsafe_rejected_count=1,
+            ),
+        }
+
+    terms = _goal_terms(goal)
+    if not terms:
+        return {
+            "templates": [],
+            "audit": empty_safe_public_search_template_audit(),
+        }
+
+    compact_terms = terms[:6]
+    goal_phrase = _clean_text(goal)
+
+    candidates = [
+        _template(
+            kind="research_papers",
+            site="arxiv.org",
+            goal_terms=compact_terms,
+            extras=("paper", "research"),
+            rationale="Find public arXiv papers related to the research goal.",
+        ),
+        _template(
+            kind="official_docs",
+            site="docs.github.com",
+            goal_terms=compact_terms,
+            extras=("docs",),
+            rationale="Find official GitHub documentation related to the research goal.",
+        ),
+        _template(
+            kind="official_docs",
+            site="docs.python.org",
+            goal_terms=compact_terms,
+            extras=("library", "documentation"),
+            rationale="Find Python standard-library documentation relevant to implementation.",
+        ),
+        _template(
+            kind="engineering_changelog",
+            site="github.blog",
+            goal_terms=compact_terms,
+            extras=("changelog",),
+            rationale="Find public GitHub engineering changelog entries.",
+        ),
+        _template(
+            kind="engineering_blog",
+            site="github.blog",
+            goal_terms=compact_terms,
+            extras=("engineering", "blog"),
+            rationale="Find public GitHub engineering blog evidence.",
+        ),
+        _template(
+            kind="github_repositories",
+            site="github.com",
+            goal_terms=compact_terms,
+            extras=("repository", "framework"),
+            rationale="Find public GitHub repositories related to the goal.",
+        ),
+        _template(
+            kind="technical_tutorials",
+            site="realpython.com",
+            goal_terms=compact_terms,
+            extras=("tutorial",),
+            rationale="Find public technical tutorials relevant to implementation.",
+        ),
+    ]
+
+    if goal_phrase:
+        candidates.append(
+            PublicSearchTemplate(
+                kind="engineering_blog",
+                site="github.blog",
+                query=f'site:github.blog "{goal_phrase}"',
+                rationale="Find exact-phrase public engineering blog evidence.",
+            )
+        )
+        candidates.append(
+            PublicSearchTemplate(
+                kind="research_papers",
+                site="arxiv.org",
+                query=f'site:arxiv.org "{goal_phrase}"',
+                rationale="Find exact-phrase public research paper evidence.",
+            )
+        )
+
+    safe: list[dict[str, Any]] = []
+    seen_queries: set[str] = set()
+    rejected_count = 0
+    unsafe_rejected_count = 0
+    deduped_count = 0
+
+    for item in candidates:
+        data = _template_to_dict(item)
+        errors = validate_public_search_template(data)
+        if errors:
+            rejected_count += 1
+            if any("unsafe public search term" in error for error in errors):
+                unsafe_rejected_count += 1
+            continue
+
+        query_key = _clean_text(data.get("query")).lower()
+        if query_key in seen_queries:
+            deduped_count += 1
             continue
 
         seen_queries.add(query_key)
         safe.append(
             {
-                "kind": item.kind,
-                "site": item.site,
-                "query": item.query,
-                "rationale": item.rationale,
+                **data,
                 "safe_public_search_template": True,
             }
         )
@@ -277,7 +600,18 @@ def build_safe_public_search_templates(
         if len(safe) >= max(0, int(limit or 0)):
             break
 
-    return safe
+    audit = summarize_safe_public_search_templates(
+        safe,
+        generated_count=len(candidates),
+        rejected_count=rejected_count,
+        unsafe_rejected_count=unsafe_rejected_count,
+        deduped_count=deduped_count,
+    )
+
+    return {
+        "templates": safe,
+        "audit": audit,
+    }
 
 
 def public_search_template_to_candidate(

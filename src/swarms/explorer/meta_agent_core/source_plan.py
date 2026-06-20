@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Any, Iterable, Literal, TypedDict
+from typing import Any, Iterable, Literal, TypedDict, Mapping
 from urllib.parse import quote_plus, urlparse
 
 from src.swarms.explorer.meta_agent_core.public_search_templates import (
-    build_safe_public_search_candidates,
+    build_safe_public_search_template_plan,
+    public_search_template_to_candidate,
 )
 
 
@@ -979,6 +980,7 @@ def build_research_source_plan(
     plan_id = _plan_id(clean_goal, clean_seed_urls, clean_adapters)
 
     candidates: list[SourcePlanCandidate] = []
+    safe_public_search_template_audit: dict[str, Any] = {}
 
     candidates.extend(
         _seed_url_candidates(
@@ -989,15 +991,24 @@ def build_research_source_plan(
         )
     )
 
-    adapter_set = {str(adapter).strip().lower() for adapter in adapters}
+    adapter_set = set(clean_adapters)
 
     if "search" in adapter_set or "public_search" in adapter_set:
+        safe_template_plan = build_safe_public_search_template_plan(
+            clean_goal,
+            limit=8,
+        )
+        safe_public_search_template_audit = dict(
+            safe_template_plan.get("audit", {}) or {}
+        )
         candidates.extend(
-            build_safe_public_search_candidates(
-                goal,
-                limit=8,
+            public_search_template_to_candidate(
+                template,
+                goal=clean_goal,
                 existing_score=0.70,
             )
+            for template in safe_template_plan.get("templates", [])
+            if isinstance(template, Mapping)
         )
 
     # Evidence candidates are planner-internal and may be emitted regardless of
@@ -1023,6 +1034,7 @@ def build_research_source_plan(
         "adapters": clean_adapters,
         "seed_urls": clean_seed_urls,
         "candidate_count": len(ranked),
+        "safe_public_search_template_audit": safe_public_search_template_audit,
         "candidates": ranked,
         "planner_version": EXPLORER_SOURCE_PLANNER_VERSION,
         "execution_risk_tier": EXPLORER_EXECUTION_RISK_TIER,

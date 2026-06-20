@@ -3247,6 +3247,27 @@ selection can vary by batch budget, robots.txt, and domain policy.
 
 ---
 
+### Safe public search template audit
+
+Explorer source planning emits a safe public search template audit summary.
+
+The audit records:
+
+- generated template count;
+- accepted template count;
+- rejected template count;
+- unsafe rejected template count;
+- deduped template count;
+- template counts by allowlisted site;
+- template counts by template kind;
+- accepted query strings.
+
+This is planning-time telemetry. It performs no external writes, does not enable
+real execution, does not mutate production paths, and does not access production
+secrets.
+
+---
+
 ## Related modules
 
 ```text
