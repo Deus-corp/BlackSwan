@@ -3335,6 +3335,25 @@ deterministic candidate telemetry.
 
 ---
 
+### Cluster CLI memory query contract smoke
+
+The cluster CLI memory query command can write query JSON and validate the
+memory evidence query contract in one smoke command:
+
+```bash
+python -m src.swarms.runtime.cluster_cli memory-query \
+  --text-query "agents memory" \
+  --limit 5 \
+  --json \
+  --json-output /tmp/memory_query_result.json \
+  --check-contract
+```
+The contract check validates deterministic retrieval mode, disabled
+semantic/hybrid retrieval, vector-ready schema fields, safety flags, result
+counts, and deterministic candidate telemetry.
+
+---
+
 ## Related modules
 
 ```text

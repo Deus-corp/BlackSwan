@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import signal
+import subprocess
 import sys
+import tempfile
 import time
 import sqlite3
 import shutil
@@ -13,6 +16,10 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional
 
 from uvicorn import config
+
+from src.testing.check_memory_evidence_query_contract import (
+    assert_memory_evidence_query_contract,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -859,15 +866,42 @@ def build_parser() -> argparse.ArgumentParser:
 
     memory_query = sub.add_parser(
         "memory-query",
-        help="Print the testing CLI command for local memory evidence catalog queries.",
+        help="Run local memory evidence catalog query and optional contract smoke.",
     )
     memory_query.add_argument("--text-query", default="agents memory")
     memory_query.add_argument("--limit", type=int, default=5)
     memory_query.add_argument("--json", action="store_true", default=True)
 
+    memory_query.add_argument(
+        "--json-output",
+        default="",
+        help="Optional path to write memory query JSON result.",
+    )
+    memory_query.add_argument(
+        "--check-contract",
+        action="store_true",
+        help="Validate memory query JSON against the evidence query contract.",
+    )
+
     return parser
 
 def run_memory_query_hint(args: argparse.Namespace) -> int:
+    """Run local memory evidence query and optionally validate its contract."""
+    json_output = str(getattr(args, "json_output", "") or "").strip()
+    check_contract = bool(getattr(args, "check_contract", False))
+
+    temp_json_path = ""
+    if check_contract and not json_output:
+        temp_file = tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".json",
+            prefix="memory_query_contract_",
+            delete=False,
+        )
+        temp_json_path = temp_file.name
+        temp_file.close()
+        json_output = temp_json_path
+
     command = [
         sys.executable,
         "-m",
@@ -881,9 +915,40 @@ def run_memory_query_hint(args: argparse.Namespace) -> int:
     if bool(getattr(args, "json", True)):
         command.append("--json")
 
+    if json_output:
+        command.extend(["--json-output", json_output])
+
     print("Run local memory evidence catalog query:")
     print(" ".join(command))
-    return 0
+
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(PROJECT_ROOT),
+            check=False,
+            text=True,
+        )
+
+        if completed.returncode != 0:
+            return int(completed.returncode or 1)
+
+        if check_contract:
+            if not json_output:
+                print("❌ memory query contract check requires JSON output")
+                return 1
+
+            payload = json.loads(Path(json_output).read_text(encoding="utf-8"))
+            assert_memory_evidence_query_contract(payload)
+            print("✅ memory evidence query contract OK")
+
+        return 0
+
+    finally:
+        if temp_json_path:
+            try:
+                Path(temp_json_path).unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 def _remove_sqlite_database_files(db_path: str) -> None:
