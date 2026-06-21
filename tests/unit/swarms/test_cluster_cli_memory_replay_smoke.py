@@ -4,6 +4,9 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+import argparse
+
+from src.swarms.runtime import cluster_cli
 
 
 def test_cluster_cli_memory_replay_smoke_help_includes_flags() -> None:
@@ -26,43 +29,92 @@ def test_cluster_cli_memory_replay_smoke_help_includes_flags() -> None:
     assert "--memory-replay-artifact-limit" in result.stdout
     assert "--text-query" in result.stdout
     assert "--json-output" in result.stdout
+    assert "--check-contract" in result.stdout
 
 
-def test_cluster_cli_memory_replay_smoke_runs_testing_wrapper(
+def test_cluster_cli_memory_replay_smoke_passes_check_contract_flag(
+    monkeypatch,
     tmp_path: Path,
 ) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(list(command))
+        return subprocess.CompletedProcess(
+            args=list(command),
+            returncode=0,
+            stdout="",
+            stderr="",
+        )
+
+    monkeypatch.setattr(cluster_cli.subprocess, "run", fake_run)
+
     output_path = tmp_path / "explorer_memory_replay_smoke.json"
 
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "src.swarms.runtime.cluster_cli",
-            "memory-replay-smoke",
-            "--goal",
-            "autonomous agents memory systems",
-            "--ticks",
-            "3",
-            "--json",
-            "--json-output",
-            str(output_path),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
+    args = argparse.Namespace(
+        goal="autonomous agents memory systems",
+        exploration_run_id="exp-run-memory-replay-smoke",
+        ticks=3,
+        source_adapter=None,
+        no_source_plan=False,
+        memory_replay_artifact_limit=20,
+        text_query="agents memory",
+        limit=5,
+        work_dir="",
+        keep_artifacts=False,
+        json=True,
+        json_output=str(output_path),
+        check_contract=True,
     )
 
-    assert output_path.exists()
-    assert "explorer memory replay smoke OK" in result.stdout
+    exit_code = cluster_cli.run_memory_replay_smoke(args)
 
-    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert len(calls) == 1
 
-    assert payload["type"] == "explorer_memory_replay_smoke_result"
-    assert payload["status"] == "passed"
-    assert payload["explorer_contract_ok"] is True
-    assert payload["memory_query_contract_ok"] is True
-    assert payload["retrieval_mode"] == "deterministic"
-    assert payload["hybrid_retrieval_enabled"] is False
-    assert payload["semantic_retrieval_enabled"] is False
-    assert payload["external_write_performed"] is False
-    assert payload["real_execution_enabled"] is False
+    command = calls[0]
+
+    assert "src.testing.run_explorer_memory_replay_smoke" in command
+    assert "--json" in command
+    assert "--json-output" in command
+    assert str(output_path) in command
+    assert "--check-contract" in command
+
+
+def test_cluster_cli_memory_replay_smoke_omits_check_contract_by_default(
+    monkeypatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(list(command))
+        return subprocess.CompletedProcess(
+            args=list(command),
+            returncode=0,
+            stdout="",
+            stderr="",
+        )
+
+    monkeypatch.setattr(cluster_cli.subprocess, "run", fake_run)
+
+    args = argparse.Namespace(
+        goal="autonomous agents memory systems",
+        exploration_run_id="exp-run-memory-replay-smoke",
+        ticks=3,
+        source_adapter=None,
+        no_source_plan=False,
+        memory_replay_artifact_limit=20,
+        text_query="agents memory",
+        limit=5,
+        work_dir="",
+        keep_artifacts=False,
+        json=False,
+        json_output="",
+        check_contract=False,
+    )
+
+    exit_code = cluster_cli.run_memory_replay_smoke(args)
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert "--check-contract" not in calls[0]

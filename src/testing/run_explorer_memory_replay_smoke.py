@@ -467,6 +467,14 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional path to write smoke summary JSON.",
     )
+    parser.add_argument(
+        "--check-contract",
+        action="store_true",
+        help=(
+            "Print an explicit confirmation after validating the explorer "
+            "memory replay smoke summary contract."
+        ),
+    )
     return parser
 
 
@@ -546,6 +554,10 @@ def main(argv: list[str] | None = None) -> None:
         print("✅ explorer source-planned evidence loop contract OK")
         print("✅ memory evidence query contract OK")
         print("✅ explorer memory replay smoke OK")
+
+        if bool(getattr(args, "check_contract", False)):
+            print("✅ explorer memory replay smoke contract OK")
+
         raise SystemExit(0)
 
     raise SystemExit(1)

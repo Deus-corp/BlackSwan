@@ -184,6 +184,7 @@ def test_parser_includes_expected_flags() -> None:
     assert "--memory-replay-artifact-limit" in help_text
     assert "--text-query" in help_text
     assert "--json-output" in help_text
+    assert "--check-contract" in help_text
 
 
 def test_memory_replay_yield_metrics_are_computed() -> None:

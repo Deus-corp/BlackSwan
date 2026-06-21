@@ -954,6 +954,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional path to write smoke summary JSON.",
     )
+    memory_replay_smoke.add_argument(
+        "--check-contract",
+        action="store_true",
+        help="Print explicit explorer memory replay smoke contract confirmation.",
+    )
     memory_replay_query.add_argument(
         "--db-path",
         default=str(DEFAULT_RUN_DIR / "ledgers" / "swarm_crdt.local.db"),
@@ -1038,6 +1043,9 @@ def run_memory_replay_smoke(args: argparse.Namespace) -> int:
     json_output = str(getattr(args, "json_output", "") or "").strip()
     if json_output:
         command.extend(["--json-output", json_output])
+    
+    if bool(getattr(args, "check_contract", False)):
+        command.append("--check-contract")
 
     print("Run explorer memory replay smoke:")
     print(" ".join(command))

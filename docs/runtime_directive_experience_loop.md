@@ -3520,12 +3520,17 @@ python -m src.swarms.runtime.cluster_cli memory-replay-smoke \
   --goal "autonomous agents memory systems" \
   --ticks 3 \
   --json \
-  --json-output /tmp/explorer_memory_replay_smoke.json
+  --json-output /tmp/explorer_memory_replay_smoke.json \
+  --check-contract
 ```
 This wraps src.testing.run_explorer_memory_replay_smoke, validates the
 explorer source-planned evidence loop contract, replays the embedded memory
 artifact into the memory evidence query contract, and emits a single smoke
 summary.
+
+Passing `--check-contract` prints an explicit confirmation that the emitted
+`explorer_memory_replay_smoke_result` summary satisfies the smoke/yield contract.
+The summary is validated by the testing wrapper before it is written.
 
 ---
 
