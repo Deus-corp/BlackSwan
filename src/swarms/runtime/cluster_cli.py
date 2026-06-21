@@ -882,8 +882,109 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Validate memory query JSON against the evidence query contract.",
     )
+    memory_replay_query = sub.add_parser(
+        "memory-replay-query",
+        help=(
+            "Replay explorer useful evidence memory records into a memory "
+            "catalog query and optional contract smoke."
+        ),
+    )
+    memory_replay_query.add_argument(
+        "--db-path",
+        default=str(DEFAULT_RUN_DIR / "ledgers" / "swarm_crdt.local.db"),
+        help="Path to CRDT sqlite database to scan.",
+    )
+    memory_replay_query.add_argument(
+        "--json-input",
+        default="",
+        help="Optional JSON file to scan for explorer memory records.",
+    )
+    memory_replay_query.add_argument(
+        "--text-query",
+        default="agents memory",
+        help="Text query for deterministic replay catalog filtering.",
+    )
+    memory_replay_query.add_argument("--limit", type=int, default=5)
+    memory_replay_query.add_argument(
+        "--json",
+        action="store_true",
+        default=True,
+        help="Print full JSON replay query result.",
+    )
+    memory_replay_query.add_argument(
+        "--json-output",
+        default="",
+        help="Optional path to write replay query JSON result.",
+    )
+    memory_replay_query.add_argument(
+        "--check-contract",
+        action="store_true",
+        help="Validate replay query JSON against the memory evidence query contract.",
+    )
 
     return parser
+
+def run_memory_replay_query(args: argparse.Namespace) -> int:
+    """Run explorer-memory evidence replay query and optional contract check."""
+    json_output = str(getattr(args, "json_output", "") or "").strip()
+    check_contract = bool(getattr(args, "check_contract", False))
+
+    temp_json_path = ""
+    if check_contract and not json_output:
+        temp_file = tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".json",
+            prefix="explorer_memory_replay_query_contract_",
+            delete=False,
+        )
+        temp_json_path = temp_file.name
+        temp_file.close()
+        json_output = temp_json_path
+
+    command = [
+        sys.executable,
+        "-m",
+        "src.testing.replay_explorer_memory_evidence_query",
+        "--db-path",
+        str(getattr(args, "db_path", "") or ""),
+        "--text-query",
+        str(getattr(args, "text_query", "") or ""),
+        "--limit",
+        str(getattr(args, "limit", 5) or 5),
+    ]
+
+    json_input = str(getattr(args, "json_input", "") or "").strip()
+    if json_input:
+        command.extend(["--json-input", json_input])
+
+    if bool(getattr(args, "json", True)):
+        command.append("--json")
+
+    if json_output:
+        command.extend(["--json-output", json_output])
+
+    if check_contract:
+        command.append("--check-contract")
+
+    print("Run explorer-memory evidence replay query:")
+    print(" ".join(command))
+
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(PROJECT_ROOT),
+            check=False,
+            text=True,
+        )
+
+        return int(completed.returncode or 0)
+
+    finally:
+        if temp_json_path:
+            try:
+                Path(temp_json_path).unlink(missing_ok=True)
+            except OSError:
+                pass
 
 def run_memory_query_hint(args: argparse.Namespace) -> int:
     """Run local memory evidence query and optionally validate its contract."""
@@ -1074,6 +1175,8 @@ def main() -> None:
     
     if args.command == "memory-query":
         raise SystemExit(run_memory_query_hint(args))
+    if args.command == "memory-replay-query":
+        raise SystemExit(run_memory_replay_query(args))
 
     parser.error(f"Unsupported command: {args.command}")
 

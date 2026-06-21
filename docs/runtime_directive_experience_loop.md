@@ -3378,6 +3378,26 @@ hybrid retrieval disabled.
 
 ---
 
+### Cluster CLI explorer-memory replay query smoke
+
+The cluster CLI can replay explorer useful evidence records into the memory
+evidence query contract:
+
+```bash
+python -m src.swarms.runtime.cluster_cli memory-replay-query \
+  --text-query "agents memory" \
+  --limit 5 \
+  --json \
+  --json-output /tmp/explorer_memory_replay_query.json \
+  --check-contract
+```
+The command wraps src.testing.replay_explorer_memory_evidence_query, scans local
+CRDT sqlite and/or JSON input for explorer_useful_evidence memory records,
+rebuilds the deterministic memory evidence catalog, and validates the memory
+evidence query contract.
+
+---
+
 ## Related modules
 
 ```text
