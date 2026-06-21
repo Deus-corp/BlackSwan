@@ -3529,6 +3529,35 @@ summary.
 
 ---
 
+### Memory replay smoke yield metrics
+
+The one-command explorer-memory replay smoke summary includes compact yield
+metrics for the explorer runtime to memory query path:
+
+```json
+{
+  "memory_replay_yield": {
+    "records_published": 7,
+    "artifact_records": 7,
+    "artifact_available_records": 7,
+    "records_seen": 7,
+    "records_replayed": 7,
+    "query_results": 5,
+    "artifact_capture_ratio": 1.0,
+    "artifact_availability_ratio": 1.0,
+    "replay_visibility_ratio": 1.0,
+    "replay_acceptance_ratio": 1.0,
+    "query_result_ratio": 0.7143,
+    "full_replay_path_ratio": 0.7143
+  }
+}
+```
+These metrics are testing-only summary telemetry. They do not enable semantic
+retrieval, do not compute embeddings, do not perform external writes, and do not
+change runtime behavior.
+
+---
+
 ## Related modules
 
 ```text
