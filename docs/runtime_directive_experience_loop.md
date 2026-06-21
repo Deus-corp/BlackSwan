@@ -3398,6 +3398,43 @@ evidence query contract.
 
 ---
 
+### Explorer runtime artifact to memory replay contract
+
+Explorer runtime JSON artifacts can be replayed into the memory evidence query
+contract:
+
+```bash
+python -m src.testing.run_explorer_network_read_loop \
+  --exploration-run-id exp-run-memory-replay-artifact-1 \
+  --goal "autonomous agents memory systems" \
+  --source-plan \
+  --source-adapter github \
+  --source-adapter arxiv \
+  --source-adapter search \
+  --source-adapter sitemap \
+  --ticks 3 \
+  --json \
+  --json-output /tmp/explorer_plan_result.json \
+  --db-path /tmp/explorer_plan_crdt.sqlite3 \
+  --node-memory-db /tmp/explorer_plan_node.sqlite3 \
+  --meta-memory-db /tmp/explorer_plan_meta.sqlite3
+
+python -m src.testing.replay_explorer_memory_evidence_query \
+  --db-path "" \
+  --json-input /tmp/explorer_plan_result.json \
+  --text-query "agents memory" \
+  --limit 5 \
+  --json-output /tmp/explorer_memory_replay_query.json \
+  --check-contract \
+  --json
+```
+This validates the portable artifact path from explorer runtime output to
+deterministic memory evidence query contract. Empty artifacts remain
+contract-valid; artifacts with embedded explorer_useful_evidence memory records
+are replayed into catalog query results.
+
+---
+
 ## Related modules
 
 ```text
