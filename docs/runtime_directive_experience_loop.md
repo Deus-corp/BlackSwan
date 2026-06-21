@@ -3354,6 +3354,30 @@ counts, and deterministic candidate telemetry.
 
 ---
 
+### Explorer-memory evidence replay query smoke
+
+Explorer useful evidence memory records can be replayed into the memory evidence
+catalog query contract with:
+
+```bash
+python -m src.testing.replay_explorer_memory_evidence_query \
+  --text-query "agents memory" \
+  --limit 5 \
+  --json-output /tmp/explorer_memory_replay_query.json \
+  --check-contract \
+  --json
+```
+The replay smoke scans local JSON and/or CRDT sqlite payloads for
+explorer_useful_evidence memory records, rebuilds the deterministic memory
+evidence catalog, executes the catalog query, and validates the memory evidence
+query contract.
+
+This remains local-only and testing-only. It performs no external writes, does
+not compute embeddings, does not query a vector database, and keeps semantic and
+hybrid retrieval disabled.
+
+---
+
 ## Related modules
 
 ```text
