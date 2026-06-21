@@ -3435,6 +3435,41 @@ are replayed into catalog query results.
 
 ---
 
+### Replayable explorer memory evidence artifact
+
+Explorer source-planned runtime JSON includes a bounded replay artifact for
+memory evidence records:
+
+```json
+{
+  "memory_replay_artifact": {
+    "type": "explorer_memory_replay_artifact",
+    "artifact_status": "bounded",
+    "record_count": 1,
+    "available_record_count": 1,
+    "truncated": false,
+    "records": []
+  }
+}
+```
+The replay artifact is local-only, testing-oriented, and bounded by
+--memory-replay-artifact-limit. It contains replayable
+explorer_useful_evidence memory records so that runtime JSON can be fed into:
+```bash
+python -m src.testing.replay_explorer_memory_evidence_query \
+  --db-path "" \
+  --json-input /tmp/explorer_plan_result.json \
+  --text-query "agents memory" \
+  --limit 5 \
+  --check-contract \
+  --json
+```
+The artifact performs no external writes, does not enable real execution, does
+not mutate production paths, does not access production secrets, and keeps
+semantic/vector retrieval disabled.
+
+---
+
 ## Related modules
 
 ```text

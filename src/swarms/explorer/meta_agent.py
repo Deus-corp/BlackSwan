@@ -326,6 +326,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         self.active_exploration_run_id = ""
         self._last_error = ""
         self._last_memory_handoff_skips: list[dict[str, Any]] = []
+        self._last_memory_records: list[dict[str, Any]] = []
 
         self.logger.info("🔎 ExplorerMetaAgent initialized: %s", self.agent_id)
 
@@ -375,6 +376,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
     async def decide(self, snapshot: ExplorerMetaSnapshot) -> MetaDecision:
         """Return whether there is classification work to perform."""
         self._last_memory_records_published = 0
+        self._last_memory_records = []
         event_gid = self._make_gid("exp_policy")
 
         if snapshot.is_empty():
@@ -476,8 +478,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "snapshot": self.summarize_snapshot(snapshot),
                 "classifications_published": self._last_classifications_published,
                 "targets_published": self._last_targets_published,
+                "memory_records_published": self._last_memory_records_published,
+                "memory_records": self._last_memory_records[:20],
+                "memory_replay_records": self._last_memory_records[:20],
             },
-            provenance={"agent": self.agent_id},
         )
 
         await self.crdt.add_genome(event)
@@ -510,6 +514,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 "memory_handoff_enabled": True,
                 "memory_evidence_record_kind": MEMORY_EVIDENCE_RECORD_KIND,
                 "memory_records_published_last_cycle": self._last_memory_records_published,
+                "memory_replay_records_last_cycle": len(self._last_memory_records),
                 "memory_records_published_total": self._memory_records_published_total,
             }
         )
@@ -1850,6 +1855,25 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
 
         await self.crdt.add_genome(memory_record)
 
+        replay_record = {
+            **dict(memory_record),
+            "external_write_performed": False,
+            "real_execution_enabled": False,
+            "production_paths_mutated": False,
+            "production_secrets_accessed": False,
+            "provenance": {
+                **dict(memory_record.get("provenance") or {}),
+                "memory_replay_artifact": True,
+                "external_write_performed": False,
+                "real_execution_enabled": False,
+                "production_paths_mutated": False,
+                "production_secrets_accessed": False,
+            },
+        }
+
+        self._last_memory_records.append(replay_record)
+        self._last_memory_records = self._last_memory_records[-20:]
+
         self._last_memory_records_published += 1
         self._memory_records_published_total += 1
 
@@ -2141,19 +2165,20 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 }
             )
         
-        discovered_preferred_evidence_source = (
-            preferred_evidence_target and is_concrete_evidence
+        # Evidence seeds/planner-discovered preferred targets are concrete
+        # evidence candidates even when URL shape does not match a known docs,
+        # article, course, repository, or guide pattern.
+        if preferred_evidence_target:
+            is_concrete_evidence = True
+
+        discovered_preferred_evidence_source = bool(
+            preferred_evidence_target
+            and is_concrete_evidence
+            and not placeholder_domain
         )
 
         if discovered_preferred_evidence_source:
             evidence_candidate_source = True
-
-        # Evidence seeds are operator/planner-provided concrete evidence
-        # candidates. Even if the URL shape is unusual, keep the diagnostic
-        # signal explicit so fallback classification and memory handoff can
-        # treat it as evidence rather than generic frontier/navigation.
-        if preferred_evidence_target:
-            is_concrete_evidence = True
 
         inferred_authority = explicit_authority_score
         if inferred_authority <= 0.0:

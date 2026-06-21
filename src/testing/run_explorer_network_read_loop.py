@@ -19,7 +19,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 import httpx
 import hashlib
@@ -37,6 +37,8 @@ from src.swarms.explorer.meta_agent_core.source_adapters import (
 from src.swarms.explorer.meta_agent_core.source_plan import (
     build_research_source_plan,
 )
+from src.swarms.memory.ingestion import is_explorer_useful_evidence_record
+from src.swarms.memory.vector_contract import normalize_memory_vector_ready_fields
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +133,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--meta-agent-id", default="exp-meta-network-read-loop")
     parser.add_argument("--skip-meta", action="store_true")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--memory-replay-artifact-limit",
+        type=int,
+        default=DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT,
+        help=(
+            "Maximum replayable explorer memory evidence records to embed in "
+            "the runtime JSON artifact."
+        ),
+    )
+
     return parser
 
 
@@ -297,6 +309,8 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             "classifications_published": 0,
             "exploration_run_id": exploration_run_id,
             "memory_records_published": 0,
+            "memory_records": [],
+            "memory_replay_records": [],
             "memory_handoff_skips": [],
         }
 
@@ -374,6 +388,36 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
                             )
                             or 0
                         ),
+                        "memory_records": list(
+                            getattr(meta, "_last_memory_records", []) or []
+                        )[
+                            : max(
+                                0,
+                                int(
+                                    getattr(
+                                        args,
+                                        "memory_replay_artifact_limit",
+                                        DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT,
+                                    )
+                                    or DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT
+                                ),
+                            )
+                        ],
+                        "memory_replay_records": list(
+                            getattr(meta, "_last_memory_records", []) or []
+                        )[
+                            : max(
+                                0,
+                                int(
+                                    getattr(
+                                        args,
+                                        "memory_replay_artifact_limit",
+                                        DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT,
+                                    )
+                                    or DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT
+                                ),
+                            )
+                        ],
                         "memory_handoff_skips": list(
                             getattr(meta, "_last_memory_handoff_skips", []) or []
                         )[-20:],
@@ -436,6 +480,18 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
         state = getattr(crdt, "state", {}) or {}
         records = [value for value in state.values() if isinstance(value, Mapping)]
 
+        memory_replay_artifact = _build_memory_replay_artifact(
+            tick_results,
+            limit=int(
+                getattr(
+                    args,
+                    "memory_replay_artifact_limit",
+                    DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT,
+                )
+                or DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT
+            ),
+        )
+
         return {
             "type": "explorer_network_read_loop_result",
             "status": "completed",
@@ -475,6 +531,13 @@ async def run_explorer_network_read_loop(args: argparse.Namespace) -> dict[str, 
             ),
             "total_memory_records_published": sum(
                 item.get("memory_records_published", 0) for item in tick_results
+            ),
+            "memory_replay_artifact": memory_replay_artifact,
+            "memory_replay_artifact_record_count": memory_replay_artifact[
+                "record_count"
+            ],
+            "memory_replay_artifact_available_record_count": (
+                memory_replay_artifact["available_record_count"]
             ),
             "node": final_node_result,
             "meta_agent": final_meta_result,
@@ -858,6 +921,164 @@ def _write_json_output(path_value: str, result: Mapping[str, Any]) -> None:
         + "\n",
         encoding="utf-8",
     )
+
+
+MEMORY_REPLAY_ARTIFACT_TYPE = "explorer_memory_replay_artifact"
+DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT = 20
+
+
+def _json_like_mapping(value: Any) -> Mapping[str, Any] | None:
+    if isinstance(value, Mapping):
+        return value
+
+    if not isinstance(value, str):
+        return None
+
+    text = value.strip()
+    if not text.startswith("{"):
+        return None
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+    return parsed if isinstance(parsed, Mapping) else None
+
+
+def _iter_nested_values(value: Any) -> Iterable[Any]:
+    yield value
+
+    parsed_mapping = _json_like_mapping(value)
+    if parsed_mapping is not None and parsed_mapping is not value:
+        yield from _iter_nested_values(parsed_mapping)
+        return
+
+    if isinstance(value, Mapping):
+        for child in value.values():
+            yield from _iter_nested_values(child)
+        return
+
+    if isinstance(value, list):
+        for child in value:
+            yield from _iter_nested_values(child)
+        return
+
+
+def _normalize_replayable_memory_record(
+    value: Any,
+) -> dict[str, Any] | None:
+    """Normalize replayable explorer useful evidence memory records.
+
+    Accepts direct explorer memory records and LocalMemory-compatible evidence
+    records. Returns a direct replayable record for JSON artifacts.
+    """
+    if not isinstance(value, Mapping):
+        return None
+
+    if is_explorer_useful_evidence_record(value):
+        record = dict(value)
+    else:
+        payload = value.get("payload")
+        if not isinstance(payload, Mapping):
+            return None
+
+        kind = str(value.get("kind") or "").strip()
+        candidate_kind = str(payload.get("candidate_kind") or "").strip()
+
+        if kind != "evidence" or candidate_kind != "explorer_useful_evidence":
+            return None
+
+        record = {
+            "type": "memory_record",
+            "record_kind": "explorer_useful_evidence",
+            "gid": str(
+                payload.get("source_record_gid")
+                or value.get("id")
+                or ""
+            ).strip(),
+            "url": payload.get("url"),
+            "domain": payload.get("domain"),
+            "content_preview": payload.get("content_preview"),
+            "content_hash": payload.get("content_hash"),
+            "source_score": payload.get("source_score"),
+            "quality_score": payload.get("quality_score"),
+            "system_relevance_score": payload.get("system_relevance_score"),
+            "authority_score": payload.get("authority_score"),
+            "freshness_score": payload.get("freshness_score"),
+            "topic_tags": list(payload.get("topic_tags") or []),
+            "evidence_category": payload.get("evidence_category"),
+            "provenance": dict(payload.get("provenance") or {}),
+        }
+
+    vector_fields = normalize_memory_vector_ready_fields(record)
+
+    return {
+        **record,
+        **vector_fields,
+        "external_write_performed": False,
+        "real_execution_enabled": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
+        "provenance": {
+            **dict(record.get("provenance") or {}),
+            "memory_replay_artifact": True,
+            "external_write_performed": False,
+            "real_execution_enabled": False,
+            "production_paths_mutated": False,
+            "production_secrets_accessed": False,
+        },
+    }
+
+
+def _extract_replayable_memory_records(
+    payload: Any,
+) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for value in _iter_nested_values(payload):
+        record = _normalize_replayable_memory_record(value)
+        if record is None:
+            continue
+
+        key = str(
+            record.get("gid")
+            or record.get("content_hash")
+            or record.get("url")
+            or len(records)
+        )
+        if key in seen:
+            continue
+
+        seen.add(key)
+        records.append(record)
+
+    return records
+
+
+def _build_memory_replay_artifact(
+    payload: Any,
+    *,
+    limit: int = DEFAULT_MEMORY_REPLAY_ARTIFACT_LIMIT,
+) -> dict[str, Any]:
+    clean_limit = max(0, int(limit or 0))
+    records = _extract_replayable_memory_records(payload)
+    bounded_records = records[:clean_limit]
+
+    return {
+        "type": MEMORY_REPLAY_ARTIFACT_TYPE,
+        "artifact_status": "bounded",
+        "record_count": len(bounded_records),
+        "available_record_count": len(records),
+        "truncated": len(records) > len(bounded_records),
+        "limit": clean_limit,
+        "records": bounded_records,
+        "external_write_performed": False,
+        "real_execution_enabled": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
+    }
 
 
 async def _async_main() -> None:
