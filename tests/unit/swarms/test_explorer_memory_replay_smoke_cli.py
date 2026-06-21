@@ -15,37 +15,15 @@ from src.testing.check_explorer_memory_replay_smoke import (
     validate_explorer_memory_replay_smoke,
 )
 
+from tests.unit.swarms.fixtures_memory_replay import (
+    memory_evidence_query_result_fixture,
+    memory_replay_artifact_fixture,
+    memory_replay_record_fixture,
+)
+
 
 def _explorer_result() -> dict:
-    record = {
-        "type": "memory_record",
-        "record_kind": "explorer_useful_evidence",
-        "gid": "smoke-memory-record-1",
-        "url": "https://docs.python.org/3/library/asyncio.html",
-        "domain": "docs.python.org",
-        "content_preview": (
-            "Python asyncio documentation evidence about event loops, tasks, "
-            "autonomous agents, and memory systems."
-        ),
-        "content_hash": "hash-smoke-memory-record-1",
-        "semantic_retrieval_enabled": False,
-        "embedding_status": "not_computed",
-        "embedding_model": "",
-        "embedding_dim": 0,
-        "embedding_hash": "",
-        "embedding_vector_ref": "",
-        "embedding_updated_at": 0.0,
-        "external_write_performed": False,
-        "real_execution_enabled": False,
-        "production_paths_mutated": False,
-        "production_secrets_accessed": False,
-        "provenance": {
-            "external_write_performed": False,
-            "real_execution_enabled": False,
-            "production_paths_mutated": False,
-            "production_secrets_accessed": False,
-        },
-    }
+    record = memory_replay_record_fixture(index=1, gid="smoke-memory-record-1")
 
     return {
         "type": "explorer_network_read_loop_result",
@@ -55,19 +33,9 @@ def _explorer_result() -> dict:
         "total_memory_records_published": 5,
         "total_targets_published": 20,
         "total_findings_emitted": 5,
-        "memory_replay_artifact": {
-            "type": "explorer_memory_replay_artifact",
-            "artifact_status": "bounded",
-            "record_count": 1,
-            "available_record_count": 1,
-            "truncated": False,
-            "limit": 20,
-            "records": [record],
-            "external_write_performed": False,
-            "real_execution_enabled": False,
-            "production_paths_mutated": False,
-            "production_secrets_accessed": False,
-        },
+        "memory_replay_artifact": memory_replay_artifact_fixture(
+            records=[record],
+        ),
         "memory_replay_artifact_record_count": 1,
         "memory_replay_artifact_available_record_count": 1,
         "external_write_performed": False,
@@ -100,69 +68,11 @@ def _explorer_result() -> dict:
 
 
 def _memory_replay_result() -> dict:
-    return {
-        "type": "memory_evidence_query_result",
-        "retrieval_contract_version": "memory_retrieval_v0_1",
-        "retrieval_mode": "deterministic",
-        "hybrid_retrieval_enabled": False,
-        "semantic_retrieval_enabled": False,
-        "semantic_candidates": [],
-        "deterministic_candidates": [
-            {
-                "rank": 1,
-                "url": "https://docs.python.org/3/library/asyncio.html",
-                "domain": "docs.python.org",
-                "dedupe_key": "dedupe-smoke-1",
-                "ranking_score": 0.8,
-                "source_score": 0.86,
-                "system_relevance_score": 0.82,
-                "retrieval_path": "deterministic_catalog_query",
-            }
-        ],
-        "deterministic_candidate_count": 1,
-        "embedding_status": "not_computed",
-        "embedding_model": "",
-        "embedding_dim": 0,
-        "embedding_hash": "",
-        "embedding_vector_ref": "",
-        "embedding_updated_at": 0.0,
-        "query": {
-            "text_query": "agents memory",
-            "limit": 5,
-            "domain": "",
-            "evidence_category": "",
-            "topic_tags": [],
-            "min_ranking_score": 0.0,
-        },
-        "catalog_item_count": 1,
-        "matched_count": 1,
-        "result_count": 1,
-        "results": [
-            {
-                "type": "memory_evidence_catalog_item",
-                "url": "https://docs.python.org/3/library/asyncio.html",
-                "domain": "docs.python.org",
-                "ranking_score": 0.8,
-                "source_score": 0.86,
-                "system_relevance_score": 0.82,
-                "semantic_retrieval_enabled": False,
-                "embedding_status": "not_computed",
-                "embedding_model": "",
-                "embedding_dim": 0,
-                "embedding_hash": "",
-                "embedding_vector_ref": "",
-                "embedding_updated_at": 0.0,
-            }
-        ],
-        "replay_source": "explorer_memory_evidence",
-        "explorer_memory_records_seen": 1,
-        "explorer_memory_records_replayed": 1,
-        "explorer_memory_records_rejected": 0,
-        "external_write_performed": False,
-        "real_execution_enabled": False,
-        "production_paths_mutated": False,
-        "production_secrets_accessed": False,
-    }
+    return memory_evidence_query_result_fixture(
+        records_seen=1,
+        records_replayed=1,
+        result_count=1,
+    )
 
 
 def _completed() -> subprocess.CompletedProcess[str]:

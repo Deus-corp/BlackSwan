@@ -6,6 +6,10 @@ from src.testing.check_explorer_source_planned_evidence_loop import (
     validate_explorer_source_planned_evidence_loop,
 )
 
+from tests.unit.swarms.fixtures_memory_replay import (
+    memory_replay_artifact_fixture,
+)
+
 
 def _audit() -> dict:
     return {
@@ -50,6 +54,9 @@ def _healthy_result() -> dict:
         "total_memory_records_published": 7,
         "total_targets_published": 123,
         "total_findings_emitted": 10,
+        "memory_replay_artifact": memory_replay_artifact_fixture(),
+        "memory_replay_artifact_record_count": 1,
+        "memory_replay_artifact_available_record_count": 1,
         "external_write_performed": False,
         "real_execution_enabled": False,
         "production_paths_mutated": False,

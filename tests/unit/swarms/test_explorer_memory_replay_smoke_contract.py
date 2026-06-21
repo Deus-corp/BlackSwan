@@ -11,43 +11,13 @@ from src.testing.check_explorer_memory_replay_smoke import (
     assert_explorer_memory_replay_smoke,
     validate_explorer_memory_replay_smoke,
 )
+from tests.unit.swarms.fixtures_memory_replay import (
+    explorer_memory_replay_smoke_result_fixture,
+)
 
 
 def _valid_result() -> dict:
-    return {
-        "type": "explorer_memory_replay_smoke_result",
-        "status": "passed",
-        "explorer_contract_ok": True,
-        "memory_query_contract_ok": True,
-        "total_memory_records_published": 7,
-        "memory_replay_artifact_record_count": 7,
-        "memory_replay_artifact_available_record_count": 7,
-        "explorer_memory_records_seen": 7,
-        "explorer_memory_records_replayed": 7,
-        "memory_query_result_count": 5,
-        "retrieval_mode": "deterministic",
-        "hybrid_retrieval_enabled": False,
-        "semantic_retrieval_enabled": False,
-        "semantic_candidates": [],
-        "memory_replay_yield": {
-            "records_published": 7,
-            "artifact_records": 7,
-            "artifact_available_records": 7,
-            "records_seen": 7,
-            "records_replayed": 7,
-            "query_results": 5,
-            "artifact_capture_ratio": 1.0,
-            "artifact_availability_ratio": 1.0,
-            "replay_visibility_ratio": 1.0,
-            "replay_acceptance_ratio": 1.0,
-            "query_result_ratio": 0.7143,
-            "full_replay_path_ratio": 0.7143,
-        },
-        "external_write_performed": False,
-        "real_execution_enabled": False,
-        "production_paths_mutated": False,
-        "production_secrets_accessed": False,
-    }
+    return explorer_memory_replay_smoke_result_fixture()
 
 
 def test_explorer_memory_replay_smoke_contract_accepts_valid_result() -> None:

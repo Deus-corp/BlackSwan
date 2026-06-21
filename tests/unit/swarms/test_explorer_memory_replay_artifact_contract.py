@@ -4,66 +4,18 @@ from src.testing.check_explorer_source_planned_evidence_loop import (
     _validate_memory_replay_artifact_contract,
 )
 
+from tests.unit.swarms.fixtures_memory_replay import (
+    memory_replay_artifact_fixture,
+    memory_replay_record_fixture,
+)
+
 
 def _record(**overrides):
-    record = {
-        "type": "memory_record",
-        "record_kind": "explorer_useful_evidence",
-        "gid": "mem-replay-contract-1",
-        "url": "https://docs.python.org/3/library/asyncio.html",
-        "domain": "docs.python.org",
-        "content_preview": (
-            "Python asyncio documentation evidence about event loops, tasks, "
-            "autonomous agents, and memory systems."
-        ),
-        "content_hash": "hash-memory-replay-contract-1",
-        "source_score": 0.86,
-        "quality_score": 0.86,
-        "system_relevance_score": 0.82,
-        "authority_score": 0.85,
-        "freshness_score": 0.60,
-        "topic_tags": ["asyncio", "agents", "memory"],
-        "evidence_category": "python_docs",
-        "semantic_retrieval_enabled": False,
-        "embedding_status": "not_computed",
-        "embedding_model": "",
-        "embedding_dim": 0,
-        "embedding_hash": "",
-        "embedding_vector_ref": "",
-        "embedding_updated_at": 0.0,
-        "external_write_performed": False,
-        "real_execution_enabled": False,
-        "production_paths_mutated": False,
-        "production_secrets_accessed": False,
-        "provenance": {
-            "memory_replay_artifact": True,
-            "external_write_performed": False,
-            "real_execution_enabled": False,
-            "production_paths_mutated": False,
-            "production_secrets_accessed": False,
-        },
-    }
-    record.update(overrides)
-    return record
+    return memory_replay_record_fixture(**overrides)
 
 
 def _artifact(records=None, **overrides):
-    records = list(records if records is not None else [_record()])
-    artifact = {
-        "type": "explorer_memory_replay_artifact",
-        "artifact_status": "bounded",
-        "record_count": len(records),
-        "available_record_count": len(records),
-        "truncated": False,
-        "limit": 20,
-        "records": records,
-        "external_write_performed": False,
-        "real_execution_enabled": False,
-        "production_paths_mutated": False,
-        "production_secrets_accessed": False,
-    }
-    artifact.update(overrides)
-    return artifact
+    return memory_replay_artifact_fixture(records=records, **overrides)
 
 
 def _validate(result: dict) -> list[str]:
