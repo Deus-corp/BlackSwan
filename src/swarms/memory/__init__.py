@@ -19,6 +19,13 @@ from src.swarms.memory.vector_contract import (
     memory_vector_ready_defaults,
     normalize_memory_vector_ready_fields,
 )
+from src.swarms.memory.retrieval_contract import (
+    MEMORY_RETRIEVAL_CONTRACT_VERSION,
+    MEMORY_RETRIEVAL_MODE_DETERMINISTIC,
+    attach_memory_retrieval_contract,
+    deterministic_candidate_summary,
+    memory_retrieval_contract_defaults,
+)
 
 __all__ = [
     "build_memory_ingest_candidate",
@@ -36,4 +43,9 @@ __all__ = [
     "attach_memory_vector_ready_fields",
     "memory_vector_ready_defaults",
     "normalize_memory_vector_ready_fields",
+    "MEMORY_RETRIEVAL_CONTRACT_VERSION",
+    "MEMORY_RETRIEVAL_MODE_DETERMINISTIC",
+    "attach_memory_retrieval_contract",
+    "deterministic_candidate_summary",
+    "memory_retrieval_contract_defaults",
 ]

@@ -3301,6 +3301,26 @@ query remains the active retrieval path.
 
 ---
 
+### Memory retrieval mode contract
+
+Memory evidence catalog queries declare their retrieval mode explicitly.
+
+Current retrieval mode is `deterministic`. Query results include deterministic
+candidate telemetry and reserved semantic/hybrid retrieval fields:
+
+- `retrieval_contract_version`
+- `retrieval_mode`
+- `hybrid_retrieval_enabled`
+- `deterministic_candidates`
+- `deterministic_candidate_count`
+- `semantic_candidates`
+
+Semantic and hybrid retrieval remain disabled. No embeddings are computed, no
+vector database is queried, and deterministic catalog filtering/ranking remains
+the active retrieval path.
+
+---
+
 ## Related modules
 
 ```text

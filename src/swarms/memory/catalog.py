@@ -13,6 +13,9 @@ from src.swarms.memory.ingestion import (
 from src.swarms.memory.vector_contract import (
     normalize_memory_vector_ready_fields,
 )
+from src.swarms.memory.retrieval_contract import (
+    attach_memory_retrieval_contract,
+)
 
 
 CATALOG_SUMMARY_CHARS = 240
@@ -606,7 +609,7 @@ def query_memory_evidence_catalog(
         "limit": safe_limit,
     }
 
-    return {
+    result = {
         "type": "memory_evidence_query_result",
         "query": query,
         "catalog_item_count": int(catalog.get("item_count", 0) or 0),
@@ -619,3 +622,8 @@ def query_memory_evidence_catalog(
         "production_secrets_accessed": False,
         **normalize_memory_vector_ready_fields(catalog),
     }
+
+    return attach_memory_retrieval_contract(
+        result,
+        deterministic_items=results,
+    )
