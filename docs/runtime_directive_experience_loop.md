@@ -3558,6 +3558,23 @@ change runtime behavior.
 
 ---
 
+В docs/runtime_directive_experience_loop.md добавь:
+
+### Explorer memory replay smoke contract checker
+
+The one-command explorer-memory replay smoke summary can be validated with:
+
+```bash
+python -m src.testing.check_explorer_memory_replay_smoke \
+  /tmp/explorer_memory_replay_smoke.json
+```
+The checker validates the smoke status, explorer and memory query contract flags,
+disabled semantic/hybrid retrieval, safety flags, flat summary counters, and
+memory_replay_yield ratios. The smoke wrapper also validates this contract
+before writing --json-output.
+
+---
+
 ## Related modules
 
 ```text

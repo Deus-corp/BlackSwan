@@ -14,6 +14,9 @@ from src.testing.check_explorer_source_planned_evidence_loop import (
 from src.testing.check_memory_evidence_query_contract import (
     assert_memory_evidence_query_contract,
 )
+from src.testing.check_explorer_memory_replay_smoke import (
+    assert_explorer_memory_replay_smoke,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -384,6 +387,8 @@ def run_explorer_memory_replay_smoke(
             explorer_command=explorer_command,
             replay_command=replay_command,
         )
+
+        assert_explorer_memory_replay_smoke(summary)
 
         output_path = str(getattr(args, "json_output", "") or "").strip()
         if output_path:

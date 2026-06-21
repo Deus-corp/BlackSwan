@@ -11,6 +11,9 @@ from src.testing.run_explorer_memory_replay_smoke import (
     build_parser,
     run_explorer_memory_replay_smoke,
 )
+from src.testing.check_explorer_memory_replay_smoke import (
+    validate_explorer_memory_replay_smoke,
+)
 
 
 def _explorer_result() -> dict:
