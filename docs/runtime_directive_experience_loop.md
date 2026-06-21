@@ -3470,6 +3470,22 @@ semantic/vector retrieval disabled.
 
 ---
 
+### Explorer memory replay artifact contract
+
+The source-planned explorer evidence contract validates the bounded
+`memory_replay_artifact` embedded in explorer runtime JSON.
+
+When `total_memory_records_published > 0`, the runtime JSON must include at
+least one replayable `explorer_useful_evidence` memory record in
+`memory_replay_artifact.records`.
+
+The artifact contract checks record counts, safety flags, vector-ready defaults,
+disabled semantic retrieval, and bounded/truncation metadata. This prevents
+regressions where memory records are counted but omitted from the replayable
+runtime artifact.
+
+---
+
 ## Related modules
 
 ```text

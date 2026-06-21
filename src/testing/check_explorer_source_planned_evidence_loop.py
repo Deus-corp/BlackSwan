@@ -19,6 +19,24 @@ SAFE_RATE_LIMIT_REASONS = {
     "policy_blocked",
 }
 
+MEMORY_REPLAY_ARTIFACT_TYPE = "explorer_memory_replay_artifact"
+MEMORY_REPLAY_RECORD_TYPE = "memory_record"
+MEMORY_REPLAY_RECORD_KIND = "explorer_useful_evidence"
+
+MEMORY_REPLAY_ARTIFACT_SAFETY_FLAGS = (
+    "external_write_performed",
+    "real_execution_enabled",
+    "production_paths_mutated",
+    "production_secrets_accessed",
+)
+
+MEMORY_REPLAY_ALLOWED_EMBEDDING_STATUSES = {
+    "not_computed",
+    "pending",
+    "failed",
+    "computed",
+}
+
 
 def _as_mapping(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
@@ -440,6 +458,7 @@ def validate_explorer_source_planned_evidence_loop(
     _validate_rate_limit_telemetry(result, errors)
     _validate_safe_public_search_template_telemetry(result, errors)
     _validate_safe_public_search_template_audit_contract(result, errors)
+    _validate_memory_replay_artifact_contract(result, errors)
 
     return errors
 
@@ -530,6 +549,168 @@ def assert_source_planned_evidence_loop(
         raise AssertionError(
             "source-planned evidence loop contract failed:\n"
             f"{details}"
+        )
+
+
+def _memory_replay_artifact(result: Mapping[str, Any]) -> Mapping[str, Any]:
+    artifact = result.get("memory_replay_artifact")
+    if isinstance(artifact, Mapping):
+        return artifact
+
+    return {}
+
+
+def _validate_memory_replay_record(
+    record: Mapping[str, Any],
+    *,
+    index: int,
+    errors: list[str],
+) -> None:
+    if record.get("type") != MEMORY_REPLAY_RECORD_TYPE:
+        errors.append(
+            f"memory replay record #{index} type must be "
+            f"{MEMORY_REPLAY_RECORD_TYPE}"
+        )
+
+    if record.get("record_kind") != MEMORY_REPLAY_RECORD_KIND:
+        errors.append(
+            f"memory replay record #{index} record_kind must be "
+            f"{MEMORY_REPLAY_RECORD_KIND}"
+        )
+
+    if not str(record.get("url") or "").strip():
+        errors.append(f"memory replay record #{index} url is required")
+
+    if not str(record.get("content_hash") or "").strip():
+        errors.append(f"memory replay record #{index} content_hash is required")
+
+    if not str(record.get("content_preview") or "").strip():
+        errors.append(f"memory replay record #{index} content_preview is required")
+
+    for flag in MEMORY_REPLAY_ARTIFACT_SAFETY_FLAGS:
+        if bool(record.get(flag)):
+            errors.append(
+                f"memory replay record #{index} unsafe flag is true: {flag}"
+            )
+
+    if bool(record.get("semantic_retrieval_enabled")):
+        errors.append(
+            f"memory replay record #{index} semantic_retrieval_enabled "
+            "must be false"
+        )
+
+    embedding_status = str(record.get("embedding_status") or "").strip()
+    if embedding_status not in MEMORY_REPLAY_ALLOWED_EMBEDDING_STATUSES:
+        errors.append(
+            f"memory replay record #{index} invalid embedding_status: "
+            f"{embedding_status!r}"
+        )
+
+    try:
+        embedding_dim = int(record.get("embedding_dim") or 0)
+    except (TypeError, ValueError):
+        embedding_dim = -1
+
+    if embedding_dim < 0:
+        errors.append(f"memory replay record #{index} embedding_dim must be >= 0")
+
+    provenance = record.get("provenance")
+    if isinstance(provenance, Mapping):
+        for flag in MEMORY_REPLAY_ARTIFACT_SAFETY_FLAGS:
+            if bool(provenance.get(flag)):
+                errors.append(
+                    f"memory replay record #{index} provenance unsafe flag "
+                    f"is true: {flag}"
+                )
+
+
+def _validate_memory_replay_artifact_contract(
+    result: Mapping[str, Any],
+    errors: list[str],
+) -> None:
+    """Validate replayable explorer memory evidence artifact.
+
+    This is intentionally part of the enriched source-planned evidence contract:
+    when the runtime says memory records were published, the JSON artifact must
+    contain bounded replayable explorer_useful_evidence records.
+    """
+    artifact = _memory_replay_artifact(result)
+    total_memory_records_published = _safe_int(
+        result.get("total_memory_records_published"),
+        default=0,
+    )
+
+    if not artifact:
+        if total_memory_records_published > 0:
+            errors.append(
+                "memory replay artifact is required when "
+                "total_memory_records_published > 0"
+            )
+        return
+
+    artifact_type = str(artifact.get("type") or "").strip()
+    if artifact_type != MEMORY_REPLAY_ARTIFACT_TYPE:
+        errors.append(
+            "memory replay artifact has invalid type: "
+            f"{artifact_type!r}"
+        )
+
+    for flag in MEMORY_REPLAY_ARTIFACT_SAFETY_FLAGS:
+        if bool(artifact.get(flag)):
+            errors.append(
+                f"memory replay artifact unsafe flag is true: {flag}"
+            )
+
+    records = artifact.get("records")
+    if not isinstance(records, list):
+        errors.append("memory replay artifact records must be a list")
+        records = []
+
+    record_count = _safe_int(artifact.get("record_count"), default=-1)
+    available_record_count = _safe_int(
+        artifact.get("available_record_count"),
+        default=-1,
+    )
+    limit = _safe_int(artifact.get("limit"), default=0)
+
+    if record_count != len(records):
+        errors.append(
+            "memory replay artifact record_count must equal len(records): "
+            f"record_count={record_count}, len(records)={len(records)}"
+        )
+
+    if available_record_count < record_count:
+        errors.append(
+            "memory replay artifact available_record_count must be >= "
+            f"record_count: available_record_count={available_record_count}, "
+            f"record_count={record_count}"
+        )
+
+    if limit < 0:
+        errors.append("memory replay artifact limit must be >= 0")
+
+    truncated = bool(artifact.get("truncated"))
+    if truncated and available_record_count <= record_count:
+        errors.append(
+            "memory replay artifact truncated=true requires "
+            "available_record_count > record_count"
+        )
+
+    if total_memory_records_published > 0 and record_count <= 0:
+        errors.append(
+            "memory replay artifact must include replayable records when "
+            "total_memory_records_published > 0"
+        )
+
+    for index, record in enumerate(records, start=1):
+        if not isinstance(record, Mapping):
+            errors.append(f"memory replay record #{index} must be a mapping")
+            continue
+
+        _validate_memory_replay_record(
+            record,
+            index=index,
+            errors=errors,
         )
 
 
