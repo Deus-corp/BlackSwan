@@ -3486,6 +3486,49 @@ runtime artifact.
 
 ---
 
+### One-command explorer-memory replay smoke
+
+The full explorer runtime to memory replay contract path can be checked with one
+testing command:
+
+```bash
+python -m src.testing.run_explorer_memory_replay_smoke \
+  --goal "autonomous agents memory systems" \
+  --ticks 3 \
+  --json \
+  --json-output /tmp/explorer_memory_replay_smoke.json
+```
+The smoke command runs the source-planned explorer network-read loop, validates
+the explorer source-planned evidence loop contract, replays the embedded memory
+replay artifact into the memory evidence catalog query, validates the memory
+evidence query contract, and emits a single summary JSON.
+
+This remains local-only and testing-only. It performs no external writes, does
+not enable real execution, does not mutate production paths, does not access
+production secrets, does not compute embeddings, and keeps semantic/hybrid
+retrieval disabled.
+
+---
+
+### Cluster CLI explorer-memory replay smoke
+
+The full explorer runtime to memory replay contract path can be run through the
+cluster CLI:
+
+```bash
+python -m src.swarms.runtime.cluster_cli memory-replay-smoke \
+  --goal "autonomous agents memory systems" \
+  --ticks 3 \
+  --json \
+  --json-output /tmp/explorer_memory_replay_smoke.json
+```
+This wraps src.testing.run_explorer_memory_replay_smoke, validates the
+explorer source-planned evidence loop contract, replays the embedded memory
+artifact into the memory evidence query contract, and emits a single smoke
+summary.
+
+---
+
 ## Related modules
 
 ```text

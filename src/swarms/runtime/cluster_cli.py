@@ -889,6 +889,71 @@ def build_parser() -> argparse.ArgumentParser:
             "catalog query and optional contract smoke."
         ),
     )
+    memory_replay_smoke = sub.add_parser(
+        "memory-replay-smoke",
+        help=(
+            "Run one-command explorer runtime + memory replay contract smoke."
+        ),
+    )
+    memory_replay_smoke.add_argument(
+        "--goal",
+        default="autonomous agents memory systems",
+        help="Explorer research goal.",
+    )
+    memory_replay_smoke.add_argument(
+        "--exploration-run-id",
+        default="exp-run-memory-replay-smoke",
+        help="Explorer runtime smoke run id.",
+    )
+    memory_replay_smoke.add_argument("--ticks", type=int, default=3)
+    memory_replay_smoke.add_argument(
+        "--source-adapter",
+        action="append",
+        default=None,
+        help=(
+            "Source adapter to seed. Can be passed multiple times. "
+            "Default is github, arxiv, search, sitemap."
+        ),
+    )
+    memory_replay_smoke.add_argument(
+        "--no-source-plan",
+        action="store_true",
+        default=False,
+        help="Disable source-plan seeding.",
+    )
+    memory_replay_smoke.add_argument(
+        "--memory-replay-artifact-limit",
+        type=int,
+        default=20,
+        help="Maximum replayable memory records embedded by explorer runtime.",
+    )
+    memory_replay_smoke.add_argument(
+        "--text-query",
+        default="agents memory",
+        help="Memory replay query text.",
+    )
+    memory_replay_smoke.add_argument("--limit", type=int, default=5)
+    memory_replay_smoke.add_argument(
+        "--work-dir",
+        default="",
+        help="Optional directory for intermediate explorer/replay artifacts.",
+    )
+    memory_replay_smoke.add_argument(
+        "--keep-artifacts",
+        action="store_true",
+        help="Keep temporary artifacts when --work-dir is not provided.",
+    )
+    memory_replay_smoke.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Print full JSON smoke summary.",
+    )
+    memory_replay_smoke.add_argument(
+        "--json-output",
+        default="",
+        help="Optional path to write smoke summary JSON.",
+    )
     memory_replay_query.add_argument(
         "--db-path",
         default=str(DEFAULT_RUN_DIR / "ledgers" / "swarm_crdt.local.db"),
@@ -923,6 +988,69 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def run_memory_replay_smoke(args: argparse.Namespace) -> int:
+    """Run one-command explorer runtime + memory replay contract smoke."""
+    command = [
+        sys.executable,
+        "-m",
+        "src.testing.run_explorer_memory_replay_smoke",
+        "--goal",
+        str(getattr(args, "goal", "") or "autonomous agents memory systems"),
+        "--exploration-run-id",
+        str(
+            getattr(args, "exploration_run_id", "")
+            or "exp-run-memory-replay-smoke"
+        ),
+        "--ticks",
+        str(max(0, int(getattr(args, "ticks", 3) or 3))),
+        "--memory-replay-artifact-limit",
+        str(
+            max(
+                0,
+                int(getattr(args, "memory_replay_artifact_limit", 20) or 20),
+            )
+        ),
+        "--text-query",
+        str(getattr(args, "text_query", "") or "agents memory"),
+        "--limit",
+        str(max(0, int(getattr(args, "limit", 5) or 5))),
+    ]
+
+    if bool(getattr(args, "no_source_plan", False)):
+        command.append("--no-source-plan")
+
+    source_adapters = list(getattr(args, "source_adapter", None) or [])
+    for adapter in source_adapters:
+        command.extend(["--source-adapter", str(adapter)])
+
+    work_dir = str(getattr(args, "work_dir", "") or "").strip()
+    if work_dir:
+        command.extend(["--work-dir", work_dir])
+
+    if bool(getattr(args, "keep_artifacts", False)):
+        command.append("--keep-artifacts")
+
+    if bool(getattr(args, "json", False)):
+        command.append("--json")
+
+    json_output = str(getattr(args, "json_output", "") or "").strip()
+    if json_output:
+        command.extend(["--json-output", json_output])
+
+    print("Run explorer memory replay smoke:")
+    print(" ".join(command))
+
+    completed = subprocess.run(
+        command,
+        cwd=str(PROJECT_ROOT),
+        check=False,
+        text=True,
+    )
+
+    return int(completed.returncode or 0)
+
 
 def run_memory_replay_query(args: argparse.Namespace) -> int:
     """Run explorer-memory evidence replay query and optional contract check."""
@@ -1177,6 +1305,9 @@ def main() -> None:
         raise SystemExit(run_memory_query_hint(args))
     if args.command == "memory-replay-query":
         raise SystemExit(run_memory_replay_query(args))
+    
+    if args.command == "memory-replay-smoke":
+        raise SystemExit(run_memory_replay_smoke(args))
 
     parser.error(f"Unsupported command: {args.command}")
 
