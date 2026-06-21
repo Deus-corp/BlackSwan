@@ -3321,6 +3321,20 @@ the active retrieval path.
 
 ---
 
+### Memory evidence query contract checker
+
+Memory evidence query JSON can be checked with:
+
+```bash
+python -m src.testing.check_memory_evidence_query_contract \
+  /tmp/memory_query_result.json
+```
+The checker validates deterministic retrieval mode, vector-ready schema fields,
+disabled hybrid/semantic retrieval, safety flags, result counts, and compact
+deterministic candidate telemetry.
+
+---
+
 ## Related modules
 
 ```text
