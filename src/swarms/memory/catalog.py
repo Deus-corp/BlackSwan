@@ -10,6 +10,10 @@ from src.swarms.memory.ingestion import (
     MIN_INGEST_SOURCE_SCORE,
 )
 
+from src.swarms.memory.vector_contract import (
+    normalize_memory_vector_ready_fields,
+)
+
 
 CATALOG_SUMMARY_CHARS = 240
 CATALOG_TOP_ITEMS_LIMIT = 10
@@ -123,7 +127,7 @@ def build_memory_evidence_catalog_item(
         content_hash,
     )
 
-    return {
+    item = {
         "type": "memory_evidence_catalog_item",
         "catalog_item_kind": candidate_kind,
         "source_candidate_dedupe_key": source_candidate_dedupe_key,
@@ -146,6 +150,7 @@ def build_memory_evidence_catalog_item(
         "ranking_score": ranking_score,
         "dedupe_key": dedupe_key,
         "catalog_status": "indexed",
+        **normalize_memory_vector_ready_fields(candidate),
         "provenance": {
             **dict(provenance),
             "source": "memory_ingestion",
@@ -156,6 +161,8 @@ def build_memory_evidence_catalog_item(
             "production_secrets_accessed": False,
         },
     }
+
+    return item
 
 
 def validate_memory_evidence_catalog_item(
@@ -294,11 +301,13 @@ def build_memory_evidence_catalog(
         "by_domain": dict(sorted(by_domain.items())),
         "by_category": dict(sorted(by_category.items())),
         "by_topic_tag": dict(sorted(by_topic_tag.items())),
+        "items": catalog_items,
         "top_items": catalog_items[: max(0, int(top_items_limit))],
         "external_write_performed": False,
         "real_execution_enabled": False,
         "production_paths_mutated": False,
         "production_secrets_accessed": False,
+        **normalize_memory_vector_ready_fields({}),
     }
 
 
@@ -366,6 +375,11 @@ def _memory_record_to_ingest_candidate(
         )
     )
 
+    vector_source = {
+        **dict(data),
+        **dict(payload),
+    }
+
     return {
         "type": "memory_ingest_candidate",
         "candidate_kind": candidate_kind,
@@ -388,6 +402,7 @@ def _memory_record_to_ingest_candidate(
         ),
         "ingestion_status": "candidate",
         "dedupe_key": dedupe_key,
+        **normalize_memory_vector_ready_fields(vector_source),
         "provenance": {
             **dict(provenance),
             "source": "local_memory",
@@ -531,7 +546,7 @@ def query_memory_evidence_catalog(
 
     This function performs no I/O and does not mutate runtime state.
     """
-    raw_items = _as_list(catalog.get("top_items"))
+    raw_items = _as_list(catalog.get("items")) or _as_list(catalog.get("top_items"))
 
     matched: list[dict[str, Any]] = []
 
@@ -602,4 +617,5 @@ def query_memory_evidence_catalog(
         "real_execution_enabled": False,
         "production_paths_mutated": False,
         "production_secrets_accessed": False,
+        **normalize_memory_vector_ready_fields(catalog),
     }

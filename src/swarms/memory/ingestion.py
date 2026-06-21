@@ -4,6 +4,11 @@ import hashlib
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
+from src.swarms.memory.vector_contract import (
+    attach_memory_vector_ready_fields,
+    normalize_memory_vector_ready_fields,
+)
+
 
 MIN_INGEST_CONTENT_PREVIEW_CHARS = 30
 MIN_INGEST_SOURCE_SCORE = 0.70
@@ -173,7 +178,9 @@ def build_memory_ingest_candidate(
         content_preview[:300],
     )
 
-    return {
+    vector_ready_fields = normalize_memory_vector_ready_fields(record)
+
+    candidate = {
         "type": "memory_ingest_candidate",
         "candidate_kind": "explorer_useful_evidence",
         "source_record_gid": source_record_gid,
@@ -190,6 +197,11 @@ def build_memory_ingest_candidate(
         "evidence_category": evidence_category,
         "ingestion_status": "candidate",
         "dedupe_key": dedupe_key,
+        **vector_ready_fields,
+        "external_write_performed": False,
+        "real_execution_enabled": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
         "provenance": {
             **dict(provenance),
             "source": "explorer",
@@ -201,6 +213,8 @@ def build_memory_ingest_candidate(
             "production_secrets_accessed": False,
         },
     }
+
+    return attach_memory_vector_ready_fields(candidate)
 
 
 def validate_memory_ingest_candidate(
@@ -260,8 +274,9 @@ def memory_record_from_ingest_candidate(
     source_record_gid = _clean_text(candidate.get("source_record_gid"))
     topic_tags = _as_list(candidate.get("topic_tags"))
     evidence_category = _clean_text(candidate.get("evidence_category"))
+    vector_ready_fields = normalize_memory_vector_ready_fields(candidate)
 
-    return {
+    memory_record = {
         "id": _clean_text(candidate.get("dedupe_key")),
         "kind": "evidence",
         "scope": "shared",
@@ -280,6 +295,7 @@ def memory_record_from_ingest_candidate(
             "freshness_score": candidate.get("freshness_score"),
             "evidence_category": evidence_category,
             "topic_tags": topic_tags,
+            **vector_ready_fields,
             "tags": sorted(
                 {
                     "memory_ingest_candidate",
@@ -306,4 +322,11 @@ def memory_record_from_ingest_candidate(
         ),
         "priority": 1,
         "verified": True,
+        **vector_ready_fields,
+        "external_write_performed": False,
+        "real_execution_enabled": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
     }
+
+    return attach_memory_vector_ready_fields(memory_record)

@@ -3282,6 +3282,25 @@ not contract failures.
 
 ---
 
+### Memory vector-ready evidence schema
+
+Memory evidence records and catalog query results include vector-ready schema
+fields for future hybrid retrieval:
+
+- `semantic_retrieval_enabled`
+- `embedding_status`
+- `embedding_model`
+- `embedding_dim`
+- `embedding_hash`
+- `embedding_vector_ref`
+- `embedding_updated_at`
+
+This is schema-only. The runtime does not compute embeddings, does not connect to
+a vector database, and does not enable semantic retrieval. Deterministic catalog
+query remains the active retrieval path.
+
+---
+
 ## Related modules
 
 ```text
