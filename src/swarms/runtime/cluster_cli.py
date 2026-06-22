@@ -895,6 +895,35 @@ def build_parser() -> argparse.ArgumentParser:
             "Run one-command explorer runtime + memory replay contract smoke."
         ),
     )
+    memory_replay_latest = sub.add_parser(
+        "memory-replay-latest",
+        help="Inspect latest explorer memory replay smoke artifact.",
+    )
+    memory_replay_latest.add_argument(
+        "--json-path",
+        default="",
+        help="Explicit explorer memory replay smoke JSON artifact path.",
+    )
+    memory_replay_latest.add_argument(
+        "--search-root",
+        action="append",
+        default=[],
+        help=(
+            "Directory or file to search. Can be passed multiple times. "
+            "Defaults to /tmp and data/cluster_runtime/latest."
+        ),
+    )
+    memory_replay_latest.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Print machine-readable JSON summary.",
+    )
+    memory_replay_latest.add_argument(
+        "--check-contract",
+        action="store_true",
+        help="Exit with code 1 unless the latest artifact contract is valid.",
+    )
     memory_replay_smoke.add_argument(
         "--goal",
         default="autonomous agents memory systems",
@@ -993,6 +1022,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def run_memory_replay_latest(args: argparse.Namespace) -> int:
+    """Inspect latest explorer memory replay smoke artifact."""
+    command = [
+        sys.executable,
+        "-m",
+        "src.testing.inspect_memory_replay_smoke_latest",
+    ]
+
+    json_path = str(getattr(args, "json_path", "") or "").strip()
+    if json_path:
+        command.extend(["--json-path", json_path])
+
+    for search_root in list(getattr(args, "search_root", []) or []):
+        command.extend(["--search-root", str(search_root)])
+
+    if bool(getattr(args, "json", False)):
+        command.append("--json")
+
+    if bool(getattr(args, "check_contract", False)):
+        command.append("--check-contract")
+
+    print("Inspect latest memory replay smoke artifact:")
+    print(" ".join(command))
+
+    completed = subprocess.run(
+        command,
+        cwd=str(PROJECT_ROOT),
+        check=False,
+        text=True,
+    )
+
+    return int(completed.returncode or 0)
 
 
 def run_memory_replay_smoke(args: argparse.Namespace) -> int:
@@ -1316,6 +1379,8 @@ def main() -> None:
     
     if args.command == "memory-replay-smoke":
         raise SystemExit(run_memory_replay_smoke(args))
+    if args.command == "memory-replay-latest":
+        raise SystemExit(run_memory_replay_latest(args))
 
     parser.error(f"Unsupported command: {args.command}")
 

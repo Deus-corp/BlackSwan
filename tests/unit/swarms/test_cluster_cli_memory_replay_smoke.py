@@ -118,3 +118,65 @@ def test_cluster_cli_memory_replay_smoke_omits_check_contract_by_default(
     assert exit_code == 0
     assert len(calls) == 1
     assert "--check-contract" not in calls[0]
+
+
+def test_cluster_cli_memory_replay_latest_help_includes_flags() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "src.swarms.runtime.cluster_cli",
+            "memory-replay-latest",
+            "--help",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "--json-path" in result.stdout
+    assert "--search-root" in result.stdout
+    assert "--json" in result.stdout
+    assert "--check-contract" in result.stdout
+
+
+def test_cluster_cli_memory_replay_latest_passes_arguments(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(list(command))
+        return subprocess.CompletedProcess(
+            args=list(command),
+            returncode=0,
+            stdout="",
+            stderr="",
+        )
+
+    monkeypatch.setattr(cluster_cli.subprocess, "run", fake_run)
+
+    artifact_path = tmp_path / "explorer_memory_replay_smoke.json"
+
+    args = argparse.Namespace(
+        json_path=str(artifact_path),
+        search_root=[str(tmp_path)],
+        json=True,
+        check_contract=True,
+    )
+
+    exit_code = cluster_cli.run_memory_replay_latest(args)
+
+    assert exit_code == 0
+    assert len(calls) == 1
+
+    command = calls[0]
+
+    assert "src.testing.inspect_memory_replay_smoke_latest" in command
+    assert "--json-path" in command
+    assert str(artifact_path) in command
+    assert "--search-root" in command
+    assert str(tmp_path) in command
+    assert "--json" in command
+    assert "--check-contract" in command

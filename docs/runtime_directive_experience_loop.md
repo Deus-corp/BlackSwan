@@ -3604,6 +3604,25 @@ detailed memory_replay_yield block and the flat top-level counters.
 
 ---
 
+### Latest memory replay smoke artifact
+
+The latest explorer-memory replay smoke artifact can be inspected without
+rerunning the network smoke:
+
+```bash
+python -m src.swarms.runtime.cluster_cli memory-replay-latest \
+  --json-path /tmp/explorer_memory_replay_smoke.json \
+  --json \
+  --check-contract
+```
+The locator reads the latest explorer_memory_replay_smoke*.json artifact from
+an explicit path or search roots, validates the smoke/yield contract, and prints
+the compact memory_replay_summary and detailed memory_replay_yield metrics.
+It is read-only and does not run explorer, memory replay, semantic retrieval, or
+embedding computation.
+
+---
+
 ## Related modules
 
 ```text
