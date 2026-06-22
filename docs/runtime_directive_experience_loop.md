@@ -1,3 +1,88 @@
+## Contents
+
+- [Common Safety Guarantees](#common-safety-guarantees)
+- [Purpose](#purpose)
+- [Runtime chain](#runtime-chain)
+- [Start a local runtime](#start-a-local-runtime)
+- [Seed a safe directive](#seed-a-safe-directive)
+- [Verify directive result](#verify-directive-result)
+- [Publish evidence](#publish-evidence)
+- [Bridge evidence into memory](#bridge-evidence-into-memory)
+- [Inspect the full chain](#inspect-the-full-chain)
+- [Scenario regression](#scenario-regression)
+- [Replay advisory extension](#replay-advisory-extension)
+- [Gated replay directive](#gated-replay-directive)
+- [Replay execution evidence](#replay-execution-evidence)
+- [Replay evidence memory lifecycle](#replay-evidence-memory-lifecycle)
+- [One-command replay evidence check](#one-command-replay-evidence-check)
+- [Replay lifecycle retry proposals](#replay-lifecycle-retry-proposals)
+- [Replay lifecycle retry approvals](#replay-lifecycle-retry-approvals)
+- [Replay lifecycle retry execution plans](#replay-lifecycle-retry-execution-plans)
+- [Replay retry plan runner](#replay-retry-plan-runner)
+- [Retry governance trail inspection](#retry-governance-trail-inspection)
+- [Synthetic retry governance trail seeding](#synthetic-retry-governance-trail-seeding)
+- [Safety guarantees](#safety-guarantees)
+- [Retry governance observability check](#retry-governance-observability-check)
+- [One-command retry governance smoke](#one-command-retry-governance-smoke)
+- [Replay retry rendered commands](#replay-retry-rendered-commands)
+- [Rendered retry command dry-run runner](#rendered-retry-command-dry-run-runner)
+- [Retry execution eligibility gate](#retry-execution-eligibility-gate)
+- [Seven-stage retry governance safe path](#seven-stage-retry-governance-safe-path)
+- [Pre-controlled-runner readiness](#pre-controlled-runner-readiness)
+- [Controlled retry runner contract](#controlled-retry-runner-contract)
+- [Reject-only controlled runner skeleton](#reject-only-controlled-runner-skeleton)
+- [Controlled execution observability check](#controlled-execution-observability-check)
+- [Controlled mock execution adapter](#controlled-mock-execution-adapter)
+- [Controlled execution readiness report](#controlled-execution-readiness-report)
+- [Mock execution visibility](#mock-execution-visibility)
+- [Mock execution summary records](#mock-execution-summary-records)
+- [Controlled retry execution adapter contract](#controlled-retry-execution-adapter-contract)
+- [Adapter contract observability](#adapter-contract-observability)
+- [Adapter contract readiness gates](#adapter-contract-readiness-gates)
+- [Adapter contract violation fixtures](#adapter-contract-violation-fixtures)
+- [Controlled execution readiness JSON schema](#controlled-execution-readiness-json-schema)
+- [Real adapter placeholder](#real-adapter-placeholder)
+- [Unsupported real adapter observability](#unsupported-real-adapter-observability)
+- [Real adapter threat model](#real-adapter-threat-model)
+- [Real adapter preflight contract](#real-adapter-preflight-contract)
+- [Real execution CLI scaffold](#real-execution-cli-scaffold)
+- [Real execution request observability](#real-execution-request-observability)
+- [Real execution preflight records](#real-execution-preflight-records)
+- [Real preflight observability](#real-preflight-observability)
+- [Explicit real execution approval records](#explicit-real-execution-approval-records)
+- [Final real execution gate](#final-real-execution-gate)
+- [Real execution dry-run envelope](#real-execution-dry-run-envelope)
+- [Guarded noop execution harness](#guarded-noop-execution-harness)
+- [Read-only evidence command promotion](#read-only-evidence-command-promotion)
+- [Read-only execution final gate](#read-only-execution-final-gate)
+- [Read-only execution approval scaffold](#read-only-execution-approval-scaffold)
+- [Read-only execution approval transition](#read-only-execution-approval-transition)
+- [Read-only execution readiness gate](#read-only-execution-readiness-gate)
+- [Guarded read-only execution result](#guarded-read-only-execution-result)
+- [Read-only execution feedback](#read-only-execution-feedback)
+- [Overseer read-only feedback recommendation](#overseer-read-only-feedback-recommendation)
+- [Read-only execution repair plan](#read-only-execution-repair-plan)
+- [Overseer repair-plan recommendation](#overseer-repair-plan-recommendation)
+- [Read-only repair action bundle](#read-only-repair-action-bundle)
+- [Overseer repair action bundle recommendation](#overseer-repair-action-bundle-recommendation)
+- [Repair action bundle operator review](#repair-action-bundle-operator-review)
+- [Overseer repair review recommendation](#overseer-repair-review-recommendation)
+- [Repair execution approval scaffold](#repair-execution-approval-scaffold)
+- [Repair execution approval transition](#repair-execution-approval-transition)
+- [Repair execution final gate](#repair-execution-final-gate)
+- [Repair execution dry-run envelope](#repair-execution-dry-run-envelope)
+- [Repair execution noop harness](#repair-execution-noop-harness)
+- [Repair noop feedback](#repair-noop-feedback)
+- [Repair execution readiness gate](#repair-execution-readiness-gate)
+- [Guarded repair execution result](#guarded-repair-execution-result)
+- [Verified guarded repair loop](#verified-guarded-repair-loop)
+- [Post-repair evidence check](#post-repair-evidence-check)
+- [Sandbox execution substrate closure](#sandbox-execution-substrate-closure)
+- [Execution risk tiers](#execution-risk-tiers)
+- [Transition rule](#transition-rule)
+- [Explorer Network-Read Evidence Loop](#explorer-network-read-evidence-loop)
+- [Related modules](#related-modules)
+
 # Runtime Directive Experience Loop
 
 BlackSwan now supports a controlled runtime experience loop:
@@ -53,6 +138,21 @@ execution_enabled=False
 ```
 
 It never enables live execution.
+
+---
+
+## Common Safety Guarantees
+
+Unless explicitly stated otherwise for a specific execution artifact (e.g., guarded repair execution or post-repair evidence check), all read‑only and scaffold artifacts in this document share the following invariants:
+
+- `execution_performed=false`
+- `subprocess_invoked=false`
+- `real_execution_enabled=false`
+- `external_side_effects_performed=false`
+- `production_paths_mutated=false`
+- `production_secrets_accessed=false`
+
+Any artifact that must deviate from these defaults will document the allowed exceptions and the additional safety gates that justify them.
 
 ---
 
@@ -1951,22 +2051,16 @@ Inspector, Readiness-style gates, and Overseer brief metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold observed
-Security record type count > 0
-Inspector scaffold linkage complete
-sandbox scaffold orphans = 0
-sandbox_adapter_scaffold_status=defined
-sandbox_adapter_fail_closed=true
-sandbox_adapter_deny_by_default=true
-sandbox_execution_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-external_side_effects_performed=false
-production_paths_mutated=false
-production_secrets_accessed=false
-```
+- `replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold` observed
+- Security record type count > 0
+- Inspector scaffold linkage complete
+- sandbox scaffold orphans = 0
+- `sandbox_adapter_scaffold_status=defined`
+- `sandbox_adapter_fail_closed=true`
+- `sandbox_adapter_deny_by_default=true`
+- `sandbox_execution_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
 
 ---
 
@@ -1986,25 +2080,21 @@ sandbox adapter requests, create workspaces, materialize inputs, render commands
 run sandbox execution, generate results, invoke subprocesses, or enable real
 execution.
 
-Expected safe fields include:
+- `replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight` observed
+- Security record type count > 0
+- Inspector request preflight linkage complete
+- sandbox request preflight orphans = 0
+- `sandbox_adapter_request_preflight_status=blocked`
+- `sandbox_adapter_request_preflight_fail_closed=true`
+- `sandbox_adapter_request_preflight_deny_by_default=true`
+- `sandbox_adapter_request_generation_enabled=false`
+- `sandbox_workspace_creation_enabled=false`
+- `sandbox_input_materialization_enabled=false`
+- `sandbox_command_rendering_enabled=false`
+- `sandbox_execution_enabled=false`
+- `sandbox_result_generation_enabled=false`
 
-```text
-sandbox_adapter_request_preflight_status=blocked
-sandbox_adapter_request_preflight_fail_closed=true
-sandbox_adapter_request_preflight_deny_by_default=true
-sandbox_adapter_request_generation_enabled=false
-sandbox_workspace_creation_enabled=false
-sandbox_input_materialization_enabled=false
-sandbox_command_rendering_enabled=false
-sandbox_execution_enabled=false
-sandbox_result_generation_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-external_side_effects_performed=false
-production_paths_mutated=false
-production_secrets_accessed=false
-```
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
 
 ---
 
@@ -2110,30 +2200,25 @@ brief metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold observed
-Security record type count > 0
-Inspector envelope scaffold linkage complete
-sandbox request envelope scaffold orphans = 0
-sandbox_request_envelope_scaffold_status=blocked
-sandbox_request_envelope_scaffold_fail_closed=true
-sandbox_request_envelope_scaffold_deny_by_default=true
-sandbox_request_envelope_generation_enabled=false
-sandbox_request_envelope_materialized=false
-sandbox_request_envelope_executable=false
-sandbox_adapter_request_generation_enabled=false
-sandbox_workspace_creation_enabled=false
-sandbox_input_materialization_enabled=false
-sandbox_command_rendering_enabled=false
-sandbox_execution_enabled=false
-sandbox_result_generation_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-external_side_effects_performed=false
-production_paths_mutated=false
-production_secrets_accessed=false
-```
+- `replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold` observed
+- Security record type count > 0
+- Inspector envelope scaffold linkage complete
+- sandbox request envelope scaffold orphans = 0
+- `sandbox_request_envelope_scaffold_status=blocked`
+- `sandbox_request_envelope_scaffold_fail_closed=true`
+- `sandbox_request_envelope_scaffold_deny_by_default=true`
+- `sandbox_request_envelope_generation_enabled=false`
+- `sandbox_request_envelope_materialized=false`
+- `sandbox_request_envelope_executable=false`
+- `sandbox_adapter_request_generation_enabled=false`
+- `sandbox_workspace_creation_enabled=false`
+- `sandbox_input_materialization_enabled=false`
+- `sandbox_command_rendering_enabled=false`
+- `sandbox_execution_enabled=false`
+- `sandbox_result_generation_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
+
 Runtime command:
 ```bash
 python -m src.testing.check_sandbox_request_envelope_scaffold_observability \
@@ -2207,31 +2292,28 @@ gates, and Overseer brief metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold observed
-Security record type count > 0
-Inspector materialization preflight scaffold linkage complete
-sandbox materialization preflight scaffold orphans = 0
-sandbox_materialization_preflight_scaffold_status=blocked
-sandbox_materialization_preflight_scaffold_fail_closed=true
-sandbox_materialization_preflight_scaffold_deny_by_default=true
-sandbox_materialization_preflight_enabled=false
-sandbox_materialization_preflight_passed=false
-sandbox_request_envelope_generation_enabled=false
-sandbox_request_envelope_materialized=false
-sandbox_request_envelope_executable=false
-sandbox_workspace_creation_enabled=false
-sandbox_input_materialization_enabled=false
-sandbox_command_rendering_enabled=false
-sandbox_execution_enabled=false
-sandbox_result_generation_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-external_side_effects_performed=false
-production_paths_mutated=false
-production_secrets_accessed=false
-```
+The check requires:
+
+- `replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold` observed
+- Security record type count > 0
+- Inspector materialization preflight scaffold linkage complete
+- sandbox materialization preflight scaffold orphans = 0
+- `sandbox_materialization_preflight_scaffold_status=blocked`
+- `sandbox_materialization_preflight_scaffold_fail_closed=true`
+- `sandbox_materialization_preflight_scaffold_deny_by_default=true`
+- `sandbox_materialization_preflight_enabled=false`
+- `sandbox_materialization_preflight_passed=false`
+- `sandbox_request_envelope_generation_enabled=false`
+- `sandbox_request_envelope_materialized=false`
+- `sandbox_request_envelope_executable=false`
+- `sandbox_workspace_creation_enabled=false`
+- `sandbox_input_materialization_enabled=false`
+- `sandbox_command_rendering_enabled=false`
+- `sandbox_execution_enabled=false`
+- `sandbox_result_generation_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
+
 Runtime command:
 ```bash
 python -m src.testing.check_sandbox_materialization_preflight_scaffold_observability \
@@ -2312,33 +2394,28 @@ brief metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold observed
-Security record type count > 0
-Inspector workspace plan scaffold linkage complete
-sandbox workspace plan scaffold orphans = 0
-sandbox_workspace_plan_scaffold_status=blocked
-sandbox_workspace_plan_scaffold_fail_closed=true
-sandbox_workspace_plan_scaffold_deny_by_default=true
-sandbox_workspace_plan_generation_enabled=false
-sandbox_workspace_plan_materialized=false
-sandbox_workspace_plan_executable=false
-sandbox_workspace_directory_creation_enabled=false
-sandbox_workspace_created=false
-sandbox_workspace_cleanup_registered=false
-sandbox_materialization_preflight_enabled=false
-sandbox_materialization_preflight_passed=false
-sandbox_workspace_creation_enabled=false
-sandbox_input_materialization_enabled=false
-sandbox_command_rendering_enabled=false
-sandbox_execution_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-external_side_effects_performed=false
-production_paths_mutated=false
-production_secrets_accessed=false
-```
+- `replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold` observed
+- Security record type count > 0
+- Inspector workspace plan scaffold linkage complete
+- sandbox workspace plan scaffold orphans = 0
+- `sandbox_workspace_plan_scaffold_status=blocked`
+- `sandbox_workspace_plan_scaffold_fail_closed=true`
+- `sandbox_workspace_plan_scaffold_deny_by_default=true`
+- `sandbox_workspace_plan_generation_enabled=false`
+- `sandbox_workspace_plan_materialized=false`
+- `sandbox_workspace_plan_executable=false`
+- `sandbox_workspace_directory_creation_enabled=false`
+- `sandbox_workspace_created=false`
+- `sandbox_workspace_cleanup_registered=false`
+- `sandbox_materialization_preflight_enabled=false`
+- `sandbox_materialization_preflight_passed=false`
+- `sandbox_workspace_creation_enabled=false`
+- `sandbox_input_materialization_enabled=false`
+- `sandbox_command_rendering_enabled=false`
+- `sandbox_execution_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
+
 Runtime command:
 ```bash
 python -m src.testing.check_sandbox_workspace_plan_scaffold_observability \
@@ -2416,34 +2493,29 @@ and Overseer brief metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold observed
-Security record type count > 0
-Inspector workspace preparation preflight scaffold linkage complete
-sandbox workspace preparation preflight scaffold orphans = 0
-sandbox_workspace_preparation_preflight_scaffold_status=blocked
-sandbox_workspace_preparation_preflight_scaffold_fail_closed=true
-sandbox_workspace_preparation_preflight_scaffold_deny_by_default=true
-sandbox_workspace_preparation_preflight_enabled=false
-sandbox_workspace_preparation_preflight_passed=false
-sandbox_workspace_plan_generation_enabled=false
-sandbox_workspace_plan_materialized=false
-sandbox_workspace_plan_executable=false
-sandbox_workspace_directory_creation_enabled=false
-sandbox_workspace_created=false
-sandbox_workspace_cleanup_registered=false
-sandbox_workspace_creation_enabled=false
-sandbox_input_materialization_enabled=false
-sandbox_command_rendering_enabled=false
-sandbox_execution_enabled=false
-sandbox_result_generation_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-external_side_effects_performed=false
-production_paths_mutated=false
-production_secrets_accessed=false
-```
+- `replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold` observed
+- Security record type count > 0
+- Inspector workspace preparation preflight scaffold linkage complete
+- sandbox workspace preparation preflight scaffold orphans = 0
+- `sandbox_workspace_preparation_preflight_scaffold_status=blocked`
+- `sandbox_workspace_preparation_preflight_scaffold_fail_closed=true`
+- `sandbox_workspace_preparation_preflight_scaffold_deny_by_default=true`
+- `sandbox_workspace_preparation_preflight_enabled=false`
+- `sandbox_workspace_preparation_preflight_passed=false`
+- `sandbox_workspace_plan_generation_enabled=false`
+- `sandbox_workspace_plan_materialized=false`
+- `sandbox_workspace_plan_executable=false`
+- `sandbox_workspace_directory_creation_enabled=false`
+- `sandbox_workspace_created=false`
+- `sandbox_workspace_cleanup_registered=false`
+- `sandbox_workspace_creation_enabled=false`
+- `sandbox_input_materialization_enabled=false`
+- `sandbox_command_rendering_enabled=false`
+- `sandbox_execution_enabled=false`
+- `sandbox_result_generation_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
+
 Runtime command:
 ```text
 python -m src.testing.check_sandbox_workspace_preparation_preflight_scaffold_observability \
@@ -2523,35 +2595,30 @@ Overseer brief metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold observed
-Security record type count > 0
-Inspector input materialization plan scaffold linkage complete
-sandbox input materialization plan scaffold orphans = 0
-sandbox_input_materialization_plan_scaffold_status=blocked
-sandbox_input_materialization_plan_scaffold_fail_closed=true
-sandbox_input_materialization_plan_scaffold_deny_by_default=true
-sandbox_input_materialization_plan_generation_enabled=false
-sandbox_input_materialization_plan_materialized=false
-sandbox_input_materialization_plan_executable=false
-sandbox_input_materialization_enabled=false
-sandbox_inputs_materialized=false
-sandbox_workspace_preparation_preflight_enabled=false
-sandbox_workspace_preparation_preflight_passed=false
-sandbox_workspace_directory_creation_enabled=false
-sandbox_workspace_created=false
-sandbox_workspace_cleanup_registered=false
-sandbox_workspace_creation_enabled=false
-sandbox_command_rendering_enabled=false
-sandbox_execution_enabled=false
-sandbox_result_generation_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-external_side_effects_performed=false
-production_paths_mutated=false
-production_secrets_accessed=false
-```
+- `replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold` observed
+- Security record type count > 0
+- Inspector input materialization plan scaffold linkage complete
+- sandbox input materialization plan scaffold orphans = 0
+- `sandbox_input_materialization_plan_scaffold_status=blocked`
+- `sandbox_input_materialization_plan_scaffold_fail_closed=true`
+- `sandbox_input_materialization_plan_scaffold_deny_by_default=true`
+- `sandbox_input_materialization_plan_generation_enabled=false`
+- `sandbox_input_materialization_plan_materialized=false`
+- `sandbox_input_materialization_plan_executable=false`
+- `sandbox_input_materialization_enabled=false`
+- `sandbox_inputs_materialized=false`
+- `sandbox_workspace_preparation_preflight_enabled=false`
+- `sandbox_workspace_preparation_preflight_passed=false`
+- `sandbox_workspace_directory_creation_enabled=false`
+- `sandbox_workspace_created=false`
+- `sandbox_workspace_cleanup_registered=false`
+- `sandbox_workspace_creation_enabled=false`
+- `sandbox_command_rendering_enabled=false`
+- `sandbox_execution_enabled=false`
+- `sandbox_result_generation_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
+
 Runtime command:
 ```bash
 python -m src.testing.check_sandbox_input_materialization_plan_scaffold_observability \
@@ -2633,25 +2700,23 @@ Overseer brief metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_command_render_plan_scaffold observed
-Security record type count > 0
-Inspector command render plan scaffold linkage complete
-sandbox command render plan scaffold orphans = 0
-sandbox_command_render_plan_scaffold_status=blocked
-sandbox_command_render_plan_scaffold_fail_closed=true
-sandbox_command_render_plan_scaffold_deny_by_default=true
-sandbox_command_render_plan_generation_enabled=false
-sandbox_command_render_plan_materialized=false
-sandbox_command_render_plan_executable=false
-sandbox_command_rendering_enabled=false
-sandbox_command_rendered=false
-sandbox_rendered_command_validated=false
-sandbox_execution_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-```
+- `replay_lifecycle_retry_real_execution_sandbox_command_render_plan_scaffold` observed
+- Security record type count > 0
+- Inspector command render plan scaffold linkage complete
+- sandbox command render plan scaffold orphans = 0
+- `sandbox_command_render_plan_scaffold_status=blocked`
+- `sandbox_command_render_plan_scaffold_fail_closed=true`
+- `sandbox_command_render_plan_scaffold_deny_by_default=true`
+- `sandbox_command_render_plan_generation_enabled=false`
+- `sandbox_command_render_plan_materialized=false`
+- `sandbox_command_render_plan_executable=false`
+- `sandbox_command_rendering_enabled=false`
+- `sandbox_command_rendered=false`
+- `sandbox_rendered_command_validated=false`
+- `sandbox_execution_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
+
 Runtime command:
 ```bash
 python -m src.testing.check_sandbox_command_render_plan_scaffold_observability \
@@ -2732,29 +2797,27 @@ metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold observed
-Security record type count > 0
-Inspector rendered command scaffold linkage complete
-sandbox rendered command scaffold orphans = 0
-sandbox_rendered_command_scaffold_status=blocked
-sandbox_rendered_command_scaffold_fail_closed=true
-sandbox_rendered_command_scaffold_deny_by_default=true
-sandbox_rendered_command_generation_enabled=false
-sandbox_rendered_command_materialized=false
-sandbox_rendered_command_executable=false
-sandbox_rendered_command_validated=false
-sandbox_command_render_plan_generation_enabled=false
-sandbox_command_render_plan_materialized=false
-sandbox_command_render_plan_executable=false
-sandbox_command_rendering_enabled=false
-sandbox_command_rendered=false
-sandbox_execution_enabled=false
-sandbox_result_generation_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-```
+- `replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold` observed
+- Security record type count > 0
+- Inspector rendered command scaffold linkage complete
+- sandbox rendered command scaffold orphans = 0
+- `sandbox_rendered_command_scaffold_status=blocked`
+- `sandbox_rendered_command_scaffold_fail_closed=true`
+- `sandbox_rendered_command_scaffold_deny_by_default=true`
+- `sandbox_rendered_command_generation_enabled=false`
+- `sandbox_rendered_command_materialized=false`
+- `sandbox_rendered_command_executable=false`
+- `sandbox_rendered_command_validated=false`
+- `sandbox_command_render_plan_generation_enabled=false`
+- `sandbox_command_render_plan_materialized=false`
+- `sandbox_command_render_plan_executable=false`
+- `sandbox_command_rendering_enabled=false`
+- `sandbox_command_rendered=false`
+- `sandbox_execution_enabled=false`
+- `sandbox_result_generation_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
+
 Runtime command:
 ```bash
 python -m src.testing.check_sandbox_rendered_command_scaffold_observability \
@@ -2832,28 +2895,26 @@ gates, and Overseer brief metrics.
 
 The check requires:
 
-```text
-replay_lifecycle_retry_real_execution_sandbox_rendered_command_validation_scaffold observed
-Security record type count > 0
-Inspector rendered command validation scaffold linkage complete
-sandbox rendered command validation scaffold orphans = 0
-sandbox_rendered_command_validation_scaffold_status=blocked
-sandbox_rendered_command_validation_scaffold_fail_closed=true
-sandbox_rendered_command_validation_scaffold_deny_by_default=true
-sandbox_rendered_command_validation_enabled=false
-sandbox_rendered_command_validation_performed=false
-sandbox_rendered_command_validation_passed=false
-sandbox_rendered_command_validation_failed=false
-sandbox_rendered_command_generation_enabled=false
-sandbox_rendered_command_materialized=false
-sandbox_rendered_command_executable=false
-sandbox_rendered_command_validated=false
-sandbox_execution_enabled=false
-sandbox_result_generation_enabled=false
-execution_performed=false
-subprocess_invoked=false
-real_execution_enabled=false
-```
+- `replay_lifecycle_retry_real_execution_sandbox_rendered_command_validation_scaffold` observed
+- Security record type count > 0
+- Inspector rendered command validation scaffold linkage complete
+- sandbox rendered command validation scaffold orphans = 0
+- `sandbox_rendered_command_validation_scaffold_status=blocked`
+- `sandbox_rendered_command_validation_scaffold_fail_closed=true`
+- `sandbox_rendered_command_validation_scaffold_deny_by_default=true`
+- `sandbox_rendered_command_validation_enabled=false`
+- `sandbox_rendered_command_validation_performed=false`
+- `sandbox_rendered_command_validation_passed=false`
+- `sandbox_rendered_command_validation_failed=false`
+- `sandbox_rendered_command_generation_enabled=false`
+- `sandbox_rendered_command_materialized=false`
+- `sandbox_rendered_command_executable=false`
+- `sandbox_rendered_command_validated=false`
+- `sandbox_execution_enabled=false`
+- `sandbox_result_generation_enabled=false`
+
+All common safety guarantees apply (see [Common Safety Guarantees](#common-safety-guarantees)).
+
 Runtime command:
 ```text
 python -m src.testing.check_sandbox_rendered_command_validation_scaffold_observability \
@@ -2889,6 +2950,8 @@ sandbox command render plan scaffold
 sandbox rendered command scaffold
 sandbox rendered command validation scaffold
 ```
+
+The sandbox execution substrate is intentionally closed at the rendered command validation scaffold stage. This means that all necessary pre‑execution safety artifacts (adapter, request, envelope, materialization, workspace, input plan, command rendering, and validation) have been created in a fail‑closed state. Actual sandbox execution remains impossible without a separate, explicit PR that introduces a controlled execution adapter and passes all the safety gates defined in this document. The current closed contour serves as a reusable reference safety layer for any swarm that requires sandboxed command execution.
 
 This contour intentionally stops before actual sandbox execution. The final
 completed state verifies:

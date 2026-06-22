@@ -104,6 +104,8 @@ proposal
 
 The loop is intentionally fail-closed and audit-first:
 
+Full operator runbook: [Controlled Retry and Guarded Repair Runbook](docs/controlled_retry_guarded_repair_runbook.md).
+
 * Every stage emits immutable CRDT audit records.
 * Inspector summaries verify linkage and orphan counts between stages.
 * Security validation rejects missing identifiers, unsafe flags, invalid transitions, or unexpected execution.
@@ -482,183 +484,142 @@ Overseer consumes memory intelligence and maps it into policy directives:
 
 ## Quick Start
 
+### 1. Install and verify the core
+
 ```bash
 git clone https://github.com/Deus-corp/BlackSwan.git
 cd BlackSwan
-
 pip install -r requirements.txt
 ```
 
-Run tests:
+Run basic tests (core and unit):
 
 ```bash
 python -m pytest -q tests/unit/core tests/unit --maxfail=1
-python -m src.testing.swarm_runtime_smoke
 ```
 
-Run simulation experiments:
+### 2. Simplest safe cluster
+
+By default the `up` command uses the `full-safe` profile and starts a single
+trade node in dry-run mode together with Overseer, Security, and other
+supporting services:
 
 ```bash
-python -m sim.run --no-plot
-python -m sim.sweep --output artifacts/sim/sweep_results.json
-python -m sim.multi_agent_sim
-python -m sim.evolve_kelly
+python -m src.swarms.runtime.cluster_cli up --duration 30
 ```
 
-Run a lightweight local multi-swarm cluster with Overseer, Memory, and Simulation:
+The `--safe` and `--dry-run` flags are on by default; real execution is impossible.
+
+### 3. Profiles for common scenarios
+
+Use `--profile` to quickly launch a specific set of services:
+
+| Profile | Purpose |
+| :--- | :--- |
+| `full-safe` (default) | Full safe cluster with trade, security, overseer, etc. |
+| `explorer-evidence` | Explorer only (read‑only data collection) |
+| `memory-evidence` | Memory only (local indexing) |
+| `explorer-memory-evidence` | Explorer + Memory (full collection and indexing pipeline) |
+
+Example: start Explorer and Memory together:
 
 ```bash
-python -m src.swarms.runtime.cluster_cli up \
-  --no-trade \
-  --no-explorer \
-  --no-explorer-meta \
-  --no-security \
-  --no-security-meta \
-  --memory-nodes 1 \
-  --simulation-nodes 1 \
-  --duration 35 \
-  --overseer-interval 10 \
-  --safe \
-  --echo \
-  --no-strict
+python -m src.swarms.runtime.cluster_cli up --profile explorer-memory-evidence --duration 60
 ```
 
-Inspect the latest local cluster:
+All profiles force safe mode unless `--unsafe` is passed.
+
+### 4. Explorer → Memory replay smoke (single command)
+
+Verify the entire Explorer-to-Memory path without a running cluster:
 
 ```bash
-python -m src.swarms.runtime.cluster_cli status
-python -m src.swarms.runtime.cluster_cli logs --tail 80 overseer memory-1 simulation-1
+python -m src.swarms.runtime.cluster_cli memory-replay-smoke \
+  --goal "autonomous agents memory systems" --ticks 3 --write-latest --check-contract
 ```
 
-Expected Overseer signal:
+Inspect the persisted artifact immediately:
 
-```text
-Overseer generic swarm counts: {'memory': 1, 'simulation': 1, 'overseer': 1}
-Overseer memory intelligence: status=valuable_activity gold=1 directive=promote_gold severity=info
+```bash
+python -m src.swarms.runtime.cluster_cli memory-replay-latest --json --check-contract
 ```
+
+See [Cluster Latest Artifacts Lifecycle](docs/cluster_latest_artifacts_lifecycle.md) for more details.
+
+### 5. Artifact inspection and cleanup
+
+List all latest artifacts with contract checks:
+
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts --json --check-contract --retention-max-age-days 7
+```
+
+Cleanup (dry‑run first, then execute):
+
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts-cleanup \
+  --retention-max-age-days 7 --dry-run --json --check-contract
+
+python -m src.swarms.runtime.cluster_cli latest-artifacts-cleanup \
+  --retention-max-age-days 7 --execute-delete-local-artifacts --json --check-contract
+```
+
+### 6. Verify the controlled retry and guarded repair loop
+
+Step‑by‑step instructions are in the
+[Controlled Retry and Guarded Repair Runbook](docs/controlled_retry_guarded_repair_runbook.md).
 
 ---
 
 ## Local Runtime Examples
 
-Launch trade plus memory and simulation:
+### Quick profiles
+
+Built‑in profiles cover most development and testing needs:
+
+- **Full safe cluster with all services:**
+  ```bash
+  python -m src.swarms.runtime.cluster_cli up --profile full-safe --duration 120 --echo
+  ```
+- **Explorer + Memory (collection and indexing):**
+  ```bash
+  python -m src.swarms.runtime.cluster_cli up --profile explorer-memory-evidence --duration 60 --echo
+  ```
+- **Memory only (ingestion / catalog testing):**
+  ```bash
+  python -m src.swarms.runtime.cluster_cli up --profile memory-evidence --duration 60
+  ```
+
+Logs are written to `data/cluster_runtime/latest/logs/`. Inspect them with:
+
+```bash
+python -m src.swarms.runtime.cluster_cli logs --tail 80 trade-1 overseer
+```
+
+### Manual composition (low‑level control)
+
+When profiles are not suitable, list components explicitly. For example,
+trade and memory only:
 
 ```bash
 python -m src.swarms.runtime.cluster_cli up \
-  --trade-nodes 2 \
+  --trade-nodes 1 \
   --memory-nodes 1 \
-  --simulation-nodes 1 \
-  --duration 120 \
-  --overseer-interval 10 \
-  --safe \
-  --echo
+  --no-security --no-explorer --no-explorer-meta \
+  --no-simulation --no-overseer \
+  --duration 120 --safe --echo
 ```
 
-Check logs:
+### Explorer → Memory replay and artifact lifecycle
 
-```bash
-grep -R "Overseer generic swarm counts\|Published memory swarm heartbeat\|Published simulation swarm heartbeat" \
-  data/cluster_runtime/latest/logs \
-  | tail -100
-```
+Covered in the Quick Start and in
+[Cluster Latest Artifacts Lifecycle](docs/cluster_latest_artifacts_lifecycle.md).
 
-### Explorer → Memory replay and latest artifacts lifecycle
+### Controlled retry and guarded repair (manual verification)
 
-Run the Explorer runtime plus Memory replay contract smoke, persist the latest
-artifact, and validate all contracts:
+Documented in the
+[Controlled Retry and Guarded Repair Runbook](docs/controlled_retry_guarded_repair_runbook.md).
 
-```bash
-python -m src.swarms.runtime.cluster_cli memory-replay-smoke \
-  --goal "autonomous agents memory systems" \
-  --ticks 3 \
-  --json \
-  --write-latest \
-  --check-contract
-```
-Inspect the latest memory replay artifact without passing an explicit path:
-```bash
-python -m src.swarms.runtime.cluster_cli memory-replay-latest \
-  --json \
-  --check-contract
-```
-Index all latest runtime artifacts:
-```bash
-python -m src.swarms.runtime.cluster_cli latest-artifacts \
-  --json \
-  --check-contract \
-  --retention-max-age-days 7
-```
-Run cleanup in dry-run mode:
-```bash
-python -m src.swarms.runtime.cluster_cli latest-artifacts-cleanup \
-  --retention-max-age-days 7 \
-  --dry-run \
-  --json \
-  --check-contract
-```
-Execute local cleanup only through the explicit local-artifacts gate:
-```bash
-python -m src.swarms.runtime.cluster_cli latest-artifacts-cleanup \
-  --retention-max-age-days 7 \
-  --execute-delete-local-artifacts \
-  --json \
-  --check-contract
-```
-The cleanup execute mode deletes only allowlisted local files under
-data/cluster_runtime/latest/artifacts/ that are already reported by
-retention.would_delete.
-
-### Controlled runtime directive seed check
-
-Start a local cluster:
-
-```bash
-rm -f data/cluster_runtime/latest/ledgers/swarm_crdt.local.db*
-rm -f data/cluster_runtime/latest/ledgers/events.local.db*
-
-python -m src.swarms.runtime.cluster_cli up --duration 0 --no-strict
-```
-
-In another terminal, seed a safe directive:
-
-```bash
-python -m src.testing.seed_directive \
-  --action REDUCE_RISK \
-  --target trade \
-  --target-type swarm \
-  --source overseer-seed \
-  --directive-id runtime-reduce-risk-1 \
-  --db-path data/cluster_runtime/latest/ledgers/swarm_crdt.local.db
-```
-
-Expected log:
-
-```text
-Published directive result: directive_id=runtime-reduce-risk-1 status=applied
-```
-
-Inspect CRDT records:
-
-```bash
-python - <<'PY'
-from src.core.crdt_adapter import CRDTAdapter
-
-path = "data/cluster_runtime/latest/ledgers/swarm_crdt.local.db"
-crdt = CRDTAdapter(node_id="debug-reader", db_path=path)
-state = getattr(crdt, "state", {}) or {}
-
-for item in state.values():
-    if isinstance(item, dict) and item.get("type") in {"swarm_directive", "swarm_directive_result"}:
-        print(item.get("type"), item.get("directive_id"), item.get("action"), item.get("status"), item.get("source"), item.get("swarm"))
-PY
-```
-
-Expected CRDT output:
-
-```text
-swarm_directive runtime-reduce-risk-1 REDUCE_RISK issued overseer-seed None
-swarm_directive_result runtime-reduce-risk-1 None applied trade-1 trade
-```
 ---
 
 ## Documentation

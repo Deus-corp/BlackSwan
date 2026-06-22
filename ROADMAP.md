@@ -39,6 +39,14 @@ The long-term goal is a distributed AI system capable of:
 
 BlackSwan is now a laboratory-validated autonomous multi-swarm runtime with a verified controlled retry and guarded repair execution loop.
 
+The latest verified additions since the last roadmap update include:
+
+* ✅ Explorer network‑read evidence loop end‑to‑end (goal → memory_record).
+* ✅ Explorer‑Memory replay smoke contract and yield metrics.
+* ✅ Cluster latest artifacts lifecycle (index, retention, cleanup).
+* ✅ Closed sandbox execution substrate (fail‑closed pre‑execution contour).
+* ✅ Controlled retry and guarded repair runbook with golden‑path smoke.
+
 The current milestone is no longer only "directive lifecycle through CRDT". The system now has an auditable path from failed read-only evidence to reviewed repair, guarded repair execution, and post-repair evidence verification.
 
 ### Validated
@@ -113,6 +121,11 @@ The current milestone is no longer only "directive lifecycle through CRDT". The 
 * ✅ Genetic/evolution engine generalized beyond trading.
 * ✅ Curiosity, survival, and meta-policy components generalized into cognition layer.
 * ✅ Explorer `network_read` execution loop from explicit evidence seed to fetched finding, `USEFUL` classification, memory handoff quality gate, and structured `memory_record`.
+* ✅ Explorer → Memory replay smoke and yield metrics validated.
+* ✅ Cluster latest artifacts lifecycle (index, retention, cleanup dry‑run and execute gate).
+* ✅ Closed policy‑gated sandbox execution substrate through rendered command validation scaffold.
+* ✅ Controlled retry and guarded repair runbook with golden‑path smoke.
+* ✅ Latest runtime artifacts lifecycle operator checklist.
 * ✅ Explorer runtime results can be replayed into deterministic Memory evidence queries through a contract-checked replay artifact.
 * ✅ Memory replay smoke emits detailed `memory_replay_yield` metrics and compact `memory_replay_summary` operator metrics.
 * ✅ Latest runtime artifacts can be persisted under `data/cluster_runtime/latest/artifacts/`, inspected, indexed, contract-checked, and retention-audited.
@@ -183,6 +196,8 @@ Current safety boundary:
 * every stage emits immutable CRDT audit records;
 * readiness fails closed on missing linkage, orphan records, unsafe flags, or unverified repair outcomes.
 
+See the [Controlled Retry and Guarded Repair Runbook](docs/controlled_retry_guarded_repair_runbook.md) for the exact operator checklist and golden‑path smoke.
+
 ---
 
 ## Current Phase — Swarm Execution Transition
@@ -243,6 +258,8 @@ execution.
 
 ### Execution risk tiers
 
+The completed sandbox substrate and the guarded repair runbook serve as reusable safety contours. Future development follows the risk tier model.
+
 ```text
 safe_local_execution
   Local sandbox-only commands.
@@ -282,14 +299,10 @@ system_dangerous_stub
 
 ```text
 P0 — Explorer swarm execution
-  - completed: explicit evidence seed -> network_read -> finding -> USEFUL -> memory_record
-  - next: research goal -> source planner -> high-priority evidence candidates
-  - source discovery
-  - source-specific collection nodes
-  - freshness/ranking
-  - evidence extraction
-  - conflict/quality checks
-  - richer handoff to memory
+  - ✅ completed: explicit evidence seed → network_read → finding → USEFUL → memory_record
+  - ✅ completed: research goal → source planner → high‑priority evidence candidates (via safe public search templates)
+  - ✅ completed: Explorer‑Memory replay smoke and yield metrics
+  - next: source‑specific adapters, freshness/ranking, deduplication, richer handoff to Memory
 
 P0 — Memory swarm execution
   - ingestion
@@ -300,6 +313,7 @@ P0 — Memory swarm execution
   - retrieval/indexing
   - retention/archive policy
   - evidence routing
+  - ✅ completed: memory evidence catalog, deterministic retrieval, vector‑ready schema, heartbeat telemetry
 
 P1 — Safe local execution
   - allowlisted local sandbox subprocess
@@ -499,6 +513,8 @@ Next:
 - add recovery/fallback drills,
 - connect memory directives to safe Overseer actions.
 
+* See the [Cluster Latest Artifacts Lifecycle](docs/cluster_latest_artifacts_lifecycle.md) for ingestion, catalog, and replay smoke workflows.
+
 ### Simulation
 
 Simulation swarm for offline worlds, policy evaluation, counterfactuals, and stress tests.
@@ -553,6 +569,8 @@ Current role:
 - rejects unsafe execution flags, missing linkage identifiers, invalid transitions, orphaned records, and unverified repair outcomes,
 - keeps arbitrary real execution disabled unless a future policy-gated adapter is explicitly introduced.
 
+The full validation and repair lifecycle is documented in the [Controlled Retry and Guarded Repair Runbook](docs/controlled_retry_guarded_repair_runbook.md).
+
 Next:
 
 - dashboard visibility,
@@ -591,6 +609,8 @@ Next:
 * duplicate and conflict handling,
 * richer evidence summaries for Memory and Improver,
 * long-running network-read stability checks.
+
+The Explorer → Memory replay path and artifact lifecycle are described in the [Cluster Latest Artifacts Lifecycle](docs/cluster_latest_artifacts_lifecycle.md).
 
 ### Improver
 
@@ -794,6 +814,13 @@ BlackSwan = trading bot
 
 ## Medium-Term Roadmap
 
+**Phase completion summary (June 2026)**:
+
+- Phase A — Runtime Foundation: **98%** complete (remaining: golden‑path smoke script, dashboard views, cluster profiles).
+- Phase B — Advisory Intelligence: **~85%** complete (explorer source planner, memory dedup/index/routing, simulation execution remain).
+- Phase C — Controlled Autonomy: **~80%** complete (dashboard views, golden‑path smoke, policy‑gated real adapter scaffold remain).
+- Phase D — Production Readiness: **~20%** complete (secrets, deployment, observability, long‑running tests remain).
+
 ### Phase A — Runtime Foundation
 
 * [x] Canonical swarm contracts.
@@ -839,6 +866,10 @@ BlackSwan = trading bot
 * [x] Latest runtime artifact persistence under `data/cluster_runtime/latest/artifacts/`.
 * [x] Latest artifacts index, retention inspection, cleanup dry-run, execute-local gate, and post-cleanup verification.
 * [x] Latest artifacts lifecycle operator checklist.
+* [x] Explorer → Memory replay smoke, yield metrics, latest artifact lifecycle.
+* [x] Cluster latest artifacts index, retention inspection, cleanup (dry‑run + execute gate).
+* [x] Closed policy‑gated sandbox execution substrate.
+* [x] Controlled retry and guarded repair runbook with golden‑path smoke.
 * [ ] Golden-path smoke script for the full controlled retry / guarded repair lifecycle.
 * [ ] Dashboard views for retry governance, guarded execution, repair status, and post-repair evidence.
 * [ ] Better local cluster profiles.
@@ -855,6 +886,9 @@ BlackSwan = trading bot
 * [x] Explorer useful evidence can be handed off to Memory as structured `memory_record`.
 * [x] Explorer → Memory replay smoke validates deterministic Memory retrieval from replayable runtime evidence artifacts.
 * [x] Memory replay summaries expose operator-facing evidence yield metrics for future dashboards.
+* [x] Explorer source‑planned evidence loop with safe public search templates.
+* [x] Memory evidence catalog, deterministic retrieval, vector‑ready schema, heartbeat telemetry.
+* [x] Explorer‑Memory replay smoke yield metrics and compact summary.
 * [ ] Research-goal source planner generates high-priority evidence candidates without manual evidence URLs.
 * [ ] Memory deduplicates, indexes, summarizes, and routes Explorer evidence to Improver and Overseer.
 * [ ] Dashboard-ready summary cards for memory, replay, retry, repair, and post-repair verification.
@@ -871,6 +905,8 @@ BlackSwan = trading bot
 * [x] Security validation for directives, directive results, retry governance, guarded execution, repair, and post-repair verification records.
 * [x] Human-reviewed repair path through repair action bundle review and repair approval transition.
 * [x] Automated regression/smoke pipeline before continuing controlled repair work.
+* [x] Guarded repair execution and post‑repair evidence verification loop closed.
+* [x] Controlled retry and guarded repair runbook and golden‑path smoke.
 * [ ] Dashboard view for briefs, directives, results, evidence, retry governance, repair, and post-repair verification.
 * [ ] Golden-path smoke script that runs the full verified loop.
 * [ ] Safer restart/repair of degraded runtime nodes.
@@ -917,6 +953,10 @@ Out of scope until a separate reviewed milestone:
 * production policy scheduling,
 * multi-proposal batch repair execution,
 * autonomous code-changing execution without explicit review gates.
+
+---
+
+*Runtime runbooks: [Controlled Retry & Guarded Repair](docs/controlled_retry_guarded_repair_runbook.md) | [Cluster Artifacts Lifecycle](docs/cluster_latest_artifacts_lifecycle.md)*
 
 ---
 
