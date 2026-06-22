@@ -21,6 +21,15 @@ from src.testing.check_explorer_memory_replay_smoke import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+DEFAULT_LATEST_ARTIFACT_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "cluster_runtime"
+    / "latest"
+    / "artifacts"
+    / "explorer_memory_replay_smoke.json"
+)
+
 DEFAULT_SOURCE_ADAPTERS = ("github", "arxiv", "search", "sitemap")
 DEFAULT_GOAL = "autonomous agents memory systems"
 DEFAULT_TEXT_QUERY = "agents memory"
@@ -436,6 +445,16 @@ def run_explorer_memory_replay_smoke(
         if output_path:
             _write_json(Path(output_path), summary)
 
+        if bool(getattr(args, "write_latest", False)):
+            summary = {
+                **summary,
+                "latest_artifact_path": str(DEFAULT_LATEST_ARTIFACT_PATH),
+            }
+            _write_json(DEFAULT_LATEST_ARTIFACT_PATH, summary)
+
+            if output_path:
+                _write_json(Path(output_path), summary)
+
         return summary
 
     finally:
@@ -508,6 +527,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--json-output",
         default="",
         help="Optional path to write smoke summary JSON.",
+    )
+    parser.add_argument(
+        "--write-latest",
+        action="store_true",
+        default=False,
+        help=(
+            "Also write the smoke summary to "
+            "data/cluster_runtime/latest/artifacts/"
+            "explorer_memory_replay_smoke.json."
+        ),
     )
     parser.add_argument(
         "--check-contract",

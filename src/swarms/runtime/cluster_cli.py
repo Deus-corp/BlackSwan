@@ -984,6 +984,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional path to write smoke summary JSON.",
     )
     memory_replay_smoke.add_argument(
+        "--write-latest",
+        action="store_true",
+        default=False,
+        help=(
+            "Also write the smoke summary to "
+            "data/cluster_runtime/latest/artifacts/"
+            "explorer_memory_replay_smoke.json."
+        ),
+    )
+    memory_replay_smoke.add_argument(
         "--check-contract",
         action="store_true",
         help="Print explicit explorer memory replay smoke contract confirmation.",
@@ -1106,6 +1116,9 @@ def run_memory_replay_smoke(args: argparse.Namespace) -> int:
     json_output = str(getattr(args, "json_output", "") or "").strip()
     if json_output:
         command.extend(["--json-output", json_output])
+    
+    if bool(getattr(args, "write_latest", False)):
+        command.append("--write-latest")
     
     if bool(getattr(args, "check_contract", False)):
         command.append("--check-contract")

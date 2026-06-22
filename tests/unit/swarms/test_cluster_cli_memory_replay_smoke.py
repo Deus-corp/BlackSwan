@@ -30,6 +30,7 @@ def test_cluster_cli_memory_replay_smoke_help_includes_flags() -> None:
     assert "--text-query" in result.stdout
     assert "--json-output" in result.stdout
     assert "--check-contract" in result.stdout
+    assert "--write-latest" in result.stdout
 
 
 def test_cluster_cli_memory_replay_smoke_passes_check_contract_flag(
@@ -65,6 +66,7 @@ def test_cluster_cli_memory_replay_smoke_passes_check_contract_flag(
         json=True,
         json_output=str(output_path),
         check_contract=True,
+        write_latest=True,
     )
 
     exit_code = cluster_cli.run_memory_replay_smoke(args)
@@ -79,6 +81,7 @@ def test_cluster_cli_memory_replay_smoke_passes_check_contract_flag(
     assert "--json-output" in command
     assert str(output_path) in command
     assert "--check-contract" in command
+    assert "--write-latest" in command
 
 
 def test_cluster_cli_memory_replay_smoke_omits_check_contract_by_default(
@@ -111,6 +114,7 @@ def test_cluster_cli_memory_replay_smoke_omits_check_contract_by_default(
         json=False,
         json_output="",
         check_contract=False,
+        write_latest=False,
     )
 
     exit_code = cluster_cli.run_memory_replay_smoke(args)
@@ -118,6 +122,7 @@ def test_cluster_cli_memory_replay_smoke_omits_check_contract_by_default(
     assert exit_code == 0
     assert len(calls) == 1
     assert "--check-contract" not in calls[0]
+    assert "--write-latest" not in calls[0]
 
 
 def test_cluster_cli_memory_replay_latest_help_includes_flags() -> None:

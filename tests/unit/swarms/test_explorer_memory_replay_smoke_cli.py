@@ -11,6 +11,7 @@ from src.testing.run_explorer_memory_replay_smoke import (
     build_parser,
     run_explorer_memory_replay_smoke,
     _build_memory_replay_summary,
+    DEFAULT_LATEST_ARTIFACT_PATH,
 )
 from src.testing.check_explorer_memory_replay_smoke import (
     validate_explorer_memory_replay_smoke,
@@ -96,6 +97,7 @@ def test_parser_includes_expected_flags() -> None:
     assert "--text-query" in help_text
     assert "--json-output" in help_text
     assert "--check-contract" in help_text
+    assert "--write-latest" in help_text
 
 
 def test_memory_replay_yield_metrics_are_computed() -> None:
@@ -362,3 +364,66 @@ def test_memory_replay_summary_is_compact_operator_view() -> None:
         "replay_acceptance_ratio": 1.0,
         "full_replay_path_ratio": 0.7143,
     }
+
+
+def test_one_command_smoke_writes_latest_artifact(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    latest_path = tmp_path / "latest" / "artifacts" / "explorer_memory_replay_smoke.json"
+
+    monkeypatch.setattr(
+        "src.testing.run_explorer_memory_replay_smoke.DEFAULT_LATEST_ARTIFACT_PATH",
+        latest_path,
+    )
+
+    def fake_runner(command):
+        if "src.testing.run_explorer_network_read_loop" in command:
+            output_path = Path(command[command.index("--json-output") + 1])
+            output_path.write_text(json.dumps(_explorer_result()), encoding="utf-8")
+            return _completed()
+
+        if "src.testing.replay_explorer_memory_evidence_query" in command:
+            output_path = Path(command[command.index("--json-output") + 1])
+            output_path.write_text(
+                json.dumps(_memory_replay_result()),
+                encoding="utf-8",
+            )
+            return _completed()
+
+        raise AssertionError(f"unexpected command: {command}")
+
+    args = argparse.Namespace(
+        goal="autonomous agents memory systems",
+        exploration_run_id="exp-run-smoke-test",
+        ticks=3,
+        source_adapter=None,
+        source_plan=True,
+        memory_replay_artifact_limit=20,
+        text_query="agents memory",
+        limit=5,
+        work_dir=str(tmp_path),
+        keep_artifacts=True,
+        json=False,
+        json_output="",
+        check_contract=True,
+        write_latest=True,
+    )
+
+    summary = run_explorer_memory_replay_smoke(
+        args,
+        command_runner=fake_runner,
+    )
+
+    assert summary["status"] == "passed"
+    assert summary["latest_artifact_path"] == str(latest_path)
+    assert latest_path.exists()
+
+    payload = json.loads(latest_path.read_text(encoding="utf-8"))
+
+    assert payload["type"] == "explorer_memory_replay_smoke_result"
+    assert payload["status"] == "passed"
+    assert payload["latest_artifact_path"] == str(latest_path)
+    assert payload["memory_replay_summary"]["records_published"] == 5
+    assert payload["external_write_performed"] is False
+    assert payload["real_execution_enabled"] is False

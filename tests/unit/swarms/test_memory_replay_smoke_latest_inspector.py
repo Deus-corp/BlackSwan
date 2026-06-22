@@ -112,3 +112,24 @@ def test_inspector_cli_accepts_valid_artifact(tmp_path: Path) -> None:
 
     assert payload["type"] == "memory_replay_latest_summary"
     assert payload["contract_ok"] is True
+
+def test_inspector_finds_artifact_under_latest_artifacts_dir(
+    tmp_path: Path,
+) -> None:
+    latest_root = tmp_path / "data" / "cluster_runtime" / "latest"
+    artifacts_dir = latest_root / "artifacts"
+    artifacts_dir.mkdir(parents=True)
+
+    artifact_path = artifacts_dir / "explorer_memory_replay_smoke.json"
+    artifact_path.write_text(
+        json.dumps(explorer_memory_replay_smoke_result_fixture()),
+        encoding="utf-8",
+    )
+
+    summary = inspect_memory_replay_smoke_latest(
+        search_roots=[latest_root],
+    )
+
+    assert summary["artifact_path"] == str(artifact_path)
+    assert summary["contract_ok"] is True
+    assert summary["memory_replay_summary"]["records_published"] == 7

@@ -3623,6 +3623,31 @@ embedding computation.
 
 ---
 
+### Persisting latest memory replay smoke summary
+
+The memory replay smoke can persist a latest artifact copy under
+`data/cluster_runtime/latest/artifacts/`:
+
+```bash
+python -m src.swarms.runtime.cluster_cli memory-replay-smoke \
+  --goal "autonomous agents memory systems" \
+  --ticks 3 \
+  --json \
+  --write-latest \
+  --check-contract
+```
+After that, the latest artifact can be inspected without an explicit path:
+```bash
+python -m src.swarms.runtime.cluster_cli memory-replay-latest \
+  --json \
+  --check-contract
+```
+This writes only a local testing/runtime artifact summary. It does not perform
+external writes, does not enable real execution, does not mutate production
+paths, does not access production secrets, and does not compute embeddings.
+
+---
+
 ## Related modules
 
 ```text

@@ -21,6 +21,7 @@ DEFAULT_ARTIFACT_PATTERNS = (
 DEFAULT_SEARCH_ROOTS = (
     Path(tempfile.gettempdir()),
     PROJECT_ROOT / "data" / "cluster_runtime" / "latest",
+    PROJECT_ROOT / "data" / "cluster_runtime" / "latest" / "artifacts",
 )
 
 
@@ -83,6 +84,13 @@ def _candidate_paths(
                 and child.suffix == ".json"
             ):
                 candidates[str(child.resolve())] = child
+        
+        artifacts_dir = root / "artifacts"
+        if artifacts_dir.exists() and artifacts_dir.is_dir():
+            for pattern in DEFAULT_ARTIFACT_PATTERNS:
+                for path in artifacts_dir.glob(pattern):
+                    if path.exists() and path.is_file():
+                        candidates[str(path.resolve())] = path
 
     return sorted(
         candidates.values(),
