@@ -940,6 +940,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Explicit dry-run flag. This command never deletes files.",
     )
     latest_artifacts_cleanup.add_argument(
+        "--execute-delete-local-artifacts",
+        action="store_true",
+        default=False,
+        help=(
+            "Execute deletion of stale local latest artifacts from the "
+            "allowlisted latest/artifacts root."
+        ),
+    )
+    latest_artifacts_cleanup.add_argument(
         "--json",
         action="store_true",
         default=False,
@@ -1158,6 +1167,9 @@ def run_latest_artifacts_cleanup(args: argparse.Namespace) -> int:
 
     if bool(getattr(args, "dry_run", False)):
         command.append("--dry-run")
+    
+    if bool(getattr(args, "execute_delete_local_artifacts", False)):
+        command.append("--execute-delete-local-artifacts")
 
     if bool(getattr(args, "json", False)):
         command.append("--json")

@@ -3716,6 +3716,31 @@ flag after the dry-run contract is stable.
 
 ---
 
+### Latest artifact cleanup execute-local-artifacts gate
+
+Latest artifact cleanup remains dry-run by default. Local artifact deletion is
+available only with an explicit gate:
+
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts-cleanup \
+  --retention-max-age-days 7 \
+  --execute-delete-local-artifacts \
+  --json \
+  --check-contract
+```
+The execute mode deletes only files that are already listed in
+retention.would_delete, only when the artifacts root is the allowlisted local
+data/cluster_runtime/latest/artifacts/ directory, and only for regular files
+inside that root.
+
+The result reports local_artifact_deletion_performed, deleted_count,
+deleted, and deletion_errors. It still keeps external_write_performed,
+real_execution_enabled, production_paths_mutated, and
+production_secrets_accessed false because the operation is a local runtime
+artifact cleanup, not an external or production mutation.
+
+---
+
 ## Related modules
 
 ```text

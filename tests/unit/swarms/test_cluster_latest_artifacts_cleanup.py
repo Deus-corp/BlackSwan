@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from src.swarms.runtime import cluster_cli
+from src.testing import cleanup_cluster_latest_artifacts
 from src.testing.cleanup_cluster_latest_artifacts import (
     assert_cluster_latest_artifacts_cleanup_result,
     build_cluster_latest_artifacts_cleanup_result,
@@ -179,6 +180,7 @@ def test_cluster_cli_latest_artifacts_cleanup_help_includes_flags() -> None:
     assert "--dry-run" in result.stdout
     assert "--json" in result.stdout
     assert "--check-contract" in result.stdout
+    assert "--execute-delete-local-artifacts" in result.stdout
 
 
 def test_cluster_cli_latest_artifacts_cleanup_passes_arguments(
@@ -207,6 +209,7 @@ def test_cluster_cli_latest_artifacts_cleanup_passes_arguments(
         dry_run=True,
         json=True,
         check_contract=True,
+        execute_delete_local_artifacts=False,
     )
 
     exit_code = cluster_cli.run_latest_artifacts_cleanup(args)
@@ -224,6 +227,7 @@ def test_cluster_cli_latest_artifacts_cleanup_passes_arguments(
     assert "--dry-run" in command
     assert "--json" in command
     assert "--check-contract" in command
+    assert "--execute-delete-local-artifacts" not in command
 
 
 def test_cluster_cli_latest_artifacts_cleanup_seconds_override(
@@ -250,6 +254,7 @@ def test_cluster_cli_latest_artifacts_cleanup_seconds_override(
         dry_run=True,
         json=True,
         check_contract=True,
+        execute_delete_local_artifacts=False,
     )
 
     exit_code = cluster_cli.run_latest_artifacts_cleanup(args)
@@ -261,3 +266,122 @@ def test_cluster_cli_latest_artifacts_cleanup_seconds_override(
     assert "--retention-max-age-seconds" in command
     assert "30.0" in command
     assert "--retention-max-age-days" not in command
+
+
+def test_cleanup_execute_deletes_stale_allowlisted_artifact(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    artifacts_root = tmp_path / "data" / "cluster_runtime" / "latest" / "artifacts"
+    artifacts_root.mkdir(parents=True)
+
+    monkeypatch.setattr(
+        cleanup_cluster_latest_artifacts,
+        "DEFAULT_ARTIFACTS_ROOT",
+        artifacts_root,
+    )
+
+    artifact_path = artifacts_root / "explorer_memory_replay_smoke.json"
+    artifact_path.write_text(
+        json.dumps(explorer_memory_replay_smoke_result_fixture()),
+        encoding="utf-8",
+    )
+
+    old_mtime = 1_700_000_000.0
+    os.utime(artifact_path, (old_mtime, old_mtime))
+
+    result = build_cluster_latest_artifacts_cleanup_result(
+        retention_max_age_seconds=10.0,
+        now=old_mtime + 100.0,
+        execute_delete_local_artifacts=True,
+    )
+
+    assert result["mode"] == "execute_delete_local_artifacts"
+    assert result["status"] == "completed"
+    assert result["artifacts_root_allowed"] is True
+    assert result["execute_delete_local_artifacts"] is True
+    assert result["local_artifact_deletion_performed"] is True
+    assert result["would_delete_count"] == 1
+    assert result["deleted_count"] == 1
+    assert result["deleted"][0]["name"] == "explorer_memory_replay_smoke"
+    assert result["deletion_errors"] == []
+    assert result["external_write_performed"] is False
+    assert result["production_paths_mutated"] is False
+    assert not artifact_path.exists()
+
+    assert validate_cluster_latest_artifacts_cleanup_result(result) == []
+    assert_cluster_latest_artifacts_cleanup_result(result)
+
+
+def test_cleanup_execute_blocks_non_allowlisted_root(
+    tmp_path: Path,
+) -> None:
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+
+    artifact_path = artifacts_root / "explorer_memory_replay_smoke.json"
+    artifact_path.write_text(
+        json.dumps(explorer_memory_replay_smoke_result_fixture()),
+        encoding="utf-8",
+    )
+
+    old_mtime = 1_700_000_000.0
+    os.utime(artifact_path, (old_mtime, old_mtime))
+
+    result = build_cluster_latest_artifacts_cleanup_result(
+        artifacts_root=artifacts_root,
+        retention_max_age_seconds=10.0,
+        now=old_mtime + 100.0,
+        execute_delete_local_artifacts=True,
+    )
+
+    assert result["mode"] == "execute_delete_local_artifacts"
+    assert result["status"] == "blocked"
+    assert result["artifacts_root_allowed"] is False
+    assert result["deleted_count"] == 0
+    assert result["local_artifact_deletion_performed"] is False
+    assert result["deletion_errors"][0]["reason"] == (
+        "artifacts_root_not_allowlisted"
+    )
+    assert artifact_path.exists()
+
+    errors = validate_cluster_latest_artifacts_cleanup_result(result)
+
+    assert any("artifacts_root_allowed must be true" in error for error in errors)
+
+
+def test_cluster_cli_latest_artifacts_cleanup_passes_execute_flag(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(list(command))
+        return subprocess.CompletedProcess(
+            args=list(command),
+            returncode=0,
+            stdout="",
+            stderr="",
+        )
+
+    monkeypatch.setattr(cluster_cli.subprocess, "run", fake_run)
+
+    args = argparse.Namespace(
+        artifacts_root="",
+        retention_max_age_days=7.0,
+        retention_max_age_seconds=0.0,
+        dry_run=False,
+        execute_delete_local_artifacts=True,
+        json=True,
+        check_contract=True,
+    )
+
+    exit_code = cluster_cli.run_latest_artifacts_cleanup(args)
+
+    assert exit_code == 0
+
+    command = calls[0]
+
+    assert "--execute-delete-local-artifacts" in command
+    assert "--dry-run" not in command
