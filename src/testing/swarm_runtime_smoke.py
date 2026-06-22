@@ -237,12 +237,11 @@ async def check_explorer_dedup() -> None:
 
 
 async def check_improver_dry_cycle() -> None:
+    if _skip_improver_agent_smoke("improver dry cycle"):
+        return
+
     reason = f"smoke-improver-dry-{uuid.uuid4().hex}"
 
-    if ImproverAgent is None:
-        print("⚠️ improver module unavailable; skipping improver dry-cycle smoke")
-        return
-    
     agent = ImproverAgent(
         node_id="improver-smoke-dry",
         single_pass=False,
@@ -855,11 +854,10 @@ async def check_common_lifecycle_security_explorer() -> None:
     assert_true(len(exp_events) == 2, f"expected 2 explorer lifecycle events, got {len(exp_events)}")
 
 async def check_improver_lifecycle_pause_resume() -> None:
-    reason = f"smoke-improver-lifecycle-{uuid.uuid4().hex}"
-
-    if ImproverAgent is None:
-        print("⚠️ improver module unavailable; skipping improver dry-cycle smoke")
+    if _skip_improver_agent_smoke("improver lifecycle pause/resume"):
         return
+
+    reason = f"smoke-improver-lifecycle-{uuid.uuid4().hex}"
 
     agent = ImproverAgent(
         node_id="improver-smoke-lifecycle",
@@ -920,11 +918,10 @@ async def check_improver_lifecycle_pause_resume() -> None:
     await agent.on_shutdown()
 
 async def check_improver_run_once_blocked_without_approval() -> None:
-    reason = f"smoke-improver-runonce-blocked-{uuid.uuid4().hex}"
-
-    if ImproverAgent is None:
-        print("⚠️ improver module unavailable; skipping improver dry-cycle smoke")
+    if _skip_improver_agent_smoke("improver run once blocked without approval"):
         return
+
+    reason = f"smoke-improver-runonce-blocked-{uuid.uuid4().hex}"
 
     agent = ImproverAgent(
         node_id="improver-smoke-runonce-blocked",
@@ -971,11 +968,10 @@ async def check_improver_run_once_blocked_without_approval() -> None:
     await agent.on_shutdown()
 
 async def check_improver_run_once_approved_dry_cycle() -> None:
-    reason = f"smoke-improver-runonce-approved-{uuid.uuid4().hex}"
-
-    if ImproverAgent is None:
-        print("⚠️ improver module unavailable; skipping improver dry-cycle smoke")
+    if _skip_improver_agent_smoke("improver run once approved dry cycle"):
         return
+
+    reason = f"smoke-improver-runonce-approved-{uuid.uuid4().hex}"
 
     agent = ImproverAgent(
         node_id="improver-smoke-runonce-approved",
@@ -1117,11 +1113,10 @@ async def check_security_pause_guard() -> None:
     assert_true(node.is_paused() is False, "security should resume")
 
 async def check_improver_pause_guard() -> None:
-    reason = f"smoke-improver-pause-guard-{uuid.uuid4().hex}"
-
-    if ImproverAgent is None:
-        print("⚠️ improver module unavailable; skipping improver dry-cycle smoke")
+    if _skip_improver_agent_smoke("improver pause guard"):
         return
+
+    reason = f"smoke-improver-pause-guard-{uuid.uuid4().hex}"
 
     agent = ImproverAgent(
         node_id="improver-smoke-pause-guard",
@@ -3374,6 +3369,39 @@ async def _check_retry_governance_smoke() -> dict[str, object]:
             else "unknown"
         ),
     }
+
+def _improver_llm_provider_available() -> bool:
+    """Return whether Improver LLM provider credentials are available.
+
+    Public CI should be able to run the common runtime smoke without requiring
+    Gemini or DeepSeek secrets. ImproverAgent construction is provider-backed,
+    so ImproverAgent smoke checks are skipped when no supported provider
+    credentials are configured.
+    """
+    return any(
+        str(os.getenv(name) or "").strip()
+        for name in (
+            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",
+            "DEEPSEEK_API_KEY",
+        )
+    )
+
+
+def _skip_improver_agent_smoke(check_name: str) -> bool:
+    """Return true when an ImproverAgent smoke check should be skipped."""
+    if ImproverAgent is None:
+        print(f"⚠️ improver module unavailable; skipping {check_name}")
+        return True
+
+    if not _improver_llm_provider_available():
+        print(
+            f"✅ {check_name} skipped: "
+            "no Gemini/DeepSeek API key configured"
+        )
+        return True
+
+    return False
 
 async def main() -> None:
     checks = [

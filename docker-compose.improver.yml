@@ -1,0 +1,23 @@
+services:
+  improver-agent:
+    build:
+      context: .
+    image: blackswan-node:latest
+    entrypoint: [ "python", "/app/src/swarms/improver/cli.py", "--single-pass", "--proposals", "--memory-db", "/app/data/improver_memory/improver_memory.sqlite3" ]
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - GEMINI_MODEL=gemini-3.1-flash-lite
+      - GEMINI_CRITIC_MODEL=gemini-3.1-flash-lite
+      - MEMORY_DB_PATH=/app/data/improver_memory/improver_memory.sqlite3
+    volumes:
+      - ./:/app:ro
+      - ./data/improver_output:/app/data/improver_output
+      - ./data/improver_failed:/app/data/improver_failed
+      - ./data/improver_proposals:/app/data/improver_proposals
+      - ./data/improver_staging:/app/data/improver_staging
+      - ./data/improver_memory:/app/data/improver_memory
+    restart: unless-stopped
+    init: true

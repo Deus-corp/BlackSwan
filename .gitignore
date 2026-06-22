@@ -67,9 +67,6 @@ sim/*_results.json
 artifacts/sim/
 data/sim/
 
-# Local test scripts with secrets
-docker-compose.improver.yml
-
 # Environment files (local, may contain secrets)
 .env
 .env.local
