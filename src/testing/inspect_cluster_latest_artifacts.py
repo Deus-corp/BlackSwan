@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -25,6 +26,10 @@ SAFETY_FLAGS = (
     "production_secrets_accessed",
 )
 
+DEFAULT_RETENTION_MODE = "inspect_only"
+DEFAULT_RETENTION_MAX_AGE_SECONDS = 0.0
+SECONDS_PER_DAY = 86400.0
+
 
 def _json_default(value: Any) -> Any:
     if isinstance(value, Path):
@@ -42,6 +47,90 @@ def _safe_int(value: Any, *, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _safe_float(value: Any, *, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _artifact_age_seconds(
+    *,
+    artifact_mtime: float,
+    now: float,
+) -> float:
+    if artifact_mtime <= 0.0:
+        return 0.0
+
+    return max(0.0, round(now - artifact_mtime, 4))
+
+
+def _retention_summary(
+    artifacts: list[dict[str, Any]],
+    *,
+    max_age_seconds: float = DEFAULT_RETENTION_MAX_AGE_SECONDS,
+    now: float | None = None,
+) -> dict[str, Any]:
+    """Build inspect-only retention summary.
+
+    This function never deletes artifacts. It only reports what a future cleanup
+    command would delete when a positive max_age_seconds threshold is provided.
+    """
+    current_time = float(now if now is not None else time.time())
+    clean_max_age_seconds = max(0.0, float(max_age_seconds or 0.0))
+
+    artifact_mtimes = [
+        _safe_float(artifact.get("artifact_mtime"), default=0.0)
+        for artifact in artifacts
+        if _safe_float(artifact.get("artifact_mtime"), default=0.0) > 0.0
+    ]
+
+    would_delete: list[dict[str, Any]] = []
+
+    for artifact in artifacts:
+        artifact_mtime = _safe_float(
+            artifact.get("artifact_mtime"),
+            default=0.0,
+        )
+        age_seconds = _artifact_age_seconds(
+            artifact_mtime=artifact_mtime,
+            now=current_time,
+        )
+        stale = (
+            clean_max_age_seconds > 0.0
+            and artifact_mtime > 0.0
+            and age_seconds > clean_max_age_seconds
+        )
+
+        artifact["age_seconds"] = age_seconds
+        artifact["stale"] = stale
+
+        if stale:
+            would_delete.append(
+                {
+                    "name": artifact.get("name", ""),
+                    "path": artifact.get("path", ""),
+                    "type": artifact.get("type", ""),
+                    "status": artifact.get("status", ""),
+                    "artifact_mtime": artifact_mtime,
+                    "age_seconds": age_seconds,
+                    "reason": "older_than_retention_max_age",
+                }
+            )
+
+    return {
+        "mode": DEFAULT_RETENTION_MODE,
+        "max_age_seconds": clean_max_age_seconds,
+        "max_age_days": round(clean_max_age_seconds / SECONDS_PER_DAY, 4)
+        if clean_max_age_seconds > 0.0
+        else 0.0,
+        "would_delete_count": len(would_delete),
+        "would_delete": would_delete,
+        "oldest_artifact_mtime": min(artifact_mtimes) if artifact_mtimes else 0.0,
+        "newest_artifact_mtime": max(artifact_mtimes) if artifact_mtimes else 0.0,
+    }
 
 
 def _load_json_mapping(path: Path) -> dict[str, Any]:
@@ -154,6 +243,8 @@ def _artifact_summary(path: Path) -> dict[str, Any]:
 def inspect_cluster_latest_artifacts(
     *,
     artifacts_root: str | Path = "",
+    retention_max_age_seconds: float = DEFAULT_RETENTION_MAX_AGE_SECONDS,
+    now: float | None = None,
 ) -> dict[str, Any]:
     root = Path(artifacts_root) if str(artifacts_root or "").strip() else DEFAULT_ARTIFACTS_ROOT
     paths = _json_artifact_paths(root)
@@ -165,7 +256,14 @@ def inspect_cluster_latest_artifacts(
             "artifacts_root": str(root),
             "artifact_count": 0,
             "known_artifact_count": 0,
+            "invalid_artifact_count": 0,
+            "stale_artifact_count": 0,
             "contract_ok": False,
+            "retention": _retention_summary(
+                [],
+                max_age_seconds=retention_max_age_seconds,
+                now=now,
+            ),
             "artifacts": [],
             "external_write_performed": False,
             "real_execution_enabled": False,
@@ -174,11 +272,25 @@ def inspect_cluster_latest_artifacts(
         }
 
     artifacts = [_artifact_summary(path) for path in paths]
+
+    retention = _retention_summary(
+        artifacts,
+        max_age_seconds=retention_max_age_seconds,
+        now=now,
+    )
+
     known_artifact_count = sum(
         1 for artifact in artifacts if bool(artifact.get("contract_checked"))
     )
     contract_ok = bool(artifacts) and all(
         bool(artifact.get("contract_ok")) for artifact in artifacts
+    )
+
+    invalid_artifact_count = sum(
+        1 for artifact in artifacts if not bool(artifact.get("contract_ok"))
+    )
+    stale_artifact_count = sum(
+        1 for artifact in artifacts if bool(artifact.get("stale"))
     )
 
     return {
@@ -187,7 +299,10 @@ def inspect_cluster_latest_artifacts(
         "artifacts_root": str(root),
         "artifact_count": len(artifacts),
         "known_artifact_count": known_artifact_count,
+        "invalid_artifact_count": invalid_artifact_count,
+        "stale_artifact_count": stale_artifact_count,
         "contract_ok": contract_ok,
+        "retention": retention,
         "artifacts": artifacts,
         "external_write_performed": False,
         "real_execution_enabled": False,
@@ -206,6 +321,25 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Directory containing latest artifact JSON files. Defaults to "
             "data/cluster_runtime/latest/artifacts."
+        ),
+    )
+    parser.add_argument(
+        "--retention-max-age-days",
+        type=float,
+        default=0.0,
+        help=(
+            "Inspect-only retention threshold in days. When > 0, artifacts "
+            "older than this threshold are reported under retention.would_delete. "
+            "No files are deleted."
+        ),
+    )
+    parser.add_argument(
+        "--retention-max-age-seconds",
+        type=float,
+        default=0.0,
+        help=(
+            "Inspect-only retention threshold in seconds. Overrides days when "
+            "provided. No files are deleted."
         ),
     )
     parser.add_argument(
@@ -230,6 +364,18 @@ def _print_human_summary(summary: Mapping[str, Any]) -> None:
     print(f"  artifacts_root:  {summary.get('artifacts_root', '')}")
     print(f"  artifact_count:  {summary.get('artifact_count', 0)}")
     print(f"  contract_ok:     {summary.get('contract_ok')}")
+
+    print(f"  stale_count:     {summary.get('stale_artifact_count', 0)}")
+    print(f"  invalid_count:   {summary.get('invalid_artifact_count', 0)}")
+
+    retention = summary.get("retention")
+    if isinstance(retention, Mapping):
+        print(
+            "  retention:       "
+            f"mode={retention.get('mode', '')} "
+            f"max_age_seconds={retention.get('max_age_seconds', 0.0)} "
+            f"would_delete={retention.get('would_delete_count', 0)}"
+        )
 
     artifacts = summary.get("artifacts")
     if not isinstance(artifacts, list) or not artifacts:
@@ -266,8 +412,23 @@ def _print_human_summary(summary: Mapping[str, Any]) -> None:
 def main() -> None:
     args = build_parser().parse_args()
 
+    retention_max_age_seconds = _safe_float(
+        getattr(args, "retention_max_age_seconds", 0.0),
+        default=0.0,
+    )
+    if retention_max_age_seconds <= 0.0:
+        retention_max_age_days = _safe_float(
+            getattr(args, "retention_max_age_days", 0.0),
+            default=0.0,
+        )
+        retention_max_age_seconds = max(
+            0.0,
+            retention_max_age_days * SECONDS_PER_DAY,
+        )
+
     summary = inspect_cluster_latest_artifacts(
         artifacts_root=str(args.artifacts_root or ""),
+        retention_max_age_seconds=retention_max_age_seconds,
     )
 
     if bool(args.json):

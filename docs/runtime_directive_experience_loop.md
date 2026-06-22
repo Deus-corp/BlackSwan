@@ -3666,6 +3666,35 @@ silently pass CI/operator checks.
 
 ---
 
+### Latest artifact retention inspection
+
+The latest artifacts index includes inspect-only retention metrics:
+
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts \
+  --json \
+  --check-contract \
+  --retention-max-age-days 7
+```
+This reports stale artifacts and a retention.would_delete list without
+deleting files:
+```json
+{
+  "stale_artifact_count": 0,
+  "invalid_artifact_count": 0,
+  "retention": {
+    "mode": "inspect_only",
+    "max_age_seconds": 604800.0,
+    "would_delete_count": 0,
+    "would_delete": []
+  }
+}
+```
+Retention inspection is read-only. Cleanup/deletion, if needed, should be added
+as a separate explicit dry-run-first command.
+
+---
+
 ## Related modules
 
 ```text

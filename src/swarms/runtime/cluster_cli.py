@@ -912,6 +912,24 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     latest_artifacts.add_argument(
+        "--retention-max-age-days",
+        type=float,
+        default=0.0,
+        help=(
+            "Inspect-only retention threshold in days. Reports stale artifacts "
+            "without deleting files."
+        ),
+    )
+    latest_artifacts.add_argument(
+        "--retention-max-age-seconds",
+        type=float,
+        default=0.0,
+        help=(
+            "Inspect-only retention threshold in seconds. Overrides days when "
+            "provided. Reports stale artifacts without deleting files."
+        ),
+    )
+    latest_artifacts.add_argument(
         "--json",
         action="store_true",
         default=False,
@@ -1077,6 +1095,28 @@ def run_latest_artifacts(args: argparse.Namespace) -> int:
 
     print("Inspect cluster latest artifacts:")
     print(" ".join(command))
+
+    retention_max_age_seconds = float(
+        getattr(args, "retention_max_age_seconds", 0.0) or 0.0
+    )
+    if retention_max_age_seconds > 0.0:
+        command.extend(
+            [
+                "--retention-max-age-seconds",
+                str(retention_max_age_seconds),
+            ]
+        )
+    else:
+        retention_max_age_days = float(
+            getattr(args, "retention_max_age_days", 0.0) or 0.0
+        )
+        if retention_max_age_days > 0.0:
+            command.extend(
+                [
+                    "--retention-max-age-days",
+                    str(retention_max_age_days),
+                ]
+            )
 
     completed = subprocess.run(
         command,
