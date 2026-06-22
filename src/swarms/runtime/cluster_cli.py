@@ -899,6 +899,29 @@ def build_parser() -> argparse.ArgumentParser:
         "memory-replay-latest",
         help="Inspect latest explorer memory replay smoke artifact.",
     )
+    latest_artifacts = sub.add_parser(
+        "latest-artifacts",
+        help="Inspect cluster latest runtime artifacts index.",
+    )
+    latest_artifacts.add_argument(
+        "--artifacts-root",
+        default="",
+        help=(
+            "Directory containing latest artifact JSON files. Defaults to "
+            "data/cluster_runtime/latest/artifacts."
+        ),
+    )
+    latest_artifacts.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Print machine-readable JSON summary.",
+    )
+    latest_artifacts.add_argument(
+        "--check-contract",
+        action="store_true",
+        help="Exit with code 1 unless all indexed artifact contracts are valid.",
+    )
     memory_replay_latest.add_argument(
         "--json-path",
         default="",
@@ -1032,6 +1055,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def run_latest_artifacts(args: argparse.Namespace) -> int:
+    """Inspect cluster latest runtime artifacts index."""
+    command = [
+        sys.executable,
+        "-m",
+        "src.testing.inspect_cluster_latest_artifacts",
+    ]
+
+    artifacts_root = str(getattr(args, "artifacts_root", "") or "").strip()
+    if artifacts_root:
+        command.extend(["--artifacts-root", artifacts_root])
+
+    if bool(getattr(args, "json", False)):
+        command.append("--json")
+
+    if bool(getattr(args, "check_contract", False)):
+        command.append("--check-contract")
+
+    print("Inspect cluster latest artifacts:")
+    print(" ".join(command))
+
+    completed = subprocess.run(
+        command,
+        cwd=str(PROJECT_ROOT),
+        check=False,
+        text=True,
+    )
+
+    return int(completed.returncode or 0)
 
 
 def run_memory_replay_latest(args: argparse.Namespace) -> int:
@@ -1394,6 +1448,9 @@ def main() -> None:
         raise SystemExit(run_memory_replay_smoke(args))
     if args.command == "memory-replay-latest":
         raise SystemExit(run_memory_replay_latest(args))
+    
+    if args.command == "latest-artifacts":
+        raise SystemExit(run_latest_artifacts(args))
 
     parser.error(f"Unsupported command: {args.command}")
 

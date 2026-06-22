@@ -3648,6 +3648,24 @@ paths, does not access production secrets, and does not compute embeddings.
 
 ---
 
+### Cluster latest artifacts index
+
+Latest runtime artifacts under `data/cluster_runtime/latest/artifacts/` can be
+indexed with:
+
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts \
+  --json \
+  --check-contract
+```
+The index is read-only. It scans latest artifact JSON files, recognizes known
+artifact types such as explorer_memory_replay_smoke_result, validates their
+contracts, and prints compact operator summaries such as memory_replay_summary.
+Unknown artifact types are included but marked contract-invalid so they do not
+silently pass CI/operator checks.
+
+---
+
 ## Related modules
 
 ```text
