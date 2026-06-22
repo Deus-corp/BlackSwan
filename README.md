@@ -552,6 +552,52 @@ grep -R "Overseer generic swarm counts\|Published memory swarm heartbeat\|Publis
   | tail -100
 ```
 
+### Explorer → Memory replay and latest artifacts lifecycle
+
+Run the Explorer runtime plus Memory replay contract smoke, persist the latest
+artifact, and validate all contracts:
+
+```bash
+python -m src.swarms.runtime.cluster_cli memory-replay-smoke \
+  --goal "autonomous agents memory systems" \
+  --ticks 3 \
+  --json \
+  --write-latest \
+  --check-contract
+```
+Inspect the latest memory replay artifact without passing an explicit path:
+```bash
+python -m src.swarms.runtime.cluster_cli memory-replay-latest \
+  --json \
+  --check-contract
+```
+Index all latest runtime artifacts:
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts \
+  --json \
+  --check-contract \
+  --retention-max-age-days 7
+```
+Run cleanup in dry-run mode:
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts-cleanup \
+  --retention-max-age-days 7 \
+  --dry-run \
+  --json \
+  --check-contract
+```
+Execute local cleanup only through the explicit local-artifacts gate:
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts-cleanup \
+  --retention-max-age-days 7 \
+  --execute-delete-local-artifacts \
+  --json \
+  --check-contract
+```
+The cleanup execute mode deletes only allowlisted local files under
+data/cluster_runtime/latest/artifacts/ that are already reported by
+retention.would_delete.
+
 ### Controlled runtime directive seed check
 
 Start a local cluster:
@@ -610,7 +656,7 @@ swarm_directive_result runtime-reduce-risk-1 None applied trade-1 trade
 * [Documentation site](https://deus-corp.github.io/BlackSwan/)
 * [Roadmap](ROADMAP.md)
 * [Runtime directive experience loop](docs/runtime_directive_experience_loop.md)
-* Controlled retry and guarded repair runbook — coming in PR 37.0
+* [Cluster latest artifacts lifecycle](docs/cluster_latest_artifacts_lifecycle.md)
 * [TRL-4 Validation Report](docs/reports/TRL4_VALIDATION_REPORT.md)
 * [Architecture decisions](docs/architecture/)
 * [Formal verification](formal/tla/)
@@ -650,7 +696,14 @@ Near-term milestone plan:
 PR 38.14d — document execution substrate closure and swarm execution transition
 PR 39.1a–39.1y — explorer network-read evidence loop to memory_record
 PR 39.2a — explorer research-goal source planner and evidence candidate generation
-PR 39.3a — memory ingestion, classification, dedupe, indexing, and retrieval pipeline
+PR 39.3a–39.3e — memory evidence catalog/index/query contracts
+PR 39.4a–39.4e — safe public search templates and source-plan audit contracts
+PR 39.5a–39.5e — vector-ready deterministic memory retrieval contracts
+PR 39.6a–39.6d — explorer runtime memory replay artifact and smoke contracts
+PR 39.7a–39.7d — memory replay smoke yield metrics and reusable fixtures
+PR 39.8a–39.8d — latest memory replay artifacts, locator, index, and retention inspection
+PR 39.9a–39.9d — latest artifacts cleanup dry-run, execute gate, and post-cleanup verification
+PR 39.10a — latest artifacts lifecycle docs and operator checklist
 ```
 
 Explorer direction:

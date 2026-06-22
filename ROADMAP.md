@@ -102,6 +102,10 @@ The current milestone is no longer only "directive lifecycle through CRDT". The 
 * ✅ Genetic/evolution engine generalized beyond trading.
 * ✅ Curiosity, survival, and meta-policy components generalized into cognition layer.
 * ✅ Explorer `network_read` execution loop from explicit evidence seed to fetched finding, `USEFUL` classification, memory handoff quality gate, and structured `memory_record`.
+* ✅ Explorer runtime results can be replayed into deterministic Memory evidence queries through a contract-checked replay artifact.
+* ✅ Memory replay smoke emits detailed `memory_replay_yield` metrics and compact `memory_replay_summary` operator metrics.
+* ✅ Latest runtime artifacts can be persisted under `data/cluster_runtime/latest/artifacts/`, inspected, indexed, contract-checked, and retention-audited.
+* ✅ Latest artifact cleanup supports dry-run by default, an explicit execute-local-artifacts gate, and post-cleanup verification summaries.
 
 ### Latest verified loop
 
@@ -819,6 +823,11 @@ BlackSwan = trading bot
 * [x] Closed fail-closed policy-gated sandbox execution substrate through rendered command validation scaffold.
 * [x] Explorer explicit evidence seed can execute `network_read` and publish a useful `memory_record`.
 * [x] Explorer-to-Memory read-only evidence bridge validated in runtime.
+* [x] Explorer runtime memory replay artifact and query contract smoke.
+* [x] Memory replay smoke yield and compact summary metrics.
+* [x] Latest runtime artifact persistence under `data/cluster_runtime/latest/artifacts/`.
+* [x] Latest artifacts index, retention inspection, cleanup dry-run, execute-local gate, and post-cleanup verification.
+* [x] Latest artifacts lifecycle operator checklist.
 * [ ] Golden-path smoke script for the full controlled retry / guarded repair lifecycle.
 * [ ] Dashboard views for retry governance, guarded execution, repair status, and post-repair evidence.
 * [ ] Better local cluster profiles.
@@ -833,6 +842,8 @@ BlackSwan = trading bot
 * [x] Memory swarm classification of `runtime_evidence` memory records.
 * [x] Overseer brief enrichment from evidence and runtime memory records.
 * [x] Explorer useful evidence can be handed off to Memory as structured `memory_record`.
+* [x] Explorer → Memory replay smoke validates deterministic Memory retrieval from replayable runtime evidence artifacts.
+* [x] Memory replay summaries expose operator-facing evidence yield metrics for future dashboards.
 * [ ] Research-goal source planner generates high-priority evidence candidates without manual evidence URLs.
 * [ ] Memory deduplicates, indexes, summarizes, and routes Explorer evidence to Improver and Overseer.
 * [ ] Dashboard-ready summary cards for memory, replay, retry, repair, and post-repair verification.
