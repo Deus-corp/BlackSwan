@@ -3741,6 +3741,36 @@ artifact cleanup, not an external or production mutation.
 
 ---
 
+### Cleanup post-cleanup verification
+
+The latest artifacts cleanup result includes a `post_cleanup` verification
+summary. In dry-run mode, this is a read-only verification of the current
+artifact index. In execute-local-artifacts mode, this is a fresh read-only
+reindex after deletion.
+
+```json
+{
+  "post_cleanup": {
+    "checked": true,
+    "status": "indexed",
+    "artifact_count": 1,
+    "known_artifact_count": 1,
+    "invalid_artifact_count": 0,
+    "stale_artifact_count": 0,
+    "cleanup_ok": true,
+    "retention": {
+      "mode": "inspect_only",
+      "would_delete_count": 0
+    }
+  }
+}
+```
+Dry-run may report cleanup_ok=false when stale artifacts exist, because it
+does not delete files. Execute mode requires stale and would-delete counts to be
+zero after successful cleanup.
+
+---
+
 ## Related modules
 
 ```text

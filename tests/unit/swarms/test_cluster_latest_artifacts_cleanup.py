@@ -54,6 +54,13 @@ def test_cleanup_dry_run_reports_would_delete_without_deleting(
     assert result["deleted"] == []
     assert result["external_write_performed"] is False
     assert result["real_execution_enabled"] is False
+
+    assert result["post_cleanup"]["checked"] is True
+    assert result["post_cleanup"]["artifact_count"] == 1
+    assert result["post_cleanup"]["stale_artifact_count"] == 1
+    assert result["post_cleanup"]["retention"]["would_delete_count"] == 1
+    assert result["post_cleanup"]["cleanup_ok"] is False
+
     assert artifact_path.exists()
 
     assert validate_cluster_latest_artifacts_cleanup_result(result) == []
@@ -83,6 +90,13 @@ def test_cleanup_dry_run_reports_noop_for_fresh_artifact(
     assert result["would_delete_count"] == 0
     assert result["would_delete"] == []
     assert result["deleted_count"] == 0
+
+    assert result["post_cleanup"]["checked"] is True
+    assert result["post_cleanup"]["artifact_count"] == 1
+    assert result["post_cleanup"]["stale_artifact_count"] == 0
+    assert result["post_cleanup"]["retention"]["would_delete_count"] == 0
+    assert result["post_cleanup"]["cleanup_ok"] is True
+
     assert artifact_path.exists()
     assert validate_cluster_latest_artifacts_cleanup_result(result) == []
 
@@ -112,6 +126,26 @@ def test_cleanup_contract_rejects_deleted_count() -> None:
         "real_execution_enabled": False,
         "production_paths_mutated": False,
         "production_secrets_accessed": False,
+        "post_cleanup": {
+            "checked": True,
+            "source_summary_type": "cluster_latest_artifacts_summary",
+            "status": "indexed",
+            "artifacts_root": "",
+            "artifact_count": 0,
+            "known_artifact_count": 0,
+            "invalid_artifact_count": 0,
+            "stale_artifact_count": 0,
+            "contract_ok": True,
+            "cleanup_ok": True,
+            "retention": {
+                "mode": "inspect_only",
+                "max_age_seconds": 0.0,
+                "max_age_days": 0.0,
+                "would_delete_count": 0,
+                "oldest_artifact_mtime": 0.0,
+                "newest_artifact_mtime": 0.0,
+            },
+        },
     }
 
     errors = validate_cluster_latest_artifacts_cleanup_result(result)
@@ -158,6 +192,9 @@ def test_cleanup_cli_accepts_valid_dry_run(
     assert payload["type"] == "cluster_latest_artifacts_cleanup_result"
     assert payload["mode"] == "dry_run"
     assert payload["deleted_count"] == 0
+
+    assert payload["post_cleanup"]["checked"] is True
+    assert "retention" in payload["post_cleanup"]
 
 
 def test_cluster_cli_latest_artifacts_cleanup_help_includes_flags() -> None:
@@ -307,6 +344,13 @@ def test_cleanup_execute_deletes_stale_allowlisted_artifact(
     assert result["deletion_errors"] == []
     assert result["external_write_performed"] is False
     assert result["production_paths_mutated"] is False
+
+    assert result["post_cleanup"]["checked"] is True
+    assert result["post_cleanup"]["artifact_count"] == 0
+    assert result["post_cleanup"]["stale_artifact_count"] == 0
+    assert result["post_cleanup"]["retention"]["would_delete_count"] == 0
+    assert result["post_cleanup"]["cleanup_ok"] is True
+
     assert not artifact_path.exists()
 
     assert validate_cluster_latest_artifacts_cleanup_result(result) == []
@@ -343,6 +387,13 @@ def test_cleanup_execute_blocks_non_allowlisted_root(
     assert result["deletion_errors"][0]["reason"] == (
         "artifacts_root_not_allowlisted"
     )
+
+    assert result["post_cleanup"]["checked"] is True
+    assert result["post_cleanup"]["artifact_count"] == 1
+    assert result["post_cleanup"]["stale_artifact_count"] == 1
+    assert result["post_cleanup"]["retention"]["would_delete_count"] == 1
+    assert result["post_cleanup"]["cleanup_ok"] is False
+
     assert artifact_path.exists()
 
     errors = validate_cluster_latest_artifacts_cleanup_result(result)
@@ -385,3 +436,15 @@ def test_cluster_cli_latest_artifacts_cleanup_passes_execute_flag(
 
     assert "--execute-delete-local-artifacts" in command
     assert "--dry-run" not in command
+
+
+def test_cleanup_contract_rejects_missing_post_cleanup() -> None:
+    result = build_cluster_latest_artifacts_cleanup_result(
+        artifacts_root="",
+        retention_max_age_seconds=0.0,
+    )
+    result.pop("post_cleanup", None)
+
+    errors = validate_cluster_latest_artifacts_cleanup_result(result)
+
+    assert any("post_cleanup must be a mapping" in error for error in errors)

@@ -55,6 +55,71 @@ def _safe_int(value: Any, *, default: int = 0) -> int:
         return default
 
 
+def _compact_post_cleanup_summary(
+    summary: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build compact post-cleanup verification summary.
+
+    For dry-run this reflects the same read-only index. For execute mode this
+    should be built from a fresh post-delete index.
+    """
+    retention = summary.get("retention")
+    if not isinstance(retention, Mapping):
+        retention = {}
+
+    artifact_count = _safe_int(summary.get("artifact_count"), default=0)
+    known_artifact_count = _safe_int(summary.get("known_artifact_count"), default=0)
+    invalid_artifact_count = _safe_int(
+        summary.get("invalid_artifact_count"),
+        default=0,
+    )
+    stale_artifact_count = _safe_int(
+        summary.get("stale_artifact_count"),
+        default=0,
+    )
+    would_delete_count = _safe_int(
+        retention.get("would_delete_count"),
+        default=0,
+    )
+
+    return {
+        "checked": True,
+        "source_summary_type": summary.get("type"),
+        "status": str(summary.get("status") or "unknown"),
+        "artifacts_root": str(summary.get("artifacts_root") or ""),
+        "artifact_count": artifact_count,
+        "known_artifact_count": known_artifact_count,
+        "invalid_artifact_count": invalid_artifact_count,
+        "stale_artifact_count": stale_artifact_count,
+        "contract_ok": bool(summary.get("contract_ok")),
+        "cleanup_ok": (
+            invalid_artifact_count == 0
+            and stale_artifact_count == 0
+            and would_delete_count == 0
+        ),
+        "retention": {
+            "mode": retention.get("mode", ""),
+            "max_age_seconds": _safe_float(
+                retention.get("max_age_seconds"),
+                default=0.0,
+            ),
+            "max_age_days": _safe_float(
+                retention.get("max_age_days"),
+                default=0.0,
+            ),
+            "would_delete_count": would_delete_count,
+            "oldest_artifact_mtime": _safe_float(
+                retention.get("oldest_artifact_mtime"),
+                default=0.0,
+            ),
+            "newest_artifact_mtime": _safe_float(
+                retention.get("newest_artifact_mtime"),
+                default=0.0,
+            ),
+        },
+    }
+
+
 def _is_relative_to(path: Path, parent: Path) -> bool:
     try:
         path.relative_to(parent)
@@ -201,6 +266,17 @@ def build_cluster_latest_artifacts_cleanup_result(
 
             if deletion_errors:
                 status = "partial" if deleted else "failed"
+    
+    if mode == MODE_EXECUTE_DELETE_LOCAL_ARTIFACTS and cleanup_root_allowed:
+        post_cleanup_source = inspect_cluster_latest_artifacts(
+            artifacts_root=root,
+            retention_max_age_seconds=retention_max_age_seconds,
+            now=now,
+        )
+    else:
+        post_cleanup_source = summary
+
+    post_cleanup = _compact_post_cleanup_summary(post_cleanup_source)
 
     contract_ok = (
         source_contract_ok
@@ -242,6 +318,7 @@ def build_cluster_latest_artifacts_cleanup_result(
         "deleted_count": len(deleted),
         "deleted": deleted,
         "deletion_errors": deletion_errors,
+        "post_cleanup": post_cleanup,
         "contract_ok": contract_ok,
         "external_write_performed": False,
         "real_execution_enabled": False,
@@ -407,6 +484,45 @@ def validate_cluster_latest_artifacts_cleanup_result(
             errors.append(
                 f"deleted item #{index} path must be present in would_delete"
             )
+    
+    post_cleanup = result.get("post_cleanup")
+    if not isinstance(post_cleanup, Mapping):
+        errors.append("post_cleanup must be a mapping")
+        post_cleanup = {}
+
+    if post_cleanup.get("checked") is not True:
+        errors.append("post_cleanup.checked must be true")
+
+    for field in (
+        "artifact_count",
+        "known_artifact_count",
+        "invalid_artifact_count",
+        "stale_artifact_count",
+    ):
+        if _safe_int(post_cleanup.get(field), default=-1) < 0:
+            errors.append(f"post_cleanup.{field} must be >= 0")
+
+    post_retention = post_cleanup.get("retention")
+    if not isinstance(post_retention, Mapping):
+        errors.append("post_cleanup.retention must be a mapping")
+        post_retention = {}
+
+    if _safe_int(post_retention.get("would_delete_count"), default=-1) < 0:
+        errors.append("post_cleanup.retention.would_delete_count must be >= 0")
+
+    if _safe_float(post_retention.get("max_age_seconds"), default=-1.0) < 0.0:
+        errors.append("post_cleanup.retention.max_age_seconds must be >= 0")
+
+    if mode == MODE_EXECUTE_DELETE_LOCAL_ARTIFACTS and not deletion_errors:
+        if _safe_int(post_cleanup.get("stale_artifact_count"), default=0) > 0:
+            errors.append(
+                "post_cleanup.stale_artifact_count must be 0 after successful execute cleanup"
+            )
+
+        if _safe_int(post_retention.get("would_delete_count"), default=0) > 0:
+            errors.append(
+                "post_cleanup.retention.would_delete_count must be 0 after successful execute cleanup"
+            )
 
     return errors
 
@@ -512,6 +628,18 @@ def _print_human_summary(result: Mapping[str, Any]) -> None:
             f"mode={retention.get('mode', '')} "
             f"max_age_seconds={retention.get('max_age_seconds', 0.0)} "
             f"max_age_days={retention.get('max_age_days', 0.0)}"
+        )
+    
+    post_cleanup = result.get("post_cleanup")
+    if isinstance(post_cleanup, Mapping):
+        print(
+            "  post_cleanup:    "
+            f"checked={post_cleanup.get('checked')} "
+            f"status={post_cleanup.get('status', '')} "
+            f"artifacts={post_cleanup.get('artifact_count', 0)} "
+            f"stale={post_cleanup.get('stale_artifact_count', 0)} "
+            f"invalid={post_cleanup.get('invalid_artifact_count', 0)} "
+            f"cleanup_ok={post_cleanup.get('cleanup_ok')}"
         )
 
     would_delete = result.get("would_delete")
