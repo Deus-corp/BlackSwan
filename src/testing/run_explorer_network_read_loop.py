@@ -965,53 +965,185 @@ def _iter_nested_values(value: Any) -> Iterable[Any]:
         return
 
 
+def _first_non_empty_text(*values: Any) -> str:
+    for value in values:
+        text = str(value or "").strip()
+        if text:
+            return text
+
+    return ""
+
+
 def _normalize_replayable_memory_record(
     value: Any,
 ) -> dict[str, Any] | None:
     """Normalize replayable explorer useful evidence memory records.
 
-    Accepts direct explorer memory records and LocalMemory-compatible evidence
-    records. Returns a direct replayable record for JSON artifacts.
+    Accept direct explorer records, LocalMemory-compatible records, and CRDT
+    memory record wrappers. The runtime artifact must expose replay-critical
+    fields like url/content_hash/content_preview at top level.
     """
     if not isinstance(value, Mapping):
         return None
 
-    if is_explorer_useful_evidence_record(value):
-        record = dict(value)
-    else:
-        payload = value.get("payload")
-        if not isinstance(payload, Mapping):
-            return None
+    payload = value.get("payload") if isinstance(value.get("payload"), Mapping) else {}
+    provenance = (
+        value.get("provenance")
+        if isinstance(value.get("provenance"), Mapping)
+        else {}
+    )
 
-        kind = str(value.get("kind") or "").strip()
-        candidate_kind = str(payload.get("candidate_kind") or "").strip()
+    payload_provenance = (
+        payload.get("provenance")
+        if isinstance(payload.get("provenance"), Mapping)
+        else {}
+    )
 
-        if kind != "evidence" or candidate_kind != "explorer_useful_evidence":
-            return None
+    candidate_kind = _first_non_empty_text(
+        value.get("candidate_kind"),
+        payload.get("candidate_kind"),
+    )
+    record_kind = _first_non_empty_text(
+        value.get("record_kind"),
+        payload.get("record_kind"),
+        provenance.get("record_kind"),
+        payload_provenance.get("record_kind"),
+    )
+    kind = _first_non_empty_text(value.get("kind"))
 
-        record = {
-            "type": "memory_record",
+    direct_evidence_record = is_explorer_useful_evidence_record(value)
+    local_memory_record = (
+        kind == "evidence"
+        and candidate_kind == "explorer_useful_evidence"
+    )
+
+    # Some CRDT/local wrappers are already tagged as memory_record /
+    # explorer_useful_evidence, but keep replay-critical fields nested in
+    # payload/provenance. Treat them as replayable and flatten below.
+    tagged_memory_record = (
+        _first_non_empty_text(value.get("type")) == "memory_record"
+        and record_kind == "explorer_useful_evidence"
+    )
+
+    if not (direct_evidence_record or local_memory_record or tagged_memory_record):
+        return None
+
+    topic_tags_source = (
+        value.get("topic_tags")
+        or payload.get("topic_tags")
+        or provenance.get("topic_tags")
+        or payload_provenance.get("topic_tags")
+        or []
+    )
+    topic_tags = (
+        list(topic_tags_source)
+        if isinstance(topic_tags_source, list)
+        else []
+    )
+
+    record = {
+        "type": "memory_record",
+        "record_kind": "explorer_useful_evidence",
+        "gid": _first_non_empty_text(
+            value.get("gid"),
+            value.get("id"),
+            payload.get("source_record_gid"),
+            payload.get("gid"),
+            provenance.get("source_record_gid"),
+            payload_provenance.get("source_record_gid"),
+        ),
+        "url": _first_non_empty_text(
+            value.get("url"),
+            payload.get("url"),
+            provenance.get("url"),
+            payload_provenance.get("url"),
+            value.get("normalized_url"),
+            provenance.get("normalized_url"),
+            payload_provenance.get("normalized_url"),
+        ),
+        "domain": _first_non_empty_text(
+            value.get("domain"),
+            payload.get("domain"),
+            provenance.get("domain"),
+            payload_provenance.get("domain"),
+        ),
+        "content_preview": _first_non_empty_text(
+            value.get("content_preview"),
+            payload.get("content_preview"),
+            provenance.get("content_preview"),
+            payload_provenance.get("content_preview"),
+            value.get("summary"),
+            payload.get("summary"),
+        ),
+        "content_hash": _first_non_empty_text(
+            value.get("content_hash"),
+            payload.get("content_hash"),
+            provenance.get("content_hash"),
+            payload_provenance.get("content_hash"),
+        ),
+        "source_score": (
+            value.get("source_score")
+            or payload.get("source_score")
+            or provenance.get("source_score")
+            or payload_provenance.get("source_score")
+            or 0.0
+        ),
+        "quality_score": (
+            value.get("quality_score")
+            or payload.get("quality_score")
+            or provenance.get("quality_score")
+            or payload_provenance.get("quality_score")
+            or 0.0
+        ),
+        "system_relevance_score": (
+            value.get("system_relevance_score")
+            or payload.get("system_relevance_score")
+            or provenance.get("system_relevance_score")
+            or payload_provenance.get("system_relevance_score")
+            or 0.0
+        ),
+        "authority_score": (
+            value.get("authority_score")
+            or payload.get("authority_score")
+            or provenance.get("authority_score")
+            or payload_provenance.get("authority_score")
+            or 0.0
+        ),
+        "freshness_score": (
+            value.get("freshness_score")
+            or payload.get("freshness_score")
+            or provenance.get("freshness_score")
+            or payload_provenance.get("freshness_score")
+            or 0.50
+        ),
+        "topic_tags": topic_tags,
+        "evidence_category": _first_non_empty_text(
+            value.get("evidence_category"),
+            payload.get("evidence_category"),
+            provenance.get("evidence_category"),
+            payload_provenance.get("evidence_category"),
+            "explorer_useful_evidence",
+        ),
+        "provenance": {
+            **dict(payload_provenance),
+            **dict(provenance),
+            "source": _first_non_empty_text(
+                provenance.get("source"),
+                payload_provenance.get("source"),
+                "memory_ingestion",
+            ),
             "record_kind": "explorer_useful_evidence",
-            "gid": str(
-                payload.get("source_record_gid")
-                or value.get("id")
-                or ""
-            ).strip(),
-            "url": payload.get("url"),
-            "domain": payload.get("domain"),
-            "content_preview": payload.get("content_preview"),
-            "content_hash": payload.get("content_hash"),
-            "source_score": payload.get("source_score"),
-            "quality_score": payload.get("quality_score"),
-            "system_relevance_score": payload.get("system_relevance_score"),
-            "authority_score": payload.get("authority_score"),
-            "freshness_score": payload.get("freshness_score"),
-            "topic_tags": list(payload.get("topic_tags") or []),
-            "evidence_category": payload.get("evidence_category"),
-            "provenance": dict(payload.get("provenance") or {}),
-        }
+        },
+    }
 
-    vector_fields = normalize_memory_vector_ready_fields(record)
+    vector_fields = normalize_memory_vector_ready_fields(
+        {
+            **dict(value),
+            **dict(payload),
+            **dict(payload_provenance),
+            **dict(provenance),
+        }
+    )
 
     return {
         **record,

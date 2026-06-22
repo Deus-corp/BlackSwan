@@ -86,7 +86,3 @@ data/improver_workspace/
 
 # Other data directories
 data/
-src/swarms/improver/improver_agent.py
-src/swarms/improver/improver_agent_core
-src/swarms/improver/__init__.py
-src/swarms/improver/

@@ -143,3 +143,71 @@ def test_empty_memory_replay_artifact_is_contract_safe() -> None:
     assert artifact["real_execution_enabled"] is False
     assert artifact["production_paths_mutated"] is False
     assert artifact["production_secrets_accessed"] is False
+
+
+def test_memory_replay_artifact_flattens_wrapped_memory_record() -> None:
+    wrapped_record = {
+        "type": "memory_record",
+        "record_kind": "explorer_useful_evidence",
+        "id": "wrapped-memory-record-1",
+        "kind": "evidence",
+        "payload": {
+            "candidate_kind": "explorer_useful_evidence",
+            "source_record_gid": "wrapped-memory-record-1",
+            "url": "https://docs.github.com/en/search-github/searching-on-github/searching-code",
+            "domain": "docs.github.com",
+            "content_preview": (
+                "Searching Code Explorer useful evidence candidate. URL: "
+                "https://docs.github.com/en/search-github/searching-on-github/searching-code"
+            ),
+            "content_hash": "hash-wrapped-memory-record-1",
+            "source_score": 1.0,
+            "quality_score": 1.0,
+            "system_relevance_score": 0.8,
+            "authority_score": 0.79,
+            "freshness_score": 0.5,
+            "topic_tags": ["github", "search"],
+            "evidence_category": "explorer_useful_evidence",
+            "provenance": {
+                "record_kind": "explorer_useful_evidence",
+                "url": "https://docs.github.com/en/search-github/searching-on-github/searching-code",
+                "content_hash": "hash-wrapped-memory-record-1",
+                "external_write_performed": False,
+                "real_execution_enabled": False,
+                "production_paths_mutated": False,
+                "production_secrets_accessed": False,
+            },
+        },
+        "external_write_performed": False,
+        "real_execution_enabled": False,
+        "production_paths_mutated": False,
+        "production_secrets_accessed": False,
+    }
+
+    artifact = _build_memory_replay_artifact(
+        [
+            {
+                "meta_agent": {
+                    "memory_records": [wrapped_record],
+                }
+            }
+        ],
+        limit=20,
+    )
+
+    assert artifact["record_count"] == 1
+
+    record = artifact["records"][0]
+
+    assert record["type"] == "memory_record"
+    assert record["record_kind"] == "explorer_useful_evidence"
+    assert (
+        record["url"]
+        == "https://docs.github.com/en/search-github/searching-on-github/searching-code"
+    )
+    assert record["content_hash"] == "hash-wrapped-memory-record-1"
+    assert record["content_preview"]
+    assert record["semantic_retrieval_enabled"] is False
+    assert record["embedding_status"] == "not_computed"
+    assert record["external_write_performed"] is False
+    assert record["real_execution_enabled"] is False
