@@ -903,6 +903,53 @@ def build_parser() -> argparse.ArgumentParser:
         "latest-artifacts",
         help="Inspect cluster latest runtime artifacts index.",
     )
+    latest_artifacts_cleanup = sub.add_parser(
+        "latest-artifacts-cleanup",
+        help="Dry-run cleanup inspector for cluster latest artifacts.",
+    )
+    latest_artifacts_cleanup.add_argument(
+        "--artifacts-root",
+        default="",
+        help=(
+            "Directory containing latest artifact JSON files. Defaults to "
+            "data/cluster_runtime/latest/artifacts."
+        ),
+    )
+    latest_artifacts_cleanup.add_argument(
+        "--retention-max-age-days",
+        type=float,
+        default=0.0,
+        help=(
+            "Dry-run retention threshold in days. Reports would-delete "
+            "artifacts without deleting files."
+        ),
+    )
+    latest_artifacts_cleanup.add_argument(
+        "--retention-max-age-seconds",
+        type=float,
+        default=0.0,
+        help=(
+            "Dry-run retention threshold in seconds. Overrides days when "
+            "provided. No files are deleted."
+        ),
+    )
+    latest_artifacts_cleanup.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Explicit dry-run flag. This command never deletes files.",
+    )
+    latest_artifacts_cleanup.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Print machine-readable JSON summary.",
+    )
+    latest_artifacts_cleanup.add_argument(
+        "--check-contract",
+        action="store_true",
+        help="Exit with code 1 unless the cleanup dry-run contract is valid.",
+    )
     latest_artifacts.add_argument(
         "--artifacts-root",
         default="",
@@ -1073,6 +1120,62 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def run_latest_artifacts_cleanup(args: argparse.Namespace) -> int:
+    """Run dry-run cleanup inspector for cluster latest artifacts."""
+    command = [
+        sys.executable,
+        "-m",
+        "src.testing.cleanup_cluster_latest_artifacts",
+    ]
+
+    artifacts_root = str(getattr(args, "artifacts_root", "") or "").strip()
+    if artifacts_root:
+        command.extend(["--artifacts-root", artifacts_root])
+
+    retention_max_age_seconds = float(
+        getattr(args, "retention_max_age_seconds", 0.0) or 0.0
+    )
+    if retention_max_age_seconds > 0.0:
+        command.extend(
+            [
+                "--retention-max-age-seconds",
+                str(retention_max_age_seconds),
+            ]
+        )
+    else:
+        retention_max_age_days = float(
+            getattr(args, "retention_max_age_days", 0.0) or 0.0
+        )
+        if retention_max_age_days > 0.0:
+            command.extend(
+                [
+                    "--retention-max-age-days",
+                    str(retention_max_age_days),
+                ]
+            )
+
+    if bool(getattr(args, "dry_run", False)):
+        command.append("--dry-run")
+
+    if bool(getattr(args, "json", False)):
+        command.append("--json")
+
+    if bool(getattr(args, "check_contract", False)):
+        command.append("--check-contract")
+
+    print("Dry-run cleanup cluster latest artifacts:")
+    print(" ".join(command))
+
+    completed = subprocess.run(
+        command,
+        cwd=str(PROJECT_ROOT),
+        check=False,
+        text=True,
+    )
+
+    return int(completed.returncode or 0)
 
 
 def run_latest_artifacts(args: argparse.Namespace) -> int:
@@ -1491,6 +1594,8 @@ def main() -> None:
     
     if args.command == "latest-artifacts":
         raise SystemExit(run_latest_artifacts(args))
+    if args.command == "latest-artifacts-cleanup":
+        raise SystemExit(run_latest_artifacts_cleanup(args))
 
     parser.error(f"Unsupported command: {args.command}")
 

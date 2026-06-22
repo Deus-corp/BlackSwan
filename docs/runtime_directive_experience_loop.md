@@ -3695,6 +3695,27 @@ as a separate explicit dry-run-first command.
 
 ---
 
+### Latest artifact cleanup dry-run
+
+Latest artifact cleanup is introduced as a dry-run-only command:
+
+```bash
+python -m src.swarms.runtime.cluster_cli latest-artifacts-cleanup \
+  --retention-max-age-days 7 \
+  --dry-run \
+  --json \
+  --check-contract
+```
+The command reuses the latest artifacts retention inspection, reports
+would_delete, and keeps deleted_count at zero. It does not delete files,
+does not perform external writes, does not enable real execution, does not
+mutate production paths, and does not access production secrets.
+
+Actual deletion should be added only through a separate explicit command and
+flag after the dry-run contract is stable.
+
+---
+
 ## Related modules
 
 ```text
