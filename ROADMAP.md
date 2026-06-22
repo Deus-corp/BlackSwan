@@ -1,24 +1,35 @@
 # BlackSwan — Roadmap
 
-**Purpose:** single source of truth for project direction, current maturity, and the path from a laboratory prototype toward an autonomous, self-improving multi-swarm platform.
+**Purpose:** single source of truth for project direction, current maturity, and the path from a laboratory prototype toward an autonomous, self-improving multi-swarm AI platform.
 
 ---
 
 ## Vision
 
-BlackSwan is an autonomous multi-swarm platform.
+BlackSwan is an autonomous, self-improving multi-swarm AI platform.
 
-The project is not a trading bot. Trading is one proving ground used to test uncertainty, risk, capital/resource allocation, self-improvement, memory, simulation, and swarm coordination.
+It is designed as a distributed runtime where specialized swarms share state, evidence, memory, simulation results, governance records, and controlled execution signals through CRDT, gossip, and event layers.
+
+The platform is organized around first-class cooperating swarms:
+
+- **Overseer** coordinates system-level awareness, topology health, policy, and cross-swarm directives.
+- **Memory** stores, consolidates, retrieves, and routes runtime experience and evidence.
+- **Simulation** tests policies, counterfactuals, replay scenarios, and stress cases before live use.
+- **Security** validates directives, governance records, guarded execution, repair artifacts, and post-action evidence.
+- **Explorer** performs read-only external observation, source discovery, evidence collection, and handoff to Memory.
+- **Improver** proposes controlled project and code improvements under review gates.
+- **Trade** remains one specialized proving-ground swarm within the broader multi-swarm platform.
 
 The long-term goal is a distributed AI system capable of:
 
 - launching and observing multiple specialized swarms,
-- sharing state through CRDT/gossip/event layers,
+- sharing runtime state through CRDT, gossip, and event layers,
 - preserving memory and learning from experience,
 - testing changes in simulation before live use,
-- improving strategies under safety gates,
+- coordinating controlled improvements under safety gates,
 - surviving failures and degraded environments,
-- reducing direct human involvement to bootstrapping, high-level policy, and oversight.
+- verifying outcomes through auditable evidence,
+- reducing direct human involvement to bootstrapping, high-level policy, review gates, and oversight.
 
 ---
 
@@ -32,7 +43,7 @@ The current milestone is no longer only "directive lifecycle through CRDT". The 
 
 ### Validated
 
-* ✅ 1211+ tests passing.
+* ✅ 1435+ tests passing.
 * ✅ Retry governance smoke test passing.
 * ✅ Swarm runtime smoke test passing.
 * ✅ Trade runtime command loop passing.

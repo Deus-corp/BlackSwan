@@ -2,11 +2,21 @@
 
 **Autonomous, self-improving multi-swarm AI platform.**
 
-BlackSwan is a research platform for coordinated autonomous swarms. It is designed around shared runtime state, memory, simulation, security validation, governance records, and controlled execution paths that allow specialized swarms to observe, reason, coordinate, recover, and improve over time.
+BlackSwan is a research platform for coordinated autonomous swarms that share runtime state, memory, simulation, security validation, governance records, and controlled execution evidence through CRDT, gossip, and event layers.
 
-The system treats autonomy as an auditable lifecycle rather than a direct action loop. Swarms communicate through CRDT-backed records, validated directives, runtime evidence, memory signals, simulation results, risk signals, retry governance, guarded repair flows, and post-action verification.
+The platform is organized around specialized swarms that cooperate as first-class runtime participants:
 
-The long-term goal is a platform that can launch, observe itself, survive failures, test changes in simulation, coordinate specialized swarms, improve its own strategies, and reduce direct human involvement to bootstrapping, policy design, review gates, and high-level governance.
+* **Overseer** coordinates system-level awareness, topology health, policy, and cross-swarm directives.
+* **Memory** stores, consolidates, retrieves, and routes runtime experience and evidence.
+* **Simulation** tests policies, counterfactuals, replay scenarios, and stress cases before live use.
+* **Security** validates directives, governance records, guarded execution, repair artifacts, and post-action evidence.
+* **Explorer** performs read-only external observation, source discovery, evidence collection, and handoff to Memory.
+* **Improver** proposes controlled project and code improvements under review gates.
+* **Trade** remains one specialized proving-ground swarm within the broader multi-swarm platform.
+
+BlackSwan treats autonomy as an auditable lifecycle rather than a direct action loop. Swarms communicate through CRDT-backed records, gossip/event exchange, validated directives, runtime evidence, memory signals, simulation results, risk signals, retry governance, guarded repair flows, replay artifacts, and post-action verification.
+
+The long-term goal is a distributed AI platform that can launch and observe multiple specialized swarms, survive failures, preserve and retrieve experience, test changes in simulation, coordinate controlled improvements, verify outcomes, and reduce direct human involvement to bootstrapping, policy design, review gates, and high-level governance.
 
 [![Python Tests](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml/badge.svg)](https://github.com/Deus-corp/BlackSwan/actions/workflows/python-tests.yml)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
@@ -20,7 +30,7 @@ BlackSwan is currently a laboratory-validated autonomous multi-swarm runtime wit
 
 Validated in the current architecture:
 
-* ✅ 1211+ tests passing.
+* ✅ 1435+ tests passing.
 * ✅ Retry governance smoke test passing.
 * ✅ Swarm runtime smoke test passing.
 * ✅ Trade runtime command loop passing.
@@ -277,15 +287,15 @@ The runtime now includes the first pieces of a structured LLM-friendly synchroni
 
 BlackSwan aims to become a distributed autonomous system made of equal cooperating swarms:
 
-- **Overseer** coordinates system-level awareness and policy.
-- **Memory** stores, consolidates, retrieves, and exports experience.
-- **Simulation** tests policies, counterfactuals, and stress scenarios before live use.
-- **Trade** remains a proving ground for risk, capital, execution, and adaptive strategy evolution.
-- **Security** protects the runtime and responds to defensive signals.
-- **Explorer** discovers external signals and possible opportunities.
-- **Improver** proposes controlled project/code improvements.
+- **Overseer** coordinates system-level awareness, topology health, policy, and cross-swarm directives.
+- **Memory** stores, consolidates, retrieves, and routes runtime experience and evidence.
+- **Simulation** tests policies, counterfactuals, replay scenarios, and stress cases before live use.
+- **Security** protects the runtime and validates directives, governance records, guarded execution, repair artifacts, and post-action evidence.
+- **Explorer** discovers external signals, collects read-only evidence, and hands structured findings to Memory.
+- **Improver** proposes controlled project and code improvements under review gates.
+- **Trade** remains one specialized proving-ground swarm for risk, capital/resource allocation, execution policy, and adaptive strategy evolution.
 
-The project started from a trading swarm because markets provide a useful testbed for resource allocation, uncertainty, risk, feedback loops, and agent performance. The architecture is now being generalized into a platform for autonomous, self-improving, multi-domain swarms.
+The architecture is generalized around coordinated swarm autonomy rather than any single domain. Each swarm participates through shared contracts, CRDT-backed records, gossip/event exchange, memory, simulation, governance, and auditable execution boundaries.
 
 ---
 
