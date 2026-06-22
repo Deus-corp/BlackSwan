@@ -35,6 +35,19 @@ YIELD_RATIO_FIELDS = (
     "full_replay_path_ratio",
 )
 
+SUMMARY_COUNTER_FIELDS = (
+    "records_published",
+    "artifact_records",
+    "records_replayed",
+    "query_results",
+)
+
+SUMMARY_RATIO_FIELDS = (
+    "artifact_capture_ratio",
+    "replay_acceptance_ratio",
+    "full_replay_path_ratio",
+)
+
 
 def _safe_int(value: Any, *, default: int = 0) -> int:
     try:
@@ -70,6 +83,48 @@ def _ratio_matches(
 ) -> bool:
     return abs(_safe_float(actual, default=-1.0) - expected) <= tolerance
 
+def _validate_memory_replay_summary(
+    result: Mapping[str, Any],
+    yield_metrics: Mapping[str, Any],
+    errors: list[str],
+) -> None:
+    summary = result.get("memory_replay_summary")
+    if not isinstance(summary, Mapping):
+        errors.append("memory_replay_summary must be a mapping")
+        return
+
+    if str(summary.get("status") or "") != str(result.get("status") or ""):
+        errors.append("memory_replay_summary.status must match smoke status")
+
+    for field in SUMMARY_COUNTER_FIELDS:
+        actual = _safe_int(summary.get(field), default=-1)
+        expected = _safe_int(yield_metrics.get(field), default=-1)
+
+        if actual < 0:
+            errors.append(f"memory_replay_summary.{field} must be >= 0")
+
+        if actual != expected:
+            errors.append(
+                f"memory_replay_summary.{field} must match "
+                f"memory_replay_yield.{field}: actual={actual}, "
+                f"expected={expected}"
+            )
+
+    for field in SUMMARY_RATIO_FIELDS:
+        actual = _safe_float(summary.get(field), default=-1.0)
+        expected = _safe_float(yield_metrics.get(field), default=-1.0)
+
+        if actual < 0.0 or actual > 1.0:
+            errors.append(
+                f"memory_replay_summary.{field} must be between 0.0 and 1.0"
+            )
+
+        if not _ratio_matches(actual, expected):
+            errors.append(
+                f"memory_replay_summary.{field} must match "
+                f"memory_replay_yield.{field}: actual={actual}, "
+                f"expected={expected}"
+            )
 
 def validate_explorer_memory_replay_smoke(
     result: Mapping[str, Any],
@@ -218,6 +273,12 @@ def validate_explorer_memory_replay_smoke(
                 f"memory_replay_yield.{field} must equal {expected}: "
                 f"actual={actual}"
             )
+    
+    _validate_memory_replay_summary(
+        result,
+        yield_metrics,
+        errors,
+    )
 
     return errors
 

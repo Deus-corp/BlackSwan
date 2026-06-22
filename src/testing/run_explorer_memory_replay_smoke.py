@@ -103,6 +103,42 @@ def _build_memory_replay_yield_metrics(
     }
 
 
+def _build_memory_replay_summary(
+    *,
+    status: str,
+    memory_replay_yield: dict[str, Any],
+) -> dict[str, Any]:
+    """Build compact operator-facing memory replay summary metrics."""
+    return {
+        "status": str(status or ""),
+        "records_published": _safe_int(
+            memory_replay_yield.get("records_published"),
+            default=0,
+        ),
+        "artifact_records": _safe_int(
+            memory_replay_yield.get("artifact_records"),
+            default=0,
+        ),
+        "records_replayed": _safe_int(
+            memory_replay_yield.get("records_replayed"),
+            default=0,
+        ),
+        "query_results": _safe_int(
+            memory_replay_yield.get("query_results"),
+            default=0,
+        ),
+        "artifact_capture_ratio": float(
+            memory_replay_yield.get("artifact_capture_ratio") or 0.0
+        ),
+        "replay_acceptance_ratio": float(
+            memory_replay_yield.get("replay_acceptance_ratio") or 0.0
+        ),
+        "full_replay_path_ratio": float(
+            memory_replay_yield.get("full_replay_path_ratio") or 0.0
+        ),
+    }
+
+
 def _safe_bool(value: Any) -> bool:
     return bool(value)
 
@@ -266,6 +302,11 @@ def _summary_from_results(
         query_results=query_results,
     )
 
+    memory_replay_summary = _build_memory_replay_summary(
+        status="passed",
+        memory_replay_yield=memory_replay_yield,
+    )
+
     return {
         "type": "explorer_memory_replay_smoke_result",
         "status": "passed",
@@ -284,6 +325,7 @@ def _summary_from_results(
         "explorer_memory_records_replayed": records_replayed,
         "memory_query_result_count": query_results,
         "memory_replay_yield": memory_replay_yield,
+        "memory_replay_summary": memory_replay_summary,
         "retrieval_mode": str(memory_replay_result.get("retrieval_mode") or ""),
         "hybrid_retrieval_enabled": _safe_bool(
             memory_replay_result.get("hybrid_retrieval_enabled")
@@ -529,6 +571,22 @@ def _print_human_summary(summary: dict[str, Any]) -> None:
         print(
             "  full_replay_path_ratio:        "
             f"{memory_replay_yield.get('full_replay_path_ratio', 0.0)}"
+        )
+    
+    memory_replay_summary = summary.get("memory_replay_summary")
+    if isinstance(memory_replay_summary, dict):
+        print(
+            "  memory_replay_summary:        "
+            f"published={memory_replay_summary.get('records_published', 0)} "
+            f"artifact={memory_replay_summary.get('artifact_records', 0)} "
+            f"replayed={memory_replay_summary.get('records_replayed', 0)} "
+            f"results={memory_replay_summary.get('query_results', 0)}"
+        )
+        print(
+            "  memory_replay_summary_ratios: "
+            f"capture={memory_replay_summary.get('artifact_capture_ratio', 0.0)} "
+            f"acceptance={memory_replay_summary.get('replay_acceptance_ratio', 0.0)} "
+            f"full_path={memory_replay_summary.get('full_replay_path_ratio', 0.0)}"
         )
 
 

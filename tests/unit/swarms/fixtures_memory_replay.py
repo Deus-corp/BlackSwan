@@ -196,6 +196,32 @@ def explorer_memory_replay_smoke_result_fixture(
         else 0.0
     )
 
+    memory_replay_yield = {
+        "records_published": records_published,
+        "artifact_records": artifact_records,
+        "artifact_available_records": artifact_available_records,
+        "records_seen": records_seen,
+        "records_replayed": records_replayed,
+        "query_results": query_results,
+        "artifact_capture_ratio": artifact_capture_ratio,
+        "artifact_availability_ratio": artifact_availability_ratio,
+        "replay_visibility_ratio": replay_visibility_ratio,
+        "replay_acceptance_ratio": replay_acceptance_ratio,
+        "query_result_ratio": query_result_ratio,
+        "full_replay_path_ratio": full_replay_path_ratio,
+    }
+
+    memory_replay_summary = {
+        "status": "passed",
+        "records_published": records_published,
+        "artifact_records": artifact_records,
+        "records_replayed": records_replayed,
+        "query_results": query_results,
+        "artifact_capture_ratio": artifact_capture_ratio,
+        "replay_acceptance_ratio": replay_acceptance_ratio,
+        "full_replay_path_ratio": full_replay_path_ratio,
+    }
+
     result: dict[str, Any] = {
         "type": "explorer_memory_replay_smoke_result",
         "status": "passed",
@@ -213,20 +239,8 @@ def explorer_memory_replay_smoke_result_fixture(
         "hybrid_retrieval_enabled": False,
         "semantic_retrieval_enabled": False,
         "semantic_candidates": [],
-        "memory_replay_yield": {
-            "records_published": records_published,
-            "artifact_records": artifact_records,
-            "artifact_available_records": artifact_available_records,
-            "records_seen": records_seen,
-            "records_replayed": records_replayed,
-            "query_results": query_results,
-            "artifact_capture_ratio": artifact_capture_ratio,
-            "artifact_availability_ratio": artifact_availability_ratio,
-            "replay_visibility_ratio": replay_visibility_ratio,
-            "replay_acceptance_ratio": replay_acceptance_ratio,
-            "query_result_ratio": query_result_ratio,
-            "full_replay_path_ratio": full_replay_path_ratio,
-        },
+        "memory_replay_yield": memory_replay_yield,
+        "memory_replay_summary": memory_replay_summary,
         "external_write_performed": False,
         "real_execution_enabled": False,
         "production_paths_mutated": False,

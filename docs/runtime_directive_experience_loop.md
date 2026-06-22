@@ -3580,6 +3580,30 @@ before writing --json-output.
 
 ---
 
+### Memory replay compact summary
+
+The explorer-memory replay smoke result includes a compact operator-facing
+summary in addition to the detailed yield metrics:
+
+```json
+{
+  "memory_replay_summary": {
+    "status": "passed",
+    "records_published": 7,
+    "artifact_records": 7,
+    "records_replayed": 7,
+    "query_results": 5,
+    "artifact_capture_ratio": 1.0,
+    "replay_acceptance_ratio": 1.0,
+    "full_replay_path_ratio": 0.7143
+  }
+}
+```
+The smoke contract checker validates that this compact summary matches the
+detailed memory_replay_yield block and the flat top-level counters.
+
+---
+
 ## Related modules
 
 ```text

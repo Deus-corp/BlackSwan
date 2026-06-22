@@ -118,3 +118,33 @@ def test_explorer_memory_replay_smoke_checker_cli_accepts_valid_json(
     )
 
     assert "explorer memory replay smoke contract OK" in result.stdout
+
+
+def test_explorer_memory_replay_smoke_contract_rejects_missing_summary() -> None:
+    result = _valid_result()
+    result.pop("memory_replay_summary")
+
+    errors = validate_explorer_memory_replay_smoke(result)
+
+    assert any("memory_replay_summary must be a mapping" in error for error in errors)
+
+
+def test_explorer_memory_replay_smoke_contract_rejects_summary_counter_mismatch() -> None:
+    result = _valid_result()
+    result["memory_replay_summary"]["query_results"] = 4
+
+    errors = validate_explorer_memory_replay_smoke(result)
+
+    assert any("memory_replay_summary.query_results must match" in error for error in errors)
+
+
+def test_explorer_memory_replay_smoke_contract_rejects_summary_ratio_mismatch() -> None:
+    result = _valid_result()
+    result["memory_replay_summary"]["full_replay_path_ratio"] = 0.5
+
+    errors = validate_explorer_memory_replay_smoke(result)
+
+    assert any(
+        "memory_replay_summary.full_replay_path_ratio must match" in error
+        for error in errors
+    )

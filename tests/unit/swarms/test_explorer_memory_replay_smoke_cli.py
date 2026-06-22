@@ -10,6 +10,7 @@ from src.testing.run_explorer_memory_replay_smoke import (
     _build_memory_replay_yield_metrics,
     build_parser,
     run_explorer_memory_replay_smoke,
+    _build_memory_replay_summary,
 )
 from src.testing.check_explorer_memory_replay_smoke import (
     validate_explorer_memory_replay_smoke,
@@ -218,6 +219,17 @@ def test_one_command_smoke_runs_explorer_and_replay_contracts(
         "full_replay_path_ratio": 0.2,
     }
 
+    assert summary["memory_replay_summary"] == {
+        "status": "passed",
+        "records_published": 5,
+        "artifact_records": 1,
+        "records_replayed": 1,
+        "query_results": 1,
+        "artifact_capture_ratio": 0.2,
+        "replay_acceptance_ratio": 1.0,
+        "full_replay_path_ratio": 0.2,
+    }
+
     assert len(calls) == 2
     assert "src.testing.run_explorer_network_read_loop" in calls[0]
     assert "src.testing.replay_explorer_memory_evidence_query" in calls[1]
@@ -279,6 +291,14 @@ def test_one_command_smoke_writes_json_summary(tmp_path: Path) -> None:
     assert payload["memory_replay_yield"]["query_results"] == 1
     assert payload["memory_replay_yield"]["artifact_capture_ratio"] == 0.2
 
+    assert payload["memory_replay_summary"]["status"] == "passed"
+    assert payload["memory_replay_summary"]["records_published"] == 5
+    assert payload["memory_replay_summary"]["artifact_records"] == 1
+    assert payload["memory_replay_summary"]["records_replayed"] == 1
+    assert payload["memory_replay_summary"]["query_results"] == 1
+    assert payload["memory_replay_summary"]["artifact_capture_ratio"] == 0.2
+    assert payload["memory_replay_summary"]["full_replay_path_ratio"] == 0.2
+
 
 def test_one_command_smoke_returns_failed_summary_on_explorer_failure(
     tmp_path: Path,
@@ -316,3 +336,29 @@ def test_one_command_smoke_returns_failed_summary_on_explorer_failure(
     assert summary["returncode"] == 2
     assert summary["external_write_performed"] is False
     assert summary["real_execution_enabled"] is False
+
+
+def test_memory_replay_summary_is_compact_operator_view() -> None:
+    summary = _build_memory_replay_summary(
+        status="passed",
+        memory_replay_yield={
+            "records_published": 7,
+            "artifact_records": 7,
+            "records_replayed": 7,
+            "query_results": 5,
+            "artifact_capture_ratio": 1.0,
+            "replay_acceptance_ratio": 1.0,
+            "full_replay_path_ratio": 0.7143,
+        },
+    )
+
+    assert summary == {
+        "status": "passed",
+        "records_published": 7,
+        "artifact_records": 7,
+        "records_replayed": 7,
+        "query_results": 5,
+        "artifact_capture_ratio": 1.0,
+        "replay_acceptance_ratio": 1.0,
+        "full_replay_path_ratio": 0.7143,
+    }
