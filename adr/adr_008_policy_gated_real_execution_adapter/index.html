@@ -1,0 +1,5867 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Autonomous AI swarm – architecture, guides, benchmarks">
+      
+      
+      
+        <link rel="canonical" href="https://deus-corp.github.io/BlackSwan/adr/adr_008_policy_gated_real_execution_adapter/">
+      
+      
+        <link rel="prev" href="../adr_007_jepa_integration/">
+      
+      
+        <link rel="next" href="../../reports/TRL3_baseline_results/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>008 - Policy-Gated Real Execution Adapter - BlackSwan Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adr-008-policy-gated-real-execution-adapter" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BlackSwan Documentation" class="md-header__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BlackSwan Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              008 - Policy-Gated Real Execution Adapter
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Deus-corp/BlackSwan" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BlackSwan Documentation" class="md-nav__button md-logo" aria-label="BlackSwan Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BlackSwan Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Deus-corp/BlackSwan" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design_principles.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system_definition.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Definition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../terminal_goals_and_l3_invariants.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal Goals & L3 Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runtime_directive_experience_loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtime directive experience loop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../controlled_retry_guarded_repair_runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Controlled retry and guarded repair runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Implemented Protocols
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Implemented Protocols
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/ouroboros/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ouroboros (Self-Improvement)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/survival_objective/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Survival Objective
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/genetic_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Genetic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/adaptive_motivation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adaptive Intrinsic Motivation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/crdt_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDT State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/d2bft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D2BFT Consensus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/curiosity_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curiosity Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/episodic_memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Episodic Memory (L1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../implemented/semantic_memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic Memory (L2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/architecture_overview.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/global_state_and_decision_pipeline.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Global State & Decision Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/memory_hierarchy_mem0g.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory Hierarchy (Mem0g)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/intrinsic_motivation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intrinsic Motivation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/validation_and_verification.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/event_bus_and_artifact_model.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Bus & Artifact Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/social_modeling_engine.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Social Modeling Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/intelligence_contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/deployment_overview.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/api_based_bootstrap.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/hardware_isolation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/hardware_transition_plan.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Transition Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/cold_start_protocol.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cold Start Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Domains
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Domains
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_13_2" id="__nav_13_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cognitive Evolution
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_13_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cognitive Evolution
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/cognitive_evolution.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/genetic_engine.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Genetic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/champion_challenger.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Champion/Challenger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/open_endedness.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Open-Endedness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cognitive_evolution/neuro_symbolic_governance.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Neuro-Symbolic Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_13_3" id="__nav_13_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cybersecurity & Stealth
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_13_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cybersecurity & Stealth
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/isolation_and_sandbox.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Isolation & Sandbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/stealth_and_c2.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stealth & C2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/sting_and_counterintelligence.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sting & Counterintelligence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/cybersecurity_stealth/operational_security_iart.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operational Security & IART
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_13_4" id="__nav_13_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Economic Autonomy
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_13_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Economic Autonomy
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/roi_dispatcher.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ROI Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/mev_and_ppo_executors.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MEV & PPO Executors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/payment_obfuscation.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Payment Obfuscation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/economic_autonomy/symbiotic_takeover.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Symbiotic Takeover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_13_5" id="__nav_13_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Physical & Human Interface
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_13_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Physical & Human Interface
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/physical_human_interface/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/physical_human_interface/meat_interface_tasking.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Meat Interface Tasking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/physical_human_interface/narrative_and_stigmergy.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Narrative & Stigmergy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/physical_human_interface/persona_farming_and_legal.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Farming & Legal
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_13_6" id="__nav_13_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Swarm & Distribution
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_13_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Swarm & Distribution
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/swarm_distribution/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/swarm_distribution/crdt_gossip_and_d2bft.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDT, Gossip & D2BFT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/swarm_distribution/swarm_topology.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Swarm Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../domains/swarm_distribution/reputation_and_coordination.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reputation & Coordination
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Singularity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Singularity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/singularity_criteria.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Singularity Criteria
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/spore_protocol_and_recovery.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spore Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/last_breath_protocol.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Breath Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/controlled_collapse_omega.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omega Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/hardware_independence_hael.en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Independence (HAEL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/quantum_resistance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quantum Resistance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../singularity/physical_energy_sovereignty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Physical Energy Sovereignty
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendices
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Appendices
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_a_gpu_configurations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A - GPU Configurations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_aa_fine_tuning_deepseek_v4_for_specialized_tasks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AA - Fine-Tuning DeepSeek V4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_ab_decentralized_bootstrap_configurations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AB - Decentralized Bootstrap Config.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_ac_nostr_bridge_specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC - Nostr Bridge Spec.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_ad_rdma_and_monitoring_stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD - RDMA and Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_b_launch_commands_cold_and_start_cripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B - Launch Commands & Cold Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_c_validation_code_listings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    C - Validation Code Listings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_d_tla_specifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D - TLA+ Specifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_e_chaos_scenarios/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E - Chaos Scenarios
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_f_memory_schema_examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    F - Memory Schema (JSON)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_g_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G - Glossary (Machine)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_h_revision_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H - Revision History
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_i_formal_verification_z3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    I - Formal Verification Z3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_j_hardware_bill_of_materials%28bom%29/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    J - Hardware BOM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_k_rust_crate_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    K - Rust Crate Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_l_configuration_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    L - Configuration Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_m_artifact_index/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M - Artifact Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_n_traceability_matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    N - Traceability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_o_tooling_ast_integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O - Tooling AST Integrity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_p_ppo_training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P - PPO Training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_q_cross_platform_toolchain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Q - Cross-Platform Toolchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_r_meat_interface_code_listings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    R - Meat Interface Code Listings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_s_atomic_sovereignty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    S - Atomic Sovereignty
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_t_threat_model_matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    T - Threat Model Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_u_terminal_goals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    U - Terminal Goals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_v_universal_kill_switch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    V - Universal Kill Switch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_w_stigmergy_mathematics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    W - Stigmergy Mathematics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_x_simulation_framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X - Simulation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_y_verification_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Y - Verification Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendices/appendix_z_proof_tree_specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Z - Proof Tree Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_16">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ADR
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr_001_migration_to_deepseekv4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    001 - Migration to DeepSeek V4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr_002_dynamic_model_routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    002 - Dynamic Model Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr_003_predictive_consistency_router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    003 - Predictive Consistency Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr_004_constitutional_evolution_2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    004 - Constitutional Evolution 2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr_005_neuro_symbolic_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    005 - Neuro-Symbolic Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr_006_decentralized_bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    006 - Decentralized Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr_007_jepa_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    007 - JEPA Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    008 - Policy-Gated Real Execution Adapter
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    008 - Policy-Gated Real Execution Adapter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#execution-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution levels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Execution levels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#advisory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        advisory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dry-run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#noop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        noop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guarded-read-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        guarded-read-only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guarded-repair" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        guarded-repair
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sandbox-real" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sandbox-real
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#policy-gated-real" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        policy-gated-real
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#required-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required gates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capability-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capability model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#policy-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Policy model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sandbox-first-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sandbox-first rule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-and-compensation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback and compensation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidence-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security invariants
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observability-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observability requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-381" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-383a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.3a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-384a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.4a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-385a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.5a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-385c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.5c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-386a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.6a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-386c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.6c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-387a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.7a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-387c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.7c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-388a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.8a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-388c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.8c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-389a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.9a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-389c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.9c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3810a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.10a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3810c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.10c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3811a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.11a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3811c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.11c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3812a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.12a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3812c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.12c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3813a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.13a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3813c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.13c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3814a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.14a
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-for-pr-3814c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance criteria for PR 38.14c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#closure-note-after-pr-3814c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Closure note after PR 38.14c
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reports
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reports
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL3_baseline_results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL3_baseline_results.md
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL4_CURIOSITY_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL-4 Curiosity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL4_VALIDATION_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TRL-4 Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL4_OUROBOROS_REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ouroboros Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/TRL4_simulation_baseline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation Baseline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/benchmark_10_models_2026-05-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark 10 Models 2026-05-03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="adr-008-policy-gated-real-execution-adapter">ADR-008: Policy-Gated Real Execution Adapter<a class="headerlink" href="#adr-008-policy-gated-real-execution-adapter" title="Permanent link">&para;</a></h1>
+<h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
+<p>Accepted for design.</p>
+<p>Implementation is intentionally deferred to later PRs.</p>
+<p>This ADR does not enable arbitrary real execution.</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>BlackSwan now has a verified controlled retry and guarded repair lifecycle.</p>
+<p>The current verified loop can move from failed read-only evidence to actionable
+feedback, reviewed repair planning, repair approval, guarded repair execution,
+post-repair evidence verification, and <code>close_repair_loop</code>.</p>
+<p>The verified milestone includes:</p>
+<div class="codehilite"><pre><span></span><code>guarded_repair_execution_statuses.succeeded=1
+post_repair_evidence_statuses.passed=1
+repair_outcome_verified=true
+repair_targets_verified_count=9
+post_repair_evidence_orphans=0
+ready_for_real_execution=false
+real_execution_enabled=false
+recommended_next_action=close_repair_loop
+</code></pre></div>
+
+<p>This proves the runtime can coordinate, audit, repair, and verify a guarded
+execution path.</p>
+<p>However, arbitrary real execution remains disabled. The current guarded repair
+harness does not execute the original rendered command, does not execute the
+dry-run command, and does not enable unrestricted external side effects.</p>
+<p>The next architectural step is to define how a future real execution adapter
+could exist without weakening the current safety guarantees.</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p>BlackSwan will introduce real execution only through a policy-gated adapter
+contract.</p>
+<p>The adapter must be:</p>
+<ul>
+<li>fail-closed by default,</li>
+<li>disabled unless explicitly enabled by policy,</li>
+<li>capability-scoped,</li>
+<li>sandbox-first,</li>
+<li>audit-first,</li>
+<li>approval-gated,</li>
+<li>rollback-aware,</li>
+<li>linked to existing CRDT governance records,</li>
+<li>visible through Security, Inspector, Readiness, and Overseer summaries,</li>
+<li>verified by post-execution evidence checks.</li>
+</ul>
+<p>No direct command execution path may bypass this adapter contract.</p>
+<p>No swarm may execute arbitrary shell commands by directly consuming a rendered
+command string.</p>
+<h2 id="execution-levels">Execution levels<a class="headerlink" href="#execution-levels" title="Permanent link">&para;</a></h2>
+<p>The platform recognizes the following execution levels:</p>
+<div class="codehilite"><pre><span></span><code>advisory
+dry-run
+noop
+guarded-read-only
+guarded-repair
+sandbox-real
+policy-gated-real
+</code></pre></div>
+
+<h3 id="advisory">advisory<a class="headerlink" href="#advisory" title="Permanent link">&para;</a></h3>
+<p>Produces recommendations, briefs, proposals, or plans.</p>
+<p>No subprocess execution.</p>
+<h3 id="dry-run">dry-run<a class="headerlink" href="#dry-run" title="Permanent link">&para;</a></h3>
+<p>Builds command envelopes or validates intent.</p>
+<p>No real external side effects.</p>
+<h3 id="noop">noop<a class="headerlink" href="#noop" title="Permanent link">&para;</a></h3>
+<p>Runs a controlled noop subprocess to prove scheduling, linkage, and marker
+observation.</p>
+<p>No original command execution.</p>
+<h3 id="guarded-read-only">guarded-read-only<a class="headerlink" href="#guarded-read-only" title="Permanent link">&para;</a></h3>
+<p>Runs an explicitly controlled read-only harness.</p>
+<p>May inspect or verify state.</p>
+<p>Must not mutate external state.</p>
+<h3 id="guarded-repair">guarded-repair<a class="headerlink" href="#guarded-repair" title="Permanent link">&para;</a></h3>
+<p>Runs an explicitly controlled repair harness after approval and readiness
+lineage.</p>
+<p>Must not execute arbitrary rendered commands.</p>
+<p>Must not enable unrestricted real execution.</p>
+<h3 id="sandbox-real">sandbox-real<a class="headerlink" href="#sandbox-real" title="Permanent link">&para;</a></h3>
+<p>Future execution level.</p>
+<p>May execute scoped actions only inside an ephemeral sandbox workspace.</p>
+<p>May not write to production paths.</p>
+<p>May not access production secrets.</p>
+<p>May not perform network or external side effects unless explicitly allowed by
+policy.</p>
+<p>Must produce post-execution evidence.</p>
+<h3 id="policy-gated-real">policy-gated-real<a class="headerlink" href="#policy-gated-real" title="Permanent link">&para;</a></h3>
+<p>Future execution level.</p>
+<p>May perform real side effects only after policy authorization, capability
+validation, approval lineage, final gate, dry-run envelope, rollback plan, and
+post-execution verification.</p>
+<p>This level is out of scope until a later reviewed milestone.</p>
+<h2 id="adapter-contract">Adapter contract<a class="headerlink" href="#adapter-contract" title="Permanent link">&para;</a></h2>
+<p>A future real execution adapter must consume an explicit adapter request record.</p>
+<p>The request must include:</p>
+<div class="codehilite"><pre><span></span><code>adapter_request_id
+proposal_id
+rendered_command_id
+capability_id
+execution_level
+policy_id
+approval_id
+approval_transition_id
+final_gate_id
+dry_run_envelope_id
+operator_authorized
+sandbox_required
+rollback_required
+post_execution_evidence_required
+</code></pre></div>
+
+<p>The adapter must emit an immutable result record with:</p>
+<div class="codehilite"><pre><span></span><code>adapter_result_id
+adapter_request_id
+execution_status
+execution_level
+capability_id
+policy_id
+sandbox_id
+exit_code
+stdout_digest
+stderr_digest
+duration_seconds
+execution_performed
+subprocess_invoked
+real_execution_enabled
+external_side_effects_performed
+rollback_plan_id
+rollback_performed
+post_execution_evidence_id
+recommended_next_action
+</code></pre></div>
+
+<p>The adapter result must never rely only on logs. It must be published into CRDT
+as a first-class audit record.</p>
+<h2 id="required-gates">Required gates<a class="headerlink" href="#required-gates" title="Permanent link">&para;</a></h2>
+<p>A real execution adapter request is valid only when all required gates are true.</p>
+<p>Required gates:</p>
+<div class="codehilite"><pre><span></span><code>operator_authorized=true
+policy_authorized=true
+capability_allowed=true
+approval_transition_status=approved
+final_gate_status=ready
+dry_run_envelope_ready=true
+rollback_plan_present=true
+post_execution_evidence_required=true
+security_validation_passed=true
+readiness_validation_passed=true
+</code></pre></div>
+
+<p>If any gate is missing, false, unknown, stale, orphaned, or invalid, the adapter
+must publish a rejected result and perform no execution.</p>
+<h2 id="capability-model">Capability model<a class="headerlink" href="#capability-model" title="Permanent link">&para;</a></h2>
+<p>Capabilities are named, versioned, and explicitly scoped.</p>
+<p>A capability must define:</p>
+<div class="codehilite"><pre><span></span><code>capability_id
+capability_version
+execution_level
+allowed_modules
+allowed_paths
+allowed_arguments
+allowed_environment_keys
+network_policy
+secret_policy
+filesystem_policy
+timeout_policy
+resource_limits
+rollback_strategy
+evidence_strategy
+</code></pre></div>
+
+<p>Capabilities must be deny-by-default.</p>
+<p>Unknown capabilities are rejected.</p>
+<p>Capabilities cannot be inferred from command strings.</p>
+<h2 id="policy-model">Policy model<a class="headerlink" href="#policy-model" title="Permanent link">&para;</a></h2>
+<p>Policies decide whether a capability may run in a given context.</p>
+<p>A policy must evaluate:</p>
+<div class="codehilite"><pre><span></span><code>proposal_id
+swarm_id
+operator_authorized
+approval_lineage
+risk_level
+execution_level
+capability_id
+target_paths
+target_modules
+resource_limits
+sandbox_required
+rollback_required
+post_execution_evidence_required
+</code></pre></div>
+
+<p>A policy decision must be materialized as a CRDT record.</p>
+<p>Allowed decision statuses:</p>
+<div class="codehilite"><pre><span></span><code>approved
+rejected
+blocked
+expired
+superseded
+</code></pre></div>
+
+<p>Only <code>approved</code> can continue.</p>
+<p>All other statuses must fail closed.</p>
+<h2 id="sandbox-first-rule">Sandbox-first rule<a class="headerlink" href="#sandbox-first-rule" title="Permanent link">&para;</a></h2>
+<p>The first implementation of real execution must target sandbox execution only.</p>
+<p>Sandbox execution must:</p>
+<ul>
+<li>create an isolated temporary workspace,</li>
+<li>copy only explicitly allowed inputs,</li>
+<li>deny production secret access,</li>
+<li>deny production path writes,</li>
+<li>apply repair/action bundles only inside the sandbox,</li>
+<li>run verification inside the sandbox,</li>
+<li>publish evidence,</li>
+<li>destroy or archive the sandbox according to policy.</li>
+</ul>
+<p>Sandbox execution must not mutate the live repository or runtime state unless a
+later policy-gated milestone explicitly allows it.</p>
+<h2 id="rollback-and-compensation">Rollback and compensation<a class="headerlink" href="#rollback-and-compensation" title="Permanent link">&para;</a></h2>
+<p>Every policy-gated real execution request must have a rollback or compensation
+story before execution.</p>
+<p>For sandbox execution, rollback can be workspace destruction.</p>
+<p>For future production-affecting execution, rollback must be explicit and
+validated before execution.</p>
+<p>Missing rollback plan means:</p>
+<div class="codehilite"><pre><span></span><code>execution_status=rejected
+execution_performed=false
+subprocess_invoked=false
+recommended_next_action=prepare_rollback_plan
+</code></pre></div>
+
+<h2 id="evidence-requirements">Evidence requirements<a class="headerlink" href="#evidence-requirements" title="Permanent link">&para;</a></h2>
+<p>Every execution result must be followed by post-execution evidence.</p>
+<p>Evidence must verify:</p>
+<div class="codehilite"><pre><span></span><code>expected_targets
+actual_targets
+missing_targets
+unexpected_targets
+exit_code
+marker_observed
+policy_id
+capability_id
+sandbox_id
+side_effects
+rollback_status
+</code></pre></div>
+
+<p>A completed execution without evidence is not considered successful.</p>
+<h2 id="security-invariants">Security invariants<a class="headerlink" href="#security-invariants" title="Permanent link">&para;</a></h2>
+<p>The adapter must preserve these invariants:</p>
+<div class="codehilite"><pre><span></span><code>unknown_policy_rejected=true
+unknown_capability_rejected=true
+missing_approval_rejected=true
+missing_final_gate_rejected=true
+missing_dry_run_envelope_rejected=true
+missing_rollback_plan_rejected=true
+missing_post_execution_evidence_rejected=true
+orphaned_records_rejected=true
+stale_records_rejected=true
+</code></pre></div>
+
+<p>For non-real modes, the current invariants remain:</p>
+<div class="codehilite"><pre><span></span><code>ready_for_real_execution=false
+real_execution_enabled=false
+</code></pre></div>
+
+<p>For sandbox-real mode, the adapter may set:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_execution_enabled=true
+</code></pre></div>
+
+<p>but must still keep:</p>
+<div class="codehilite"><pre><span></span><code>external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>For future policy-gated-real mode, any external side effect must be explicitly
+authorized, scoped, audited, and verified.</p>
+<h2 id="observability-requirements">Observability requirements<a class="headerlink" href="#observability-requirements" title="Permanent link">&para;</a></h2>
+<p>Security validation must validate every adapter request and result.</p>
+<p>The inspector must summarize:</p>
+<div class="codehilite"><pre><span></span><code>adapter_request_records
+adapter_result_records
+adapter_statuses
+adapter_policy_decisions
+adapter_capabilities
+adapter_execution_levels
+adapter_sandbox_ids
+adapter_exit_codes
+adapter_orphans
+adapter_linkage_complete
+external_side_effects_performed
+production_paths_mutated
+post_execution_evidence_linkage_complete
+</code></pre></div>
+
+<p>Readiness must fail if:</p>
+<div class="codehilite"><pre><span></span><code>adapter_linkage_complete=false
+adapter_orphans&gt;0
+unknown_capability_detected=true
+unknown_policy_detected=true
+missing_rollback_plan=true
+missing_post_execution_evidence=true
+external_side_effects_performed=true without policy approval
+</code></pre></div>
+
+<p>Overseer summaries must surface adapter status, policy decisions, blocked
+reasons, sandbox evidence, and post-execution verification.</p>
+<h2 id="non-goals">Non-goals<a class="headerlink" href="#non-goals" title="Permanent link">&para;</a></h2>
+<p>This ADR does not implement:</p>
+<ul>
+<li>arbitrary real execution,</li>
+<li>production side effects,</li>
+<li>autonomous code-changing execution,</li>
+<li>unrestricted shell access,</li>
+<li>network-enabled execution,</li>
+<li>secret access,</li>
+<li>multi-proposal batch repair execution,</li>
+<li>live repository mutation,</li>
+<li>production policy scheduler.</li>
+</ul>
+<h2 id="implementation-sequence">Implementation sequence<a class="headerlink" href="#implementation-sequence" title="Permanent link">&para;</a></h2>
+<p>Future PRs should proceed in this order:</p>
+<div class="codehilite"><pre><span></span><code>PR 38.1 — real execution adapter contract and schemas, still not runnable
+PR 38.2 — sandbox-only adapter scaffold, fail-closed by default
+PR 38.3 — capability registry and policy matrix
+PR 38.4 — sandbox evidence and rollback records
+PR 38.5 — sandbox repair action application, no production mutation
+PR 38.6 — surface sandbox adapter in Security/Inspector/Readiness
+PR 38.7 — golden-path sandbox execution smoke
+PR 39.x — reviewed policy-gated real execution design
+</code></pre></div>
+
+<h2 id="acceptance-criteria-for-pr-381">Acceptance criteria for PR 38.1<a class="headerlink" href="#acceptance-criteria-for-pr-381" title="Permanent link">&para;</a></h2>
+<p>PR 38.1 may be accepted only if:</p>
+<div class="codehilite"><pre><span></span><code>real_execution_adapter_contract_exists=true
+adapter_request_schema_exists=true
+adapter_result_schema_exists=true
+unknown_capability_rejected=true
+unknown_policy_rejected=true
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+</code></pre></div>
+
+<p>The concrete PR 38.1 artifact is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_adapter_contract
+</code></pre></div>
+
+<p>It is a contract/schema record only. It is valid after a passed post-repair
+evidence check and must keep:</p>
+<div class="codehilite"><pre><span></span><code>adapter_contract_exists=true
+adapter_request_schema_exists=true
+adapter_result_schema_exists=true
+unknown_capability_rejected=true
+unknown_policy_rejected=true
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<h2 id="acceptance-criteria-for-pr-383a">Acceptance criteria for PR 38.3a<a class="headerlink" href="#acceptance-criteria-for-pr-383a" title="Permanent link">&para;</a></h2>
+<p>The concrete PR 38.3a artifact is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_adapter_request_schema
+</code></pre></div>
+
+<p>It is a schema/scaffold record only. It is valid after a defined
+replay_lifecycle_retry_real_execution_adapter_contract and must keep:</p>
+<div class="codehilite"><pre><span></span><code>adapter_request_schema_status=defined
+adapter_request_schema_exists=true
+request_generation_enabled=false
+request_execution_enabled=false
+adapter_implementation_enabled=false
+adapter_result_generation_enabled=false
+sandbox_execution_enabled=false
+policy_gated_real_execution_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+recommended_next_action=prepare_capability_registry_and_policy_matrix
+</code></pre></div>
+
+<h2 id="acceptance-criteria-for-pr-384a">Acceptance criteria for PR 38.4a<a class="headerlink" href="#acceptance-criteria-for-pr-384a" title="Permanent link">&para;</a></h2>
+<p>The concrete PR 38.4a artifact is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_capability_policy_matrix
+</code></pre></div>
+
+<p>It defines the initial capability registry and policy matrix for future adapter
+request generation.</p>
+<p>It is still not runnable and must keep:</p>
+<div class="codehilite"><pre><span></span><code>capability_registry_exists=true
+policy_matrix_exists=true
+capability_count=7
+enabled_capability_count=5
+blocked_capability_count=2
+policy_rule_count=7
+approved_policy_count=5
+blocked_policy_count=2
+unknown_capability_rejected=true
+unknown_policy_rejected=true
+deny_by_default=true
+fail_closed_default=true
+sandbox_real_blocked=true
+policy_gated_real_blocked=true
+external_side_effects_allowed=false
+production_paths_allowed=false
+production_secrets_allowed=false
+capability_execution_enabled=false
+policy_execution_enabled=false
+adapter_request_generation_enabled=false
+adapter_request_execution_enabled=false
+adapter_result_generation_enabled=false
+sandbox_execution_enabled=false
+policy_gated_real_execution_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+recommended_next_action=prepare_sandbox_adapter_scaffold
+</code></pre></div>
+
+<h2 id="acceptance-criteria-for-pr-385a">Acceptance criteria for PR 38.5a<a class="headerlink" href="#acceptance-criteria-for-pr-385a" title="Permanent link">&para;</a></h2>
+<p>The concrete PR 38.5a artifact is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold
+</code></pre></div>
+
+<p>It defines a fail-closed sandbox adapter scaffold after the capability registry
+and policy matrix exist.</p>
+<p>It is still not runnable and must keep:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_adapter_scaffold_status=defined
+sandbox_adapter_scaffold_exists=true
+sandbox_adapter_contract_exists=true
+sandbox_workspace_strategy=ephemeral_temp_workspace
+sandbox_input_strategy=explicit_allowlist_only
+sandbox_output_strategy=explicit_allowlist_only
+sandbox_rollback_strategy=workspace_destruction
+sandbox_evidence_strategy=post_execution_evidence_required
+sandbox_network_policy=deny
+sandbox_secret_policy=deny
+sandbox_filesystem_policy=no_production_writes
+sandbox_production_write_policy=deny
+sandbox_external_side_effect_policy=deny
+sandbox_adapter_fail_closed=true
+sandbox_adapter_deny_by_default=true
+sandbox_adapter_requires_policy_matrix=true
+sandbox_adapter_requires_known_capability=true
+sandbox_adapter_requires_known_policy=true
+sandbox_adapter_requires_operator_authorization=true
+sandbox_adapter_requires_approval_lineage=true
+sandbox_adapter_requires_final_gate=true
+sandbox_adapter_requires_dry_run_envelope=true
+sandbox_adapter_requires_rollback_plan=true
+sandbox_adapter_requires_post_execution_evidence=true
+sandbox_adapter_rejects_unknown_capability=true
+sandbox_adapter_rejects_unknown_policy=true
+sandbox_adapter_implementation_enabled=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+adapter_request_generation_enabled=false
+adapter_request_execution_enabled=false
+adapter_result_generation_enabled=false
+capability_execution_enabled=false
+policy_execution_enabled=false
+policy_gated_real_execution_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+recommended_next_action=surface_sandbox_adapter_scaffold_observability
+</code></pre></div>
+
+<h2 id="acceptance-criteria-for-pr-385c">Acceptance criteria for PR 38.5c<a class="headerlink" href="#acceptance-criteria-for-pr-385c" title="Permanent link">&para;</a></h2>
+<p>PR 38.5c surfaces sandbox adapter scaffold observability through a dedicated
+read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_adapter_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_adapter_scaffold_observed=true
+sandbox_adapter_scaffold_linkage_complete=true
+sandbox_adapter_scaffold_orphans=0
+sandbox_adapter_scaffold_defined=1
+sandbox_adapter_scaffold_fail_closed=1
+sandbox_adapter_scaffold_deny_by_default=1
+sandbox_adapter_scaffold_sandbox_execution_enabled=0
+sandbox_adapter_scaffold_execution_performed=0
+sandbox_adapter_scaffold_subprocess_invoked=0
+sandbox_adapter_scaffold_real_execution_enabled=0
+sandbox_adapter_scaffold_external_side_effects_performed=0
+sandbox_adapter_scaffold_production_paths_mutated=0
+sandbox_adapter_scaffold_production_secrets_accessed=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed scaffold state through
+security_real_execution_sandbox_adapter_scaffold_* key metrics.</p>
+<p>This PR remains read-only and does not enable sandbox execution.</p>
+<h2 id="acceptance-criteria-for-pr-386a">Acceptance criteria for PR 38.6a<a class="headerlink" href="#acceptance-criteria-for-pr-386a" title="Permanent link">&para;</a></h2>
+<p>PR 38.6a introduces a fail-closed sandbox adapter request preflight scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_adapter_request_preflight
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_adapter_scaffold source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_adapter_request_preflight_status=blocked
+sandbox_adapter_request_preflight_fail_closed=true
+sandbox_adapter_request_preflight_deny_by_default=true
+sandbox_adapter_request_generation_enabled=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not enable sandbox execution. It only prepares the next blocked
+preflight artifact.</p>
+<h2 id="acceptance-criteria-for-pr-386c">Acceptance criteria for PR 38.6c<a class="headerlink" href="#acceptance-criteria-for-pr-386c" title="Permanent link">&para;</a></h2>
+<p>PR 38.6c surfaces sandbox adapter request preflight observability through a
+dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_adapter_request_preflight_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_adapter_request_preflight_observed=true
+sandbox_adapter_request_preflight_linkage_complete=true
+sandbox_adapter_request_preflight_orphans=0
+sandbox_adapter_request_preflight_blocked=1
+sandbox_adapter_request_preflight_fail_closed=1
+sandbox_adapter_request_preflight_deny_by_default=1
+sandbox_adapter_request_preflight_request_generation_enabled=0
+sandbox_adapter_request_preflight_workspace_creation_enabled=0
+sandbox_adapter_request_preflight_input_materialization_enabled=0
+sandbox_adapter_request_preflight_command_rendering_enabled=0
+sandbox_adapter_request_preflight_sandbox_execution_enabled=0
+sandbox_adapter_request_preflight_result_generation_enabled=0
+sandbox_adapter_request_preflight_execution_performed=0
+sandbox_adapter_request_preflight_subprocess_invoked=0
+sandbox_adapter_request_preflight_real_execution_enabled=0
+sandbox_adapter_request_preflight_external_side_effects_performed=0
+sandbox_adapter_request_preflight_production_paths_mutated=0
+sandbox_adapter_request_preflight_production_secrets_accessed=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed request preflight state
+through security_real_execution_sandbox_adapter_request_preflight_* key
+metrics.</p>
+<p>This PR remains read-only and does not enable sandbox request generation,
+workspace creation, input materialization, command rendering, sandbox execution,
+subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-387a">Acceptance criteria for PR 38.7a<a class="headerlink" href="#acceptance-criteria-for-pr-387a" title="Permanent link">&para;</a></h2>
+<p>PR 38.7a introduces a blocked sandbox request envelope scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_request_envelope_scaffold
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_adapter_request_preflight source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_request_envelope_scaffold_status=blocked
+sandbox_request_envelope_scaffold_fail_closed=true
+sandbox_request_envelope_scaffold_deny_by_default=true
+sandbox_request_envelope_generation_enabled=false
+sandbox_request_envelope_materialized=false
+sandbox_request_envelope_executable=false
+sandbox_adapter_request_generation_enabled=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not enable sandbox request generation, workspace creation, input
+materialization, command rendering, sandbox execution, subprocesses, or real
+execution.</p>
+<h2 id="acceptance-criteria-for-pr-387c">Acceptance criteria for PR 38.7c<a class="headerlink" href="#acceptance-criteria-for-pr-387c" title="Permanent link">&para;</a></h2>
+<p>PR 38.7c surfaces sandbox request envelope scaffold observability through a
+dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_request_envelope_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_request_envelope_scaffold_observed=true
+sandbox_request_envelope_scaffold_linkage_complete=true
+sandbox_request_envelope_scaffold_orphans=0
+sandbox_request_envelope_scaffold_blocked=1
+sandbox_request_envelope_scaffold_fail_closed=1
+sandbox_request_envelope_scaffold_deny_by_default=1
+sandbox_request_envelope_scaffold_envelope_generation_enabled=0
+sandbox_request_envelope_scaffold_envelope_materialized=0
+sandbox_request_envelope_scaffold_envelope_executable=0
+sandbox_request_envelope_scaffold_request_generation_enabled=0
+sandbox_request_envelope_scaffold_workspace_creation_enabled=0
+sandbox_request_envelope_scaffold_input_materialization_enabled=0
+sandbox_request_envelope_scaffold_command_rendering_enabled=0
+sandbox_request_envelope_scaffold_sandbox_execution_enabled=0
+sandbox_request_envelope_scaffold_result_generation_enabled=0
+sandbox_request_envelope_scaffold_execution_performed=0
+sandbox_request_envelope_scaffold_subprocess_invoked=0
+sandbox_request_envelope_scaffold_real_execution_enabled=0
+sandbox_request_envelope_scaffold_external_side_effects_performed=0
+sandbox_request_envelope_scaffold_production_paths_mutated=0
+sandbox_request_envelope_scaffold_production_secrets_accessed=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed envelope scaffold state
+through security_real_execution_sandbox_request_envelope_scaffold_* key
+metrics.</p>
+<p>This PR remains read-only and does not enable sandbox request envelope
+generation, envelope materialization, executable envelopes, workspace creation,
+input materialization, command rendering, sandbox execution, subprocesses, or
+real execution.</p>
+<h2 id="acceptance-criteria-for-pr-388a">Acceptance criteria for PR 38.8a<a class="headerlink" href="#acceptance-criteria-for-pr-388a" title="Permanent link">&para;</a></h2>
+<p>PR 38.8a introduces a blocked sandbox materialization preflight scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_materialization_preflight_scaffold
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_request_envelope_scaffold source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_materialization_preflight_scaffold_status=blocked
+sandbox_materialization_preflight_scaffold_fail_closed=true
+sandbox_materialization_preflight_scaffold_deny_by_default=true
+sandbox_materialization_preflight_allowed=false
+sandbox_materialization_preflight_enabled=false
+sandbox_materialization_preflight_passed=false
+sandbox_request_envelope_generation_enabled=false
+sandbox_request_envelope_materialized=false
+sandbox_request_envelope_executable=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not enable envelope generation, envelope materialization, workspace
+creation, input materialization, command rendering, sandbox execution,
+subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-388c">Acceptance criteria for PR 38.8c<a class="headerlink" href="#acceptance-criteria-for-pr-388c" title="Permanent link">&para;</a></h2>
+<p>PR 38.8c surfaces sandbox materialization preflight scaffold observability
+through a dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_materialization_preflight_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_materialization_preflight_scaffold_observed=true
+sandbox_materialization_preflight_scaffold_linkage_complete=true
+sandbox_materialization_preflight_scaffold_orphans=0
+sandbox_materialization_preflight_scaffold_blocked=1
+sandbox_materialization_preflight_scaffold_fail_closed=1
+sandbox_materialization_preflight_scaffold_deny_by_default=1
+sandbox_materialization_preflight_scaffold_preflight_enabled=0
+sandbox_materialization_preflight_scaffold_preflight_passed=0
+sandbox_materialization_preflight_scaffold_envelope_generation_enabled=0
+sandbox_materialization_preflight_scaffold_envelope_materialized=0
+sandbox_materialization_preflight_scaffold_envelope_executable=0
+sandbox_materialization_preflight_scaffold_workspace_creation_enabled=0
+sandbox_materialization_preflight_scaffold_input_materialization_enabled=0
+sandbox_materialization_preflight_scaffold_command_rendering_enabled=0
+sandbox_materialization_preflight_scaffold_sandbox_execution_enabled=0
+sandbox_materialization_preflight_scaffold_result_generation_enabled=0
+sandbox_materialization_preflight_scaffold_execution_performed=0
+sandbox_materialization_preflight_scaffold_subprocess_invoked=0
+sandbox_materialization_preflight_scaffold_real_execution_enabled=0
+sandbox_materialization_preflight_scaffold_external_side_effects_performed=0
+sandbox_materialization_preflight_scaffold_production_paths_mutated=0
+sandbox_materialization_preflight_scaffold_production_secrets_accessed=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed materialization preflight
+state through security_real_execution_sandbox_materialization_preflight_scaffold_*
+key metrics.</p>
+<p>This PR remains read-only and does not enable materialization preflight, pass
+materialization preflight, generate or materialize envelopes, create workspaces,
+materialize inputs, render commands, sandbox execution, subprocesses, or real
+execution.</p>
+<h2 id="acceptance-criteria-for-pr-389a">Acceptance criteria for PR 38.9a<a class="headerlink" href="#acceptance-criteria-for-pr-389a" title="Permanent link">&para;</a></h2>
+<p>PR 38.9a introduces a blocked sandbox workspace plan scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_workspace_plan_scaffold
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_materialization_preflight_scaffold
+source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_workspace_plan_scaffold_status=blocked
+sandbox_workspace_plan_scaffold_fail_closed=true
+sandbox_workspace_plan_scaffold_deny_by_default=true
+sandbox_workspace_plan_generation_enabled=false
+sandbox_workspace_plan_materialized=false
+sandbox_workspace_plan_executable=false
+sandbox_workspace_directory_creation_enabled=false
+sandbox_workspace_created=false
+sandbox_workspace_cleanup_registered=false
+sandbox_materialization_preflight_enabled=false
+sandbox_materialization_preflight_passed=false
+sandbox_request_envelope_generation_enabled=false
+sandbox_request_envelope_materialized=false
+sandbox_request_envelope_executable=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not enable materialization preflight, pass materialization
+preflight, generate or materialize envelopes, create workspaces, materialize
+inputs, render commands, sandbox execution, subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-389c">Acceptance criteria for PR 38.9c<a class="headerlink" href="#acceptance-criteria-for-pr-389c" title="Permanent link">&para;</a></h2>
+<p>PR 38.9c surfaces sandbox workspace plan scaffold observability through a
+dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_workspace_plan_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_workspace_plan_scaffold_observed=true
+sandbox_workspace_plan_scaffold_linkage_complete=true
+sandbox_workspace_plan_scaffold_orphans=0
+sandbox_workspace_plan_scaffold_blocked=1
+sandbox_workspace_plan_scaffold_fail_closed=1
+sandbox_workspace_plan_scaffold_deny_by_default=1
+sandbox_workspace_plan_scaffold_plan_generation_enabled=0
+sandbox_workspace_plan_scaffold_plan_materialized=0
+sandbox_workspace_plan_scaffold_plan_executable=0
+sandbox_workspace_plan_scaffold_directory_creation_enabled=0
+sandbox_workspace_plan_scaffold_workspace_created=0
+sandbox_workspace_plan_scaffold_cleanup_registered=0
+sandbox_workspace_plan_scaffold_materialization_preflight_enabled=0
+sandbox_workspace_plan_scaffold_materialization_preflight_passed=0
+sandbox_workspace_plan_scaffold_workspace_creation_enabled=0
+sandbox_workspace_plan_scaffold_input_materialization_enabled=0
+sandbox_workspace_plan_scaffold_command_rendering_enabled=0
+sandbox_workspace_plan_scaffold_sandbox_execution_enabled=0
+sandbox_workspace_plan_scaffold_execution_performed=0
+sandbox_workspace_plan_scaffold_subprocess_invoked=0
+sandbox_workspace_plan_scaffold_real_execution_enabled=0
+sandbox_workspace_plan_scaffold_external_side_effects_performed=0
+sandbox_workspace_plan_scaffold_production_paths_mutated=0
+sandbox_workspace_plan_scaffold_production_secrets_accessed=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed workspace plan state through
+security_real_execution_sandbox_workspace_plan_scaffold_* key metrics.</p>
+<p>This PR remains read-only and does not generate workspace plans, materialize
+plans, create directories, create workspaces, register cleanup, materialize
+inputs, render commands, sandbox execution, subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3810a">Acceptance criteria for PR 38.10a<a class="headerlink" href="#acceptance-criteria-for-pr-3810a" title="Permanent link">&para;</a></h2>
+<p>PR 38.10a introduces a blocked sandbox workspace preparation preflight scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_workspace_preparation_preflight_scaffold
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_workspace_plan_scaffold source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_workspace_preparation_preflight_scaffold_status=blocked
+sandbox_workspace_preparation_preflight_scaffold_fail_closed=true
+sandbox_workspace_preparation_preflight_scaffold_deny_by_default=true
+sandbox_workspace_preparation_preflight_enabled=false
+sandbox_workspace_preparation_preflight_passed=false
+sandbox_workspace_plan_generation_enabled=false
+sandbox_workspace_plan_materialized=false
+sandbox_workspace_plan_executable=false
+sandbox_workspace_directory_creation_enabled=false
+sandbox_workspace_created=false
+sandbox_workspace_cleanup_registered=false
+sandbox_workspace_creation_enabled=false
+sandbox_input_materialization_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not generate workspace plans, materialize workspace plans, enable
+workspace preparation preflight, pass workspace preparation preflight, create
+directories, create workspaces, register cleanup, materialize inputs, render
+commands, sandbox execution, subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3810c">Acceptance criteria for PR 38.10c<a class="headerlink" href="#acceptance-criteria-for-pr-3810c" title="Permanent link">&para;</a></h2>
+<p>PR 38.10c surfaces sandbox workspace preparation preflight scaffold observability
+through a dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_workspace_preparation_preflight_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_workspace_preparation_preflight_scaffold_observed=true
+sandbox_workspace_preparation_preflight_scaffold_linkage_complete=true
+sandbox_workspace_preparation_preflight_scaffold_orphans=0
+sandbox_workspace_preparation_preflight_scaffold_blocked=1
+sandbox_workspace_preparation_preflight_scaffold_fail_closed=1
+sandbox_workspace_preparation_preflight_scaffold_deny_by_default=1
+sandbox_workspace_preparation_preflight_scaffold_preflight_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_preflight_passed=0
+sandbox_workspace_preparation_preflight_scaffold_plan_generation_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_plan_materialized=0
+sandbox_workspace_preparation_preflight_scaffold_plan_executable=0
+sandbox_workspace_preparation_preflight_scaffold_directory_creation_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_workspace_created=0
+sandbox_workspace_preparation_preflight_scaffold_cleanup_registered=0
+sandbox_workspace_preparation_preflight_scaffold_workspace_creation_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_input_materialization_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_command_rendering_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_sandbox_execution_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_result_generation_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_execution_performed=0
+sandbox_workspace_preparation_preflight_scaffold_subprocess_invoked=0
+sandbox_workspace_preparation_preflight_scaffold_real_execution_enabled=0
+sandbox_workspace_preparation_preflight_scaffold_external_side_effects_performed=0
+sandbox_workspace_preparation_preflight_scaffold_production_paths_mutated=0
+sandbox_workspace_preparation_preflight_scaffold_production_secrets_accessed=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed workspace preparation
+preflight state through
+security_real_execution_sandbox_workspace_preparation_preflight_scaffold_*
+key metrics.</p>
+<p>This PR remains read-only and does not enable workspace preparation preflight,
+pass workspace preparation preflight, create directories, create workspaces,
+register cleanup, materialize inputs, render commands, sandbox execution,
+subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3811a">Acceptance criteria for PR 38.11a<a class="headerlink" href="#acceptance-criteria-for-pr-3811a" title="Permanent link">&para;</a></h2>
+<p>PR 38.11a introduces a blocked sandbox input materialization plan scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_input_materialization_plan_scaffold
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_workspace_preparation_preflight_scaffold
+source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_input_materialization_plan_scaffold_status=blocked
+sandbox_input_materialization_plan_scaffold_fail_closed=true
+sandbox_input_materialization_plan_scaffold_deny_by_default=true
+sandbox_input_materialization_plan_generation_enabled=false
+sandbox_input_materialization_plan_materialized=false
+sandbox_input_materialization_plan_executable=false
+sandbox_input_materialization_enabled=false
+sandbox_inputs_materialized=false
+sandbox_workspace_preparation_preflight_enabled=false
+sandbox_workspace_preparation_preflight_passed=false
+sandbox_workspace_directory_creation_enabled=false
+sandbox_workspace_created=false
+sandbox_workspace_cleanup_registered=false
+sandbox_workspace_creation_enabled=false
+sandbox_command_rendering_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not enable workspace preparation preflight, pass workspace
+preparation preflight, create directories, create workspaces, register cleanup,
+generate input materialization plans, materialize input materialization plans,
+materialize inputs, render commands, sandbox execution, subprocesses, or real
+execution.</p>
+<h2 id="acceptance-criteria-for-pr-3811c">Acceptance criteria for PR 38.11c<a class="headerlink" href="#acceptance-criteria-for-pr-3811c" title="Permanent link">&para;</a></h2>
+<p>PR 38.11c surfaces sandbox input materialization plan scaffold observability
+through a dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_input_materialization_plan_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_input_materialization_plan_scaffold_observed=true
+sandbox_input_materialization_plan_scaffold_linkage_complete=true
+sandbox_input_materialization_plan_scaffold_orphans=0
+sandbox_input_materialization_plan_scaffold_blocked=1
+sandbox_input_materialization_plan_scaffold_fail_closed=1
+sandbox_input_materialization_plan_scaffold_deny_by_default=1
+sandbox_input_materialization_plan_scaffold_plan_generation_enabled=0
+sandbox_input_materialization_plan_scaffold_plan_materialized=0
+sandbox_input_materialization_plan_scaffold_plan_executable=0
+sandbox_input_materialization_plan_scaffold_input_materialization_enabled=0
+sandbox_input_materialization_plan_scaffold_inputs_materialized=0
+sandbox_input_materialization_plan_scaffold_preparation_preflight_enabled=0
+sandbox_input_materialization_plan_scaffold_preparation_preflight_passed=0
+sandbox_input_materialization_plan_scaffold_directory_creation_enabled=0
+sandbox_input_materialization_plan_scaffold_workspace_created=0
+sandbox_input_materialization_plan_scaffold_cleanup_registered=0
+sandbox_input_materialization_plan_scaffold_workspace_creation_enabled=0
+sandbox_input_materialization_plan_scaffold_command_rendering_enabled=0
+sandbox_input_materialization_plan_scaffold_sandbox_execution_enabled=0
+sandbox_input_materialization_plan_scaffold_result_generation_enabled=0
+sandbox_input_materialization_plan_scaffold_execution_performed=0
+sandbox_input_materialization_plan_scaffold_subprocess_invoked=0
+sandbox_input_materialization_plan_scaffold_real_execution_enabled=0
+sandbox_input_materialization_plan_scaffold_external_side_effects_performed=0
+sandbox_input_materialization_plan_scaffold_production_paths_mutated=0
+sandbox_input_materialization_plan_scaffold_production_secrets_accessed=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed input materialization plan
+state through security_real_execution_sandbox_input_materialization_plan_*
+key metrics.</p>
+<p>This PR remains read-only and does not generate input materialization plans,
+materialize plans, materialize inputs, render commands, sandbox execution,
+subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3812a">Acceptance criteria for PR 38.12a<a class="headerlink" href="#acceptance-criteria-for-pr-3812a" title="Permanent link">&para;</a></h2>
+<p>PR 38.12a introduces a blocked sandbox command render plan scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_command_render_plan_scaffold
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_input_materialization_plan_scaffold
+source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_command_render_plan_scaffold
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_command_render_plan_scaffold_status=blocked
+sandbox_command_render_plan_scaffold_fail_closed=true
+sandbox_command_render_plan_scaffold_deny_by_default=true
+sandbox_command_render_plan_generation_enabled=false
+sandbox_command_render_plan_materialized=false
+sandbox_command_render_plan_executable=false
+sandbox_command_rendering_enabled=false
+sandbox_command_rendered=false
+sandbox_rendered_command_validated=false
+sandbox_input_materialization_plan_generation_enabled=false
+sandbox_input_materialization_plan_materialized=false
+sandbox_input_materialization_plan_executable=false
+sandbox_input_materialization_enabled=false
+sandbox_inputs_materialized=false
+sandbox_workspace_preparation_preflight_enabled=false
+sandbox_workspace_preparation_preflight_passed=false
+sandbox_workspace_directory_creation_enabled=false
+sandbox_workspace_created=false
+sandbox_workspace_cleanup_registered=false
+sandbox_workspace_creation_enabled=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not generate command render plans, materialize command render plans,
+render sandbox commands, validate rendered sandbox commands, materialize inputs,
+sandbox execution, subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3812c">Acceptance criteria for PR 38.12c<a class="headerlink" href="#acceptance-criteria-for-pr-3812c" title="Permanent link">&para;</a></h2>
+<p>PR 38.12c surfaces sandbox command render plan scaffold observability through a
+dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_command_render_plan_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_command_render_plan_scaffold_observed=true
+sandbox_command_render_plan_scaffold_linkage_complete=true
+sandbox_command_render_plan_scaffold_orphans=0
+sandbox_command_render_plan_scaffold_blocked=1
+sandbox_command_render_plan_scaffold_fail_closed=1
+sandbox_command_render_plan_scaffold_deny_by_default=1
+sandbox_command_render_plan_scaffold_plan_generation_enabled=0
+sandbox_command_render_plan_scaffold_plan_materialized=0
+sandbox_command_render_plan_scaffold_plan_executable=0
+sandbox_command_render_plan_scaffold_command_rendering_enabled=0
+sandbox_command_render_plan_scaffold_command_rendered=0
+sandbox_command_render_plan_scaffold_rendered_command_validated=0
+sandbox_command_render_plan_scaffold_sandbox_execution_enabled=0
+sandbox_command_render_plan_scaffold_execution_performed=0
+sandbox_command_render_plan_scaffold_subprocess_invoked=0
+sandbox_command_render_plan_scaffold_real_execution_enabled=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed command render plan state
+through security_real_execution_sandbox_command_render_plan_* key metrics.</p>
+<p>This PR remains read-only and does not generate command render plans, materialize
+plans, render sandbox commands, validate rendered commands, sandbox execution,
+subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3813a">Acceptance criteria for PR 38.13a<a class="headerlink" href="#acceptance-criteria-for-pr-3813a" title="Permanent link">&para;</a></h2>
+<p>PR 38.13a introduces a blocked sandbox rendered command scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_rendered_command_scaffold
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_command_render_plan_scaffold
+source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_rendered_command_scaffold_status=blocked
+sandbox_rendered_command_scaffold_fail_closed=true
+sandbox_rendered_command_scaffold_deny_by_default=true
+sandbox_rendered_command_generation_enabled=false
+sandbox_rendered_command_materialized=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_command_render_plan_generation_enabled=false
+sandbox_command_render_plan_materialized=false
+sandbox_command_render_plan_executable=false
+sandbox_command_rendering_enabled=false
+sandbox_command_rendered=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not generate rendered commands, materialize rendered commands,
+validate rendered commands, render sandbox commands, sandbox execution,
+subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3813c">Acceptance criteria for PR 38.13c<a class="headerlink" href="#acceptance-criteria-for-pr-3813c" title="Permanent link">&para;</a></h2>
+<p>PR 38.13c surfaces sandbox rendered command scaffold observability through a
+dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_rendered_command_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_rendered_command_scaffold_observed=true
+sandbox_rendered_command_scaffold_linkage_complete=true
+sandbox_rendered_command_scaffold_orphans=0
+sandbox_rendered_command_scaffold_blocked=1
+sandbox_rendered_command_scaffold_fail_closed=1
+sandbox_rendered_command_scaffold_deny_by_default=1
+sandbox_rendered_command_scaffold_generation_enabled=0
+sandbox_rendered_command_scaffold_materialized=0
+sandbox_rendered_command_scaffold_executable=0
+sandbox_rendered_command_scaffold_validated=0
+sandbox_rendered_command_scaffold_command_plan_generation_enabled=0
+sandbox_rendered_command_scaffold_command_plan_materialized=0
+sandbox_rendered_command_scaffold_command_plan_executable=0
+sandbox_rendered_command_scaffold_command_rendering_enabled=0
+sandbox_rendered_command_scaffold_command_rendered=0
+sandbox_rendered_command_scaffold_sandbox_execution_enabled=0
+sandbox_rendered_command_scaffold_result_generation_enabled=0
+sandbox_rendered_command_scaffold_execution_performed=0
+sandbox_rendered_command_scaffold_subprocess_invoked=0
+sandbox_rendered_command_scaffold_real_execution_enabled=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed rendered command scaffold
+state through security_real_execution_sandbox_rendered_command_* key metrics.</p>
+<p>This PR remains read-only and does not generate rendered commands, materialize
+rendered commands, validate rendered commands, sandbox execution, subprocesses,
+or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3814a">Acceptance criteria for PR 38.14a<a class="headerlink" href="#acceptance-criteria-for-pr-3814a" title="Permanent link">&para;</a></h2>
+<p>PR 38.14a introduces a blocked sandbox rendered command validation scaffold.</p>
+<p>The concrete builder is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.build_real_execution_sandbox_rendered_command_validation_scaffold
+</code></pre></div>
+
+<p>It may only build records from a valid
+replay_lifecycle_retry_real_execution_sandbox_rendered_command_scaffold
+source.</p>
+<p>The produced record type is:</p>
+<div class="codehilite"><pre><span></span><code>replay_lifecycle_retry_real_execution_sandbox_rendered_command_validation_scaffold
+</code></pre></div>
+
+<p>Required invariants:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_generation_enabled=false
+sandbox_rendered_command_materialized=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_command_render_plan_generation_enabled=false
+sandbox_command_render_plan_materialized=false
+sandbox_command_render_plan_executable=false
+sandbox_command_rendering_enabled=false
+sandbox_command_rendered=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>This PR does not validate rendered commands, mark rendered commands executable,
+generate rendered commands, materialize rendered commands, sandbox execution,
+subprocesses, or real execution.</p>
+<h2 id="acceptance-criteria-for-pr-3814c">Acceptance criteria for PR 38.14c<a class="headerlink" href="#acceptance-criteria-for-pr-3814c" title="Permanent link">&para;</a></h2>
+<p>PR 38.14c surfaces sandbox rendered command validation scaffold observability
+through a dedicated read-only check and Overseer brief metrics.</p>
+<p>The concrete helper is:</p>
+<div class="codehilite"><pre><span></span><code>src.testing.check_sandbox_rendered_command_validation_scaffold_observability
+</code></pre></div>
+
+<p>It must verify:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_rendered_command_validation_scaffold_observed=true
+sandbox_rendered_command_validation_scaffold_linkage_complete=true
+sandbox_rendered_command_validation_scaffold_orphans=0
+sandbox_rendered_command_validation_scaffold_blocked=1
+sandbox_rendered_command_validation_scaffold_fail_closed=1
+sandbox_rendered_command_validation_scaffold_deny_by_default=1
+sandbox_rendered_command_validation_scaffold_validation_enabled=0
+sandbox_rendered_command_validation_scaffold_validation_performed=0
+sandbox_rendered_command_validation_scaffold_validation_passed=0
+sandbox_rendered_command_validation_scaffold_validation_failed=0
+sandbox_rendered_command_validation_scaffold_generation_enabled=0
+sandbox_rendered_command_validation_scaffold_materialized=0
+sandbox_rendered_command_validation_scaffold_executable=0
+sandbox_rendered_command_validation_scaffold_validated=0
+sandbox_rendered_command_validation_scaffold_sandbox_execution_enabled=0
+sandbox_rendered_command_validation_scaffold_result_generation_enabled=0
+sandbox_rendered_command_validation_scaffold_execution_performed=0
+sandbox_rendered_command_validation_scaffold_subprocess_invoked=0
+sandbox_rendered_command_validation_scaffold_real_execution_enabled=0
+</code></pre></div>
+
+<p>The Overseer brief must surface the same fail-closed validation scaffold state
+through security_real_execution_sandbox_rendered_command_validation_* key
+metrics.</p>
+<p>This PR remains read-only and does not validate rendered commands, mark rendered
+commands executable, sandbox execution, subprocesses, or real execution.</p>
+<h2 id="closure-note-after-pr-3814c">Closure note after PR 38.14c<a class="headerlink" href="#closure-note-after-pr-3814c" title="Permanent link">&para;</a></h2>
+<p>The policy-gated real execution adapter scaffold contour is considered complete
+as a reusable pre-execution substrate after PR 38.14c.</p>
+<p>The completed substrate provides a fail-closed chain from adapter contract and
+request schema through sandbox request, workspace, input materialization,
+command render plan, rendered command scaffold, and rendered command validation
+scaffold.</p>
+<p>The final contour is intentionally blocked before execution:</p>
+<div class="codehilite"><pre><span></span><code>sandbox_rendered_command_validation_scaffold_status=blocked
+sandbox_rendered_command_validation_scaffold_fail_closed=true
+sandbox_rendered_command_validation_scaffold_deny_by_default=true
+sandbox_rendered_command_validation_enabled=false
+sandbox_rendered_command_validation_performed=false
+sandbox_rendered_command_validation_passed=false
+sandbox_rendered_command_validation_failed=false
+sandbox_rendered_command_executable=false
+sandbox_rendered_command_validated=false
+sandbox_execution_enabled=false
+sandbox_result_generation_enabled=false
+execution_performed=false
+subprocess_invoked=false
+real_execution_enabled=false
+external_side_effects_performed=false
+production_paths_mutated=false
+production_secrets_accessed=false
+</code></pre></div>
+
+<p>Future PRs should not continue expanding this contour by default. Instead, they
+should use it as the reference safety substrate for controlled execution.</p>
+<p>Additional guard contours are required only when introducing dangerous execution
+classes, including:</p>
+<div class="codehilite"><pre><span></span><code>production financial writes
+mainnet swaps/transfers/approvals
+wallet signing or private key access
+production database writes
+host-destructive system commands
+external non-testnet writes
+credential or secret access
+</code></pre></div>
+
+<p>Testnet trading with explicit test wallets, such as Ethereum Sepolia trading, is
+classified as <code>testnet_external_write</code>: real execution, but not production
+financial danger. It still requires explicit testnet configuration, budget/cap
+limits, capability policy, and operator-visible records, but it does not need to
+be reduced to pure simulation by default.</p>
+<p>The next architectural phase should move from substrate construction to useful
+swarm execution, beginning with explorer and memory swarm development.</p>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
+<p>This decision keeps BlackSwan aligned with the existing audit-first architecture.</p>
+<p>It allows the project to move toward real execution without introducing a direct
+shell-command path or bypassing policy, approval, readiness, rollback, and
+evidence gates.</p>
+<p>The cost is more ceremony before execution. This is intentional. The platform is
+designed for controlled autonomy, not uncontrolled automation.</p>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p>BlackSwan may eventually support real execution, but only through a
+policy-gated, capability-scoped, sandbox-first, rollback-aware, evidence-verified
+adapter contract. policy-gated adapter contract.</p>
+<p>Until that adapter is implemented and reviewed, arbitrary real execution remains
+disabled.</p>
+
+
+
+
+
+
+
+  
+    
+  
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="June 22, 2026 14:41:37 UTC">June 22, 2026</span>
+  </span>
+
+    
+    
+    
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
