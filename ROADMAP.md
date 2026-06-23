@@ -125,6 +125,10 @@ The current milestone is no longer only "directive lifecycle through CRDT". The 
 * ✅ Cluster latest artifacts lifecycle (index, retention, cleanup dry‑run and execute gate).
 * ✅ Closed policy‑gated sandbox execution substrate through rendered command validation scaffold.
 * ✅ Controlled retry and guarded repair runbook with golden‑path smoke.
+* ✅ Explorer → Memory autonomous loop closed end‑to‑end via `EXPLORE_GOAL` directive.
+* ✅ `MemorySwarmNode` migrated to `BaseSwarmNode` (standard lifecycle, heartbeat loop, command processing).
+* ✅ Shared constants (`src/swarms/common/constants.py`) and URL/domain filters (`src/swarms/explorer/filters.py`) extracted to eliminate duplication.
+* ✅ Overseer strategist accepts `memory_context` for experience‑aware LLM suggestions.
 * ✅ Latest runtime artifacts lifecycle operator checklist.
 * ✅ Explorer runtime results can be replayed into deterministic Memory evidence queries through a contract-checked replay artifact.
 * ✅ Memory replay smoke emits detailed `memory_replay_yield` metrics and compact `memory_replay_summary` operator metrics.
@@ -305,15 +309,10 @@ P0 — Explorer swarm execution
   - next: source‑specific adapters, freshness/ranking, deduplication, richer handoff to Memory
 
 P0 — Memory swarm execution
-  - ingestion
-  - normalization
-  - deduplication
-  - classification
-  - summarization
-  - retrieval/indexing
-  - retention/archive policy
-  - evidence routing
   - ✅ completed: memory evidence catalog, deterministic retrieval, vector‑ready schema, heartbeat telemetry
+  - ✅ completed: ingestion of explorer_useful_evidence and runtime_evidence via SharedMemoryBridge
+  - ✅ completed: migration to BaseSwarmNode (lifecycle, heartbeat loop, command handling)
+  - next: consolidation, deduplication, richer indexing, memory dashboards
 
 P1 — Safe local execution
   - allowlisted local sandbox subprocess
@@ -889,6 +888,9 @@ BlackSwan = trading bot
 * [x] Explorer source‑planned evidence loop with safe public search templates.
 * [x] Memory evidence catalog, deterministic retrieval, vector‑ready schema, heartbeat telemetry.
 * [x] Explorer‑Memory replay smoke yield metrics and compact summary.
+* [x] `EXPLORE_GOAL` directive: Overseer can issue research goals; Explorer meta‑agent executes source planning and full classification loop.
+* [x] Explorer → Memory evidence handoff automated through quality‑gated memory_record publication.
+* [x] `MemorySwarmNode` on `BaseSwarmNode` with standard lifecycle and command processing.
 * [ ] Research-goal source planner generates high-priority evidence candidates without manual evidence URLs.
 * [ ] Memory deduplicates, indexes, summarizes, and routes Explorer evidence to Improver and Overseer.
 * [ ] Dashboard-ready summary cards for memory, replay, retry, repair, and post-repair verification.

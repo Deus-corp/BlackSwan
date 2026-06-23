@@ -242,6 +242,23 @@ goal/evidence seed -> network read -> finding -> USEFUL -> memory_record
 
 Explorer is still read-only. It does not perform external writes, credential access, production mutation, or financial execution. Future work should move from manually provided evidence URLs toward goal-driven source planning, source adapters, ranking, extraction, deduplication, and richer Memory ingestion.
 
+### Latest Milestone — Closed Explorer → Memory Autonomous Loop
+
+The Explorer → Memory loop is now closed end‑to‑end as an autonomous directive‑driven
+research pipeline:
+
+- ✅ Overseer (or operator) can issue an `EXPLORE_GOAL` directive targeting the explorer swarm.
+- ✅ Explorer meta‑agent receives the goal, publishes seed URLs as `explorer_targets`, and launches classification.
+- ✅ Explorer nodes fetch targets, extract links, and publish `explorer_finding` records.
+- ✅ Explorer meta‑agent classifies findings (LLM + deterministic fallback) and hands off `USEFUL` evidence as structured `memory_record` records.
+- ✅ Memory swarm ingests evidence through `SharedMemoryBridge`, runs recognition, builds the evidence catalog, and publishes memory heartbeats with up‑to‑date catalog metrics.
+- ✅ Overseer can query memory for evidence relevant to past actions, closing the experience loop.
+
+The loop is safe by default:
+- All execution is `network_read` only.
+- External writes, production mutation, and secret access remain disabled.
+- Quality gates in the memory handoff and catalog ingestion keep low‑quality or short‑preview evidence out of long‑term memory.
+
 ### Latest Milestone — Memory Intelligence & Resilience
 
 The current runtime now supports explicit shared memory flow, recognition, resilience assessment, and Overseer-level memory intelligence:
@@ -664,7 +681,11 @@ Near-term focus:
 Near-term milestone plan:
 
 ```text
-PR 38.14d — document execution substrate closure and swarm execution transition
+- ✅ Execution substrate closure documented; swarm development transitions from scaffold expansion to useful execution.
+- ✅ Explorer network‑read evidence loop closed end‑to‑end (goal → memory_record).
+- ✅ EXPLORE_GOAL directive added; Explorer can receive research goals from Overseer.
+- ✅ Memory swarm migrated to BaseSwarmNode (standard lifecycle, heartbeat loop, command processing).
+- ✅ Shared constants and URL/domain filters unified across swarms.
 PR 39.1a–39.1y — explorer network-read evidence loop to memory_record
 PR 39.2a — explorer research-goal source planner and evidence candidate generation
 PR 39.3a–39.3e — memory evidence catalog/index/query contracts
