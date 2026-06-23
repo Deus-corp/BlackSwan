@@ -17,10 +17,12 @@ import asyncio
 import logging
 import time
 import uuid
+import requests
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from urllib.parse import urlparse
+from urllib.parse import quote as url_quote
 
 from src.intelligence.llm_client import LLMClient
 from src.swarms.common import (
@@ -53,6 +55,22 @@ from .meta_agent_core.utils import (
 from src.swarms.explorer.meta_agent_core.frontier_filters import (
     is_low_value_frontier_url,
 )
+from src.swarms.common.constants import (
+    NETWORK_READ as EXPLORER_EXECUTION_RISK_TIER,
+    COORDINATION_CHANNEL_CRDT_GENOMES as EXPLORER_COORDINATION_CHANNEL,
+    EVIDENCE_KIND_WEB_FETCH as EXPLORER_EVIDENCE_KIND,
+    MEMORY_RECORD_TYPE,
+    MEMORY_EVIDENCE_RECORD_KIND,
+    MEMORY_EVIDENCE_SCHEMA_VERSION,
+    MIN_MEMORY_HANDOFF_CONFIDENCE,
+    MIN_MEMORY_HANDOFF_SOURCE_SCORE,
+    MIN_MEMORY_HANDOFF_RELEVANCE_SCORE,
+    MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS,
+)
+from src.swarms.explorer.filters import (
+    is_low_value_target_url,
+    is_target_blacklisted,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,18 +81,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CLASSIFICATION_BATCH_SIZE = 8
 DEFAULT_TARGET_BATCH_SIZE = 5
-EXPLORER_EXECUTION_RISK_TIER = "network_read"
-EXPLORER_COORDINATION_CHANNEL = "crdt_genomes"
-EXPLORER_EVIDENCE_KIND = "web_fetch"
-
-MEMORY_RECORD_TYPE = "memory_record"
-MEMORY_EVIDENCE_RECORD_KIND = "explorer_useful_evidence"
-MEMORY_EVIDENCE_SCHEMA_VERSION = "1.0"
-MIN_MEMORY_HANDOFF_CONFIDENCE = 0.50
-
-MIN_MEMORY_HANDOFF_SOURCE_SCORE = 0.65
-MIN_MEMORY_HANDOFF_RELEVANCE_SCORE = 0.60
-MIN_MEMORY_HANDOFF_CONTENT_PREVIEW_CHARS = 80
 
 PLACEHOLDER_MEMORY_HANDOFF_DOMAINS = frozenset(
     {
@@ -158,109 +164,6 @@ FRONTIER_URL_HINTS = (
     "atom.xml",
 )
 
-LOW_VALUE_TARGET_DOMAINS = frozenset(
-    {
-        "www.googletagmanager.com",
-        "googletagmanager.com",
-        "www.google-analytics.com",
-        "google-analytics.com",
-        "stats.g.doubleclick.net",
-        "doubleclick.net",
-        "iana.org",
-        "www.iana.org",
-        "donate.python.org",
-        "github.githubassets.com",
-        "analytics.githubassets.com",
-        "githubassets.com",
-        "gmpg.org",
-        "www.w3.org",
-        "w3.org",
-        "fosstodon.org",
-        "githubuniverse.com",
-        "www.pythonjobshq.com",
-        "pythonjobshq.com",
-        "brochure.getpython.info",
-        "support.github.com",
-        "skills.github.com",
-        "translations.python.org",
-        "support.realpython.com",
-        "helpscout.com",
-        "www.helpscout.com",
-        "pycon.blogspot.com",
-        "pyfound.blogspot.com",
-        "realpython.workable.com",
-        "apply.workable.com",
-        "workable.com",
-        "www.workable.com",
-        "workablehr.s3.amazonaws.com",
-        "workable-application-form.s3.amazonaws.com",
-        "youtube.com",
-        "www.youtube.com",
-        "youtu.be",
-        "developers.google.com",
-        "planetpython.org",
-        "www.planetpython.org",
-    }
-)
-
-LOW_VALUE_TARGET_PATH_PARTS = (
-    "/account/",
-    "/accounts/",
-    "/login",
-    "/logout",
-    "/signin",
-    "/signup",
-    "/sign-up",
-    "/register",
-    "/password",
-    "/onboarding",
-    "/donate",
-    "/donation",
-    "/privacy",
-    "/terms",
-    "/cookies",
-    "/cookie",
-    "/cdn-cgi/",
-    "/help/example-domains",
-    "/domains/example",
-    "/_static",
-    "/assets/",
-    "/static/",
-    "/fonts/",
-    "/font/",
-    "/1999/xlink",
-    "/xfn/",
-    "/@",
-    "/continue",
-    "/discussion",
-    "/category/",
-    "/docs-refer",
-    "/events",
-    "/event",
-    "/calendar",
-    "/jobs",
-    "/job",
-    "/careers",
-    "/career",
-    "/apply",
-    "/application",
-    "/llms.txt",
-    "/youtube",
-    "/channel/",
-    "/watch",
-    "/playlist",
-)
-
-LOW_VALUE_TARGET_QUERY_PARTS = (
-    "utm_",
-    "fbclid=",
-    "gclid=",
-    "gtag/js",
-    "google/login",
-    "next=",
-    "intent=learning_plan",
-)
-
 
 @dataclass(frozen=True, slots=True)
 class ExplorerMetaSnapshot:
@@ -328,6 +231,8 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         self._last_memory_handoff_skips: list[dict[str, Any]] = []
         self._last_memory_records: list[dict[str, Any]] = []
 
+        self._processed_directive_ids: set[str] = set()
+
         self.logger.info("🔎 ExplorerMetaAgent initialized: %s", self.agent_id)
 
     # ------------------------------------------------------------------
@@ -344,6 +249,8 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
 
     async def collect(self) -> ExplorerMetaSnapshot:
         """Collect explorer findings from CRDT and local memory."""
+        await self.poll_commands()  # обрабатываем новые команды перед сбором
+        
         canonical_events = [
             event
             for event in normalize_events(self.crdt.state.values())
@@ -1297,10 +1204,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             if not is_probably_valid_url(url):
                 continue
 
-            if self._is_target_blacklisted(url):
+            if is_target_blacklisted(url):
                 continue
 
-            if self._is_low_value_target_url(url):
+            if is_low_value_target_url(url):
                 continue
 
             if self.memory.seen_target(url):
@@ -1427,7 +1334,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 continue
             if not is_probably_valid_url(normalized):
                 continue
-            if self._is_target_blacklisted(normalized):
+            if is_target_blacklisted(normalized):
                 continue
 
             seen.add(normalized)
@@ -1465,7 +1372,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                     continue
                 if not is_probably_valid_url(normalized):
                     continue
-                if self._is_target_blacklisted(normalized):
+                if is_target_blacklisted(normalized):
                     continue
 
                 seen.add(normalized)
@@ -1717,7 +1624,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 ", ".join(quality_reasons),
             )
             self._last_memory_handoff_skips.append(
-                {
+               {
                     "url": finding.get("url"),
                     "reason": "quality_gate_failed",
                     "classification": classification,
@@ -1727,6 +1634,10 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
                 }
             )
             return False
+
+        quality_passed = True
+        quality_reasons = []
+        quality_metrics = {}
 
         provenance = (
             finding.get("provenance")
@@ -1909,7 +1820,7 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
         if not domain or not path:
             return False
 
-        if self._is_low_value_target_url(raw_url):
+        if is_low_value_target_url(raw_url):
             return False
 
         if any(
@@ -2858,105 +2769,163 @@ class ExplorerMetaAgent(BaseSwarmMetaAgent):
             }
 
         return super().summarize_snapshot(snapshot)
-    
-    def _is_low_value_target_url(self, url: str) -> bool:
-        normalized = normalize_url(str(url or ""))
-        if not normalized:
-            return True
-
-        if is_low_value_frontier_url(normalized):
-            return True
-
-        parsed = urlparse(str(url or ""))
-        domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
-        path = parsed.path.lower()
-        query = parsed.query.lower()
-
-        if domain == "wiki.python.org" and (
-            "event" in path or "calendar" in path
-        ):
-            return True
-
-        if domain == "realpython.com" and path in {
-            "/security",
-            "/security/",
-            "/books",
-            "/books/",
-        }:
-            return True
-
-        if domain == "github.com" and "is%3aprivate" in query:
-            return True
-
-        if domain == "github.com" and "is:private" in query:
-            return True
-
-        if domain == "realpython.com" and path.startswith("/courses/"):
-            if path.endswith("/continue") or path.endswith("/discussion"):
-                return True
-            if "/continue/" in path or "/discussion/" in path:
-                return True
-
-        if domain == "realpython.com" and path.startswith("/tutorials/"):
-            return True
-
-        if domain == "realpython.com" and path.startswith("/learning-paths/"):
-            return True
-
-        if domain == "github.com" and path.startswith(
-            (
-                "/customer-stories",
-                "/features",
-                "/pricing",
-                "/enterprise",
-            )
-        ):
-            return True
-
-        if not domain:
-            return True
-
-        if domain in LOW_VALUE_TARGET_DOMAINS:
-            return True
-
-        if any(part in path for part in LOW_VALUE_TARGET_PATH_PARTS):
-            return True
-
-        if any(part in query for part in LOW_VALUE_TARGET_QUERY_PARTS):
-            return True
-
-        if path.endswith(
-            (
-                ".png",
-                ".jpg",
-                ".jpeg",
-                ".gif",
-                ".svg",
-                ".ico",
-                ".css",
-                ".js",
-                ".mjs",
-                ".woff",
-                ".woff2",
-                ".ttf",
-                ".otf",
-                ".eot",
-                ".map",
-                ".xml",
-            )
-        ):
-            return True
-
-        return False
-
-    @staticmethod
-    def _is_target_blacklisted(url: str) -> bool:
-        parsed = urlparse(url)
-        return parsed.scheme not in {"http", "https"} or not parsed.netloc
 
     @staticmethod
     def _make_gid(prefix: str) -> str:
         return f"{prefix}_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    
+
+    async def process_command(self, command: Mapping[str, Any]) -> None:
+        """Handle EXPLORE_GOAL directive from Overseer."""
+        if await self.handle_lifecycle_command(command):
+            return
+        
+        directive_id = str(command.get("directive_id") or command.get("gid") or "")
+        if directive_id and directive_id in self._processed_directive_ids:
+            return
+
+        action = str(command.get("action") or command.get("command_type") or "").upper()
+        if action != "EXPLORE_GOAL":
+            return
+
+        payload = command.get("payload") if isinstance(command.get("payload"), dict) else {}
+        data = command.get("data") if isinstance(command.get("data"), dict) else {}
+        research_goal = payload.get("research_goal") or data.get("research_goal") or ""
+        if not research_goal:
+            self.logger.warning("EXPLORE_GOAL received without research_goal")
+            return
+
+        run_id = payload.get("exploration_run_id") or f"exp-run-{uuid.uuid4().hex[:8]}"
+        self.active_exploration_run_id = run_id
+
+        # Публикуем несколько стартовых URL'ов напрямую в explorer_targets
+        seed_urls = [
+            "https://docs.python.org/3/library/asyncio.html",
+        ]
+
+        target_event = {
+            "type": "explorer_targets",
+            "event_type": "targets_suggested",
+            "gid": self._make_gid("exp_targets"),
+            "timestamp": utc_ts(),
+            "source_gids": [],
+            "data": {
+                "urls": seed_urls,
+                "exploration_run_id": run_id,
+                "research_goal_id": research_goal,
+            },
+            "provenance": {
+                "agent": self.agent_id,
+                "exploration_run_id": run_id,
+                "research_goal": research_goal,
+                "source": "explore_goal_directive",
+            },
+        }
+        await self.crdt.add_genome(target_event)
+        self.logger.info("Published %d seed URLs for goal '%s'", len(seed_urls), research_goal)
+
+        if directive_id:
+            self._processed_directive_ids.add(directive_id)
+
+        # Эмитим событие
+        await self._emit_command_event(
+            action="EXPLORE_GOAL",
+            status="applied",
+            command=command,
+            details={"research_goal": research_goal, "run_id": run_id},
+        )
+    
+    async def _publish_source_plan_targets(
+        self,
+        source_plan: list[dict[str, Any]],
+        run_id: str,
+        research_goal: str,
+    ) -> None:
+        """Publish source-planned URLs as explorer_targets into CRDT."""
+        urls = []
+        for item in source_plan:
+            url = item.get("url")
+            if url:
+                urls.append(url)
+
+        if not urls:
+            return
+
+        target_event = {
+            "type": "explorer_targets",
+            "event_type": "targets_suggested",
+            "gid": self._make_gid("exp_targets"),
+            "timestamp": utc_ts(),
+            "source_gids": [],
+            "data": {
+                "urls": urls,
+                "exploration_run_id": run_id,
+                "research_goal_id": research_goal,
+            },
+            "provenance": {
+                "agent": self.agent_id,
+                "exploration_run_id": run_id,
+                "research_goal": research_goal,
+                "source": "source_plan_from_explore_goal",
+            },
+        }
+        await self.crdt.add_genome(target_event)
+        self.logger.info("Published %d source-planned targets for goal '%s'", len(urls), research_goal)
+    
+    async def _emit_command_event(
+        self,
+        action: str,
+        status: str,
+        command: Mapping[str, Any],
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        event = make_swarm_event(
+            event_type="command_applied",
+            source_swarm="explorer",
+            source_agent=self.agent_id,
+            source_node=self.agent_id,
+            role=self.role,
+            parent_gid=str(command.get("gid") or ""),
+            severity=0.1,
+            payload={
+                "action": action,
+                "status": status,
+                **(details or {}),
+            },
+            provenance={"agent": self.agent_id},
+        )
+        await self.crdt.add_genome(event)
+    
+
+    def _is_low_value_target_url(self, url: str) -> bool:
+        return is_low_value_target_url(url)
+
+    
+    async def poll_commands(self) -> int:
+        refresh = getattr(self.crdt, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
+
+        state = getattr(self.crdt, "state", {}) or {}
+        handled = 0
+        for value in state.values():
+            if not isinstance(value, dict):
+                continue
+            if value.get("type") not in {"swarm_command", "swarm_directive"}:
+                continue
+            target_type = value.get("target_type", "")
+            target = value.get("target", "")
+            if target_type == "swarm" and target not in {"explorer", "*"}:
+                continue
+            action = value.get("action") or value.get("command_type") or ""
+            if action != "EXPLORE_GOAL":
+                continue
+            await self.process_command(value)
+            handled += 1
+
+        if handled:
+            self.logger.info("Handled %d EXPLORE_GOAL command(s)", handled)
+        return handled
 
 
 async def main() -> None:

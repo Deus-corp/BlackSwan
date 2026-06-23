@@ -58,6 +58,19 @@ from src.swarms.explorer.meta_agent_core.frontier_filters import (
 from src.swarms.explorer.meta_agent_core.public_search_templates import (
     validate_public_search_template,
 )
+from src.swarms.common.constants import (
+    NETWORK_READ as EXPLORER_EXECUTION_RISK_TIER,
+    COORDINATION_CHANNEL_CRDT_GENOMES as EXPLORER_COORDINATION_CHANNEL,
+    EVIDENCE_KIND_WEB_FETCH as EXPLORER_EVIDENCE_KIND,
+)
+from src.swarms.explorer.filters import (
+    is_low_value_target_url,
+    is_target_blacklisted,
+    LOW_VALUE_TARGET_DOMAINS,
+    LOW_VALUE_TARGET_PATH_PARTS,
+    LOW_VALUE_TARGET_QUERY_PARTS,
+    SKIPPED_URL_EXTENSIONS,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,44 +95,6 @@ SOURCE_ADAPTER_PRIORITY = {
     "": 9,
 }
 
-EXPLORER_EXECUTION_RISK_TIER = "network_read"
-EXPLORER_COORDINATION_CHANNEL = "crdt_genomes"
-EXPLORER_EVIDENCE_KIND = "web_fetch"
-
-SKIPPED_URL_EXTENSIONS = (
-    ".7z",
-    ".avi",
-    ".bin",
-    ".bmp",
-    ".css",
-    ".dmg",
-    ".doc",
-    ".docx",
-    ".exe",
-    ".gif",
-    ".gz",
-    ".ico",
-    ".iso",
-    ".jpeg",
-    ".jpg",
-    ".js",
-    ".m4a",
-    ".mkv",
-    ".mov",
-    ".mp3",
-    ".mp4",
-    ".pdf",
-    ".png",
-    ".ppt",
-    ".pptx",
-    ".rar",
-    ".svg",
-    ".tar",
-    ".webp",
-    ".xls",
-    ".xlsx",
-    ".zip",
-)
 
 XML_LINK_TAG_PATTERN = re.compile(
     r"<(?:loc|link|id)>\s*(https?://[^<\s]+)\s*</(?:loc|link|id)>",
@@ -134,104 +109,6 @@ PLAIN_URL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-LOW_VALUE_DISCOVERY_DOMAINS = frozenset(
-    {
-        "www.googletagmanager.com",
-        "googletagmanager.com",
-        "www.google-analytics.com",
-        "google-analytics.com",
-        "stats.g.doubleclick.net",
-        "doubleclick.net",
-        "facebook.com",
-        "www.facebook.com",
-        "twitter.com",
-        "x.com",
-        "linkedin.com",
-        "www.linkedin.com",
-        "iana.org",
-        "www.iana.org",
-        "donate.python.org",
-        "github.githubassets.com",
-        "analytics.githubassets.com",
-        "githubassets.com",
-        "gmpg.org",
-        "www.w3.org",
-        "w3.org",
-        "fosstodon.org",
-        "githubuniverse.com",
-        "www.pythonjobshq.com",
-        "pythonjobshq.com",
-        "brochure.getpython.info",
-        "support.github.com",
-        "skills.github.com",
-        "translations.python.org",
-        "support.realpython.com",
-        "helpscout.com",
-        "www.helpscout.com",
-        "pycon.blogspot.com",
-        "pyfound.blogspot.com",
-        "realpython.workable.com",
-        "apply.workable.com",
-        "workable.com",
-        "www.workable.com",
-        "workablehr.s3.amazonaws.com",
-        "workable-application-form.s3.amazonaws.com",
-        "youtube.com",
-        "www.youtube.com",
-        "youtu.be",
-        "developers.google.com",
-        "planetpython.org",
-        "www.planetpython.org",
-    }
-)
-
-LOW_VALUE_DISCOVERY_PATH_PARTS = (
-    "/account/",
-    "/accounts/",
-    "/login",
-    "/logout",
-    "/signin",
-    "/signup",
-    "/sign-up",
-    "/register",
-    "/password",
-    "/onboarding",
-    "/donate",
-    "/donation",
-    "/privacy",
-    "/terms",
-    "/cookies",
-    "/cookie",
-    "/cdn-cgi/",
-    "/help/example-domains",
-    "/domains/example",
-    "/_static",
-    "/assets/",
-    "/static/",
-    "/fonts/",
-    "/font/",
-    "/1999/xlink",
-    "/xfn/",
-    "/@",
-    "/continue",
-    "/discussion",
-    "/category/",
-    "/docs-refer",
-    "/events",
-    "/event",
-    "/calendar",
-    "/jobs",
-    "/job",
-    "/careers",
-    "/career",
-    "/apply",
-    "/application",
-    "/llms.txt",
-    "/youtube",
-    "/channel/",
-    "/watch",
-    "/playlist",
-)
 
 TOPIC_ALIGNED_EVIDENCE_HINTS = (
     "agent",
@@ -290,15 +167,6 @@ GOAL_STOPWORDS = frozenset(
     }
 )
 
-LOW_VALUE_DISCOVERY_QUERY_PARTS = (
-    "utm_",
-    "fbclid=",
-    "gclid=",
-    "gtag/js",
-    "google/login",
-    "next=",
-    "intent=learning_plan",
-)
 
 PREFERRED_EVIDENCE_PATH_PARTS = (
     "/library/",
@@ -452,6 +320,11 @@ class ExplorerNode(BaseSwarmNode):
         if self._paused:
             self._last_did_work = False
             return
+        
+        # Принудительно синхронизируем CRDT из SQLite
+        refresh = getattr(self.crdt, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
 
         if self.http_client is None:
             self.http_client = httpx.AsyncClient(
@@ -1078,7 +951,7 @@ class ExplorerNode(BaseSwarmNode):
             default=0.0,
         )
 
-        sink_penalty = 1 if self._is_low_value_discovered_target(url) else 0
+        sink_penalty = 1 if is_low_value_target_url(url) else 0
         preferred_rank = 0 if preferred else 1
 
         return (
@@ -1192,8 +1065,8 @@ class ExplorerNode(BaseSwarmNode):
                 continue
 
             record_run_id = self._extract_exploration_run_id(value)
-            if active_run_id and record_run_id != active_run_id:
-                continue
+            #if active_run_id and record_run_id != active_run_id:
+            #    continue
 
             data = value.get("data") if isinstance(value.get("data"), dict) else {}
             raw_urls = data.get("urls") if isinstance(data.get("urls"), list) else []
@@ -2483,7 +2356,7 @@ class ExplorerNode(BaseSwarmNode):
             if not target_url or target_url in seen:
                 continue
 
-            if self._is_low_value_discovered_target(target_url):
+            if is_low_value_target_url(target_url):
                 continue
 
             if not self._passes_policy(target_url):
@@ -2625,7 +2498,7 @@ class ExplorerNode(BaseSwarmNode):
             if paper_url in seen:
                 continue
 
-            if self._is_low_value_discovered_target(paper_url):
+            if is_low_value_target_url(paper_url):
                 continue
 
             if not self._passes_policy(paper_url):
@@ -2819,7 +2692,7 @@ class ExplorerNode(BaseSwarmNode):
             if not absolute:
                 continue
 
-            if self._is_low_value_discovered_target(absolute):
+            if is_low_value_target_url(absolute):
                 continue
 
             if absolute in seen:
@@ -3559,97 +3432,7 @@ class ExplorerNode(BaseSwarmNode):
             return normalize_url(defragged)
         except Exception:
             return ""
-    
-    def _is_low_value_discovered_target(self, url: str) -> bool:
-        normalized = normalize_url(str(url or ""))
-        if not normalized:
-            return True
 
-        if is_low_value_frontier_url(normalized):
-            return True
-
-        parsed = urlparse(str(url or ""))
-        domain = parsed.netloc.lower().split("@")[-1].split(":")[0]
-        path = parsed.path.lower()
-        query = parsed.query.lower()
-        full = f"{path}?{query}" if query else path
-
-        if domain == "wiki.python.org" and (
-            "event" in path or "calendar" in path
-        ):
-            return True
-
-        if domain == "realpython.com" and path in {
-            "/security",
-            "/security/",
-            "/books",
-            "/books/",
-        }:
-            return True
-
-        if domain == "github.com" and "is%3aprivate" in query:
-            return True
-
-        if domain == "github.com" and "is:private" in query:
-            return True
-
-        if domain == "realpython.com" and path.startswith("/courses/"):
-            if path.endswith("/continue") or path.endswith("/discussion"):
-                return True
-            if "/continue/" in path or "/discussion/" in path:
-                return True
-
-        if domain == "realpython.com" and path.startswith("/tutorials/"):
-            return True
-
-        if domain == "realpython.com" and path.startswith("/learning-paths/"):
-            return True
-
-        if domain == "github.com" and path.startswith(
-            (
-                "/customer-stories",
-                "/features",
-                "/pricing",
-                "/enterprise",
-            )
-        ):
-            return True
-
-        if not domain:
-            return True
-
-        if domain in LOW_VALUE_DISCOVERY_DOMAINS:
-            return True
-
-        if any(part in path for part in LOW_VALUE_DISCOVERY_PATH_PARTS):
-            return True
-
-        if any(part in query for part in LOW_VALUE_DISCOVERY_QUERY_PARTS):
-            return True
-
-        if full.endswith(
-            (
-                ".png",
-                ".jpg",
-                ".jpeg",
-                ".gif",
-                ".svg",
-                ".ico",
-                ".css",
-                ".js",
-                ".mjs",
-                ".woff",
-                ".woff2",
-                ".ttf",
-                ".otf",
-                ".eot",
-                ".map",
-                ".xml",
-            )
-        ):
-            return True
-
-        return False
 
     def _preferred_evidence_score_boost(self, url: str) -> float:
         parsed = urlparse(str(url or ""))
@@ -4173,6 +3956,12 @@ class ExplorerNode(BaseSwarmNode):
 
         self._safe_public_search_template_blocked_urls.add(normalized)
         self._safe_public_search_templates_blocked += 1
+    
+    def _is_low_value_discovered_target(self, url: str) -> bool:
+        return is_low_value_target_url(url)
+
+    def _is_target_blacklisted(self, url: str) -> bool:
+        return is_target_blacklisted(url)
 
 
 async def main() -> None:

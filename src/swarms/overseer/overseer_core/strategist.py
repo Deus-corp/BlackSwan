@@ -65,9 +65,13 @@ class LLMStrategist:
     def __init__(self, llm: LLMGenerator) -> None:
         self._llm = llm
 
-    async def suggest(self, snapshot: SwarmSnapshot) -> Dict[str, bool]:
+    async def suggest(
+        self,
+        snapshot: SwarmSnapshot,
+        memory_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Generate advisory strategic boolean recommendations."""
-        prompt = self._build_prompt(snapshot)
+        prompt = self._build_prompt(snapshot, memory_context=memory_context)
 
         try:
             response = await asyncio.to_thread(
@@ -81,18 +85,14 @@ class LLMStrategist:
             return {}
 
         parsed = self._parse_json_object(response)
-
         if not parsed:
             logger.debug("LLM strategist returned no parseable JSON.")
             return {}
-
         normalized = self._normalize_suggestions(parsed)
-
         logger.debug("LLM strategist suggestions: %s", normalized)
-
         return normalized
 
-    def _build_prompt(self, snapshot: SwarmSnapshot) -> str:
+    def _build_prompt(self, snapshot: SwarmSnapshot, memory_context: dict[str, Any] | None = None) -> str:
         """Build compact JSON-constrained prompt."""
         payload = {
             "trade": {
@@ -146,7 +146,7 @@ class LLMStrategist:
 
         defaults = DEFAULT_SUGGESTIONS
 
-        return (
+        prompt = (
             "You are BlackSwan Overseer strategist.\n"
             "Return ONLY one valid JSON object. No markdown. No prose.\n"
             "The JSON object MUST contain exactly these boolean keys:\n"
@@ -160,6 +160,18 @@ class LLMStrategist:
             f"{json.dumps(payload, ensure_ascii=False, sort_keys=True)}\n"
             "JSON:"
         )
+
+        if memory_context:
+            recent = memory_context.get("recent_evidence", [])
+            if recent:
+                context_str = "Recent runtime evidence relevant to current state:\n"
+                for item in recent[:3]:
+                    summary = item.get('summary', '') or item.get('content_preview', '')
+                    if summary:
+                        context_str += f"- {summary}\n"
+                prompt = context_str + "\n" + prompt
+
+        return prompt
 
     @classmethod
     def _normalize_suggestions(cls, data: Mapping[str, Any]) -> Dict[str, bool]:

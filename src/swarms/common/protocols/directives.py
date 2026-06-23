@@ -12,6 +12,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterable, Mapping
 
+from ._utils import (
+    clean_required as _clean_required,
+    optional_str as _optional_str,
+    safe_dict as _safe_dict,
+    safe_float as _safe_float,
+    safe_ttl as _safe_ttl,
+)
+
 
 class DirectiveStatus(str, Enum):
     """Lifecycle status for a directive."""
@@ -331,41 +339,6 @@ def _infer_target_type(data: Mapping[str, Any]) -> str:
     if data.get("target_swarm") or data.get("swarm"):
         return DirectiveTargetType.SWARM.value
     return DirectiveTargetType.GLOBAL.value
-
-
-def _clean_required(value: Any, field_name: str) -> str:
-    text = str(value or "").strip()
-    if not text:
-        raise ValueError(f"{field_name} must be a non-empty string")
-    return text
-
-
-def _optional_str(value: Any) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _safe_dict(value: Any) -> dict[str, Any]:
-    return dict(value) if isinstance(value, Mapping) else {}
-
-
-def _safe_ttl(value: Any) -> int | None:
-    if value is None:
-        return None
-    try:
-        ttl = int(value)
-    except (TypeError, ValueError):
-        return None
-    return ttl if ttl > 0 else None
-
-
-def _safe_float(value: Any, default: float) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
 
 
 __all__ = [

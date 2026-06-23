@@ -12,6 +12,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterable, Mapping
 
+from ._utils import (
+    clean_required as _clean_required,
+    safe_dict as _safe_dict,
+    safe_float as _safe_float,
+    clamp_confidence as _clamp_confidence,
+)
+
 
 class EvidenceStatus(str, Enum):
     """Overall evidence status."""
@@ -201,29 +208,6 @@ def _safe_checks(value: Any) -> list[dict[str, Any]]:
             if check["name"]:
                 checks.append(check)
     return checks
-
-
-def _clean_required(value: Any, field_name: str) -> str:
-    text = str(value or "").strip()
-    if not text:
-        raise ValueError(f"{field_name} must be a non-empty string")
-    return text
-
-
-def _safe_dict(value: Any) -> dict[str, Any]:
-    return dict(value) if isinstance(value, Mapping) else {}
-
-
-def _safe_float(value: Any, default: float) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _clamp_confidence(value: Any) -> float:
-    number = _safe_float(value, 0.0)
-    return max(0.0, min(1.0, number))
 
 
 __all__ = [

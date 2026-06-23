@@ -359,6 +359,44 @@ def _memory_record_to_ingest_candidate(
 
     if kind != "evidence" or candidate_kind != "explorer_useful_evidence":
         return None
+    
+    if kind == "evidence":
+        if candidate_kind == "runtime_evidence":
+            # Обрабатываем runtime evidence
+            source_record_gid = _clean_text(payload.get("evidence_id"))
+            url = ""  # у runtime evidence нет URL
+            content_hash = ""  # нет хеша
+            content_preview = _clean_text(payload.get("subject", {}).get("subject") or "")
+            dedupe_key = _stable_hash(
+                "memory_ingest_candidate",
+                source_record_gid,
+                content_preview[:300],
+            )
+            return {
+                "type": "memory_ingest_candidate",
+                "candidate_kind": "runtime_evidence",
+                "source_record_gid": source_record_gid,
+                "url": url,
+                "domain": "runtime",
+                "content_preview": content_preview,
+                "content_hash": content_hash,
+                "source_score": 1.0,
+                "quality_score": 1.0,
+                "system_relevance_score": 1.0,
+                "authority_score": 1.0,
+                "freshness_score": 1.0,
+                "topic_tags": ["runtime_evidence", "evidence"],
+                "evidence_category": "runtime_evidence",
+                "ingestion_status": "candidate",
+                "dedupe_key": dedupe_key,
+                **normalize_memory_vector_ready_fields(payload),
+                "provenance": {
+                    **dict(payload.get("provenance", {})),
+                    "source": "evidence_bridge",
+                    "external_write_performed": False,
+                    "real_execution_enabled": False,
+                },
+            }
 
     provenance = _as_mapping(payload.get("provenance"))
     source_record_gid = _clean_text(payload.get("source_record_gid"))

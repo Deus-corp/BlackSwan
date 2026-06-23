@@ -88,6 +88,8 @@ class SharedMemoryBridge:
         self.rejected_records += rejected
         self.skipped_records += skipped
 
+        await self._ingest_evidence_records(crdt, node, limit=50, min_timestamp=min_timestamp)
+
         return {
             "scanned": scanned,
             "accepted": accepted,
@@ -135,12 +137,23 @@ class SharedMemoryBridge:
         if record_type == "memory_record":
             if is_explorer_useful_evidence_record(payload):
                 candidate = build_memory_ingest_candidate(payload)
-                return memory_record_from_ingest_candidate(candidate)
+                record = memory_record_from_ingest_candidate(candidate)
+                record["kind"] = "evidence"
+                return record
 
-            return cls._memory_record_from_payload(record_id, payload)
+            if payload.get("record_kind") == "runtime_evidence":
+                record = cls._memory_record_from_payload(record_id, payload)
+                record["kind"] = "evidence"
+                return record
+
+            record = cls._memory_record_from_payload(record_id, payload)
+            record["kind"] = "evidence"
+            return record
 
         if record_type == "memory_ingest_candidate":
-            return memory_record_from_ingest_candidate(payload)
+            record = memory_record_from_ingest_candidate(payload)
+            record["kind"] = "evidence"
+            return record
 
         if record_type == "swarm_event" and include_swarm_events:
             return cls._memory_record_from_event(record_id, payload)
@@ -249,3 +262,73 @@ class SharedMemoryBridge:
                 return parsed
 
         return 0.0
+    
+
+    async def _ingest_evidence_records(
+        self,
+        crdt: Any,
+        memory_node: Any,
+        limit: int = 50,
+        min_timestamp: float | None = None,
+    ) -> int:
+        """Scan CRDT for EvidenceRecord and convert to memory_record."""
+        state = getattr(crdt, "state", {}) or {}
+        if not isinstance(state, dict):
+            return 0
+
+        ingested = 0
+        for record in list(state.values())[:limit]:
+            if not isinstance(record, dict):
+                continue
+            if record.get("type") != "evidence_record":
+                continue
+
+            # Проверяем, не обработан ли уже этот evidence_id
+            evidence_id = str(record.get("evidence_id") or "")
+            if not evidence_id:
+                continue
+
+            # Простейшая защита от повторного ingestion (можно улучшить)
+            # Полагаемся на dedup в memory
+
+            subject = str(record.get("subject") or "")
+            status = str(record.get("status") or "")
+            confidence = float(record.get("confidence", 0.0))
+            checks = record.get("checks", [])
+            payload = record.get("payload", {})
+
+            # Формируем memory_record
+            memory_record = {
+                "type": "memory_record",
+                "record_kind": "runtime_evidence",
+                "schema_version": "1.0",
+                "gid": f"mem-ev-{evidence_id}",
+                "timestamp": record.get("created_at", utc_ts()),
+                "source_swarm": "security",  # или из provenance
+                "source_agent": "evidence_bridge",
+                "source_record_gid": evidence_id,
+                "subject": {
+                    "type": "runtime_evidence",
+                    "evidence_id": evidence_id,
+                    "subject": subject,
+                },
+                "evidence": {
+                    "evidence_kind": "runtime_evidence",
+                    "status": status,
+                    "confidence": confidence,
+                    "checks": checks,
+                },
+                "payload": dict(payload),
+                "provenance": {
+                    "source": "evidence_to_memory_bridge",
+                    "evidence_id": evidence_id,
+                    "external_write_performed": False,
+                    "real_execution_enabled": False,
+                },
+            }
+
+            # Передаём в MemorySwarmNode на ingestion
+            await memory_node.ingest_record(memory_record)
+            ingested += 1
+
+        return ingested

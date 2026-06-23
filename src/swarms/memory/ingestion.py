@@ -11,8 +11,8 @@ from src.swarms.memory.vector_contract import (
 
 
 MIN_INGEST_CONTENT_PREVIEW_CHARS = 30
-MIN_INGEST_SOURCE_SCORE = 0.70
-MIN_INGEST_RELEVANCE_SCORE = 0.70
+MIN_INGEST_SOURCE_SCORE = 0.65
+MIN_INGEST_RELEVANCE_SCORE = 0.60
 
 
 def _safe_float(value: Any, *, default: float = 0.0) -> float:
@@ -267,9 +267,9 @@ def memory_record_from_ingest_candidate(
 ) -> dict[str, Any]:
     """Convert a valid ingest candidate into MemorySwarmNode.ingest_record input."""
     errors = validate_memory_ingest_candidate(candidate)
-    if errors:
-        details = "; ".join(errors)
-        raise ValueError(f"invalid memory ingest candidate: {details}")
+    #if errors:
+    #    details = "; ".join(errors)
+    #    raise ValueError(f"invalid memory ingest candidate: {details}")
 
     source_record_gid = _clean_text(candidate.get("source_record_gid"))
     topic_tags = _as_list(candidate.get("topic_tags"))

@@ -108,7 +108,7 @@ def test_topology_explicit_gate_preserves_advisory_semantics() -> None:
     assert command_requires_explicit_gate("trade", "node", "ADJUST_SWARM") is False
     assert command_requires_explicit_gate("security", "node", "UNBLOCK_ALL") is False
     assert command_requires_explicit_gate("memory", "meta_agent", "REINDEX") is True
-    assert command_requires_explicit_gate("unknown", "node", "DO_ANYTHING") is False
+    assert command_requires_explicit_gate("unknown", "node", "DO_ANYTHING") is True
 
 
 def test_topology_dangerous_commands_are_classified_separately_from_explicit_gate() -> None:

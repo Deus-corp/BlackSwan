@@ -470,7 +470,7 @@ async def check_overseer_topology_healthcheck() -> None:
 
 async def check_overseer_topology_rules_payload() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-topology-rules")
@@ -528,7 +528,7 @@ async def check_overseer_topology_rules_payload() -> None:
 
 async def check_overseer_topology_warnings() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-topology-warnings")
@@ -578,7 +578,7 @@ async def check_overseer_topology_warnings() -> None:
 
 async def check_overseer_topology_restart_candidates() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-topology-restart-candidates")
@@ -645,7 +645,7 @@ async def check_overseer_topology_restart_candidates() -> None:
 
 async def check_overseer_topology_restarts_default_disabled() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     previous = os.environ.pop("OVERSEER_ENABLE_TOPOLOGY_RESTARTS", None)
@@ -702,7 +702,7 @@ async def check_overseer_topology_restarts_default_disabled() -> None:
 
 async def check_overseer_topology_restarts_enabled_canonical_only() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     previous = os.environ.get("OVERSEER_ENABLE_TOPOLOGY_RESTARTS")
@@ -1560,7 +1560,7 @@ async def check_overseer_topology_command_events_summary() -> None:
 
 async def check_overseer_topology_command_warnings() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-command-warnings")
@@ -1644,7 +1644,7 @@ async def check_overseer_topology_command_warnings() -> None:
 
 async def check_overseer_persisted_topology_command_warnings() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-command-warning-persist")
@@ -1735,7 +1735,7 @@ async def check_overseer_persisted_topology_command_warnings() -> None:
 
 async def check_overseer_command_friction_advisory_directives() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-command-friction-directives")
@@ -2176,7 +2176,7 @@ async def check_overseer_topology_legacy_command_summary() -> None:
 
 async def check_overseer_legacy_command_warnings_payload() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-legacy-warning-payload")
@@ -2256,7 +2256,7 @@ async def check_overseer_legacy_command_warnings_payload() -> None:
 
 async def check_overseer_persisted_legacy_command_warnings() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-legacy-warning-persist")
@@ -2335,7 +2335,7 @@ async def check_overseer_persisted_legacy_command_warnings() -> None:
 
 async def check_overseer_legacy_command_migration_advisory_directives() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-legacy-migration-directives")
@@ -2531,7 +2531,7 @@ async def check_policy_legacy_command_window_ignores_old_commands() -> None:
 
 async def check_overseer_observability_config_metadata() -> None:
     class DummyStrategist:
-        async def suggest(self, snapshot):
+        async def suggest(self, snapshot, **kwargs):
             return {}
 
     node = OverseerNode(node_id="overseer-smoke-observability-config")

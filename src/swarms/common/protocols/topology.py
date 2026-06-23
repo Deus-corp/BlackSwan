@@ -79,6 +79,7 @@ COMMAND_RISK_TIERS: Mapping[tuple[str, str], str] = {
     ("explorer", "RESTART_NODE"): SYSTEM_DANGEROUS_STUB,
     ("explorer", "ADD_TARGETS"): NETWORK_READ,
     ("explorer", "EXPLORE_URLS"): NETWORK_READ,
+    ("explorer", "EXPLORE_GOAL"): NETWORK_READ,
 
     ("trade", "PAUSE"): SAFE_LOCAL_EXECUTION,
     ("trade", "RESUME"): SAFE_LOCAL_EXECUTION,
@@ -134,6 +135,7 @@ EXPLORER_COMMANDS: FrozenSet[str] = frozenset(
         "RESTART_NODE",
         "ADD_TARGETS",
         "EXPLORE_URLS",
+        "EXPLORE_GOAL",
     }
 )
 
@@ -437,6 +439,9 @@ def command_requires_explicit_gate(swarm_type: str, role: str, command_type: str
     advisory-gated command here, because older runtime contracts use this helper
     for advisory swarm/role routing only.
     """
+    # Fail closed: unknown roles require an explicit gate.
+    if not is_known_role(swarm_type, role):
+        return True
     if is_advisory_swarm(swarm_type):
         return True
     if is_advisory_role(swarm_type, role):

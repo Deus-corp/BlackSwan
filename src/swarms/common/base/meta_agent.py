@@ -1075,7 +1075,11 @@ class BaseSwarmMetaAgent:
 
     def _register_signal_handlers(self, loop: asyncio.AbstractEventLoop) -> None:
         def _handle_signal(sig: signal.Signals) -> None:
-            self.logger.info("Received signal %s, requesting shutdown.", sig.name)
+            try:
+                signame = signal.Signals(sig).name
+            except (ValueError, TypeError):
+                signame = str(sig)
+            self.logger.info("Received signal %s, requesting shutdown.", signame)
             self.request_shutdown()
 
         for sig in (signal.SIGTERM, signal.SIGINT):

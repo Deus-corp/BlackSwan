@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Memory swarm node.
+"""Memory swarm node (refactored on BaseSwarmNode).
 
 The memory swarm is responsible for memory-oriented autonomous functions:
 episodic memory, semantic memory, retrieval, consolidation, and gold sample
 export.
 
-This node now owns a LocalMemoryAPI backend and publishes real memory health
-metrics in canonical swarm heartbeats. It remains advisory-only in topology:
-it observes, indexes, and reports memory state, but does not execute risky
-actions without explicit future gates.
+This node now inherits from BaseSwarmNode, gaining standard lifecycle
+(PAUSE/RESUME), heartbeat loop, command processing, and health metrics.
+It remains advisory-only in topology.
 """
 
 from __future__ import annotations
@@ -16,12 +15,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import signal
 import uuid
-import time
-from typing import Any, Optional
-from pathlib import Path
 import argparse
+from pathlib import Path
+from typing import Any, Optional
 
 from src.core.crdt_adapter import CRDTAdapter
 from src.memory.local_memory import LocalMemoryAPI, MemoryRecord
@@ -33,8 +30,6 @@ from src.memory.recognition_policy import MemoryRecognitionPolicy
 from src.memory.gold_filter import select_gold_memory_samples
 from src.memory.exporter import save_jsonl
 from src.memory.summary import build_memory_summary
-from swarm_config import config
-
 from src.memory.resilience import (
     MemoryAvailability,
     MemoryHealth,
@@ -43,21 +38,28 @@ from src.memory.resilience import (
 from src.swarms.memory.catalog import (
     build_memory_evidence_catalog_from_memory_records,
 )
+from src.swarms.common import (
+    BaseNodeConfig,
+    BaseSwarmNode,
+    make_swarm_event,
+    utc_ts,
+)
+from swarm_config import config
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 30.0
+DEFAULT_TICK_INTERVAL_SECONDS = 5.0  # used for shared memory scanning
+
 
 class TrustAllReputation:
-    """Development fallback reputation manager.
-
-    Production deployments should inject a real ReputationManager.
-    """
+    """Development fallback reputation manager."""
 
     def is_trusted(self, entity_id: str) -> bool:
         return bool(str(entity_id or "").strip())
 
-class MemorySwarmNode:
+
+class MemorySwarmNode(BaseSwarmNode):
     """Memory swarm node with CRDT heartbeat publishing and local memory stats."""
 
     def __init__(
@@ -69,29 +71,44 @@ class MemorySwarmNode:
         if heartbeat_interval_seconds <= 0:
             raise ValueError("heartbeat_interval_seconds must be positive")
 
-        self.node_id = node_id or os.environ.get("MEMORY_NODE_ID") or f"memory-{uuid.uuid4().hex[:8]}"
-        self.heartbeat_interval_seconds = float(heartbeat_interval_seconds)
-        self._stop_event = asyncio.Event()
-        self.started_at = time.time()
-        self.ingest_records_since_start = (
-            os.environ.get("MEMORY_INGEST_RECORDS_SINCE_START", "true").lower()
-            not in {"0", "false", "no", "off"}
+        # Determine node_id before passing to super
+        effective_node_id = (
+            node_id
+            or os.environ.get("MEMORY_NODE_ID")
+            or f"memory-{uuid.uuid4().hex[:8]}"
         )
 
-        self.crdt = CRDTAdapter(
-            node_id=self.node_id,
-            db_path=config.crdt_db_path,
+        super().__init__(
+            node_config=BaseNodeConfig(
+                swarm_type="memory",
+                role="node",  # advisory-only in topology
+                node_id=effective_node_id,
+                version="0.2.0",
+                tick_interval_seconds=DEFAULT_TICK_INTERVAL_SECONDS,
+                heartbeat_interval_seconds=heartbeat_interval_seconds,
+                command_poll_interval_seconds=2.0,
+                reconcile_interval_seconds=10.0,
+                healthcheck_interval_seconds=15.0,
+                maintenance_interval_seconds=60.0,
+                crdt_db_path=config.crdt_db_path,
+            ),
+            logger_name="MemorySwarmNode",
         )
+
+        # Memory-specific components
         self.memory = LocalMemoryAPI(node_id=self.node_id)
         self.reputation = reputation or TrustAllReputation()
         self.quarantine = QuarantineBuffer(self.memory, self.reputation)
         self.recognizer = MemoryRecognizer()
         self.recognition_policy = MemoryRecognitionPolicy()
+
         include_swarm_events = (
             os.environ.get("MEMORY_INGEST_SWARM_EVENTS", "false").lower()
             in {"1", "true", "yes", "on"}
         )
         self.shared_bridge = SharedMemoryBridge(include_swarm_events=include_swarm_events)
+
+        # Counters and state
         self.heartbeats_published = 0
         self.records_ingested = 0
         self.records_rejected = 0
@@ -100,21 +117,74 @@ class MemorySwarmNode:
         self.recognition_action_counts: dict[str, int] = {}
         self.last_error = ""
 
+        # Control flag from env (default true)
+        self.ingest_records_since_start = (
+            os.environ.get("MEMORY_INGEST_RECORDS_SINCE_START", "true").lower()
+            not in {"0", "false", "no", "off"}
+        )
+
         logger.info(
             "MemorySwarmNode initialized node_id=%s heartbeat_interval=%.1fs",
             self.node_id,
-            self.heartbeat_interval_seconds,
+            heartbeat_interval_seconds,
         )
 
+    # ------------------------------------------------------------------
+    # BaseSwarmNode hooks
+    # ------------------------------------------------------------------
+
+    async def on_startup(self) -> None:
+        """Initial scan and event on startup."""
+        await self.remember_event("memory swarm node started", topic="lifecycle")
+        # Perform an immediate scan so memory is ready
+        await self.scan_shared_memory()
+        # Heartbeat will be published by the background loop
+
+    async def process_tick(self) -> None:
+        """Periodic shared memory scan (called by BaseSwarmNode main loop)."""
+        await self.scan_shared_memory()
+
+    async def process_command(self, command: Mapping[str, Any]) -> None:
+        """Handle memory-specific commands in addition to lifecycle commands."""
+        # Base class handles PAUSE, RESUME, RESTART_NODE, RUN_ONCE
+        if await self.handle_lifecycle_command(command):
+            return
+
+        action = str(command.get("action") or command.get("command_type") or "").upper()
+        payload = command.get("payload") if isinstance(command.get("payload"), dict) else {}
+        data = command.get("data") if isinstance(command.get("data"), dict) else {}
+
+        if action == "CONSOLIDATE":
+            # Placeholder for future consolidation logic
+            logger.info("Memory consolidation requested.")
+            # Could call a consolidation method here
+            await self._emit_command_event(action, "applied", command)
+            return
+
+        if action == "EXPORT_GOLD_SAMPLES":
+            output_path = payload.get("output_path") or data.get("output_path") or "data/memory_gold.jsonl"
+            exported_path = await self.export_gold_samples(Path(output_path))
+            logger.info("Exported gold samples to %s", exported_path)
+            await self._emit_command_event(action, "applied", command)
+            return
+
+        if action == "REINDEX":
+            # Trigger a re-index of the evidence catalog (could be a heavy operation)
+            logger.info("Memory reindex requested.")
+            # Implementation can be added later
+            await self._emit_command_event(action, "applied", command)
+            return
+
     async def publish_heartbeat(self) -> None:
-        """Publish canonical memory swarm heartbeat with local memory stats."""
+        """Publish canonical memory heartbeat with rich metrics.
+
+        BaseSwarmNode calls this through the heartbeat loop.
+        """
         stats = await self.memory.stats()
         stats_data = stats.to_dict() if hasattr(stats, "to_dict") else dict(stats)
 
         details = dict(stats_data.get("details", {}))
-
-        bridge = getattr(self, "shared_bridge", None)
-        bridge_stats = bridge.stats() if bridge is not None else {}
+        bridge_stats = self.shared_bridge.stats()
 
         total_records = int(stats_data.get("total_records", 0))
         shared_seen_records = int(bridge_stats.get("seen_records", 0))
@@ -202,24 +272,12 @@ class MemorySwarmNode:
                 "runtime_evidence_gold_candidates": memory_summary.runtime_evidence_gold_candidates,
                 "runtime_evidence_review_candidates": memory_summary.runtime_evidence_review_candidates,
                 "runtime_evidence_alert_candidates": memory_summary.runtime_evidence_alert_candidates,
-                "evidence_catalog_items": int(
-                    evidence_catalog.get("item_count", 0)
-                ),
-                "evidence_catalog_rejected_items": int(
-                    evidence_catalog.get("rejected_count", 0)
-                ),
-                "evidence_catalog_domains": dict(
-                    evidence_catalog.get("by_domain", {}) or {}
-                ),
-                "evidence_catalog_categories": dict(
-                    evidence_catalog.get("by_category", {}) or {}
-                ),
-                "evidence_catalog_topic_tags": dict(
-                    evidence_catalog.get("by_topic_tag", {}) or {}
-                ),
-                "evidence_catalog_top_items": list(
-                    evidence_catalog.get("top_items", []) or []
-                )[:5],
+                "evidence_catalog_items": int(evidence_catalog.get("item_count", 0)),
+                "evidence_catalog_rejected_items": int(evidence_catalog.get("rejected_count", 0)),
+                "evidence_catalog_domains": dict(evidence_catalog.get("by_domain", {}) or {}),
+                "evidence_catalog_categories": dict(evidence_catalog.get("by_category", {}) or {}),
+                "evidence_catalog_topic_tags": dict(evidence_catalog.get("by_topic_tag", {}) or {}),
+                "evidence_catalog_top_items": list(evidence_catalog.get("top_items", []) or [])[:5],
             },
             details={
                 "last_error": self.last_error,
@@ -229,15 +287,9 @@ class MemorySwarmNode:
                 "memory_health": memory_health.to_dict(),
                 "memory_resilience": memory_resilience.to_dict(),
                 "gold_sample_candidates": len(gold_samples),
-                "evidence_catalog_status": str(
-                    evidence_catalog.get("catalog_status", "unknown")
-                ),
-                "evidence_catalog_input_count": int(
-                    evidence_catalog.get("input_count", 0)
-                ),
-                "evidence_catalog_deduped_count": int(
-                    evidence_catalog.get("deduped_count", 0)
-                ),
+                "evidence_catalog_status": str(evidence_catalog.get("catalog_status", "unknown")),
+                "evidence_catalog_input_count": int(evidence_catalog.get("input_count", 0)),
+                "evidence_catalog_deduped_count": int(evidence_catalog.get("deduped_count", 0)),
             },
             status="running" if not self.last_error else "degraded",
         )
@@ -270,6 +322,10 @@ class MemorySwarmNode:
             memory_resilience.recovery_needed,
         )
 
+    # ------------------------------------------------------------------
+    # Memory-specific public methods
+    # ------------------------------------------------------------------
+
     async def remember_event(
         self,
         message: str,
@@ -293,23 +349,51 @@ class MemorySwarmNode:
             },
             verified=True,
         )
-
         record_id = await self.memory.remember(record)
         self.records_ingested += 1
         return record_id
-    
-    async def export_gold_samples(self, output_path: str | Path) -> Path:
-        """Export current gold candidate memory samples to JSONL.
 
-        This is an explicit/manual operation. It is intentionally not called
-        automatically from the heartbeat loop.
-        """
+    async def export_gold_samples(self, output_path: str | Path) -> Path:
+        """Export current gold candidate memory samples to JSONL."""
         recent_records = await self.memory.recent(limit=1000)
         gold_samples = select_gold_memory_samples(recent_records)
         return save_jsonl(gold_samples, output_path)
-    
+
+    async def scan_shared_memory(self) -> dict[str, int]:
+        """Refresh CRDT state and ingest shared memory-compatible records."""
+        refresh = getattr(self.crdt, "refresh_from_storage", None)
+        if callable(refresh):
+            refresh()
+
+        min_timestamp = self.health.started_at if self.ingest_records_since_start else None
+        return await self.shared_bridge.ingest_from_crdt(
+            self.crdt,
+            self,
+            limit=100,
+            min_timestamp=min_timestamp,
+        )
+
+    async def ingest_record(self, raw: dict[str, Any]) -> bool:
+        """Recognize, validate, and ingest an external memory record."""
+        try:
+            annotated = await self._annotate_with_recognition(raw)
+        except Exception as exc:
+            logger.warning("[%s] Recognition failed; ingesting raw record: %s", self.node_id, exc)
+            annotated = raw
+
+        accepted = await self.quarantine.process(annotated)
+        if accepted:
+            self.records_ingested += 1
+            self.last_error = ""
+        else:
+            self.records_rejected += 1
+        return accepted
+
+    # ------------------------------------------------------------------
+    # Internal helpers (unchanged logic)
+    # ------------------------------------------------------------------
+
     async def _recent_records_for_recognition(self, limit: int = 50) -> list[Any]:
-        """Return recent records used as recognition context."""
         try:
             return await self.memory.recent(limit=limit)
         except Exception as exc:
@@ -317,9 +401,7 @@ class MemorySwarmNode:
             return []
 
     async def _annotate_with_recognition(self, raw: dict[str, Any]) -> dict[str, Any]:
-        """Add deterministic recognition metadata to an incoming record."""
         record = dict(raw)
-
         existing = await self._recent_records_for_recognition()
         result = self.recognizer.recognize(record, existing)
         decision = self.recognition_policy.decide(result)
@@ -351,23 +433,18 @@ class MemorySwarmNode:
 
         tags = [str(tag) for tag in tags if str(tag).strip()]
         tags.append(f"recognition:{result.label.value}")
-
         if result.risk_score >= 0.75:
             tags.append("risk:high")
         elif result.risk_score >= 0.5:
             tags.append("risk:medium")
-
         if result.value_score >= 0.75:
             tags.append("value:high")
         elif result.value_score >= 0.5:
             tags.append("value:medium")
-
         for label in decision.labels:
             tags.append(f"policy:{label}")
-
         for action in decision.actions:
             tags.append(f"action:{action.value}")
-
         payload["tags"] = sorted(set(tags))
         record["payload"] = payload
 
@@ -386,82 +463,31 @@ class MemorySwarmNode:
             self.recognition_action_counts[action.value] = (
                 self.recognition_action_counts.get(action.value, 0) + 1
             )
-
         return record
-    
-    async def ingest_record(self, raw: dict[str, Any]) -> bool:
-        """Recognize, validate, and ingest an external memory record."""
-        try:
-            annotated = await self._annotate_with_recognition(raw)
-        except Exception as exc:
-            logger.warning("[%s] Recognition failed; ingesting raw record: %s", self.node_id, exc)
-            annotated = raw
 
-        accepted = await self.quarantine.process(annotated)
-
-        if accepted:
-            self.records_ingested += 1
-            self.last_error = ""
-        else:
-            self.records_rejected += 1
-
-        return accepted
-
-    async def start(self) -> None:
-        """Run heartbeat loop until stopped."""
-        logger.info("MemorySwarmNode %s starting.", self.node_id)
-
-        self._install_signal_handlers()
-
-        await self.remember_event("memory swarm node started", topic="lifecycle")
-        await self.scan_shared_memory()
-        await self.publish_heartbeat()
-
-        while not self._stop_event.is_set():
-            try:
-                await asyncio.wait_for(
-                    self._stop_event.wait(),
-                    timeout=self.heartbeat_interval_seconds,
-                )
-            except asyncio.TimeoutError:
-                await self.scan_shared_memory()
-                await self.publish_heartbeat()
-            except Exception as exc:
-                self.last_error = str(exc)
-                logger.exception("MemorySwarmNode heartbeat loop error: %s", exc)
-
-        await self.remember_event("memory swarm node stopped", topic="lifecycle")
-        logger.info("MemorySwarmNode %s stopped.", self.node_id)
-
-    async def stop(self) -> None:
-        """Request graceful shutdown."""
-        self._stop_event.set()
-
-    def _install_signal_handlers(self) -> None:
-        loop = asyncio.get_running_loop()
-
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            try:
-                loop.add_signal_handler(sig, self._stop_event.set)
-            except NotImplementedError:
-                pass
-
-    async def scan_shared_memory(self) -> dict[str, int]:
-        """Refresh CRDT state and ingest shared memory-compatible records."""
-        refresh = getattr(self.crdt, "refresh_from_storage", None)
-        if callable(refresh):
-            refresh()
-
-        min_timestamp = self.started_at if self.ingest_records_since_start else None
-        return await self.shared_bridge.ingest_from_crdt(
-            self.crdt,
-            self,
-            limit=100,
-            min_timestamp=min_timestamp,
+    async def _emit_command_event(self, action: str, status: str, command: Mapping[str, Any]) -> None:
+        """Emit a simple event acknowledging a memory command."""
+        event = make_swarm_event(
+            event_type="command_applied",
+            source_swarm="memory",
+            source_agent=self.node_id,
+            source_node=self.node_id,
+            role=self.role,
+            parent_gid=str(command.get("gid") or ""),
+            severity=0.1,
+            payload={
+                "action": action,
+                "status": status,
+            },
+            provenance={"agent": self.node_id},
         )
+        await self.crdt.add_genome(event)
+    
 
 def build_parser() -> argparse.ArgumentParser:
     """Build MemorySwarmNode CLI parser."""
+    import argparse
+
     parser = argparse.ArgumentParser(description="BlackSwan memory swarm node")
     sub = parser.add_subparsers(dest="command")
 
@@ -500,6 +526,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 async def main() -> None:
+    import argparse
+    import logging
+    import os
+    from pathlib import Path
+
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format="%(asctime)s | %(levelname)s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
@@ -516,10 +547,10 @@ async def main() -> None:
     if command == "export-gold":
         node.crdt = CRDTAdapter(
             node_id=node.node_id,
-            db_path=str(args.crdt_db_path),
+            db_path=str(getattr(args, "crdt_db_path", config.crdt_db_path)),
         )
 
-        if not args.no_scan_shared:
+        if not getattr(args, "no_scan_shared", False):
             node.ingest_records_since_start = False
             scan_result = await node.scan_shared_memory()
             logger.info("Scanned shared memory before gold export: %s", scan_result)
@@ -532,4 +563,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main())

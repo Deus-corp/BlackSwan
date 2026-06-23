@@ -149,6 +149,8 @@ class OverseerNode(BaseSwarmOverseer):
         self.last_swarm_brief: dict[str, Any] = {}
         self.last_directives: list[dict[str, Any]] = []
 
+        self.last_memory_context: dict[str, Any] = {}
+
         self.logger.info(
             "🧭 Overseer initialized: %s interval=%ss",
             self.overseer_id,
@@ -226,6 +228,45 @@ class OverseerNode(BaseSwarmOverseer):
 
         memory_intelligence = self.collector.collect_memory_intelligence(memory_heartbeats)
         self.last_memory_intelligence = memory_intelligence
+
+        # Запрашиваем релевантный опыт из памяти для контекста LLM
+        memory_context = {}
+        try:
+            from src.swarms.memory.catalog import query_memory_evidence_catalog, build_memory_evidence_catalog_from_memory_records
+            from src.memory.local_memory import LocalMemoryAPI
+
+            # Для простоты используем отдельный экземпляр LocalMemoryAPI с тем же CRDT
+            # (или можно сделать метод в MemorySwarmNode, но пока так)
+            memory_api = LocalMemoryAPI()
+            # Загружаем последние записи из CRDT
+            refresh = getattr(self.crdt, "refresh_from_storage", None)
+            if callable(refresh):
+                refresh()
+            state = getattr(self.crdt, "state", {}) or {}
+    
+            # Собираем memory_record из CRDT
+            memory_records = []
+            for record in state.values():
+                if isinstance(record, dict) and record.get("type") == "memory_record":
+                    memory_records.append(record)
+    
+            # Строим каталог и запрашиваем последние evidence по ключевым темам
+            catalog = build_memory_evidence_catalog_from_memory_records(memory_records, top_items_limit=10)
+            query_result = query_memory_evidence_catalog(
+                catalog,
+                text_query="reduce_risk exploration evidence",
+                limit=5,
+            )
+            memory_context = {
+                "recent_evidence": query_result.get("results", []),
+                "catalog_stats": {
+                    "item_count": catalog.get("item_count", 0),
+                    "top_domains": catalog.get("by_domain", {}),
+                }
+            }
+            self.logger.info("Memory context for LLM: %d recent evidence items", len(memory_context["recent_evidence"]))
+        except Exception as exc:
+            self.logger.warning("Failed to query memory for LLM context: %s", exc)
 
         aggregate = memory_intelligence.get("aggregate", {})
         memory_directive = decide_memory_directive(aggregate)
@@ -358,7 +399,10 @@ class OverseerNode(BaseSwarmOverseer):
         topology_legacy_command_warnings = self.summarize_topology_legacy_command_warnings(topology_rules)
 
         hard_rules = self.policy.evaluate_hard_rules(snapshot)
-        llm_suggestions = await self.strategist.suggest(snapshot)
+        llm_suggestions = await self.strategist.suggest(
+            snapshot,
+            memory_context=getattr(self, 'last_memory_context', None)
+        )
 
         if not isinstance(llm_suggestions, Mapping):
             self.logger.warning(

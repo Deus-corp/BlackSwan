@@ -740,8 +740,6 @@ All funds go toward infrastructure, compute resources, and further research. Spo
 
 ## License
 
-Dual-licensed under MIT or Apache-2.0, at your option.
-
 See [LICENSE-MIT](LICENSE-MIT.md) and [LICENSE-APACHE](LICENSE-APACHE.md).
 
 ---
